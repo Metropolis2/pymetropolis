@@ -11,7 +11,7 @@ members = [
     "metro-results",
     "metro-simulation",
     "metro-spatial",
-    "metropy",
+    "pymetropolis",
 ]
 
 [[package]]
@@ -719,45 +719,6 @@ requires-dist = [
 dev = [{ name = "ruff", specifier = ">=0.14.3" }]
 
 [[package]]
-name = "metropy"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "metro-demand" },
-    { name = "metro-network" },
-    { name = "metro-pipeline" },
-    { name = "metro-results" },
-    { name = "metro-simulation" },
-    { name = "metro-spatial" },
-    { name = "typer" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "ipython" },
-    { name = "pytest" },
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "metro-demand", editable = "packages/metro_demand" },
-    { name = "metro-network", editable = "packages/metro_network" },
-    { name = "metro-pipeline", editable = "packages/metro_pipeline" },
-    { name = "metro-results", editable = "packages/metro_results" },
-    { name = "metro-simulation", editable = "packages/metro_simulation" },
-    { name = "metro-spatial", editable = "packages/metro_spatial" },
-    { name = "typer", specifier = ">=0.20.0" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "ipython", specifier = ">=8.37.0" },
-    { name = "pytest", specifier = ">=8.4.2" },
-    { name = "ruff", specifier = ">=0.14.3" },
-]
-
-[[package]]
 name = "networkx"
 version = "3.5"
 source = { registry = "https://pypi.org/simple" }
@@ -1131,6 +1092,45 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/b0/77/a5b8c569bf593b0140bde72ea885a803b82086995367bf2037de0159d924/pygments-2.19.2.tar.gz", hash = "sha256:636cb2477cec7f8952536970bc533bc43743542f70392ae026374600add5b887", size = 4968631, upload-time = "2025-06-21T13:39:12.283Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c7/21/705964c7812476f378728bdf590ca4b771ec72385c533964653c68e86bdc/pygments-2.19.2-py3-none-any.whl", hash = "sha256:86540386c03d588bb81d44bc3928634ff26449851e99741617ecb9037ee5ec0b", size = 1225217, upload-time = "2025-06-21T13:39:07.939Z" },
+]
+
+[[package]]
+name = "pymetropolis"
+version = "0.1.1"
+source = { editable = "." }
+dependencies = [
+    { name = "metro-demand" },
+    { name = "metro-network" },
+    { name = "metro-pipeline" },
+    { name = "metro-results" },
+    { name = "metro-simulation" },
+    { name = "metro-spatial" },
+    { name = "typer" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "ipython" },
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "metro-demand", editable = "packages/metro_demand" },
+    { name = "metro-network", editable = "packages/metro_network" },
+    { name = "metro-pipeline", editable = "packages/metro_pipeline" },
+    { name = "metro-results", editable = "packages/metro_results" },
+    { name = "metro-simulation", editable = "packages/metro_simulation" },
+    { name = "metro-spatial", editable = "packages/metro_spatial" },
+    { name = "typer", specifier = ">=0.20.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "ipython", specifier = ">=8.37.0" },
+    { name = "pytest", specifier = ">=8.4.2" },
+    { name = "ruff", specifier = ">=0.14.3" },
 ]
 
 [[package]]
