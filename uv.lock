@@ -2,18 +2,6 @@ version = 1
 revision = 3
 requires-python = ">=3.12"
 
-[manifest]
-members = [
-    "metro-common",
-    "metro-demand",
-    "metro-network",
-    "metro-pipeline",
-    "metro-results",
-    "metro-simulation",
-    "metro-spatial",
-    "pymetropolis",
-]
-
 [[package]]
 name = "asttokens"
 version = "3.0.0"
@@ -506,219 +494,6 @@ wheels = [
 ]
 
 [[package]]
-name = "metro-common"
-version = "0.1.0"
-source = { editable = "packages/metro_common" }
-dependencies = [
-    { name = "geopandas" },
-    { name = "isodate" },
-    { name = "loguru" },
-    { name = "polars" },
-    { name = "pyarrow" },
-    { name = "pyogrio" },
-    { name = "requests" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "pytest" },
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "geopandas", specifier = ">=1.1.1" },
-    { name = "isodate", specifier = ">=0.7.2" },
-    { name = "loguru", specifier = ">=0.7.3" },
-    { name = "polars", specifier = ">=1.35.1" },
-    { name = "pyarrow", specifier = ">=22.0.0" },
-    { name = "pyogrio", specifier = ">=0.11.1" },
-    { name = "requests", specifier = ">=2.32.5" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = ">=8.4.2" },
-    { name = "ruff", specifier = ">=0.14.3" },
-]
-
-[[package]]
-name = "metro-demand"
-version = "0.1.0"
-source = { editable = "packages/metro_demand" }
-dependencies = [
-    { name = "metro-common" },
-    { name = "metro-network" },
-    { name = "metro-pipeline" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "metro-common", editable = "packages/metro_common" },
-    { name = "metro-network", editable = "packages/metro_network" },
-    { name = "metro-pipeline", editable = "packages/metro_pipeline" },
-]
-
-[package.metadata.requires-dev]
-dev = [{ name = "ruff", specifier = ">=0.14.3" }]
-
-[[package]]
-name = "metro-network"
-version = "0.1.0"
-source = { editable = "packages/metro_network" }
-dependencies = [
-    { name = "metro-common" },
-    { name = "metro-pipeline" },
-    { name = "metro-spatial" },
-    { name = "networkx" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "metro-common", editable = "packages/metro_common" },
-    { name = "metro-pipeline", editable = "packages/metro_pipeline" },
-    { name = "metro-spatial", editable = "packages/metro_spatial" },
-    { name = "networkx", specifier = ">=3.5" },
-]
-
-[package.metadata.requires-dev]
-dev = [{ name = "ruff", specifier = ">=0.14.3" }]
-
-[[package]]
-name = "metro-pipeline"
-version = "0.1.0"
-source = { editable = "packages/metro_pipeline" }
-dependencies = [
-    { name = "geopandas" },
-    { name = "loguru" },
-    { name = "metro-common" },
-    { name = "numpy" },
-    { name = "polars" },
-    { name = "termcolor" },
-    { name = "toml" },
-    { name = "typeguard" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "pytest" },
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "geopandas", specifier = ">=1.1.1" },
-    { name = "loguru", specifier = ">=0.7.3" },
-    { name = "metro-common", editable = "packages/metro_common" },
-    { name = "numpy", specifier = ">=2.3.4" },
-    { name = "polars", specifier = ">=1.35.1" },
-    { name = "termcolor", specifier = ">=3.2.0" },
-    { name = "toml", specifier = ">=0.10.2" },
-    { name = "typeguard", specifier = ">=4.4.4" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = ">=8.4.2" },
-    { name = "ruff", specifier = ">=0.14.3" },
-]
-
-[[package]]
-name = "metro-results"
-version = "0.1.0"
-source = { editable = "packages/metro_results" }
-dependencies = [
-    { name = "matplotlib" },
-    { name = "metro-common" },
-    { name = "metro-pipeline" },
-    { name = "metro-simulation" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "matplotlib", specifier = ">=3.10.8" },
-    { name = "metro-common", editable = "packages/metro_common" },
-    { name = "metro-pipeline", editable = "packages/metro_pipeline" },
-    { name = "metro-simulation", editable = "packages/metro_simulation" },
-]
-
-[package.metadata.requires-dev]
-dev = [{ name = "ruff", specifier = ">=0.14.3" }]
-
-[[package]]
-name = "metro-simulation"
-version = "0.1.0"
-source = { editable = "packages/metro_simulation" }
-dependencies = [
-    { name = "metro-common" },
-    { name = "metro-demand" },
-    { name = "metro-network" },
-    { name = "metro-pipeline" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "metro-common", editable = "packages/metro_common" },
-    { name = "metro-demand", editable = "packages/metro_demand" },
-    { name = "metro-network", editable = "packages/metro_network" },
-    { name = "metro-pipeline", editable = "packages/metro_pipeline" },
-]
-
-[package.metadata.requires-dev]
-dev = [{ name = "ruff", specifier = ">=0.14.3" }]
-
-[[package]]
-name = "metro-spatial"
-version = "0.1.0"
-source = { editable = "packages/metro_spatial" }
-dependencies = [
-    { name = "geopandas" },
-    { name = "metro-common" },
-    { name = "metro-pipeline" },
-    { name = "osmium" },
-    { name = "pyproj" },
-    { name = "shapely" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "geopandas", specifier = ">=1.1.1" },
-    { name = "metro-common", editable = "packages/metro_common" },
-    { name = "metro-pipeline", editable = "packages/metro_pipeline" },
-    { name = "osmium", specifier = ">=4.2.0" },
-    { name = "pyproj", specifier = ">=3.7.2" },
-    { name = "shapely", specifier = ">=2.1.2" },
-]
-
-[package.metadata.requires-dev]
-dev = [{ name = "ruff", specifier = ">=0.14.3" }]
-
-[[package]]
 name = "networkx"
 version = "3.5"
 source = { registry = "https://pypi.org/simple" }
@@ -1099,12 +874,22 @@ name = "pymetropolis"
 version = "0.1.1"
 source = { editable = "." }
 dependencies = [
-    { name = "metro-demand" },
-    { name = "metro-network" },
-    { name = "metro-pipeline" },
-    { name = "metro-results" },
-    { name = "metro-simulation" },
-    { name = "metro-spatial" },
+    { name = "geopandas" },
+    { name = "isodate" },
+    { name = "loguru" },
+    { name = "matplotlib" },
+    { name = "networkx" },
+    { name = "numpy" },
+    { name = "osmium" },
+    { name = "polars" },
+    { name = "pyarrow" },
+    { name = "pyogrio" },
+    { name = "pyproj" },
+    { name = "requests" },
+    { name = "shapely" },
+    { name = "termcolor" },
+    { name = "toml" },
+    { name = "typeguard" },
     { name = "typer" },
 ]
 
@@ -1117,12 +902,22 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "metro-demand", editable = "packages/metro_demand" },
-    { name = "metro-network", editable = "packages/metro_network" },
-    { name = "metro-pipeline", editable = "packages/metro_pipeline" },
-    { name = "metro-results", editable = "packages/metro_results" },
-    { name = "metro-simulation", editable = "packages/metro_simulation" },
-    { name = "metro-spatial", editable = "packages/metro_spatial" },
+    { name = "geopandas", specifier = ">=1.1.1" },
+    { name = "isodate", specifier = ">=0.7.2" },
+    { name = "loguru", specifier = ">=0.7.3" },
+    { name = "matplotlib", specifier = ">=3.10.8" },
+    { name = "networkx", specifier = ">=3.5" },
+    { name = "numpy", specifier = ">=2.3.4" },
+    { name = "osmium", specifier = ">=4.2.0" },
+    { name = "polars", specifier = ">=1.35.1" },
+    { name = "pyarrow", specifier = ">=22.0.0" },
+    { name = "pyogrio", specifier = ">=0.11.1" },
+    { name = "pyproj", specifier = ">=3.7.2" },
+    { name = "requests", specifier = ">=2.32.5" },
+    { name = "shapely", specifier = ">=2.1.2" },
+    { name = "termcolor", specifier = ">=3.2.0" },
+    { name = "toml", specifier = ">=0.10.2" },
+    { name = "typeguard", specifier = ">=4.4.4" },
     { name = "typer", specifier = ">=0.20.0" },
 ]
 

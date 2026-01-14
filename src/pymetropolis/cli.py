@@ -1,8 +1,8 @@
 from typing import Annotated
 
 import typer
-from metro_pipeline import Config, run_pipeline
 
+from .metro_pipeline import Config, run_pipeline
 from .schema import CONFIG_SCHEMA, STEPS_DICT
 
 

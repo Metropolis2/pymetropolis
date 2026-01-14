@@ -1,5 +1,7 @@
 import typer
 
+import pymetropolis
+
 
 def main():
-    typer.run(metropy.app)
+    typer.run(pymetropolis.app)

@@ -1,0 +1,39 @@
+from pymetropolis.metro_pipeline import ConfigTable
+
+from .capacities import CAPACITIES
+from .capacities import EXOGENOUS_CAPACITIES as EXOGENOUS_CAPACITIES
+from .circular import CIRCULAR_NETWORK_STEP, CIRCULAR_NETWORK_TABLE
+from .custom import CUSTOM_ROAD_IMPORT, CUSTOM_ROAD_IMPORT_TABLE
+from .files import ALL_FREE_FLOW_TRAVEL_TIMES_FILE as ALL_FREE_FLOW_TRAVEL_TIMES_FILE
+from .files import CLEAN_EDGES_FILE as CLEAN_EDGES_FILE
+from .files import EDGES_CAPACITIES_FILE as EDGES_CAPACITIES_FILE
+from .files import EDGES_PENALTIES_FILE as EDGES_PENALTIES_FILE
+from .files import RAW_EDGES_FILE as RAW_EDGES_FILE
+from .osm import OSM_ROAD_IMPORT, OSM_ROAD_IMPORT_TABLE
+from .penalties import PENALTIES
+from .postprocess import POSTPROCESS_ROAD_NETWORK, POSTPROCESS_TABLE
+from .routing import ALL_FREE_FLOW_TRAVEL_TIMES_STEP
+
+ROAD_NETWORK_TABLE = ConfigTable(
+    "road_network",
+    "road_network",
+    items=[CAPACITIES, PENALTIES],
+    description="Configuration values for the road network.",
+)
+
+ROAD_NETWORK_CONFIG_SCHEMA = [
+    CUSTOM_ROAD_IMPORT_TABLE,
+    OSM_ROAD_IMPORT_TABLE,
+    POSTPROCESS_TABLE,
+    ROAD_NETWORK_TABLE,
+    CIRCULAR_NETWORK_TABLE,
+]
+
+ROAD_NETWORK_STEPS = [
+    CUSTOM_ROAD_IMPORT,
+    OSM_ROAD_IMPORT,
+    POSTPROCESS_ROAD_NETWORK,
+    EXOGENOUS_CAPACITIES,
+    CIRCULAR_NETWORK_STEP,
+    ALL_FREE_FLOW_TRAVEL_TIMES_STEP,
+]

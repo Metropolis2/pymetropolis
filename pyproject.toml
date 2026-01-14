@@ -15,13 +15,23 @@ classifiers = [
 keywords = ["transport simulation", "metropolis2"]
 requires-python = ">=3.12"
 dependencies = [
-    "metro-demand",
-    "metro-network",
-    "metro-pipeline",
-    "metro-simulation",
-    "metro-spatial",
-    "metro-results",
+    "geopandas>=1.1.1",
+    "isodate>=0.7.2",
+    "loguru>=0.7.3",
+    "matplotlib>=3.10.8",
+    "networkx>=3.5",
+    "numpy>=2.3.4",
+    "osmium>=4.2.0",
+    "polars>=1.35.1",
+    "pyarrow>=22.0.0",
+    "pyproj>=3.7.2",
+    "pyogrio>=0.11.1",
+    "requests>=2.32.5",
+    "shapely>=2.1.2",
+    "termcolor>=3.2.0",
     "typer>=0.20.0",
+    "toml>=0.10.2",
+    "typeguard>=4.4.4",
 ]
 
 [project.urls]
@@ -43,15 +53,3 @@ dev = [
 [build-system]
 requires = ["setuptools>=61.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
-
-[tool.uv.sources]
-metro-common = { workspace = true }
-metro-demand = { workspace = true }
-metro-pipeline = { workspace = true }
-metro-network = { workspace=true }
-metro-spatial = { workspace = true }
-metro-simulation = { workspace = true }
-metro-results = { workspace = true }
-
-[tool.uv.workspace]
-members = ["packages/*"]
