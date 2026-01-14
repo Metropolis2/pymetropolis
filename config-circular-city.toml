@@ -1,0 +1,83 @@
+main_directory = "circular-city/"
+
+random_seed = 13081996
+
+[circular_network]
+nb_radials = 8
+nb_rings = 4
+radius = 4000
+
+[road_network_postprocess]
+[road_network_postprocess.default_speed_limit]
+"Radial 1" = 50
+"Radial 2" = 70
+"Radial 3" = 70
+"Radial 4" = 70
+"Ring 1" = 50
+"Ring 2" = 50
+"Ring 3" = 50
+"Ring 4" = 50
+
+[road_network_postprocess.default_nb_lanes]
+"Radial 1" = 2
+"Radial 2" = 2
+"Radial 3" = 2
+"Radial 4" = 2
+"Ring 1" = 1
+"Ring 2" = 1
+"Ring 3" = 1
+"Ring 4" = 1
+
+[road_network]
+[road_network.capacities]
+"Radial 1" = 1500
+"Radial 2" = 2000
+"Radial 3" = 2000
+"Radial 4" = 2000
+"Ring 1" = 2000
+"Ring 2" = 2000
+"Ring 3" = 2000
+"Ring 4" = 2000
+
+[gravity_od_matrix]
+exponential_decay = 0.07
+trips_per_node = 8000
+
+[simulation_parameters]
+period = [06:00:00, 12:00:00]
+recording_interval = 300
+learning_factor = 0.01
+nb_iterations = 100
+spillback = false
+
+[modes]
+[modes.car_driver]
+alpha = 10.0
+
+[modes.public_transit]
+constant = 10.0
+alpha = 15.0
+road_network_speed = 40
+
+[mode_choice]
+model = "Logit"
+mu = 5.0
+
+[vehicle_types]
+[vehicle_types.car]
+headway = 8.0
+
+[departure_time_choice]
+model = "ContinuousLogit"
+mu = 2.0
+
+[departure_time.linear_schedule]
+beta = 6.0
+gamma = 25.0
+delta = 600
+tstar = 08:00:00
+tstar_std = 2078
+tstar_distr = "Uniform"
+
+[metropolis_core]
+exec_path = "execs/metropolis_cli"

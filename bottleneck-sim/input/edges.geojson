@@ -1,0 +1,20 @@
+{
+    "type": "FeatureCollection",
+    "features": [{
+        "type": "Feature",
+        "geometry": {
+            "type": "LineString",
+            "coordinates": [
+                [0, 0],
+                [1, 0]
+            ]
+        },
+        "properties": {
+            "edge_id": 1,
+            "source": "origin",
+            "target": "destination",
+            "length": 30.0,
+            "speed_limit": 3.6
+       }
+    }]
+}

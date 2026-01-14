@@ -1,0 +1,4 @@
+from .files import TRIP_RESULTS_FILE as TRIP_RESULTS_FILE
+from .postprocess import TRIP_RESULTS_STEP
+
+RESULTS_STEPS = [TRIP_RESULTS_STEP]

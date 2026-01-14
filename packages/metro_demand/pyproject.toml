@@ -1,0 +1,22 @@
+# pyproject.toml
+
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "metro-demand"
+version = "0.1.0"
+description = "TODO"
+requires-python = ">=3.12"
+authors = [{ name = "Lucas Javaudin", email = "lucas@lucasjavaudin.com" }]
+dependencies = [
+    "metro-common",
+    "metro-pipeline",
+    "metro-network"
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14.3",
+]

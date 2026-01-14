@@ -1,0 +1,29 @@
+from metro_demand import CONFIG_SCHEMA as METRO_DEMAND_CONFIG_SCHEMA
+from metro_demand import STEPS as METRO_DEMAND_STEPS
+from metro_network import CONFIG_SCHEMA as METRO_NETWORK_CONFIG_SCHEMA
+from metro_network import STEPS as METRO_NETWORK_STEPS
+from metro_pipeline import BASE_SCHEMA, Step
+from metro_results import CONFIG_SCHEMA as METRO_RESULTS_CONFIG_SCHEMA
+from metro_results import STEPS as METRO_RESULTS_STEPS
+from metro_simulation import CONFIG_SCHEMA as METRO_SIMULATION_CONFIG_SCHEMA
+from metro_simulation import STEPS as METRO_SIMULATION_STEPS
+from metro_spatial import CONFIG_SCHEMA as METRO_SPATIAL_CONFIG_SCHEMA
+from metro_spatial import STEPS as METRO_SPATIAL_STEPS
+
+CONFIG_SCHEMA = (
+    BASE_SCHEMA
+    + METRO_SPATIAL_CONFIG_SCHEMA
+    + METRO_NETWORK_CONFIG_SCHEMA
+    + METRO_DEMAND_CONFIG_SCHEMA
+    + METRO_SIMULATION_CONFIG_SCHEMA
+    + METRO_RESULTS_CONFIG_SCHEMA
+)
+
+STEPS: list[Step] = (
+    METRO_SPATIAL_STEPS
+    + METRO_NETWORK_STEPS
+    + METRO_DEMAND_STEPS
+    + METRO_SIMULATION_STEPS
+    + METRO_RESULTS_STEPS
+)
+STEPS_DICT: dict[str, Step] = {step.slug: step for step in STEPS}

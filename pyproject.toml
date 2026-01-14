@@ -1,0 +1,57 @@
+# pyproject.toml
+
+[project]
+name = "metropy"
+version = "0.1.0"
+description = "Helper functions to generate, calibrate, run, and analyze METROPOLIS2 simulation instances"
+readme = "README.md"
+authors = [{ name = "Lucas Javaudin", email = "lucas@lucasjavaudin.com" }]
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE.txt"]
+classifiers = [
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+]
+keywords = ["transport simulation", "metropolis2"]
+requires-python = ">=3.12"
+dependencies = [
+    "metro-demand",
+    "metro-network",
+    "metro-pipeline",
+    "metro-simulation",
+    "metro-spatial",
+    "metro-results",
+    "typer>=0.20.0",
+]
+
+[project.urls]
+Homepage = "https://metropolis2.org"
+Documentation = "https://docs.metropolis2.org"
+Repository = "https://github.com/Metropolis2/metropy"
+Issues = "https://github.com/Metropolis2/metropy/issues"
+
+[project.scripts]
+metropy = "metropy:main"
+
+[dependency-groups]
+dev = [
+    "ipython>=8.37.0",
+    "pytest>=8.4.2",
+    "ruff>=0.14.3",
+]
+
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.uv.sources]
+metro-common = { workspace = true }
+metro-demand = { workspace = true }
+metro-pipeline = { workspace = true }
+metro-network = { workspace=true }
+metro-spatial = { workspace = true }
+metro-simulation = { workspace = true }
+metro-results = { workspace = true }
+
+[tool.uv.workspace]
+members = ["packages/*"]

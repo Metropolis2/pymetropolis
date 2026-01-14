@@ -1,0 +1,45 @@
+main_directory = "bottleneck-sim/output/"
+
+random_seed = 13081996
+
+[custom_road_import]
+edges_file = "bottleneck-sim/input/edges.geojson"
+
+[road_network]
+capacities = 15_000
+
+[node_od_matrix]
+each = 10_000
+
+[simulation_parameters]
+period = [07:00:00, 08:00:00]
+recording_interval = 60
+learning_factor = 0.01
+nb_iterations = 100
+
+[modes]
+[modes.car_driver]
+alpha = 10.0
+
+# [modes.outside_option]
+# constant = -5.0
+
+# [mode_choice]
+# model = "Logit"
+# mu = 1.0
+
+[vehicle_types]
+[vehicle_types.car]
+headway = 8.0
+
+[departure_time_choice]
+model = "ContinuousLogit"
+mu = 1.0
+
+[departure_time.linear_schedule]
+beta = 5.0
+gamma = 7.0
+tstar = 07:30:00
+
+[metropolis_core]
+exec_path = "execs/metropolis_cli"
