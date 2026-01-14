@@ -1,7 +1,7 @@
 # pyproject.toml
 
 [project]
-name = "metropy"
+name = "pymetropolis"
 version = "0.1.0"
 description = "Helper functions to generate, calibrate, run, and analyze METROPOLIS2 simulation instances"
 readme = "README.md"
@@ -27,11 +27,11 @@ dependencies = [
 [project.urls]
 Homepage = "https://metropolis2.org"
 Documentation = "https://docs.metropolis2.org"
-Repository = "https://github.com/Metropolis2/metropy"
-Issues = "https://github.com/Metropolis2/metropy/issues"
+Repository = "https://github.com/Metropolis2/pymetropolis"
+Issues = "https://github.com/Metropolis2/pymetropolis/issues"
 
 [project.scripts]
-metropy = "metropy:main"
+pymetropolis = "pymetropolis:main"
 
 [dependency-groups]
 dev = [

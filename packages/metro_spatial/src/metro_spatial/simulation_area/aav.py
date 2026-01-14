@@ -32,7 +32,7 @@ AAV_FILENAME = ConfigValue(
     description="Path to the shapefile of the French's _Aires d'attraction des villes_.",
     example='`"data/aav2020_2024.zip"`',
     note=(
-        "When the value is not specified, metropy will attempt to automatically download the "
+        "When the value is not specified, pymetropolis will attempt to automatically download the "
         "shapefile."
     ),
 )
