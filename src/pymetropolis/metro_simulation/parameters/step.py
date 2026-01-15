@@ -109,14 +109,14 @@ def write_parameters(config: Config):
             "type": "Exponential",
             "value": config[LEARNING_FACTOR],
         },
-        "road_network": {
-            "recording_interval": recording_interval,
-            "spillback": config[SPILLBACK],
-            "max_pending_duration": max_pending_duration,
-            "algorithm_type": config[ROUTING_ALGORITHM],
-        },
         "max_iterations": config[NB_ITERATIONS],
         "saving_format": "Parquet",
+    }
+    params["road_network"] = {
+        "recording_interval": recording_interval,
+        "spillback": config[SPILLBACK],
+        "max_pending_duration": max_pending_duration,
+        "algorithm_type": config[ROUTING_ALGORITHM],
     }
     backward_wave_speed = config[BACKWARD_WAVE_SPEED]
     if isfinite(backward_wave_speed):
