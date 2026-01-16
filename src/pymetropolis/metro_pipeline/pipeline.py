@@ -67,10 +67,10 @@ def run_pipeline(requested_step: Step, config: Config, dry_run: bool = False):
         if run_order.undefined_steps:
             for step in run_order.undefined_steps:
                 logger.error(f"Step `{step}` is not properly defined")
-                raise MetropyError("At least one step was not properly defined")
-        logger.info("Running pipeline")
-        for step in run_order.order:
-            logger.info(f"Executing step {step.slug}")
+            raise MetropyError("At least one step was not properly defined")
+        n = len(run_order.order)
+        for i, step in enumerate(run_order.order):
+            logger.info(f"=== Step {i + 1} / {n}: {step.slug} ===")
             success = step.execute(config)
             if not success:
                 # TODO. Send error.
