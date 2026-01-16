@@ -14,7 +14,7 @@ from pandas.api.types import (
     is_unsigned_integer_dtype,
 )
 
-from pymetropolis.metro_common import MetropyError
+from pymetropolis.metro_common.errors import MetropyError, error_context
 
 from .config import Config
 
@@ -145,6 +145,9 @@ class MetroFile:
         self.description = description
         self.providers = list()
 
+    def __str__(self) -> str:
+        return self.slug
+
     def add_provider(self, provider: "Step"):
         self.providers.append(provider)
 
@@ -215,6 +218,7 @@ class MetroDataFrameFile(MetroFile):
                 df = df.drop(col)
         return df
 
+    @error_context(msg="Cannot save DataFrame {}", fmt_args=[0])
     def save(self, df: pl.DataFrame, config: Config):
         df = self.validate(df)
         self.create_dir_if_needed(config)
@@ -253,6 +257,7 @@ class MetroGeoDataFrameFile(MetroFile):
                 gdf.drop(columns=col, inplace=True)
         return gdf
 
+    @error_context(msg="Cannot save GeoDataFrame {}", fmt_args=[0])
     def save(self, gdf: gpd.GeoDataFrame, config: Config):
         gdf = self.validate(gdf)
         self.create_dir_if_needed(config)
@@ -269,6 +274,7 @@ class MetroGeoDataFrameFile(MetroFile):
 
 
 class MetroTxtFile(MetroFile):
+    @error_context(msg="Cannot save Txt file {}", fmt_args=[0])
     def save(self, txt: str, config: Config):
         self.create_dir_if_needed(config)
         with open(self.get_path(config), "w") as f:
@@ -286,6 +292,7 @@ class MetroTxtFile(MetroFile):
 
 
 class MetroPlotFile(MetroFile):
+    @error_context(msg="Cannot save plot {}", fmt_args=[0])
     def save(self, fig: plt.Figure, config: Config):
         self.create_dir_if_needed(config)
         fig.savefig(self.get_path(config))
