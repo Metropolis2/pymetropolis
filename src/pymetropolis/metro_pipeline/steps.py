@@ -6,6 +6,8 @@ from typing import Optional
 
 import numpy as np
 
+from pymetropolis.metro_common.errors import error_context
+
 from .config import Config, ConfigValue, InputFile
 from .file import MetroFile
 
@@ -33,6 +35,9 @@ class Step:
         for f in self.output_files:
             f.add_provider(self)
 
+    def __str__(self) -> str:
+        return self.slug
+
     def is_defined(self, config: Config) -> bool:
         """Returns `True` if this step is properly defined in the config."""
         for value in self.config_values:
@@ -40,6 +45,7 @@ class Step:
                 return False
         return True
 
+    @error_context(msg="Failed to execute step `{}`", fmt_args=[0])
     def execute(self, config: Config) -> bool:
         success = self.func(config)
         if success:
