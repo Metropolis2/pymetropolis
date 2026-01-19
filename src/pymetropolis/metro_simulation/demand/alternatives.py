@@ -76,7 +76,7 @@ def generate_outside_option_alts(tour_ids: pl.Series, config: Config):
     constants = OUTSIDE_OPTION_PARAMETERS_FILE.read(config)
     df = (
         df.join(constants.rename({"tour_id": "agent_id"}), on="agent_id", how="left")
-        .with_columns(constant_utility=-pl.col("outside_option_cst"))
+        .with_columns(constant_utility=pl.col("outside_option_cst"))
         .drop("outside_option_cst")
     )
     return df

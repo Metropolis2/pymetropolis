@@ -21,6 +21,27 @@ OUTSIDE_OPTION_PARAMETERS_FILE = MetroDataFrameFile(
     ],
 )
 
+OUTSIDE_OPTION_TRAVEL_TIMES_FILE = MetroDataFrameFile(
+    "outside_option_travel_times",
+    path="demand/population/outside_option_travel_times.parquet",
+    description="TODO",
+    schema=[
+        Column(
+            "tour_id",
+            MetroDataType.ID,
+            description="Identifier of the tour",
+            unique=True,
+            nullable=False,
+        ),
+        Column(
+            "outside_option_travel_time",
+            MetroDataType.DURATION,
+            description="Duration of the tour for the outside option",
+            nullable=False,
+        ),
+    ],
+)
+
 CAR_DRIVER_PARAMETERS_FILE = MetroDataFrameFile(
     "car_driver_parameters",
     path="demand/population/car_driver_parameters.parquet",

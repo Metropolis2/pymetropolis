@@ -46,16 +46,17 @@ trips_per_node = 8000
 [simulation_parameters]
 period = [06:00:00, 12:00:00]
 recording_interval = 300
-learning_factor = 0.01
-nb_iterations = 100
+learning_factor = 0.005
+nb_iterations = 50
 spillback = false
 
 [modes]
 [modes.car_driver]
+constant = 21.1153
 alpha = 10.0
 
-[modes.public_transit]
-constant = 10.0
+[modes.outside_option]
+constant = -10.0
 alpha = 15.0
 road_network_speed = 40
 
