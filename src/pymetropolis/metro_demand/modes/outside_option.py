@@ -13,7 +13,7 @@ from .files import (
 CONSTANT = ConfigValue(
     "modes.outside_option.constant",
     key="constant",
-    default=0.0,
+    # default=0.0,
     expected_type=float,
     description="Constant utility of the outside option (€).",
 )

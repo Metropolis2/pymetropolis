@@ -2,6 +2,7 @@ import geopandas as gpd
 import networkx as nx
 import numpy as np
 
+from pymetropolis.metro_common.errors import error_context
 from pymetropolis.metro_pipeline import Config, ConfigTable, ConfigValue, Step
 
 from .files import CLEAN_EDGES_FILE, RAW_EDGES_FILE
@@ -149,6 +150,7 @@ POSTPROCESS_ROAD_NETWORK = Step(
 )
 
 
+@error_context("Failed to set default values of edges")
 def set_default_values(gdf, config):
     # Set default for bool columns (default is always False).
     for col in ("toll", "roundabout", "give_way", "stop", "traffic_signals", "urban"):
@@ -178,7 +180,7 @@ def set_default_values(gdf, config):
             gdf.loc[mask, "speed_limit"] = gdf.loc[mask, "speed_limit"].fillna(
                 gdf.loc[mask, "road_type"].map(default_speed_limit)
             )
-    assert not gdf["speed_limit"].isna().any()
+    assert not gdf["speed_limit"].isna().any(), "Some edges have unknown speed limit"
     gdf["speed_limit"] = gdf["speed_limit"].astype(np.float64)
     # Set default number of lanes.
     if "lanes" not in gdf.columns:
@@ -202,7 +204,7 @@ def set_default_values(gdf, config):
             gdf.loc[mask, "lanes"] = gdf.loc[mask, "lanes"].fillna(
                 gdf.loc[mask, "road_type"].map(default_nb_lanes)
             )
-    assert not gdf["lanes"].isna().any()
+    assert not gdf["lanes"].isna().any(), "Some edges have unknown number of lanes"
     gdf["lanes"] = gdf["lanes"].astype(np.float64)
     return gdf
 
