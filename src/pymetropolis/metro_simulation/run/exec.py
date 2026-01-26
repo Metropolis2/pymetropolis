@@ -1,61 +1,52 @@
-import os
 import subprocess
 
-from pymetropolis.metro_common.errors import MetropyError, error_context
-from pymetropolis.metro_common.types import Path
-from pymetropolis.metro_pipeline import Config, ConfigTable, ConfigValue, Step
+from pymetropolis.metro_common.errors import MetropyError
+from pymetropolis.metro_pipeline import Step
+from pymetropolis.metro_pipeline.parameters import PathParameter
 from pymetropolis.metro_simulation.demand import (
-    METRO_AGENTS_FILE,
-    METRO_ALTS_FILE,
-    METRO_TRIPS_FILE,
+    MetroAgentsFile,
+    MetroAlternativesFile,
+    MetroTripsFile,
 )
-from pymetropolis.metro_simulation.parameters import PARAMETERS_FILE
-from pymetropolis.metro_simulation.supply import METRO_EDGES_FILE, METRO_VEHICLE_TYPES_FILE
+from pymetropolis.metro_simulation.parameters import MetroParametersFile
+from pymetropolis.metro_simulation.supply import MetroEdgesFile, MetroVehicleTypesFile
 
-from .files import METRO_AGENT_RESULTS_FILE, METRO_TRIP_RESULTS_FILE
-
-EXEC_PATH = ConfigValue(
-    "metropolis_core.exec_path",
-    key="exec_path",
-    expected_type=Path(),
-    description="Path to the metropolis_cli executable.",
-)
-
-METROPOLIS_CORE_TABLE = ConfigTable(
-    "metropolis_core",
-    "metropolis_core",
-    items=[EXEC_PATH],
-)
+from .files import MetroAgentResultsFile, MetroTripResultsFile
 
 
-@error_context(msg="Cannot execute Metropolis-Core")
-def execute_metropolis_cli(config: Config):
-    exec_path = config[EXEC_PATH]
-    if not os.path.isfile(exec_path):
-        raise MetropyError(f"Invalid path to metropolis_cli: `{exec_path}`")
-    params_path = PARAMETERS_FILE.get_path(config)
-    res = subprocess.run([exec_path, params_path])
-    if res.returncode:
-        # The run did not succeed.
-        return False
-    if not os.path.isfile(METRO_TRIP_RESULTS_FILE.get_path(config)):
-        raise MetropyError(f"Output file not written: `{exec_path}`")
-    if not os.path.isfile(METRO_AGENT_RESULTS_FILE.get_path(config)):
-        raise MetropyError(f"Output file not written: `{exec_path}`")
-    return True
+class RunSimulationStep(Step):
+    exec_path = PathParameter(
+        "metropolis_core.exec_path",
+        check_file_exists=True,
+        description="Path to the metropolis_cli executable.",
+    )
+    output_files = {
+        "metro_agent_results": MetroAgentResultsFile,
+        "metro_trip_results": MetroTripResultsFile,
+    }
 
+    def required_files(self):
+        return {
+            "metro_parameters": MetroParametersFile,
+            "metro_agents": MetroAgentsFile,
+            "metro_alternatives": MetroAlternativesFile,
+            "metro_edges": MetroEdgesFile,
+            "metro_vehicle_types": MetroVehicleTypesFile,
+        }
 
-RUN_SIMULATION_STEP = Step(
-    "run-simulation",
-    execute_metropolis_cli,
-    required_files=[
-        PARAMETERS_FILE,
-        METRO_AGENTS_FILE,
-        METRO_ALTS_FILE,
-        METRO_TRIPS_FILE,
-        METRO_EDGES_FILE,
-        METRO_VEHICLE_TYPES_FILE,
-    ],
-    output_files=[METRO_TRIP_RESULTS_FILE, METRO_AGENT_RESULTS_FILE],
-    config_values=[EXEC_PATH],
-)
+    def optional_files(self):
+        # Simulations can actually be run without any trips.
+        return {"metro_trips": MetroTripsFile}
+
+    def run(self):
+        params_path = self.input["metro_parameters"].get_path()
+        res = subprocess.run([self.exec_path, params_path])
+        if res.returncode:
+            # The run did not succeed.
+            raise MetropyError("Metropolis-Core simulation failed.")
+        path = self.output["metro_trip_results"]
+        if not path.exists():
+            raise MetropyError(f"Output file not written: `{path.get_path()}`")
+        path = self.output["metro_agent_results"]
+        if not path.exists():
+            raise MetropyError(f"Output file not written: `{path.get_path()}`")

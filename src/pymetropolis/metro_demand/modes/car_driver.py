@@ -1,70 +1,53 @@
 import polars as pl
 
-from pymetropolis.metro_common.errors import error_context
-from pymetropolis.metro_demand.population import PERSONS_FILE
-from pymetropolis.metro_network.road_network.files import ALL_DISTANCES_FILE
-from pymetropolis.metro_pipeline import Config, ConfigTable, ConfigValue, Step
+from pymetropolis.metro_demand.population import PersonsFile
+from pymetropolis.metro_network.road_network import AllDistancesFile
+from pymetropolis.metro_pipeline import Step
+from pymetropolis.metro_pipeline.parameters import FloatParameter
 
-from .files import CAR_DRIVER_DISTANCES_FILE, CAR_DRIVER_ODS_FILE, CAR_DRIVER_PARAMETERS_FILE
-
-VALUE_OF_TIME = ConfigValue(
-    "modes.car_driver.alpha",
-    key="alpha",
-    default=0.0,
-    expected_type=float,
-    description="Value of time as a car driver (€/h).",
-)
-
-CONSTANT = ConfigValue(
-    "modes.car_driver.constant",
-    key="constant",
-    default=0.0,
-    expected_type=float,
-    description="Constant penalty for each trip as a car driver (€).",
-)
-
-CAR_DRIVER_TABLE = ConfigTable("modes.car_driver", "car_driver", items=[VALUE_OF_TIME, CONSTANT])
+from .files import CarDriverDistancesFile, CarDriverODsFile, CarDriverPreferencesFile
 
 
-@error_context(msg="Cannot generate car driver preferences.")
-def generate_car_driver_parameters(config: Config):
-    persons = PERSONS_FILE.read(config)
-    df = persons.select(
-        "person_id",
-        car_driver_cst=pl.lit(config[CONSTANT]),
-        car_driver_vot=pl.lit(config[VALUE_OF_TIME]),
+class CarDriverPreferencesStep(Step):
+    constant = FloatParameter(
+        "modes.car_driver.constant",
+        default=0.0,
+        description="Constant penalty for each trip as a car driver (€).",
     )
-    CAR_DRIVER_PARAMETERS_FILE.save(df, config)
-    return True
-
-
-CAR_DRIVER_PREFERENCES_STEP = Step(
-    "car-driver-preferences",
-    generate_car_driver_parameters,
-    required_files=[PERSONS_FILE],
-    output_files=[CAR_DRIVER_PARAMETERS_FILE],
-    config_values=[VALUE_OF_TIME, CONSTANT],
-)
-
-
-@error_context(msg="Cannot compute car driver shortest-path distances.")
-def compute_car_driver_distances(config: Config):
-    trips = CAR_DRIVER_ODS_FILE.read(config)
-    dists = ALL_DISTANCES_FILE.read(config)
-    trips = trips.join(
-        dists,
-        left_on=["origin_node_id", "destination_node_id"],
-        right_on=["origin_id", "destination_id"],
-        how="left",
+    value_of_time = FloatParameter(
+        "modes.car_driver.alpha",
+        default=0.0,
+        description="Value of time as a car driver (€/h).",
     )
-    trips = trips.select("trip_id", "distance")
-    CAR_DRIVER_DISTANCES_FILE.save(trips, config)
-    return True
+    output_files = {"car_driver_preferences": CarDriverPreferencesFile}
+
+    def required_files(self):
+        return {"persons": PersonsFile}
+
+    def run(self):
+        persons: pl.DataFrame = self.input["persons"].read()
+        df = persons.select(
+            "person_id",
+            car_driver_cst=pl.lit(self.constant),
+            car_driver_vot=pl.lit(self.value_of_time),
+        )
+        self.output["car_driver_preferences"].write(df)
 
 
-CAR_DRIVER_DISTANCES_STEP = Step(
-    "car-driver-distances",
-    compute_car_driver_distances,
-    required_files=[CAR_DRIVER_ODS_FILE, ALL_DISTANCES_FILE],
-    output_files=[CAR_DRIVER_DISTANCES_FILE],
-)
+class CarDriverDistancesStep(Step):
+    output_files = {"car_driver_distances": CarDriverDistancesFile}
+
+    def required_files(self):
+        return {"car_driver_ods": CarDriverODsFile, "all_distances": AllDistancesFile}
+
+    def run(self):
+        trips: pl.DataFrame = self.input["car_driver_ods"].read()
+        dists: pl.DataFrame = self.input["all_distances"].read()
+        trips = trips.join(
+            dists,
+            left_on=["origin_node_id", "destination_node_id"],
+            right_on=["origin_id", "destination_id"],
+            how="left",
+        )
+        trips = trips.select("trip_id", "distance")
+        self.output["car_driver_distances"].write(trips)

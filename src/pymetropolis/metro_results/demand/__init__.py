@@ -1,4 +1,5 @@
-from .files import TRIP_RESULTS_FILE as TRIP_RESULTS_FILE
-from .postprocess import TRIP_RESULTS_STEP
+from .files import TripResultsFile
+from .postprocess import TripResultsStep
 
-RESULTS_STEPS = [TRIP_RESULTS_STEP]
+RESULTS_FILES = [TripResultsFile]
+RESULTS_STEPS = [TripResultsStep]

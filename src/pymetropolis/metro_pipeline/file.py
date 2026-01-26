@@ -1,6 +1,6 @@
-import os
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Optional
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Optional, override
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
@@ -16,10 +16,8 @@ from pandas.api.types import (
 
 from pymetropolis.metro_common.errors import MetropyError, error_context
 
-from .config import Config
-
 if TYPE_CHECKING:
-    from .steps import Step
+    pass
 
 
 class MetroDataType(Enum):
@@ -134,82 +132,51 @@ class Column:
 
 
 class MetroFile:
-    def __init__(
-        self,
-        slug: str,
-        path: str,
-        description: Optional[str] = None,
-    ):
-        self.slug = slug
-        self.path = path
-        self.description = description
-        self.providers = list()
+    path: str
+    description: str = ""
+    complete_path: Path
 
     def __str__(self) -> str:
-        return self.slug
+        return self.__class__.__name__
 
-    def add_provider(self, provider: "Step"):
-        self.providers.append(provider)
+    @classmethod
+    def from_dir(cls, main_directory: Path) -> "MetroFile":
+        instance = cls.__new__(cls)
+        instance.complete_path = main_directory / Path(cls.path)
+        instance.create_dir_if_needed()
+        return instance
 
-    def get_path(self, config: Config):
-        return config.path_from_main_dir(self.path)
+    def read(self) -> Any:
+        raise MetropyError("Unimplemented")
 
-    def provider(self, config: Config, optional: bool = False) -> Optional["Step"]:
-        """Returns the Step that must be run to supply this file."""
-        provider = None
-        for step in self.providers:
-            if step.is_defined(config):
-                if provider is not None:
-                    raise MetropyError(
-                        f"Both `{provider.slug}` and `{step.slug}` Steps are providing "
-                        f"MetroFile `{self.slug}`. "
-                        "Only use one of them."
-                    )
-                provider = step
-        if provider is None:
-            # No properly defined provider was found.
-            if optional:
-                return None
-            if len(self.providers) == 0:
-                raise MetropyError(f"No provider exist for MetroFile `{self.slug}`")
-            if len(self.providers) == 1:
-                slug = self.providers[0].slug
-                raise MetropyError(
-                    f"The step {slug} must be defined to provide MetroFile `{self.slug}`"
-                )
-            else:
-                slugs = ", ".join(f"`{p.slug}`" for p in self.providers)
-                raise MetropyError(
-                    f"There is no step defined to provide MetroFile `{self.slug}`. "
-                    f"Define one of these steps: {slugs}"
-                )
-        return provider
+    def write(self, value: Any):
+        raise MetropyError("Unimplemented")
 
-    def create_dir_if_needed(self, config: Config):
-        path = self.get_path(config)
-        parentdir = os.path.dirname(path)
-        if not os.path.isdir(parentdir):
-            os.makedirs(parentdir)
+    def create_dir_if_needed(self):
+        self.complete_path.parent.mkdir(exist_ok=True)
 
-    def exists(self, config: Config) -> bool:
-        return os.path.isfile(self.get_path(config))
+    def exists(self) -> bool:
+        return self.complete_path.exists()
+
+    def get_path(self) -> Path:
+        return self.complete_path
+
+    def last_modified_time(self) -> int | float:
+        return self.complete_path.stat().st_mtime
+
+    def remove(self):
+        self.complete_path.unlink()
 
 
 class MetroDataFrameFile(MetroFile):
-    def __init__(
-        self,
-        *args,
-        schema: Optional[list[Column]] = None,
-        max_rows: Optional[int] = None,
-        **kwargs,
-    ):
-        super().__init__(*args, **kwargs)
-        self.schema = schema or list()
-        self.max_rows = max_rows
+    schema: Optional[list[Column]] = None
+    max_rows: Optional[int] = None
 
     def validate(self, df: pl.DataFrame) -> pl.DataFrame:
         if self.max_rows is not None and len(df) > self.max_rows:
             raise MetropyError("DataFrame has too many rows")
+        if self.schema is None:
+            return df
         if not all(col.validate_df(df) for col in self.schema):
             raise MetropyError("DataFrame is not valid")
         for col in df.columns:
@@ -218,35 +185,29 @@ class MetroDataFrameFile(MetroFile):
                 df = df.drop(col)
         return df
 
+    @override
     @error_context(msg="Cannot save DataFrame {}", fmt_args=[0])
-    def save(self, df: pl.DataFrame, config: Config):
+    def write(self, df: pl.DataFrame):
         df = self.validate(df)
-        self.create_dir_if_needed(config)
-        df.write_parquet(self.get_path(config))
+        df.write_parquet(self.complete_path)
 
-    def read(self, config: Config) -> pl.DataFrame:
-        return pl.read_parquet(self.get_path(config))
+    def read(self) -> pl.DataFrame:
+        return pl.read_parquet(self.complete_path)
 
-    def read_if_exists(self, config: Config) -> pl.DataFrame | None:
-        if self.exists(config):
-            return self.read(config)
-        else:
-            return None
+    def read_if_exists(self) -> pl.DataFrame | None:
+        if self.exists():
+            return self.read()
 
 
 class MetroGeoDataFrameFile(MetroFile):
-    def __init__(
-        self,
-        *args,
-        schema: Optional[list[Column]] = None,
-        max_rows: Optional[int] = None,
-        **kwargs,
-    ):
-        super().__init__(*args, **kwargs)
-        self.schema = schema or list()
-        self.max_rows = max_rows
+    schema: Optional[list[Column]] = None
+    max_rows: Optional[int] = None
 
     def validate(self, gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+        if self.max_rows is not None and len(gdf) > self.max_rows:
+            raise MetropyError("DataFrame has too many rows")
+        if self.schema is None:
+            return gdf
         if not all(col.validate_gdf(gdf) for col in self.schema):
             raise MetropyError("GeoDataFrame is not valid")
         for col in gdf.columns:
@@ -258,41 +219,34 @@ class MetroGeoDataFrameFile(MetroFile):
         return gdf
 
     @error_context(msg="Cannot save GeoDataFrame {}", fmt_args=[0])
-    def save(self, gdf: gpd.GeoDataFrame, config: Config):
+    def write(self, gdf: gpd.GeoDataFrame):
         gdf = self.validate(gdf)
-        self.create_dir_if_needed(config)
-        gdf.to_parquet(self.get_path(config))
+        gdf.to_parquet(self.complete_path)
 
-    def read(self, config: Config) -> gpd.GeoDataFrame:
-        return gpd.read_parquet(self.get_path(config))
+    def read(self) -> gpd.GeoDataFrame:
+        return gpd.read_parquet(self.complete_path)
 
-    def read_if_exists(self, config: Config) -> gpd.GeoDataFrame | None:
-        if self.exists(config):
-            return self.read(config)
-        else:
-            return None
+    def read_if_exists(self) -> gpd.GeoDataFrame | None:
+        if self.exists():
+            return self.read()
 
 
 class MetroTxtFile(MetroFile):
     @error_context(msg="Cannot save Txt file {}", fmt_args=[0])
-    def save(self, txt: str, config: Config):
-        self.create_dir_if_needed(config)
-        with open(self.get_path(config), "w") as f:
+    def write(self, txt: str):
+        with open(self.complete_path, "w") as f:
             f.write(txt)
 
-    def read(self, config: Config) -> str:
-        with open(self.get_path(config), "r") as f:
+    def read(self) -> str:
+        with open(self.complete_path, "r") as f:
             return f.read()
 
-    def read_if_exists(self, config: Config) -> str | None:
-        if self.exists(config):
-            return self.read(config)
-        else:
-            return None
+    def read_if_exists(self) -> str | None:
+        if self.exists():
+            return self.read()
 
 
 class MetroPlotFile(MetroFile):
     @error_context(msg="Cannot save plot {}", fmt_args=[0])
-    def save(self, fig: plt.Figure, config: Config):
-        self.create_dir_if_needed(config)
-        fig.savefig(self.get_path(config))
+    def write(self, fig: plt.Figure):
+        fig.savefig(self.complete_path)

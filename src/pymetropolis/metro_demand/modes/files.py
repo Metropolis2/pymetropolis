@@ -1,10 +1,10 @@
 from pymetropolis.metro_pipeline.file import Column, MetroDataFrameFile, MetroDataType
 
-OUTSIDE_OPTION_PARAMETERS_FILE = MetroDataFrameFile(
-    "outside_option_parameters",
-    path="demand/population/outside_option_parameters.parquet",
-    description="TODO",
-    schema=[
+
+class OutsideOptionPreferencesFile(MetroDataFrameFile):
+    path = "demand/population/outside_option_preferences.parquet"
+    description = "TODO"
+    schema = [
         Column(
             "tour_id",
             MetroDataType.ID,
@@ -18,14 +18,13 @@ OUTSIDE_OPTION_PARAMETERS_FILE = MetroDataFrameFile(
             description="Utility of the outside option (€).",
             nullable=True,
         ),
-    ],
-)
+    ]
 
-OUTSIDE_OPTION_TRAVEL_TIMES_FILE = MetroDataFrameFile(
-    "outside_option_travel_times",
-    path="demand/population/outside_option_travel_times.parquet",
-    description="TODO",
-    schema=[
+
+class OutsideOptionTravelTimesFile(MetroDataFrameFile):
+    path = "demand/population/outside_option_travel_times.parquet"
+    description = "TODO"
+    schema = [
         Column(
             "tour_id",
             MetroDataType.ID,
@@ -39,14 +38,13 @@ OUTSIDE_OPTION_TRAVEL_TIMES_FILE = MetroDataFrameFile(
             description="Duration of the tour for the outside option",
             nullable=False,
         ),
-    ],
-)
+    ]
 
-CAR_DRIVER_PARAMETERS_FILE = MetroDataFrameFile(
-    "car_driver_parameters",
-    path="demand/population/car_driver_parameters.parquet",
-    description="TODO",
-    schema=[
+
+class CarDriverPreferencesFile(MetroDataFrameFile):
+    path = "demand/population/car_driver_preferences.parquet"
+    description = "TODO"
+    schema = [
         Column(
             "person_id",
             MetroDataType.ID,
@@ -66,14 +64,13 @@ CAR_DRIVER_PARAMETERS_FILE = MetroDataFrameFile(
             description="Value of time as a car driver (€/h).",
             nullable=True,
         ),
-    ],
-)
+    ]
 
-CAR_DRIVER_ODS_FILE = MetroDataFrameFile(
-    "car_driver_ods",
-    path="demand/population/car_driver_origins_destinations.parquet",
-    description="TODO",
-    schema=[
+
+class CarDriverODsFile(MetroDataFrameFile):
+    path = "demand/population/car_driver_origins_destinations.parquet"
+    description = "TODO"
+    schema = [
         Column(
             "trip_id",
             MetroDataType.ID,
@@ -93,14 +90,13 @@ CAR_DRIVER_ODS_FILE = MetroDataFrameFile(
             description="Identifier of the destination node",
             nullable=False,
         ),
-    ],
-)
+    ]
 
-CAR_DRIVER_DISTANCES_FILE = MetroDataFrameFile(
-    "car_driver_distances",
-    path="demand/population/car_driver_distances.parquet",
-    description="Shortest path distance on the road network of all car driver trips",
-    schema=[
+
+class CarDriverDistancesFile(MetroDataFrameFile):
+    path = "demand/population/car_driver_distances.parquet"
+    description = "Shortest path distance on the road network of all car driver trips"
+    schema = [
         Column(
             "trip_id",
             MetroDataType.ID,
@@ -114,14 +110,13 @@ CAR_DRIVER_DISTANCES_FILE = MetroDataFrameFile(
             description="Distance of the shortest path, in meters",
             nullable=False,
         ),
-    ],
-)
+    ]
 
-PUBLIC_TRANSIT_PARAMETERS_FILE = MetroDataFrameFile(
-    "public_transit_parameters",
-    path="demand/population/public_transit_parameters.parquet",
-    description="TODO",
-    schema=[
+
+class PublicTransitPreferencesFile(MetroDataFrameFile):
+    path = "demand/population/public_transit_preferences.parquet"
+    description = "TODO"
+    schema = [
         Column(
             "person_id",
             MetroDataType.ID,
@@ -141,14 +136,13 @@ PUBLIC_TRANSIT_PARAMETERS_FILE = MetroDataFrameFile(
             description="Value of time in public transit (€/h).",
             nullable=True,
         ),
-    ],
-)
+    ]
 
-PUBLIC_TRANSIT_TRAVEL_TIMES_FILE = MetroDataFrameFile(
-    "public_transit_travel_times",
-    path="demand/population/public_transit_travel_times.parquet",
-    description="TODO",
-    schema=[
+
+class PublicTransitTravelTimesFile(MetroDataFrameFile):
+    path = "demand/population/public_transit_travel_times.parquet"
+    description = "TODO"
+    schema = [
         Column(
             "trip_id",
             MetroDataType.ID,
@@ -162,5 +156,4 @@ PUBLIC_TRANSIT_TRAVEL_TIMES_FILE = MetroDataFrameFile(
             description="Duration of the trip by public transit",
             nullable=False,
         ),
-    ],
-)
+    ]

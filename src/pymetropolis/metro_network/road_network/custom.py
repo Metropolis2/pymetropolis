@@ -1,36 +1,22 @@
-from pymetropolis.metro_common.errors import error_context
 from pymetropolis.metro_common.io import read_geodataframe
-from pymetropolis.metro_pipeline import Config, ConfigTable, InputFile, Step
+from pymetropolis.metro_pipeline import Step
+from pymetropolis.metro_pipeline.parameters import PathParameter
 
-from .files import RAW_EDGES_FILE
-
-EDGES_FILE = InputFile(
-    "custom_road_import.edges_file",
-    key="edges_file",
-    description="Path to the geospatial file containing the edges definition.",
-    example='`"data/my_edges.geojson"`',
-)
-
-CUSTOM_ROAD_IMPORT_TABLE = ConfigTable(
-    "custom_road_import",
-    "custom_road_import",
-    items=[EDGES_FILE],
-    description="Import a road network from an arbitrary list of edges.",
-)
+from .files import RawEdgesFile
 
 
-@error_context(msg="Cannot import road network from custom edges")
-def import_network(config: Config) -> bool:
-    """Main function to import a road network from custom nodes / edges files."""
-    input_filename = config[EDGES_FILE]
-    edges = read_geodataframe(input_filename)
-    RAW_EDGES_FILE.save(edges, config)
-    return True
+class CustomRoadImportStep(Step):
+    edges_file = PathParameter(
+        "custom_road_import.edges_file",
+        check_file_exists=True,
+        description="Path to the geospatial file containing the edges definition.",
+        example='`"data/my_edges.geojson"`',
+    )
+    output_files = {"raw_edges": RawEdgesFile}
 
+    def is_defined(self) -> bool:
+        return self.edges_file is not None
 
-CUSTOM_ROAD_IMPORT = Step(
-    "custom-road-import",
-    import_network,
-    output_files=[RAW_EDGES_FILE],
-    config_values=[EDGES_FILE],
-)
+    def run(self):
+        edges = read_geodataframe(self.edges_file)
+        self.output["raw_edges_file"].write(edges)

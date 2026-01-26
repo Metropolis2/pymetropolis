@@ -1,10 +1,10 @@
 from pymetropolis.metro_pipeline.file import Column, MetroDataFrameFile, MetroDataType
 
-METRO_TRIP_RESULTS_FILE = MetroDataFrameFile(
-    "metro_trip_results",
-    path="run/output/trip_results.parquet",
-    description="TODO",
-    schema=[
+
+class MetroTripResultsFile(MetroDataFrameFile):
+    path = "run/output/trip_results.parquet"
+    description = "TODO"
+    schema = [
         Column(
             "agent_id",
             MetroDataType.ID,
@@ -119,14 +119,13 @@ METRO_TRIP_RESULTS_FILE = MetroDataFrameFile(
             description="Number of road edges taken",
             nullable=True,
         ),
-    ],
-)
+    ]
 
-METRO_AGENT_RESULTS_FILE = MetroDataFrameFile(
-    "metro_agent_results",
-    path="run/output/agent_results.parquet",
-    description="TODO",
-    schema=[
+
+class MetroAgentResultsFile(MetroDataFrameFile):
+    path = "run/output/agent_results.parquet"
+    description = "TODO"
+    schema = [
         Column(
             "agent_id",
             MetroDataType.ID,
@@ -199,5 +198,4 @@ METRO_AGENT_RESULTS_FILE = MetroDataFrameFile(
             description="Number of virtual trips taken",
             nullable=False,
         ),
-    ],
-)
+    ]

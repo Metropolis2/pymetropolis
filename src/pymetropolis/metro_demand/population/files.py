@@ -1,10 +1,10 @@
 from pymetropolis.metro_pipeline.file import Column, MetroDataFrameFile, MetroDataType
 
-TRIPS_FILE = MetroDataFrameFile(
-    "trips",
-    path="demand/population/trips.parquet",
-    description="TODO",
-    schema=[
+
+class TripsFile(MetroDataFrameFile):
+    path = "demand/population/trips.parquet"
+    description = "TODO"
+    schema = [
         Column(
             "trip_id",
             MetroDataType.ID,
@@ -36,14 +36,13 @@ TRIPS_FILE = MetroDataFrameFile(
             description="Identifier of the home-tour this trip is part of",
             nullable=False,
         ),
-    ],
-)
+    ]
 
-PERSONS_FILE = MetroDataFrameFile(
-    "persons",
-    path="demand/population/persons.parquet",
-    description="TODO",
-    schema=[
+
+class PersonsFile(MetroDataFrameFile):
+    path = "demand/population/persons.parquet"
+    description = "TODO"
+    schema = [
         Column(
             "person_id",
             MetroDataType.ID,
@@ -93,14 +92,13 @@ PERSONS_FILE = MetroDataFrameFile(
             description="Whether the person has a public-transit subscription",
             nullable=True,
         ),
-    ],
-)
+    ]
 
-HOUSEHOLDS_FILE = MetroDataFrameFile(
-    "households",
-    path="demand/population/households.parquet",
-    description="TODO",
-    schema=[
+
+class HouseholdsFile(MetroDataFrameFile):
+    path = "demand/population/households.parquet"
+    description = "TODO"
+    schema = [
         Column(
             "household_id",
             MetroDataType.ID,
@@ -132,15 +130,14 @@ HOUSEHOLDS_FILE = MetroDataFrameFile(
             description="Monthly disposable income of the household",
             nullable=True,
         ),
-    ],
-)
+    ]
+
 
 # TODO. Maybe we should consider having the same mode mu for all the tours of a single person?
-UNIFORM_DRAWS_FILE = MetroDataFrameFile(
-    "uniform_draws",
-    path="demand/population/uniform_draws.parquet",
-    description="TODO",
-    schema=[
+class UniformDrawsFile(MetroDataFrameFile):
+    path = "demand/population/uniform_draws.parquet"
+    description = "TODO"
+    schema = [
         Column(
             "tour_id",
             MetroDataType.ID,
@@ -160,5 +157,4 @@ UNIFORM_DRAWS_FILE = MetroDataFrameFile(
             description="Random uniform draw for departure-time choice",
             nullable=False,
         ),
-    ],
-)
+    ]

@@ -1,8 +1,5 @@
-from .exec import METROPOLIS_CORE_TABLE, RUN_SIMULATION_STEP
-from .files import (
-    METRO_AGENT_RESULTS_FILE as METRO_AGENT_RESULTS_FILE,
-    METRO_TRIP_RESULTS_FILE as METRO_TRIP_RESULTS_FILE,
-)
+from .exec import RunSimulationStep
+from .files import MetroAgentResultsFile, MetroTripResultsFile
 
-RUN_CONFIG_SCHEMA = [METROPOLIS_CORE_TABLE]
-RUN_STEPS = [RUN_SIMULATION_STEP]
+RUN_FILES = [MetroTripResultsFile, MetroAgentResultsFile]
+RUN_STEPS = [RunSimulationStep]

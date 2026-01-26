@@ -1,40 +1,37 @@
-from pymetropolis.metro_pipeline import ConfigTable
-
-from .car_driver import CAR_DRIVER_DISTANCES_STEP, CAR_DRIVER_PREFERENCES_STEP, CAR_DRIVER_TABLE
+from .car_driver import CarDriverDistancesStep, CarDriverPreferencesStep
 from .files import (
-    CAR_DRIVER_ODS_FILE as CAR_DRIVER_ODS_FILE,
-)
-from .files import CAR_DRIVER_PARAMETERS_FILE as CAR_DRIVER_PARAMETERS_FILE
-from .files import (
-    OUTSIDE_OPTION_PARAMETERS_FILE as OUTSIDE_OPTION_PARAMETERS_FILE,
-)
-from .files import PUBLIC_TRANSIT_PARAMETERS_FILE as PUBLIC_TRANSIT_PARAMETERS_FILE
-from .files import (
-    PUBLIC_TRANSIT_TRAVEL_TIMES_FILE as PUBLIC_TRANSIT_TRAVEL_TIMES_FILE,
+    CarDriverDistancesFile,
+    CarDriverODsFile,
+    CarDriverPreferencesFile,
+    OutsideOptionPreferencesFile,
+    OutsideOptionTravelTimesFile,
+    PublicTransitPreferencesFile,
+    PublicTransitTravelTimesFile,
 )
 from .outside_option import (
-    OUTSIDE_OPTION_PREFERENCES_STEP,
-    OUTSIDE_OPTION_TABLE,
-)
-from .outside_option import (
-    OUTSIDE_OPTION_TRAVEL_TIMES_FROM_ROAD_DISTANCES_STEP as OUTSIDE_OPTION_TRAVEL_TIMES_FROM_ROAD_DISTANCES_STEP,
+    OutsideOptionPreferencesStep,
+    OutsideOptionTravelTimesFromRoadDistancesStep,
 )
 from .public_transit import (
-    PUBLIC_TRANSIT_PREFERENCES_STEP,
-    PUBLIC_TRANSIT_TABLE,
-    PUBLIC_TRANSIT_TRAVEL_TIMES_FROM_ROAD_DISTANCES_STEP,
+    PublicTransitPreferencesStep,
+    PublicTransitTravelTimesFromRoadDistancesStep,
 )
 
-MODES_TABLE = ConfigTable(
-    "modes", "modes", items=[CAR_DRIVER_TABLE, PUBLIC_TRANSIT_TABLE, OUTSIDE_OPTION_TABLE]
-)
+MODES_FILES = [
+    CarDriverPreferencesFile,
+    CarDriverDistancesFile,
+    CarDriverODsFile,
+    PublicTransitPreferencesFile,
+    PublicTransitTravelTimesFile,
+    OutsideOptionPreferencesFile,
+    OutsideOptionTravelTimesFile,
+]
 
-MODES_CONFIG_SCHEMA = [MODES_TABLE]
 MODES_STEPS = [
-    CAR_DRIVER_PREFERENCES_STEP,
-    PUBLIC_TRANSIT_PREFERENCES_STEP,
-    OUTSIDE_OPTION_PREFERENCES_STEP,
-    CAR_DRIVER_DISTANCES_STEP,
-    PUBLIC_TRANSIT_TRAVEL_TIMES_FROM_ROAD_DISTANCES_STEP,
-    OUTSIDE_OPTION_TRAVEL_TIMES_FROM_ROAD_DISTANCES_STEP,
+    CarDriverPreferencesStep,
+    CarDriverDistancesStep,
+    PublicTransitPreferencesStep,
+    PublicTransitTravelTimesFromRoadDistancesStep,
+    OutsideOptionPreferencesStep,
+    OutsideOptionTravelTimesFromRoadDistancesStep,
 ]

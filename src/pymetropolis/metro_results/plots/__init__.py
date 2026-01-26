@@ -1,3 +1,5 @@
-from .steps import TRIP_DEPARTURE_TIME_DISTRIBUTION_STEP
+from .files import TripDepartureTimeDistributionPlotFile
+from .steps import TripDepartureTimeDistributionStep
 
-PLOTS_STEPS = [TRIP_DEPARTURE_TIME_DISTRIBUTION_STEP]
+PLOTS_FILES = [TripDepartureTimeDistributionPlotFile]
+PLOTS_STEPS = [TripDepartureTimeDistributionStep]

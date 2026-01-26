@@ -5,11 +5,11 @@ from pymetropolis.metro_pipeline.file import (
     MetroGeoDataFrameFile,
 )
 
-RAW_EDGES_FILE = MetroGeoDataFrameFile(
-    "raw_edges",
-    path="network/road_network/edges_raw.geo.parquet",
-    description="TODO",
-    schema=[
+
+class RawEdgesFile(MetroGeoDataFrameFile):
+    path = "network/road_network/edges_raw.geo.parquet"
+    description = "TODO"
+    schema = [
         Column(
             "edge_id",
             MetroDataType.ID,
@@ -95,14 +95,13 @@ RAW_EDGES_FILE = MetroGeoDataFrameFile(
             description="Identifier of the edge in the original data",
             optional=True,
         ),
-    ],
-)
+    ]
 
-CLEAN_EDGES_FILE = MetroGeoDataFrameFile(
-    "clean_edges",
-    path="network/road_network/edges_clean.geo.parquet",
-    description="TODO",
-    schema=[
+
+class CleanEdgesFile(MetroGeoDataFrameFile):
+    path = "network/road_network/edges_clean.geo.parquet"
+    description = "TODO"
+    schema = [
         Column(
             "edge_id",
             MetroDataType.ID,
@@ -224,15 +223,13 @@ CLEAN_EDGES_FILE = MetroGeoDataFrameFile(
             description="Identifier of the edge in the original data",
             optional=True,
         ),
-    ],
-)
+    ]
 
 
-EDGES_CAPACITIES_FILE = MetroDataFrameFile(
-    "edges_capacities",
-    path="network/road_network/edges_capacities.parquet",
-    description="TODO",
-    schema=[
+class EdgesCapacitiesFile(MetroDataFrameFile):
+    path = "network/road_network/edges_capacities.parquet"
+    description = "TODO"
+    schema = [
         Column(
             "edge_id",
             MetroDataType.ID,
@@ -258,14 +255,13 @@ EDGES_CAPACITIES_FILE = MetroDataFrameFile(
             description="Time at which the bottleneck capacity changes on the edge",
             nullable=True,
         ),
-    ],
-)
+    ]
 
-EDGES_PENALTIES_FILE = MetroDataFrameFile(
-    "edges_penalties",
-    path="network/road_network/edges_penalties.parquet",
-    description="TODO",
-    schema=[
+
+class EdgesPenaltiesFile(MetroDataFrameFile):
+    path = "network/road_network/edges_penalties.parquet"
+    description = "TODO"
+    schema = [
         Column(
             "edge_id",
             MetroDataType.ID,
@@ -279,14 +275,13 @@ EDGES_PENALTIES_FILE = MetroDataFrameFile(
             description="Constant time penalty of the edge, in seconds",
             nullable=True,
         ),
-    ],
-)
+    ]
 
-ALL_FREE_FLOW_TRAVEL_TIMES_FILE = MetroDataFrameFile(
-    "all_free_flow_travel_times",
-    path="network/road_network/all_free_flow_travel_times.parquet",
-    description="Free-flow travel time from any origin to any destination",
-    schema=[
+
+class AllFreeFlowTravelTimesFile(MetroDataFrameFile):
+    path = "network/road_network/all_free_flow_travel_times.parquet"
+    description = "Free-flow travel time from any origin to any destination"
+    schema = [
         Column(
             "origin_id",
             MetroDataType.ID,
@@ -305,14 +300,13 @@ ALL_FREE_FLOW_TRAVEL_TIMES_FILE = MetroDataFrameFile(
             description="Free-flow travel time",
             nullable=True,
         ),
-    ],
-)
+    ]
 
-ALL_DISTANCES_FILE = MetroDataFrameFile(
-    "all_distances_file",
-    path="network/road_network/all_distances.parquet",
-    description="Shortest path distance from any origin to any destination",
-    schema=[
+
+class AllDistancesFile(MetroDataFrameFile):
+    path = "network/road_network/all_distances.parquet"
+    description = "Shortest path distance from any origin to any destination"
+    schema = [
         Column(
             "origin_id",
             MetroDataType.ID,
@@ -331,5 +325,4 @@ ALL_DISTANCES_FILE = MetroDataFrameFile(
             description="Distance of the shortest path, in meters",
             nullable=True,
         ),
-    ],
-)
+    ]

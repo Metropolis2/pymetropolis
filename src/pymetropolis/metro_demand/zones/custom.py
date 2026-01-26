@@ -1,29 +1,23 @@
-from pymetropolis.metro_common.errors import error_context
 from pymetropolis.metro_common.io import read_geodataframe
-from pymetropolis.metro_pipeline import Config, InputFile, Step
+from pymetropolis.metro_pipeline.parameters import PathParameter
+from pymetropolis.metro_pipeline.steps import MetroStep
 
-from .file import ZONES_FILE
-
-CUSTOM_ZONES_FILE = InputFile(
-    "zones.custom_zones",
-    key="custom_zones",
-    description="Path to the geospatial file containing the zones definition.",
-    example='`"data/my_zones.geojson"`',
-)
+from .file import ZonesFile
 
 
-@error_context(msg="Cannot import custom zones from geospatial file")
-def import_zones(config: Config) -> bool:
-    """Main function to import custom zones from geospatial file."""
-    input_filename = config[CUSTOM_ZONES_FILE]
-    zones = read_geodataframe(input_filename)
-    ZONES_FILE.save(zones, config)
-    return True
+class CustomZonesStep(MetroStep):
+    custom_zones_file = PathParameter(
+        "zones.custom_zones",
+        check_file_exists=True,
+        description="Path to the geospatial file containing the zones definition.",
+        example='`"data/my_zones.geojson"`',
+    )
+    output_files = {"zones": ZonesFile}
 
+    def is_defined(self) -> bool:
+        return self.custom_zones_file is not None
 
-CUSTOM_ZONES_IMPORT = Step(
-    "custom-zones-import",
-    import_zones,
-    output_files=[ZONES_FILE],
-    config_values=[CUSTOM_ZONES_FILE],
-)
+    def run(self):
+        input_filename = self.custom_zones_file
+        zones = read_geodataframe(input_filename)
+        self.output["zones"].write(zones)

@@ -1,115 +1,34 @@
 from math import cos, pi, sin
+from typing import Any
 
 import geopandas as gpd
 import numpy as np
 from shapely.geometry import LineString
+from typeguard import TypeCheckError, check_type
 
-from pymetropolis.metro_common.errors import MetropyError, error_context
-from pymetropolis.metro_pipeline import Config, ConfigTable, ConfigValue, Step
-
-from .files import RAW_EDGES_FILE
-
-NB_RADIALS = ConfigValue(
-    "circular_network.nb_radials",
-    key="nb_radials",
-    default=8,
-    expected_type=int,
-    description="Number of radial axis.",
+from pymetropolis.metro_common.errors import MetropyError
+from pymetropolis.metro_pipeline import Step
+from pymetropolis.metro_pipeline.parameters import (
+    BoolParameter,
+    CustomParameter,
+    FloatParameter,
+    IntParameter,
 )
 
-NB_RINGS = ConfigValue(
-    "circular_network.nb_rings",
-    key="nb_rings",
-    expected_type=int,
-    description="Number of rings.",
-)
-
-RADIUS = ConfigValue(
-    "circular_network.radius",
-    key="radius",
-    default=4000.0,
-    expected_type=float | list[float],
-    description="Radius of each ring, in meters.",
-    note="If a scalar, the distance between each ring. If a list, the (cumulative) distance of each ring to the center",
-)
-
-RESOLUTION = ConfigValue(
-    "circular_network.resolution",
-    key="resolution",
-    default=8,
-    expected_type=int,
-    description="The number of points in the geometry of the ring roads.",
-)
-
-WITH_RAMPS = ConfigValue(
-    "circular_network.with_ramps",
-    key="with_ramps",
-    default=False,
-    expected_type=bool,
-    description="Whether entry / exit ramps to the ring roads should be added.",
-)
-
-ENTRY_RAMPS_LENGTH = ConfigValue(
-    "circular_network.entry_ramps_length",
-    key="entry_ramps_length",
-    default=0.0,
-    expected_type=float,
-    description="Length of entry ramps, in meters.",
-)
-
-EXIT_RAMPS_LENGTH = ConfigValue(
-    "circular_network.exit_ramps_length",
-    key="exit_ramps_length",
-    default=0.0,
-    expected_type=float,
-    description="Length of exit ramps, in meters.",
-)
-
-RADIAL_INTER_RAMP_LENGTH = ConfigValue(
-    "circular_network.radial_inter_ramp_length",
-    key="radial_inter_ramp_length",
-    default=0.0,
-    expected_type=float,
-    description="Length of the radial road segments (tunnels) between the clockwise and counter-clockwise ramps, in meters.",
-)
-
-RING_INTER_RAMP_LENGTH = ConfigValue(
-    "circular_network.ring_inter_ramp_length",
-    key="ring_inter_ramp_length",
-    default=0.0,
-    expected_type=float,
-    description="Length of the ring road segments (bridges) between the left and right ramps, in meters.",
-)
-
-CIRCULAR_NETWORK_TABLE = ConfigTable(
-    "circular_network",
-    "circular_network",
-    items=[
-        NB_RADIALS,
-        NB_RINGS,
-        RADIUS,
-        RESOLUTION,
-        WITH_RAMPS,
-        ENTRY_RAMPS_LENGTH,
-        EXIT_RAMPS_LENGTH,
-        RADIAL_INTER_RAMP_LENGTH,
-        RING_INTER_RAMP_LENGTH,
-    ],
-    description="Import a road network from an arbitrary list of edges.",
-)
+from .files import RawEdgesFile
 
 
-@error_context(msg="Cannot generate circular network")
-def generate_circular_network(config: Config) -> bool:
-    nb_radials = config[NB_RADIALS]
-    nb_rings = config[NB_RINGS]
-    resolution = config[RESOLUTION]
-    radius = config[RADIUS]
-    with_ramps = config[WITH_RAMPS]
-    in_ramp_length = config[ENTRY_RAMPS_LENGTH]
-    out_ramp_length = config[EXIT_RAMPS_LENGTH]
-    ring_inter_ramp_length = config[RING_INTER_RAMP_LENGTH]
-    radial_inter_ramp_length = config[RADIAL_INTER_RAMP_LENGTH]
+def generate_circular_network(
+    nb_radials: int,
+    nb_rings: int,
+    resolution: int,
+    radius: float | list[float],
+    with_ramps: bool,
+    entry_ramps_length: float,
+    exit_ramps_length: float,
+    ring_inter_ramp_length: float,
+    radial_inter_ramp_length: float,
+) -> gpd.GeoDataFrame:
     if isinstance(radius, list):
         if len(radius) != nb_rings:
             raise MetropyError("The number of `radius` values must be equal to the number of rings")
@@ -376,23 +295,70 @@ def generate_circular_network(config: Config) -> bool:
                 )
 
     gdf = gpd.GeoDataFrame(edges)
-    RAW_EDGES_FILE.save(gdf, config)
-    return True
+    return gdf
 
 
-CIRCULAR_NETWORK_STEP = Step(
-    "circular-network",
-    generate_circular_network,
-    output_files=[RAW_EDGES_FILE],
-    config_values=[
-        NB_RADIALS,
-        NB_RINGS,
-        RADIUS,
-        RESOLUTION,
-        WITH_RAMPS,
-        ENTRY_RAMPS_LENGTH,
-        EXIT_RAMPS_LENGTH,
-        RADIAL_INTER_RAMP_LENGTH,
-        RING_INTER_RAMP_LENGTH,
-    ],
-)
+def validate_radius(value: Any) -> float | list[float]:
+    try:
+        return check_type(value, float | list[float])
+    except TypeCheckError:
+        raise MetropyError(f"Not a numeric or list of numeric: `{value}`")
+
+
+class CircularNetworkStep(Step):
+    nb_radials = IntParameter("circular_network.nb_radials", description="Number of radial axis.")
+    nb_rings = IntParameter("circular_network.nb_rings", description="Number of rings.")
+    radius = CustomParameter(
+        "circular_network.radius",
+        validator=validate_radius,
+        description="Radius of each ring, in meters.",
+        note="If a scalar, the distance between each ring. If a list, the (cumulative) distance of each ring to the center",
+    )
+    resolution = IntParameter(
+        "circular_network.resolution",
+        default=16,
+        description="The number of points in the geometry of the ring roads.",
+    )
+    with_ramps = BoolParameter(
+        "circular_network.with_ramps",
+        default=False,
+        description="Whether entry / exit ramps to the ring roads should be added.",
+    )
+    entry_ramps_length = FloatParameter(
+        "circular_network.entry_ramps_length",
+        default=0.0,
+        description="Length of entry ramps, in meters.",
+    )
+    exit_ramps_length = FloatParameter(
+        "circular_network.exit_ramps_length",
+        default=0.0,
+        description="Length of exit ramps, in meters.",
+    )
+    ring_inter_ramp_length = FloatParameter(
+        "circular_network.ring_inter_ramp_length",
+        default=0.0,
+        description="Length of the ring road segments (bridges) between the left and right ramps, in meters.",
+    )
+    radial_inter_ramp_length = FloatParameter(
+        "circular_network.radial_inter_ramp_length",
+        default=0.0,
+        description="Length of the radial road segments (tunnels) between the clockwise and counter-clockwise ramps, in meters.",
+    )
+    output_files = {"raw_edges": RawEdgesFile}
+
+    def is_defined(self) -> bool:
+        return self.nb_radials is not None and self.nb_rings is not None and self.radius is not None
+
+    def run(self):
+        gdf = generate_circular_network(
+            nb_radials=self.nb_radials,
+            nb_rings=self.nb_rings,
+            radius=self.radius,
+            resolution=self.resolution,
+            with_ramps=self.with_ramps,
+            entry_ramps_length=self.entry_ramps_length,
+            exit_ramps_length=self.exit_ramps_length,
+            ring_inter_ramp_length=self.ring_inter_ramp_length,
+            radial_inter_ramp_length=self.radial_inter_ramp_length,
+        )
+        self.output["raw_edges"].write(gdf)

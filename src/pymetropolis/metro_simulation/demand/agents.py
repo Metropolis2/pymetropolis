@@ -1,69 +1,63 @@
 import polars as pl
 
-from pymetropolis.metro_common.errors import MetropyError, error_context
-from pymetropolis.metro_common.types import FixedValues
-from pymetropolis.metro_demand.population import TRIPS_FILE, UNIFORM_DRAWS_FILE
-from pymetropolis.metro_pipeline import Config, ConfigTable, ConfigValue, Step
+from pymetropolis.metro_common.errors import MetropyError
+from pymetropolis.metro_demand.population import TripsFile, UniformDrawsFile
+from pymetropolis.metro_pipeline.parameters import EnumParameter, FloatParameter
 
-from .files import METRO_AGENTS_FILE
-
-MODE_CHOICE_MODEL = ConfigValue(
-    "mode_choice.model",
-    key="model",
-    expected_type=FixedValues(["Logit", "DrawnLogit", "DrawnNestedLogit", "Deterministic"]),
-    default="Deterministic",
-    description="Type of choice model for mode choice",
-)
-
-MODE_CHOICE_MU = ConfigValue(
-    "mode_choice.mu",
-    key="mu",
-    expected_type=float,
-    default=1.0,
-    description="Value of mu for the Logit choice model",
-    note="Only required when mode choice model is Logit",
-)
-
-MODE_CHOICE_TABLE = ConfigTable(
-    "mode_choice",
-    "mode_choice",
-    items=[MODE_CHOICE_MODEL, MODE_CHOICE_MU],
-)
+from .common import MetroStepWithModes
+from .files import MetroAgentsFile
 
 
-@error_context(msg="Cannot write agents file")
-def write_agents(config: Config):
-    trips = TRIPS_FILE.read(config)
-    agents = trips.select(agent_id="tour_id").unique().sort("agent_id")
-    model = config[MODE_CHOICE_MODEL]
-    if model == "Logit":
-        agents = agents.with_columns(
-            pl.lit("Logit").alias("alt_choice.type"),
-            pl.lit(config[MODE_CHOICE_MU]).alias("alt_choice.mu"),
-        )
-    elif model == "DrawnLogit":
-        # TODO: At this point the epsilons should be already drawn.
-        raise MetropyError("TODO")
-    elif model == "DrawnNestedLogit":
-        raise MetropyError("TODO")
-    elif model == "Deterministic":
-        agents = agents.with_columns(
-            pl.lit("Deterministic").alias("alt_choice.type"),
-        )
-    draws = UNIFORM_DRAWS_FILE.read(config)
-    agents = agents.join(
-        draws.select(pl.col("mode_u").alias("alt_choice.u"), agent_id="tour_id"),
-        on="agent_id",
-        how="left",
+class WriteMetroAgentsStep(MetroStepWithModes):
+    mode_choice_model = EnumParameter(
+        "mode_choice.model",
+        values=["Logit", "DrawnLogit", "DrawnNestedLogit", "Deterministic"],
+        default="Deterministic",
+        description="Type of choice model for mode choice",
     )
-    METRO_AGENTS_FILE.save(agents, config)
-    return True
+    mode_choice_mu = FloatParameter(
+        "mode_choice.mu",
+        default=1.0,
+        description="Value of mu for the Logit choice model",
+        note="Only required when mode choice model is Logit",
+    )
+    output_files = {"metro_agents": MetroAgentsFile}
 
+    def is_defined(self) -> bool:
+        return self.modes is not None and (
+            not self.has_mode_choice() or self.mode_choice_model is not None
+        )
 
-WRITE_AGENTS_STEP = Step(
-    "write-agents",
-    write_agents,
-    required_files=[TRIPS_FILE, UNIFORM_DRAWS_FILE],
-    output_files=[METRO_AGENTS_FILE],
-    config_values=[MODE_CHOICE_MODEL, MODE_CHOICE_MU],
-)
+    def required_files(self):
+        files = {"trips": TripsFile}
+        if self.has_mode_choice():
+            files["uniform_draws"] = UniformDrawsFile
+        return files
+
+    def run(self):
+        trips = self.input["trips"].read()
+        agents = trips.select(agent_id="tour_id").unique().sort("agent_id")
+        if self.has_mode_choice():
+            # Add mode choice parameters.
+            model = self.mode_choice_model
+            if model == "Logit":
+                agents = agents.with_columns(
+                    pl.lit("Logit").alias("alt_choice.type"),
+                    pl.lit(self.mode_choice_mu).alias("alt_choice.mu"),
+                )
+            elif model == "DrawnLogit":
+                # TODO: At this point the epsilons should be already drawn.
+                raise MetropyError("TODO")
+            elif model == "DrawnNestedLogit":
+                raise MetropyError("TODO")
+            elif model == "Deterministic":
+                agents = agents.with_columns(
+                    pl.lit("Deterministic").alias("alt_choice.type"),
+                )
+            draws = self.input["uniform_draws"].read()
+            agents = agents.join(
+                draws.select(pl.col("mode_u").alias("alt_choice.u"), agent_id="tour_id"),
+                on="agent_id",
+                how="left",
+            )
+        self.output["metro_agents"].write(agents)

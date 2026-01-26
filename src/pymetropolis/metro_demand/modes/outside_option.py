@@ -1,96 +1,86 @@
 import polars as pl
+from loguru import logger
 
-from pymetropolis.metro_common.errors import error_context
-from pymetropolis.metro_demand.population import TRIPS_FILE
-from pymetropolis.metro_pipeline import Config, ConfigTable, ConfigValue, Step
+from pymetropolis.metro_demand.population import TripsFile
+from pymetropolis.metro_pipeline import Step
+from pymetropolis.metro_pipeline.parameters import FloatParameter
 
 from .files import (
-    CAR_DRIVER_DISTANCES_FILE,
-    OUTSIDE_OPTION_PARAMETERS_FILE,
-    OUTSIDE_OPTION_TRAVEL_TIMES_FILE,
-)
-
-CONSTANT = ConfigValue(
-    "modes.outside_option.constant",
-    key="constant",
-    # default=0.0,
-    expected_type=float,
-    description="Constant utility of the outside option (€).",
-)
-
-ALPHA = ConfigValue(
-    "modes.outside_option.alpha",
-    key="alpha",
-    default=0.0,
-    expected_type=float,
-    description="Value of time for the outside option (€/h).",
-    note="This is usually not relevant as the outside option does not imply traveling.",
-)
-
-OUTSIDE_OPTION_ROAD_NETWORK_SPEED = ConfigValue(
-    "modes.outside_option.road_network_speed",
-    key="road_network_speed",
-    expected_type=float,
-    description="Constant speed on the road network to compute travel time for outside option trips (km/h).",
-)
-
-OUTSIDE_OPTION_TABLE = ConfigTable(
-    "modes.outside_option",
-    "outside_option",
-    items=[CONSTANT, ALPHA, OUTSIDE_OPTION_ROAD_NETWORK_SPEED],
+    CarDriverDistancesFile,
+    OutsideOptionPreferencesFile,
+    OutsideOptionTravelTimesFile,
 )
 
 
-@error_context(msg="Cannot generate outside option preferences.")
-def generate_outside_option_parameters(config: Config):
-    trips = TRIPS_FILE.read(config)
-    df = (
-        trips.select("tour_id", outside_option_cst=pl.lit(config[CONSTANT], dtype=pl.Float64))
-        .unique()
-        .sort("tour_id")
+class OutsideOptionPreferencesStep(Step):
+    constant = FloatParameter(
+        "modes.outside_option.constant",
+        default=0.0,
+        description="Constant utility of the outside option (€).",
     )
-    tts = OUTSIDE_OPTION_TRAVEL_TIMES_FILE.read(config)
-    if tts is not None:
-        alpha = config[ALPHA]
+    value_of_time = FloatParameter(
+        "modes.outside_option.alpha",
+        description="Value of time for the outside option (€/h).",
+        note="This is usually not relevant as the outside option does not imply traveling.",
+    )
+    output_files = {"outside_option_preferences": OutsideOptionPreferencesFile}
+
+    def required_files(self):
+        return {"trips": TripsFile}
+
+    def optional_files(self):
+        return {"outside_option_travel_times": OutsideOptionTravelTimesFile}
+
+    def run(self):
+        trips = self.input["trips"].read()
         df = (
-            df.join(tts, on="tour_id", how="left")
-            .with_columns(
-                outside_option_cst=pl.col("outside_option_cst")
-                - alpha * pl.col("outside_option_travel_time").dt.total_seconds() / 3600.0
-            )
-            .drop("outside_option_travel_time")
+            trips.select("tour_id", outside_option_cst=pl.lit(self.constant, dtype=pl.Float64))
+            .unique()
+            .sort("tour_id")
         )
-    OUTSIDE_OPTION_PARAMETERS_FILE.save(df, config)
-    return True
+        if self.input["outside_option_travel_times"].exists():
+            tts: pl.DataFrame = self.input["outside_option_travel_times"].read()
+            alpha = self.value_of_time
+            if alpha is None:
+                logger.warning(
+                    "Travel times are defined for the outside option but `modes.outside_option.alpha` is not defined."
+                )
+            else:
+                df = (
+                    df.join(tts, on="tour_id", how="left")
+                    .with_columns(
+                        outside_option_cst=pl.col("outside_option_cst")
+                        - alpha * pl.col("outside_option_travel_time").dt.total_seconds() / 3600.0
+                    )
+                    .drop("outside_option_travel_time")
+                )
+        elif self.value_of_time is not None and self.value_of_time != 0.0:
+            logger.warning(
+                "`modes.outside_option.alpha` is defined but there is no travel time for the outside options."
+            )
+        self.output["outside_option_preferences"].write(df)
 
 
-@error_context(msg="Cannot generate outside-option travel times from road distances.")
-def generate_outside_option_travel_times_from_road_distances(config: Config) -> bool:
-    df = CAR_DRIVER_DISTANCES_FILE.read(config)
-    speed = config[OUTSIDE_OPTION_ROAD_NETWORK_SPEED]
-    df = df.select(
-        "trip_id", outside_option_travel_time=pl.duration(seconds=pl.col("distance") / speed * 3.6)
+class OutsideOptionTravelTimesFromRoadDistancesStep(Step):
+    speed = FloatParameter(
+        "modes.outside_option.road_network_speed",
+        description="Constant speed on the road network to compute travel time for outside option trips (km/h).",
     )
-    trips = TRIPS_FILE.read(config)
-    df = df.join(trips, on="trip_id", how="left")
-    df = df.group_by("tour_id").agg(pl.col("outside_option_travel_time").sum())
-    OUTSIDE_OPTION_TRAVEL_TIMES_FILE.save(df, config)
-    return True
+    output_files = {"outside_option_travel_times": OutsideOptionTravelTimesFile}
 
+    def is_defined(self) -> bool:
+        return self.speed is not None
 
-OUTSIDE_OPTION_PREFERENCES_STEP = Step(
-    "outside-option-preferences",
-    generate_outside_option_parameters,
-    required_files=[TRIPS_FILE],
-    optional_files=[OUTSIDE_OPTION_TRAVEL_TIMES_FILE],
-    output_files=[OUTSIDE_OPTION_PARAMETERS_FILE],
-    config_values=[CONSTANT, ALPHA],
-)
+    def required_files(self):
+        return {"car_driver_distances": CarDriverDistancesFile, "trips": TripsFile}
 
-OUTSIDE_OPTION_TRAVEL_TIMES_FROM_ROAD_DISTANCES_STEP = Step(
-    "outside-option-travel-times-from-road-distances",
-    generate_outside_option_travel_times_from_road_distances,
-    required_files=[CAR_DRIVER_DISTANCES_FILE, TRIPS_FILE],
-    output_files=[OUTSIDE_OPTION_TRAVEL_TIMES_FILE],
-    config_values=[OUTSIDE_OPTION_ROAD_NETWORK_SPEED],
-)
+    def run(self):
+        df: pl.DataFrame = self.input["car_driver_distances"].read()
+        df = df.select(
+            "trip_id",
+            outside_option_travel_time=pl.duration(seconds=pl.col("distance") / self.speed * 3.6),
+        )
+        trips = self.input["trips"].read()
+        df = df.join(trips, on="trip_id", how="left")
+        df = df.group_by("tour_id").agg(pl.col("outside_option_travel_time").sum())
+        self.output["outside_option_travel_times"].write(df)

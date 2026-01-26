@@ -1,8 +1,7 @@
-from .edges import WRITE_EDGES_STEP
-from .files import METRO_EDGES_FILE as METRO_EDGES_FILE
-from .files import METRO_VEHICLE_TYPES_FILE as METRO_VEHICLE_TYPES_FILE
-from .vehicle_types import VEHICLE_TYPES_TABLE, WRITE_VEHICLE_TYPES_STEP
+from .edges import WriteMetroEdgesStep
+from .files import MetroEdgesFile, MetroVehicleTypesFile
+from .vehicle_types import WriteMetroVehicleTypesStep
 
-SUPPLY_CONFIG_SCHEMA = [VEHICLE_TYPES_TABLE]
+SUPPLY_FILES = [MetroEdgesFile, MetroVehicleTypesFile]
 
-SUPPLY_STEPS = [WRITE_EDGES_STEP, WRITE_VEHICLE_TYPES_STEP]
+SUPPLY_STEPS = [WriteMetroEdgesStep, WriteMetroVehicleTypesStep]

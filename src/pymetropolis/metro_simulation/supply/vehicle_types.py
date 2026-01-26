@@ -1,50 +1,26 @@
 import polars as pl
 
-from pymetropolis.metro_common.errors import error_context
-from pymetropolis.metro_pipeline import Config, ConfigTable, ConfigValue, Step
+from pymetropolis.metro_pipeline import Step
+from pymetropolis.metro_pipeline.parameters import FloatParameter
 
-from .files import METRO_VEHICLE_TYPES_FILE
-
-CAR_HEADWAY = ConfigValue(
-    "vehicle_types.car.headway",
-    key="headway",
-    expected_type=float,
-    description="Typical length between two cars, from head to head, in meters",
-)
-
-CAR_PCE = ConfigValue(
-    "vehicle_types.car.pce",
-    key="pce",
-    expected_type=float,
-    default=1.0,
-    description="Passenger car equivalent of a typical car",
-)
-
-CAR_TABLE = ConfigTable(
-    "vehicles_types.car",
-    "car",
-    items=[CAR_HEADWAY, CAR_PCE],
-)
-
-VEHICLE_TYPES_TABLE = ConfigTable(
-    "vehicle_types",
-    "vehicle_types",
-    items=[CAR_TABLE],
-)
+from .files import MetroVehicleTypesFile
 
 
-@error_context(msg="Cannot write metro vehicle types file")
-def write_vehicle_types(config: Config):
-    df = pl.DataFrame(
-        {"vehicle_id": ["car_driver"], "headway": [config[CAR_HEADWAY]], "pce": [config[CAR_PCE]]}
+class WriteMetroVehicleTypesStep(Step):
+    car_headway = FloatParameter(
+        "vehicle_types.car.headway",
+        default=8.0,
+        description="Typical length between two cars, from head to head, in meters",
     )
-    METRO_VEHICLE_TYPES_FILE.save(df, config)
-    return True
+    car_pce = FloatParameter(
+        "vehicle_types.car.pce",
+        default=1.0,
+        description="Passenger car equivalent of a typical car",
+    )
+    output_files = {"metro_vehicle_types": MetroVehicleTypesFile}
 
-
-WRITE_VEHICLE_TYPES_STEP = Step(
-    "write-vehicle-types",
-    write_vehicle_types,
-    output_files=[METRO_VEHICLE_TYPES_FILE],
-    config_values=[CAR_HEADWAY, CAR_PCE],
-)
+    def run(self):
+        df = pl.DataFrame(
+            {"vehicle_id": ["car_driver"], "headway": [self.car_headway], "pce": [self.car_pce]}
+        )
+        self.output["metro_vehicle_types"].write(df)

@@ -1,14 +1,13 @@
-from .aav import AAV_CONFIG, SIMULATION_AREA_FROM_AAV
-from .bbox import BBOX_CONFIG, SIMULATION_AREA_FROM_BBOX
-from .file import SIMULATION_AREA_FILE as SIMULATION_AREA_FILE
-from .osm import OSM_CONFIG, SIMULATION_AREA_FROM_OSM
-from .polygons import POLYGONS_CONFIG, SIMULATION_AREA_FROM_POLYGONS
+from .aav import SimulationAreaFromAAVStep
+from .bbox import SimulationAreaFromBboxStep
+from .file import SimulationAreaFile
+from .osm import SimulationAreaFromOSMStep
+from .polygons import SimulationAreaFromPolygonsStep
 
+SIMULATION_AREA_FILES = [SimulationAreaFile]
 SIMULATION_AREA_STEPS = [
-    SIMULATION_AREA_FROM_BBOX,
-    SIMULATION_AREA_FROM_POLYGONS,
-    SIMULATION_AREA_FROM_AAV,
-    SIMULATION_AREA_FROM_OSM,
+    SimulationAreaFromBboxStep,
+    SimulationAreaFromPolygonsStep,
+    SimulationAreaFromAAVStep,
+    SimulationAreaFromOSMStep,
 ]
-
-SIMULATION_AREA_CONFIG = [AAV_CONFIG, BBOX_CONFIG, OSM_CONFIG, POLYGONS_CONFIG]

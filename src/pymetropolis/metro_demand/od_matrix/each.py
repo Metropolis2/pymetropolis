@@ -1,45 +1,39 @@
+import geopandas as gpd
 import numpy as np
 import polars as pl
 
-from pymetropolis.metro_common.errors import error_context
-from pymetropolis.metro_demand.modes import CAR_DRIVER_ODS_FILE
-from pymetropolis.metro_network.road_network import CLEAN_EDGES_FILE
-from pymetropolis.metro_pipeline import RANDOM_SEED, Config, ConfigTable, ConfigValue, Step
+from pymetropolis.metro_demand.modes import CarDriverODsFile
+from pymetropolis.metro_network.road_network import CleanEdgesFile
+from pymetropolis.metro_pipeline.parameters import FloatParameter
+from pymetropolis.metro_pipeline.steps import MetroStep
 
 from .common import generate_trips_from_od_matrix
 
-EACH = ConfigValue(
-    "node_od_matrix.each",
-    key="each",
-    expected_type=float,
-    description="Number of trips to generate for each origin-destination pair.",
-)
 
-NODE_OD_MATRIX_TABLE = ConfigTable("node_od_matrix", "node_od_matrix", items=[EACH])
-
-
-@error_context(msg="Cannot generate a fixed number of trips for each origin-destination pair.")
-def n_trips_for_each_od_pair(config: Config):
-    edges = CLEAN_EDGES_FILE.read(config)
-    sources = pl.Series(edges["source"]).unique().sort()
-    targets = pl.Series(edges["target"]).unique().sort()
-    each = config[EACH]
-    df = pl.DataFrame(
-        {
-            "origin": np.repeat(sources, len(targets)),
-            "destination": np.tile(targets, len(sources)),
-            "size": each,
-        }
+class ODMatrixEachStep(MetroStep):
+    each = FloatParameter(
+        "node_od_matrix.each",
+        description="Number of trips to generate for each origin-destination pair.",
     )
-    trips = generate_trips_from_od_matrix(df, config[RANDOM_SEED])
-    CAR_DRIVER_ODS_FILE.save(trips, config)
-    return True
+    output_files = {"car_driver_ods": CarDriverODsFile}
 
+    def is_defined(self) -> bool:
+        return self.each is not None
 
-OD_MATRIX_EACH = Step(
-    "od-matrix-each",
-    n_trips_for_each_od_pair,
-    required_files=[CLEAN_EDGES_FILE],
-    output_files=[CAR_DRIVER_ODS_FILE],
-    config_values=[EACH],
-)
+    def required_files(self):
+        return {"clean_edges": CleanEdgesFile}
+
+    def run(self):
+        edges: gpd.GeoDataFrame = self.input["clean_edges"].read()
+        sources = pl.Series(edges["source"]).unique().sort()
+        targets = pl.Series(edges["target"]).unique().sort()
+        each = self.each
+        df = pl.DataFrame(
+            {
+                "origin": np.repeat(sources, len(targets)),
+                "destination": np.tile(targets, len(sources)),
+                "size": each,
+            }
+        )
+        trips = generate_trips_from_od_matrix(df, self.get_rng())
+        self.output["car_driver_ods_file"].write(trips)

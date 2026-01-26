@@ -2,7 +2,7 @@ import numpy as np
 import polars as pl
 
 
-def generate_trips_from_od_matrix(df: pl.DataFrame, random_seed: int | None):
+def generate_trips_from_od_matrix(df: pl.DataFrame, rng: np.random.Generator):
     if df["size"].dtype.is_float():
         decimals = df["size"] % 1.0
         if (decimals != 0.0).any():
@@ -10,7 +10,6 @@ def generate_trips_from_od_matrix(df: pl.DataFrame, random_seed: int | None):
             # for each value, with probability equal to the decimal part.
             # The draws are such that, on aggregate, the total number of trips is equal to the sum
             # of `size`.
-            rng = np.random.default_rng(seed=random_seed)
             nb_extras = decimals.sum()
             nb_extras = int(nb_extras) + rng.binomial(1, nb_extras % 1.0)
             extras = rng.choice(

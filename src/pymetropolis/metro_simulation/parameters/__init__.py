@@ -1,6 +1,6 @@
-from .file import PARAMETERS_FILE as PARAMETERS_FILE
-from .step import PARAMETERS_TABLE, WRITE_PARAMETERS_STEP
+from .file import MetroParametersFile
+from .step import WriteMetroParametersStep
 
-PARAMETERS_CONFIG_SCHEMA = [PARAMETERS_TABLE]
+PARAMETERS_FILES = [MetroParametersFile]
 
-PARAMETERS_STEPS = [WRITE_PARAMETERS_STEP]
+PARAMETERS_STEPS = [WriteMetroParametersStep]

@@ -1,75 +1,81 @@
 import hashlib
 import json
-import os
-from collections.abc import Callable
-from typing import Optional
+from itertools import chain
+from pathlib import Path
+from typing import Any, Type
 
 import numpy as np
 
-from pymetropolis.metro_common.errors import error_context
+from pymetropolis.metro_common.errors import MetropyError, error_context
 
-from .config import Config, ConfigValue, InputFile
+from .config import Config
 from .file import MetroFile
-
-EPSILON = np.finfo(float).eps
+from .parameters import IntParameter, Parameter
 
 # TODO: Add something to measure running time for each step.
 
 
 class Step:
-    def __init__(
-        self,
-        slug: str,
-        func: Callable[[Config], bool],
-        required_files: Optional[list[MetroFile]] = None,
-        optional_files: Optional[list[MetroFile]] = None,
-        output_files: Optional[list[MetroFile]] = None,
-        config_values: Optional[list[ConfigValue]] = None,
-    ):
-        self.slug = slug
-        self.func = func
-        self.required_files = required_files or list()
-        self.optional_files = optional_files or list()
-        self.output_files = output_files or list()
-        self.config_values = config_values or list()
-        for f in self.output_files:
-            f.add_provider(self)
+    output_files: dict[str, Type[MetroFile]]
+    _input_files: dict[str, MetroFile]
+    _output_files: dict[str, MetroFile]
+    _update_file_path: Path
+    _config_dict: dict[str, Any]
+
+    def __init__(self, config: Config):
+        self._config_dict = dict()
+        for param_name in dir(self.__class__):
+            param_obj = getattr(self.__class__, param_name)
+            if not isinstance(param_obj, Parameter):
+                continue
+            value = param_obj.from_config(config)
+            self._config_dict[param_name] = value
+            setattr(self, param_name, value)
+        self._output_files = {
+            k: f.from_dir(config.main_directory) for k, f in self.output_files.items()
+        }
+        self._input_files = {
+            k: f.from_dir(config.main_directory) for k, f in self.required_files().items()
+        }
+        self._input_files.update(
+            {k: f.from_dir(config.main_directory) for k, f in self.optional_files().items()}
+        )
+        self._update_file_path = config.main_directory / "update_files" / f"{self}.json"
+
+    def required_files(self) -> dict[str, Type[MetroFile]]:
+        return dict()
+
+    def optional_files(self) -> dict[str, Type[MetroFile]]:
+        return dict()
 
     def __str__(self) -> str:
-        return self.slug
+        return self.__class__.__name__
 
-    def is_defined(self, config: Config) -> bool:
+    def run(self):
+        """Executes the step.
+
+        This method needs to be overridden by each subclass.
+        """
+        raise MetropyError(f"Step {self} has not `run` implementation.")
+
+    @property
+    def input(self) -> dict[str, MetroFile]:
+        return self._input_files
+
+    @property
+    def output(self) -> dict[str, MetroFile]:
+        return self._output_files
+
+    def is_defined(self) -> bool:
         """Returns `True` if this step is properly defined in the config."""
-        for value in self.config_values:
-            if not config.has_value(value):
-                return False
         return True
 
     @error_context(msg="Failed to execute step `{}`", fmt_args=[0])
-    def execute(self, config: Config) -> bool:
-        success = self.func(config)
-        if success:
-            self.save_update_dict(config)
-        return success
+    def execute(self, config: Config):
+        self.run()
+        self.save_update_dict(config)
 
-    def input_files(self) -> list[InputFile]:
-        return list(filter(lambda v: v.is_file(), self.config_values))
-
-    def required_dependencies(self, config) -> list["Step"]:
-        deps = list()
-        for f in self.required_files:
-            deps.append(f.provider(config))
-        return deps
-
-    def optional_dependencies(self, config) -> list["Step"]:
-        deps = list()
-        for f in self.optional_files:
-            provider = f.provider(config, optional=True)
-            if provider is not None:
-                deps.append(provider)
-        return deps
-
-    def update_required(self, config: Config) -> bool:
+    def update_required(self) -> bool:
         """Returns `False` if the step was already executed and does not need to be executed again.
 
         A step needs to be executed again if:
@@ -79,62 +85,53 @@ class Step:
         - Any input MetroFile has been modified.
         - Any output MetroFile has been deleted / modified.
         """
-        update_dict = self.update_dict(config)
+        update_dict = self.update_dict()
         if update_dict is None:
             # Step has never been executed or the update file has been removed.
             return True
         # Check that the input data files have not been modified.
-        for input_file in self.input_files():
-            slug = input_file.slug
-            if not config.has_value(input_file):
-                # Input file is not specified.
+        for k, v in self._config_dict.items():
+            if not isinstance(v, Path):
                 continue
-            path = config[input_file]
-            if not os.path.isfile(path) and update_dict.get(f"{slug}_mtime") is not None:
+            if not v.exists() and update_dict.get(f"data_file_{k}_mtime") is not None:
                 # A file that was previously read no longer exists.
                 return True
-            if os.path.getmtime(path) != update_dict.get(f"{slug}_mtime"):
+            if v.stat().st_mtime != update_dict.get(f"data_file_{k}_mtime"):
                 # The file exists but was updated since the last run (or did not exist before).
                 return True
         # Check that the input / output MetroFiles have not been modified.
-        for f in self.required_files + self.optional_files + self.output_files:
-            slug = f.slug
-            path = f.get_path(config)
-            if not os.path.isfile(path):
+        for k, f in chain(self.input.items(), self.output.items()):
+            if not f.exists():
                 # The file does not exists...
-                if update_dict.get(f"{slug}_mtime") is None:
+                if update_dict.get(f"metro_file_{k}_mtime") is None:
                     # but it's fine since it never existed.
                     continue
                 else:
                     # it has been removed.
                     return True
-            if os.path.getmtime(path) != update_dict.get(f"{slug}_mtime"):
+            if f.last_modified_time() != update_dict.get(f"metro_file_{k}_mtime"):
                 # The file exists but was updated since the last run (or did not exist before).
                 return True
         # Check that the relevant config has not been modified.
-        if self.config_hash(config) != update_dict.get("config_hash"):
+        if self.config_hash() != update_dict.get("config_hash"):
             return True
         return False
 
-    def update_dict(self, config: Config) -> dict | None:
+    def update_dict(self) -> dict | None:
         """Returns a dictionary representing the update file of this step.
 
         Returns `None` if the update file does not exist.
         """
-        filename = config.update_dict_path(self.slug)
-        if os.path.isfile(filename):
-            with open(filename, "r") as f:
+        if self._update_file_path.is_file():
+            with open(self._update_file_path, "r") as f:
                 return json.load(f)
         else:
             return None
 
-    def config_hash(self, config: Config):
+    def config_hash(self) -> str:
         """Returns a hash of the config relevant for the step."""
-        config_dict = dict()
-        for value in self.config_values:
-            config_dict[value.slug] = config.get(value)
         # default=str is required to dump datetime variables
-        json_str = json.dumps(config_dict, sort_keys=True, default=str)
+        json_str = json.dumps(self._config_dict, sort_keys=True, default=str)
         h = hashlib.sha256()
         h.update(json_str.encode())
         return h.hexdigest()
@@ -142,27 +139,31 @@ class Step:
     def save_update_dict(self, config: Config):
         """Saves a dictionary representing the update file of this step."""
         update_dict = dict()
-        for input_file in self.input_files():
-            slug = input_file.slug
-            if not config.has_value(input_file):
+        for k, v in self._config_dict.items():
+            if not isinstance(v, Path):
+                continue
+            if not v.exists():
                 # Input file is not specified.
                 continue
-            filename = config[input_file]
-            if not os.path.isfile(filename):
-                # Input file is not specified.
+            update_dict[f"data_file_{k}_mtime"] = v.stat().st_mtime
+        for k, f in chain(self.input.items(), self.output.items()):
+            if not f.exists():
                 continue
-            update_dict[f"{slug}_mtime"] = os.path.getmtime(filename)
-        for f in self.required_files + self.optional_files + self.output_files:
-            slug = f.slug
-            filename = f.get_path(config)
-            if not os.path.isfile(filename):
-                continue
-            update_dict[f"{slug}_mtime"] = os.path.getmtime(filename)
-        update_dict["config_hash"] = self.config_hash(config)
-        filename = config.update_dict_path(self.slug)
-        # Create directory if needed.
-        directory = os.path.dirname(filename)
-        if not os.path.isdir(directory):
-            os.makedirs(directory)
-        with open(filename, "w") as f:
+            update_dict[f"metro_file_{k}_mtime"] = f.last_modified_time()
+        update_dict["config_hash"] = self.config_hash()
+        with open(self._update_file_path, "w") as f:
             json.dump(update_dict, f)
+
+
+class MetroStep(Step):
+    random_seed = IntParameter(
+        "random_seed",
+        description="Random seed used to initialize the random number generator.",
+        note=(
+            "If the random seed is not defined, some operations are not deterministic, i.e., they can "
+            "produce different results if re-run."
+        ),
+    )
+
+    def get_rng(self) -> np.random.Generator:
+        return np.random.default_rng(self.random_seed)

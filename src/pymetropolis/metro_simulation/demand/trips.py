@@ -1,43 +1,44 @@
 import polars as pl
 
-from pymetropolis.metro_common.errors import MetropyError, error_context
+from pymetropolis.metro_common.errors import error_context
 from pymetropolis.metro_common.utils import time_to_seconds_since_midnight_pl
-from pymetropolis.metro_demand.departure_time import LINEAR_SCHEDULE_FILE, TSTAR_FILE
+from pymetropolis.metro_demand.departure_time import LinearScheduleFile, TstarsFile
 from pymetropolis.metro_demand.modes import (
-    CAR_DRIVER_ODS_FILE,
-    CAR_DRIVER_PARAMETERS_FILE,
-    CAR_DRIVER_TABLE,
-    PUBLIC_TRANSIT_PARAMETERS_FILE,
-    PUBLIC_TRANSIT_TABLE,
-    PUBLIC_TRANSIT_TRAVEL_TIMES_FILE,
+    CarDriverODsFile,
+    CarDriverPreferencesFile,
+    PublicTransitPreferencesFile,
+    PublicTransitTravelTimesFile,
 )
-from pymetropolis.metro_demand.population import TRIPS_FILE
-from pymetropolis.metro_pipeline import Config, Step
+from pymetropolis.metro_demand.population import TripsFile
 
-from .files import METRO_TRIPS_FILE
+from .common import MetroStepWithModes
+from .files import MetroTripsFile
 
 
 @error_context(msg="Cannot generate car driver trips")
-def generate_car_driver_trips(df: pl.DataFrame, config: Config):
+def generate_car_driver_trips(
+    df: pl.DataFrame,
+    ods_file: CarDriverODsFile,
+    pref_file: CarDriverPreferencesFile,
+    tstars_file: TstarsFile,
+    schedule_pref_file: LinearScheduleFile,
+):
     df = df.with_columns(
         pl.lit("car_driver").alias("alt_id"),
         pl.lit("Road").alias("class.type"),
         pl.lit("car_driver").alias("class.vehicle"),
     )
-    ods = CAR_DRIVER_ODS_FILE.read_if_exists(config)
-    if ods is None:
-        raise MetropyError("Missing required file: `CAR_DRIVER_ODS_FILE`")
-    else:
-        df = (
-            df.join(ods, on="trip_id", how="left")
-            .with_columns(
-                pl.col("origin_node_id").alias("class.origin"),
-                pl.col("destination_node_id").alias("class.destination"),
-            )
-            .drop("origin_node_id", "destination_node_id")
+    ods: pl.DataFrame = ods_file.read()
+    df = (
+        df.join(ods, on="trip_id", how="left")
+        .with_columns(
+            pl.col("origin_node_id").alias("class.origin"),
+            pl.col("destination_node_id").alias("class.destination"),
         )
-    params = CAR_DRIVER_PARAMETERS_FILE.read_if_exists(config)
-    if params is not None:
+        .drop("origin_node_id", "destination_node_id")
+    )
+    if pref_file.exists():
+        params: pl.DataFrame = pref_file.read()
         df = (
             df.join(params, on="person_id", how="left")
             .with_columns(
@@ -46,8 +47,8 @@ def generate_car_driver_trips(df: pl.DataFrame, config: Config):
             )
             .drop("car_driver_cst", "car_driver_vot")
         )
-    tstars = TSTAR_FILE.read_if_exists(config)
-    if tstars is not None:
+    if tstars_file.exists():
+        tstars: pl.DataFrame = tstars_file.read()
         df = (
             df.join(tstars, on="trip_id", how="left")
             .with_columns(
@@ -55,8 +56,9 @@ def generate_car_driver_trips(df: pl.DataFrame, config: Config):
             )
             .drop("tstar")
         )
-    params = LINEAR_SCHEDULE_FILE.read_if_exists(config)
-    if params is not None:
+    if schedule_pref_file.exists():
+        params: pl.DataFrame = schedule_pref_file.read()
+        # TODO: Send warning if linear schedule is defined but not tstars.
         df = (
             df.join(params, on="trip_id", how="left")
             .with_columns(
@@ -71,27 +73,30 @@ def generate_car_driver_trips(df: pl.DataFrame, config: Config):
 
 
 @error_context(msg="Cannot generate public-transit trips")
-def generate_public_transit_trips(df: pl.DataFrame, config: Config):
+def generate_public_transit_trips(
+    df: pl.DataFrame,
+    tts_file: PublicTransitTravelTimesFile,
+    pref_file: PublicTransitPreferencesFile,
+    tstars_file: TstarsFile,
+    schedule_pref_file: LinearScheduleFile,
+):
     df = df.with_columns(
         pl.lit("public_transit").alias("alt_id"),
         pl.lit("Virtual").alias("class.type"),
     )
-    tts = PUBLIC_TRANSIT_TRAVEL_TIMES_FILE.read_if_exists(config)
-    if tts is None:
-        raise MetropyError("Missing required file: `PUBLIC_TRANSIT_TRAVEL_TIMES_FILE`")
-    else:
-        df = (
-            df.join(tts, on="trip_id", how="left")
-            .with_columns(
-                pl.col("public_transit_travel_time")
-                .dt.total_seconds()
-                .cast(pl.Float64)
-                .alias("class.travel_time")
-            )
-            .drop("public_transit_travel_time")
+    tts: pl.DataFrame = tts_file.read()
+    df = (
+        df.join(tts, on="trip_id", how="left")
+        .with_columns(
+            pl.col("public_transit_travel_time")
+            .dt.total_seconds()
+            .cast(pl.Float64)
+            .alias("class.travel_time")
         )
-    params = PUBLIC_TRANSIT_PARAMETERS_FILE.read_if_exists(config)
-    if params is not None:
+        .drop("public_transit_travel_time")
+    )
+    if pref_file.exists():
+        params: pl.DataFrame = pref_file.read()
         df = (
             df.join(params, on="person_id", how="left")
             .with_columns(
@@ -100,8 +105,8 @@ def generate_public_transit_trips(df: pl.DataFrame, config: Config):
             )
             .drop("public_transit_cst", "public_transit_vot")
         )
-    tstars = TSTAR_FILE.read_if_exists(config)
-    if tstars is not None:
+    if tstars_file.exists():
+        tstars: pl.DataFrame = tstars_file.read()
         df = (
             df.join(tstars, on="trip_id", how="left")
             .with_columns(
@@ -109,8 +114,8 @@ def generate_public_transit_trips(df: pl.DataFrame, config: Config):
             )
             .drop("tstar")
         )
-    params = LINEAR_SCHEDULE_FILE.read_if_exists(config)
-    if params is not None:
+    if schedule_pref_file.exists():
+        params: pl.DataFrame = schedule_pref_file.read()
         df = (
             df.join(params, on="trip_id", how="left")
             .with_columns(
@@ -124,33 +129,52 @@ def generate_public_transit_trips(df: pl.DataFrame, config: Config):
     return df
 
 
-@error_context(msg="Cannot write trips file")
-def write_trips(config: Config):
-    trips = TRIPS_FILE.read(config)
-    df = trips.select("trip_id", "person_id", agent_id="tour_id").sort("agent_id", "trip_id")
-    metro_trips = pl.DataFrame()
-    if config.has_table(CAR_DRIVER_TABLE):
-        car_driver_trips = generate_car_driver_trips(df, config)
-        metro_trips = pl.concat((metro_trips, car_driver_trips), how="diagonal")
-    if config.has_table(PUBLIC_TRANSIT_TABLE):
-        public_transit_trips = generate_public_transit_trips(df, config)
-        metro_trips = pl.concat((metro_trips, public_transit_trips), how="diagonal")
-    metro_trips = metro_trips.drop("person_id")
-    METRO_TRIPS_FILE.save(metro_trips, config)
-    return True
+class WriteMetroTripsStep(MetroStepWithModes):
+    output_files = {"metro_trips": MetroTripsFile}
 
+    def is_defined(self) -> bool:
+        if self.modes is None:
+            return False
+        # If there is no "trip mode", this step cannot be run (there is no trip to generate).
+        return self.has_trip_modes()
 
-WRITE_TRIPS_STEP = Step(
-    "write-trips",
-    write_trips,
-    required_files=[TRIPS_FILE],
-    optional_files=[
-        CAR_DRIVER_PARAMETERS_FILE,
-        CAR_DRIVER_ODS_FILE,
-        PUBLIC_TRANSIT_PARAMETERS_FILE,
-        PUBLIC_TRANSIT_TRAVEL_TIMES_FILE,
-        LINEAR_SCHEDULE_FILE,
-        TSTAR_FILE,
-    ],
-    output_files=[METRO_TRIPS_FILE],
-)
+    def required_files(self):
+        files = {"trips": TripsFile}
+        if self.has_mode("car_driver"):
+            files["car_driver_ods"] = CarDriverODsFile
+        if self.has_mode("public_transit"):
+            files["public_transit_travel_times"] = PublicTransitTravelTimesFile
+        return files
+
+    def optional_files(self):
+        files = {"linear_schedule": LinearScheduleFile, "tstars": TstarsFile}
+        if self.has_mode("car_driver"):
+            files["car_driver_preferences"] = CarDriverPreferencesFile
+        if self.has_mode("public_transit"):
+            files["public_transit_preferences"] = PublicTransitPreferencesFile
+        return files
+
+    def run(self):
+        trips: pl.DataFrame = self.input["trips"].read()
+        df = trips.select("trip_id", "person_id", agent_id="tour_id").sort("agent_id", "trip_id")
+        metro_trips = pl.DataFrame()
+        if self.has_mode("car_driver"):
+            car_driver_trips = generate_car_driver_trips(
+                df,
+                self.input["car_driver_ods"],
+                self.input["car_driver_preferences"],
+                self.input["tstars"],
+                self.input["linear_schedule"],
+            )
+            metro_trips = pl.concat((metro_trips, car_driver_trips), how="diagonal")
+        if self.has_mode("public_transit"):
+            public_transit_trips = generate_public_transit_trips(
+                df,
+                self.input["public_transit_travel_times"],
+                self.input["public_transit_preferences"],
+                self.input["tstars"],
+                self.input["linear_schedule"],
+            )
+            metro_trips = pl.concat((metro_trips, public_transit_trips), how="diagonal")
+        metro_trips = metro_trips.drop("person_id")
+        self.output["metro_trips"].write(metro_trips)

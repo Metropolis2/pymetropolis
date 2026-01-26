@@ -47,7 +47,7 @@ trips_per_node = 8000
 period = [06:00:00, 12:00:00]
 recording_interval = 300
 learning_factor = 0.005
-nb_iterations = 50
+nb_iterations = 200
 spillback = false
 
 [modes]
@@ -61,6 +61,7 @@ alpha = 15.0
 road_network_speed = 40
 
 [mode_choice]
+modes = ["car_driver", "outside_option"]
 model = "Logit"
 mu = 5.0
 

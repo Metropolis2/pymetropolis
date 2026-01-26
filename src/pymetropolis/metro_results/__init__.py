@@ -1,5 +1,5 @@
-from .demand import RESULTS_STEPS
-from .plots import PLOTS_STEPS
+from .demand import RESULTS_FILES, RESULTS_STEPS
+from .plots import PLOTS_FILES, PLOTS_STEPS
 
-CONFIG_SCHEMA = []
+FILES = RESULTS_FILES + PLOTS_FILES
 STEPS = RESULTS_STEPS + PLOTS_STEPS

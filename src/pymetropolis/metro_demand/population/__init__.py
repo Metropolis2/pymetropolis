@@ -1,8 +1,6 @@
-from .draws import UNIFORM_DRAWS_STEP
-from .files import HOUSEHOLDS_FILE as HOUSEHOLDS_FILE
-from .files import PERSONS_FILE as PERSONS_FILE
-from .files import TRIPS_FILE as TRIPS_FILE
-from .files import UNIFORM_DRAWS_FILE as UNIFORM_DRAWS_FILE
-from .generic import GENERIC_POPULATION_STEP
+from .draws import UniformDrawsStep
+from .files import HouseholdsFile, PersonsFile, TripsFile, UniformDrawsFile
+from .generic import GenericPopulationStep
 
-POPULATION_STEPS = [GENERIC_POPULATION_STEP, UNIFORM_DRAWS_STEP]
+POPULATION_FILES = [HouseholdsFile, PersonsFile, TripsFile, UniformDrawsFile]
+POPULATION_STEPS = [GenericPopulationStep, UniformDrawsStep]

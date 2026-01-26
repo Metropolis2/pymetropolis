@@ -1,6 +1,6 @@
-from .each import NODE_OD_MATRIX_TABLE, OD_MATRIX_EACH
-from .file import TRIP_ZONES_FILE as TRIP_ZONES_FILE
-from .gravity import GRAVITY_OD_MATRIX_STEP, GRAVITY_OD_MATRIX_TABLE
+from .each import ODMatrixEachStep
+from .file import TripZonesFile
+from .gravity import GravityODMatrixStep
 
-OD_MATRIX_CONFIG_SCHEMA = [NODE_OD_MATRIX_TABLE, GRAVITY_OD_MATRIX_TABLE]
-OD_MATRIX_STEPS = [OD_MATRIX_EACH, GRAVITY_OD_MATRIX_STEP]
+OD_MATRIX_FILES = [TripZonesFile]
+OD_MATRIX_STEPS = [ODMatrixEachStep, GravityODMatrixStep]

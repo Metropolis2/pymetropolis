@@ -3,155 +3,112 @@ import networkx as nx
 import numpy as np
 
 from pymetropolis.metro_common.errors import error_context
-from pymetropolis.metro_pipeline import Config, ConfigTable, ConfigValue, Step
+from pymetropolis.metro_pipeline import Step
+from pymetropolis.metro_pipeline.parameters import BoolParameter, CustomParameter, FloatParameter
 
-from .files import CLEAN_EDGES_FILE, RAW_EDGES_FILE
+from .common import default_edge_values_validator
+from .files import CleanEdgesFile, RawEdgesFile
 
 EPSILON = np.finfo(float).eps
 
-MIN_NB_LANES = ConfigValue(
-    "road_network_postprocess.min_nb_lanes",
-    key="min_nb_lanes",
-    default=1.0,
-    expected_type=float,  # TODO positive float dtype
-    description="Minimum number of lanes allowed on edges.",
-    example="`0.5`",
-)
 
-MIN_SPEED_LIMIT = ConfigValue(
-    "road_network_postprocess.min_speed_limit",
-    key="min_speed_limit",
-    default=EPSILON,
-    expected_type=float,
-    description="Minimum speed limit allowed on edges (in km/h).",
-)
+class PostprocessRoadNetworkStep(Step):
+    min_nb_lanes = FloatParameter(
+        "road_network_postprocess.min_nb_lanes",
+        default=1.0,
+        description="Minimum number of lanes allowed on edges.",
+    )
+    min_speed_limit = FloatParameter(
+        "road_network_postprocess.min_speed_limit",
+        default=EPSILON,
+        description="Minimum speed limit allowed on edges (in km/h).",
+    )
+    min_length = FloatParameter(
+        "road_network_postprocess.min_length",
+        default=0.0,
+        description="Minimum length allowed on edges (in meters).",
+    )
+    remove_duplicates = BoolParameter(
+        "road_network_postprocess.remove_duplicates",
+        default=False,
+        description="Whether the duplicate edges (edges with same source and target) should be removed.",
+        note="If `True`, the edge with the smallest travel time is kept.",
+    )
+    ensure_connected = BoolParameter(
+        "road_network_postprocess.ensure_connected",
+        default=False,
+        description=(
+            "Whether the network should be restricted to the largest strongly connected component of "
+            "the underlying graph."
+        ),
+        note=(
+            "If `False`, it is the user's responsibility to ensure that all origin-destination pairs "
+            "are feasible."
+        ),
+    )
+    reindex = BoolParameter(
+        "road_network_postprocess.reindex",
+        default=False,
+        description=(
+            "If `true`, the edges are re-index after the postprocessing so that they are indexed from "
+            "0 to n-1."
+        ),
+    )
+    default_speed_limit = CustomParameter(
+        "road_network_postprocess.default_speed_limit",
+        validator=default_edge_values_validator,
+        description="Default speed limit (in km/h) to use for edges with no specified value.",
+        note=(
+            "The value is either a scalar value to be applied to all edges with no specified value, a "
+            "table `road_type -> speed_limit` or two tables `road_type -> speed_limit`, for urban and "
+            "rural edges."
+        ),
+    )
+    default_nb_lanes = CustomParameter(
+        "road_network_postprocess.default_nb_lanes",
+        validator=default_edge_values_validator,
+        default=1.0,
+        description="Default number of lanes to use for edges with no specified value.",
+        note=(
+            "The value is either a scalar value to be applied to all edges with no specified value, a "
+            "table `road_type -> nb_lanes` or two tables `road_type -> nb_lanes`, for urban and rural "
+            "edges."
+        ),
+    )
+    output_files = {"clean_edges": CleanEdgesFile}
 
-MIN_LENGTH = ConfigValue(
-    "road_network_postprocess.min_length",
-    key="min_length",
-    default=0.0,
-    expected_type=float,
-    description="Minimum length allowed on edges (in meters).",
-)
+    def required_files(self):
+        return {"raw_edges": RawEdgesFile}
 
-REMOVE_DUPLICATES = ConfigValue(
-    "road_network_postprocess.remove_duplicates",
-    key="remove_duplicates",
-    default=False,
-    expected_type=bool,
-    description="Whether the duplicate edges (edges with same source and target) should be removed.",
-    note="If `True`, the edge with the smallest travel time is kept.",
-)
-
-ENSURE_CONNECTED = ConfigValue(
-    "road_network_postprocess.ensure_connected",
-    key="ensure_connected",
-    default=False,
-    expected_type=bool,
-    description=(
-        "Whether the network should be restricted to the largest strongly connected component of "
-        "the underlying graph."
-    ),
-    note=(
-        "If `False`, it is the user's responsibility to ensure that all origin-destination pairs "
-        "are feasible."
-    ),
-)
-
-REINDEX = ConfigValue(
-    "road_network_postprocess.reindex",
-    key="reindex",
-    default=False,
-    expected_type=bool,
-    description=(
-        "If `true`, the edges are re-index after the postprocessing so that they are indexed from "
-        "0 to n-1."
-    ),
-)
-
-DEFAULT_SPEED_LIMIT = ConfigValue(
-    "road_network_postprocess.default_speed_limit",
-    key="default_speed_limit",
-    default=1.0,
-    expected_type=float | dict[str, float] | dict[str, dict[str, float]],
-    description="Default speed limit (in km/h) to use for edges with no specified value.",
-    note=(
-        "The value is either a scalar value to be applied to all edges with no specified value, a "
-        "table `road_type -> speed_limit` or two tables `road_type -> speed_limit`, for urban and "
-        "rural edges."
-    ),
-)
-DEFAULT_NB_LANES = ConfigValue(
-    "road_network_postprocess.default_nb_lanes",
-    key="default_nb_lanes",
-    default=1.0,
-    expected_type=float | dict[str, float] | dict[str, dict[str, float]],
-    description="Default number of lanes to use for edges with no specified value.",
-    note=(
-        "The value is either a scalar value to be applied to all edges with no specified value, a "
-        "table `road_type -> nb_lanes` or two tables `road_type -> nb_lanes`, for urban and rural "
-        "edges."
-    ),
-)
-
-POSTPROCESS_TABLE = ConfigTable(
-    "road_network_postprocess",
-    "road_network_postprocess",
-    items=[
-        MIN_NB_LANES,
-        MIN_SPEED_LIMIT,
-        MIN_LENGTH,
-        REMOVE_DUPLICATES,
-        ENSURE_CONNECTED,
-        REINDEX,
-        DEFAULT_SPEED_LIMIT,
-        DEFAULT_NB_LANES,
-    ],
-    description="Post-process the imported road network to make it compatible with METROPOLIS2",
-)
-
-POSTPROCESS_CONFIG = [POSTPROCESS_TABLE] + POSTPROCESS_TABLE.items
-
-
-def postprocess(config: Config) -> bool:
-    """Reads a GeoDataFrame of edges and performs various operations to make the data ready to use
-    with METROPOLIS2.
-    Saves the results to the given output file.
-    """
-    gdf = RAW_EDGES_FILE.read(config)
-    gdf = set_default_values(gdf, config)
-    if config[REMOVE_DUPLICATES]:
-        gdf = remove_duplicates(gdf)
-    if config[ENSURE_CONNECTED]:
-        gdf = select_connected(gdf)
-    if config[REINDEX]:
-        gdf = reindex(gdf)
-    gdf = check(gdf, config)
-    gdf.sort_values("edge_id", inplace=True)
-    CLEAN_EDGES_FILE.save(gdf, config)
-    return True
-
-
-POSTPROCESS_ROAD_NETWORK = Step(
-    "postprocess-road-network",
-    postprocess,
-    required_files=[RAW_EDGES_FILE],
-    output_files=[CLEAN_EDGES_FILE],
-    config_values=[
-        MIN_NB_LANES,
-        MIN_SPEED_LIMIT,
-        MIN_LENGTH,
-        REMOVE_DUPLICATES,
-        ENSURE_CONNECTED,
-        REINDEX,
-        DEFAULT_SPEED_LIMIT,
-        DEFAULT_NB_LANES,
-    ],
-)
+    def run(self):
+        """Reads a GeoDataFrame of edges and performs various operations to make the data ready to
+        use with METROPOLIS2.
+        Saves the results to the given output file.
+        """
+        gdf = self.input["raw_edges"].read()
+        gdf = set_default_values(
+            gdf,
+            default_speed_limit=self.default_speed_limit,
+            default_nb_lanes=self.default_nb_lanes,
+        )
+        if self.remove_duplicates:
+            gdf = remove_duplicates(gdf)
+        if self.ensure_connected:
+            gdf = select_connected(gdf)
+        if self.reindex:
+            gdf = reindex(gdf)
+        gdf = check(
+            gdf,
+            min_nb_lanes=self.min_nb_lanes,
+            min_speed_limit=self.min_speed_limit,
+            min_length=self.min_length,
+        )
+        gdf.sort_values("edge_id", inplace=True)
+        self.output["clean_edges"].write(gdf)
 
 
 @error_context("Failed to set default values of edges")
-def set_default_values(gdf, config):
+def set_default_values(gdf, default_speed_limit: float | dict, default_nb_lanes: float | dict):
     # Set default for bool columns (default is always False).
     for col in ("toll", "roundabout", "give_way", "stop", "traffic_signals", "urban"):
         if col not in gdf.columns:
@@ -162,7 +119,6 @@ def set_default_values(gdf, config):
     if "speed_limit" not in gdf.columns:
         gdf["speed_limit"] = np.nan
     gdf["default_speed_limit"] = gdf["speed_limit"].isna()
-    default_speed_limit = config[DEFAULT_SPEED_LIMIT]
     if isinstance(default_speed_limit, float):
         gdf["speed_limit"] = gdf["speed_limit"].fillna(default_speed_limit)
     elif isinstance(default_speed_limit, dict):
@@ -186,7 +142,6 @@ def set_default_values(gdf, config):
     if "lanes" not in gdf.columns:
         gdf["lanes"] = np.nan
     gdf["default_lanes"] = gdf["lanes"].isna()
-    default_nb_lanes = config[DEFAULT_NB_LANES]
     if isinstance(default_nb_lanes, float):
         gdf["lanes"] = gdf["lanes"].fillna(default_nb_lanes)
     elif isinstance(default_nb_lanes, dict):
@@ -261,10 +216,10 @@ def reindex(gdf):
     return gdf
 
 
-def check(gdf, config):
-    gdf["lanes"] = gdf["lanes"].clip(config[MIN_NB_LANES])
-    gdf["speed_limit"] = gdf["speed_limit"].clip(config[MIN_SPEED_LIMIT])
-    gdf["length"] = gdf["length"].clip(config[MIN_SPEED_LIMIT])
+def check(gdf, min_nb_lanes: float, min_speed_limit: float, min_length: float):
+    gdf["lanes"] = gdf["lanes"].clip(min_nb_lanes)
+    gdf["speed_limit"] = gdf["speed_limit"].clip(min_speed_limit)
+    gdf["length"] = gdf["length"].clip(min_length)
     # Count number of incoming / outgoing edges for the source / target node.
     target_counts = gdf["target"].value_counts()
     source_counts = gdf["source"].value_counts()

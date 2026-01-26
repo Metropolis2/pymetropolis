@@ -1,10 +1,10 @@
 from pymetropolis.metro_pipeline.file import Column, MetroDataFrameFile, MetroDataType
 
-LINEAR_SCHEDULE_FILE = MetroDataFrameFile(
-    "linear_schedule_parameters",
-    path="demand/population/linear_schedule_parameters.parquet",
-    description="TODO",
-    schema=[
+
+class LinearScheduleFile(MetroDataFrameFile):
+    path = "demand/population/linear_schedule_parameters.parquet"
+    description = "TODO"
+    schema = [
         Column(
             "trip_id",
             MetroDataType.ID,
@@ -30,14 +30,13 @@ LINEAR_SCHEDULE_FILE = MetroDataFrameFile(
             description="Length of the desired time window.",
             nullable=True,
         ),
-    ],
-)
+    ]
 
-TSTAR_FILE = MetroDataFrameFile(
-    "tstars",
-    path="demand/population/tstars.parquet",
-    description="TODO",
-    schema=[
+
+class TstarsFile(MetroDataFrameFile):
+    path = "demand/population/tstars.parquet"
+    description = "TODO"
+    schema = [
         Column(
             "trip_id",
             MetroDataType.ID,
@@ -51,5 +50,4 @@ TSTAR_FILE = MetroDataFrameFile(
             description="Desired start time of the activity following the trip.",
             nullable=True,
         ),
-    ],
-)
+    ]

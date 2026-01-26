@@ -1,10 +1,10 @@
 from pymetropolis.metro_pipeline.file import Column, MetroDataFrameFile, MetroDataType
 
-METRO_EDGES_FILE = MetroDataFrameFile(
-    "edges",
-    path="run/input/edges.parquet",
-    description="TODO",
-    schema=[
+
+class MetroEdgesFile(MetroDataFrameFile):
+    path = "run/input/edges.parquet"
+    description = "TODO"
+    schema = [
         Column(
             "edge_id",
             MetroDataType.ID,
@@ -118,14 +118,13 @@ METRO_EDGES_FILE = MetroDataFrameFile(
         #     nullable=True,
         #     optional=True,
         # ),
-    ],
-)
+    ]
 
-METRO_VEHICLE_TYPES_FILE = MetroDataFrameFile(
-    "vehicle_types",
-    path="run/input/vehicle_types.parquet",
-    description="TODO",
-    schema=[
+
+class MetroVehicleTypesFile(MetroDataFrameFile):
+    path = "run/input/vehicle_types.parquet"
+    description = "TODO"
+    schema = [
         Column(
             "vehicle_id",
             MetroDataType.ID,
@@ -173,5 +172,4 @@ METRO_VEHICLE_TYPES_FILE = MetroDataFrameFile(
             nullable=True,
             optional=True,
         ),
-    ],
-)
+    ]

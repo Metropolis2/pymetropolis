@@ -1,7 +1,6 @@
-from .crs import CRS as CRS
-from .osm import OSM_FILE as OSM_FILE
-from .simulation_area import SIMULATION_AREA_CONFIG as SIMULATION_AREA_CONFIG
-from .simulation_area import SIMULATION_AREA_STEPS as SIMULATION_AREA_STEPS
+from .crs import GeoMetroStep as GeoMetroStep
+from .osm import OSMMetroStep as OSMMetroStep
+from .simulation_area import SIMULATION_AREA_FILES, SIMULATION_AREA_STEPS
 
-CONFIG_SCHEMA = [CRS] + [OSM_FILE] + SIMULATION_AREA_CONFIG
+FILES = SIMULATION_AREA_FILES
 STEPS = SIMULATION_AREA_STEPS
