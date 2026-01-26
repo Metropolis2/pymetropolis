@@ -36,4 +36,4 @@ class ODMatrixEachStep(MetroStep):
             }
         )
         trips = generate_trips_from_od_matrix(df, self.get_rng())
-        self.output["car_driver_ods_file"].write(trips)
+        self.output["car_driver_ods"].write(trips)

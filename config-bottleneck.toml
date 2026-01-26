@@ -24,13 +24,10 @@ alpha = 10.0
 # [modes.outside_option]
 # constant = -5.0
 
-# [mode_choice]
+[mode_choice]
+modes = ["car_driver"]
 # model = "Logit"
 # mu = 1.0
-
-[vehicle_types]
-[vehicle_types.car]
-headway = 8.0
 
 [departure_time_choice]
 model = "ContinuousLogit"

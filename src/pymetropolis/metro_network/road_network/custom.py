@@ -19,4 +19,4 @@ class CustomRoadImportStep(Step):
 
     def run(self):
         edges = read_geodataframe(self.edges_file)
-        self.output["raw_edges_file"].write(edges)
+        self.output["raw_edges"].write(edges)

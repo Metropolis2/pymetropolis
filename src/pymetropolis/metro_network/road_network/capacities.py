@@ -78,7 +78,7 @@ class ExogenousCapacitiesStep(Step):
     def run(self):
         capacities = self.capacities
         edges = self.input["clean_edges"].read()
-        df = pl.from_pandas(edges.loc[:, ["edge_id", "road_type", "urban"]])
+        df = pl.from_pandas(edges.loc[:, edges.columns.isin(["edge_id", "road_type", "urban"])])
         df = df.with_columns(
             capacity=pl.lit(None, dtype=pl.Float64),
             times=pl.lit(None, dtype=pl.List(pl.Time)),
@@ -90,8 +90,12 @@ class ExogenousCapacitiesStep(Step):
         else:
             assert isinstance(capacities, dict)
             keys = set(capacities.keys())
+            if "road_type" not in df.columns:
+                raise MetropyError("Edges have no `road_type` column.")
             road_types = set(df["road_type"].unique())
             if keys == {"urban", "rural"}:
+                if "urban" not in df.columns:
+                    raise MetropyError("Edges have no `urban` column.")
                 # Case 3. Value is nested dict urban -> road_type -> capacity.
                 df = df.with_columns(
                     capacity=pl.when("urban")
@@ -150,5 +154,5 @@ class ExogenousCapacitiesStep(Step):
                         raise MetropyError(
                             f"Unexpected type for capacities values of road type `{road_type}`"
                         )
-        df = df.drop("road_type", "urban")
+        df = df.drop("road_type", "urban", strict=False)
         self.output["edges_capacities"].write(df)

@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 
 import geopandas as gpd
 import polars as pl
@@ -8,20 +8,20 @@ from pyogrio.errors import DataSourceError
 from .errors import MetropyError, error_context
 
 
-def scan_dataframe(filename: str, **kwargs):
+def scan_dataframe(filename: Path, **kwargs):
     """Scan a DataFrame from a Parquet or CSV file."""
-    if not os.path.isfile(filename):
+    if not filename.exists():
         raise MetropyError(f"File not found: `{filename}`")
-    if filename.endswith(".parquet"):
+    if filename.suffix == ".parquet":
         lf = pl.read_parquet(filename, use_pyarrow=True, **kwargs).lazy()
-    elif filename.endswith(".csv"):
+    elif filename.suffix == ".csv":
         lf = pl.scan_csv(filename, **kwargs)
     else:
         raise MetropyError(f"Unsupported format for input file: `{filename}`")
     return lf
 
 
-def read_dataframe(filename: str, columns=None, **kwargs):
+def read_dataframe(filename: Path, columns=None, **kwargs):
     """Reads a DataFrame from a Parquet or CSV file."""
     lf = scan_dataframe(filename, **kwargs)
     if columns is not None:
@@ -30,11 +30,11 @@ def read_dataframe(filename: str, columns=None, **kwargs):
 
 
 @error_context(msg="Cannot read `{}` as geodataframe", fmt_args=[0])
-def read_geodataframe(filename: str, columns=None):
+def read_geodataframe(filename: Path, columns=None):
     """Reads a GeoDataFrame from a Parquet file or any other format supported by GeoPandas."""
-    if not os.path.isfile(filename):
+    if not filename.exists():
         raise MetropyError(f"File not found: `{filename}`")
-    if filename.endswith(".parquet") or filename.endswith(".geoparquet"):
+    if filename.suffix == ".parquet" or filename.suffix == ".geoparquet":
         gdf = gpd.read_parquet(filename, columns=columns)
     else:
         try:
