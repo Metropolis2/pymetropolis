@@ -78,6 +78,32 @@ class MetroDataType(Enum):
         else:
             return False
 
+    def __str__(self) -> str:
+        if self == MetroDataType.ID:
+            return "string or integer"
+        elif self == MetroDataType.BOOL:
+            return "boolean"
+        elif self == MetroDataType.INT:
+            return "integer"
+        elif self == MetroDataType.UINT:
+            return "unsigned integer"
+        elif self == MetroDataType.FLOAT:
+            return "float"
+        elif self == MetroDataType.STRING:
+            return "string"
+        elif self == MetroDataType.TIME:
+            return "time"
+        elif self == MetroDataType.DURATION:
+            return "duration"
+        elif self == MetroDataType.LIST_OF_IDS:
+            return "list of strings or integers"
+        elif self == MetroDataType.LIST_OF_FLOATS:
+            return "list of floats"
+        elif self == MetroDataType.LIST_OF_TIMES:
+            return "list of times"
+        else:
+            return "unspecified datatype"
+
 
 class Column:
     def __init__(
@@ -130,6 +156,19 @@ class Column:
             return False
         return True
 
+    def _md_doc(self) -> str:
+        doc = f"| `{self.name}` | {self.dtype} | "
+        for b in (self.optional, self.nullable, self.unique):
+            if b:
+                doc += "✓"
+            else:
+                doc += "✕"
+            doc += " | "
+        if self.description:
+            doc += f"{self.description}"
+        doc += " |"
+        return doc
+
 
 class MetroFile:
     path: str
@@ -167,6 +206,13 @@ class MetroFile:
     def remove(self):
         self.complete_path.unlink()
 
+    @classmethod
+    def _md_doc(cls, simple: bool = True) -> str:
+        doc = f"## {cls.__name__}\n\n"
+        doc += f"{cls.description}\n\n"
+        doc += f"- **Path:** `{cls.path}`\n"
+        return doc
+
 
 class MetroDataFrameFile(MetroFile):
     schema: Optional[list[Column]] = None
@@ -197,6 +243,26 @@ class MetroDataFrameFile(MetroFile):
     def read_if_exists(self) -> pl.DataFrame | None:
         if self.exists():
             return self.read()
+
+    @override
+    @classmethod
+    def _md_doc(cls, simple: bool = True) -> str:
+        doc = super()._md_doc()
+        doc += "- **Type:** DataFrame\n"
+        if cls.max_rows:
+            doc += f"- **Max rows:** {cls.max_rows}\n"
+        if cls.schema:
+            if simple:
+                doc += "- **Columns:**\n\n"
+            else:
+                doc += "<details>\n<summary>Show columns</summary>\n\n"
+            doc += "| Column | Data type | Optional? | Nullable? | Unique? | Description |\n"
+            doc += "| ------ | --------- | --------- | --------- | ------- | ----------- |\n"
+            for col in cls.schema:
+                doc += f"{col._md_doc()}\n"
+            if not simple:
+                doc += "\n</details>\n"
+        return doc
 
 
 class MetroGeoDataFrameFile(MetroFile):
@@ -230,6 +296,28 @@ class MetroGeoDataFrameFile(MetroFile):
         if self.exists():
             return self.read()
 
+    @override
+    @classmethod
+    def _md_doc(cls, simple: bool = True) -> str:
+        doc = super()._md_doc()
+        doc += "- **Type:** GeoDataFrame\n"
+        if cls.max_rows:
+            doc += f"- **Max rows:** {cls.max_rows}\n"
+        if cls.schema:
+            if simple:
+                doc += "- **Columns:**\n"
+            else:
+                doc += "<details>\n<summary>Show columns</summary>\n\n"
+            doc += "| Column | Data type | Optional? | Nullable? | Unique? | Description |\n"
+            doc += "| ------ | --------- | --------- | --------- | ------- | ----------- |\n"
+            for col in cls.schema:
+                doc += f"{col._md_doc()}\n"
+            if not simple:
+                doc += "\n</details>\n"
+            if not simple:
+                doc += "\n</details>\n"
+        return doc
+
 
 class MetroTxtFile(MetroFile):
     @error_context(msg="Cannot save Txt file {}", fmt_args=[0])
@@ -245,8 +333,22 @@ class MetroTxtFile(MetroFile):
         if self.exists():
             return self.read()
 
+    @override
+    @classmethod
+    def _md_doc(cls, simple: bool = True) -> str:
+        doc = super()._md_doc()
+        doc += "- **Type:** Text\n"
+        return doc
+
 
 class MetroPlotFile(MetroFile):
     @error_context(msg="Cannot save plot {}", fmt_args=[0])
     def write(self, fig: plt.Figure):
         fig.savefig(self.complete_path)
+
+    @override
+    @classmethod
+    def _md_doc(cls, simple: bool = True) -> str:
+        doc = super()._md_doc()
+        doc += "- **Type:** Plot\n"
+        return doc

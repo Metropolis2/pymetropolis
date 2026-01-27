@@ -3,12 +3,12 @@ from pymetropolis.metro_pipeline.file import Column, MetroDataType, MetroGeoData
 
 class ZonesFile(MetroGeoDataFrameFile):
     path = "demand/zones/zones.geo.parquet"
-    description = "TODO"
+    description = "Identifiers and characteristics of the zones in the simulated area."
     schema = [
         Column(
             "zone_id",
             MetroDataType.ID,
-            description="Identifier of the zone",
+            description="Identifier of the zone.",
             unique=True,
             nullable=False,
         ),
@@ -16,7 +16,7 @@ class ZonesFile(MetroGeoDataFrameFile):
         Column(
             "original_id",
             MetroDataType.ID,
-            description="Identifier of the zone in the original data",
+            description="Identifier of the zone in the original data.",
             optional=True,
         ),
     ]

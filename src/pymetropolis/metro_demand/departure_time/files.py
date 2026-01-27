@@ -3,12 +3,12 @@ from pymetropolis.metro_pipeline.file import Column, MetroDataFrameFile, MetroDa
 
 class LinearScheduleFile(MetroDataFrameFile):
     path = "demand/population/linear_schedule_parameters.parquet"
-    description = "TODO"
+    description = "Schedule preferences for each trip, for the linear model."
     schema = [
         Column(
             "trip_id",
             MetroDataType.ID,
-            description="Identifier of the trip",
+            description="Identifier of the trip.",
             unique=True,
             nullable=False,
         ),
@@ -35,19 +35,19 @@ class LinearScheduleFile(MetroDataFrameFile):
 
 class TstarsFile(MetroDataFrameFile):
     path = "demand/population/tstars.parquet"
-    description = "TODO"
+    description = "Desired start time for the activity following each trip."
     schema = [
         Column(
             "trip_id",
             MetroDataType.ID,
-            description="Identifier of the trip",
+            description="Identifier of the trip.",
             unique=True,
             nullable=False,
         ),
         Column(
             "tstar",
             MetroDataType.TIME,
-            description="Desired start time of the activity following the trip.",
+            description="Desired start time of the following activity.",
             nullable=True,
         ),
     ]
