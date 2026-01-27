@@ -68,8 +68,8 @@ def generate_circular_network(
                 f"`radial_inter_ramp_length` cannot be greater than the smallest inter-ring distance ({min_radius:.0f})"
             )
     else:
-        in_ramp_length = 0.0
-        out_ramp_length = 0.0
+        entry_ramps_length = 0.0
+        exit_ramps_length = 0.0
         ring_inter_ramp_length = 0.0
         radial_inter_ramp_length = 0.0
     edges = list()
@@ -255,7 +255,7 @@ def generate_circular_network(
                         "edge_id": f"EntryRight{ring}-{dir}",
                         "source": n_inner,
                         "target": n_right,
-                        "length": in_ramp_length,
+                        "length": entry_ramps_length,
                         "road_type": f"EntryRamp {ring}",
                         "geometry": LineString([[x_inner, y_inner], [x_right, y_right]]),
                     }
@@ -266,7 +266,7 @@ def generate_circular_network(
                         "edge_id": f"ExitRight{ring}-{dir}",
                         "source": n_right,
                         "target": n_outer,
-                        "length": out_ramp_length,
+                        "length": exit_ramps_length,
                         "road_type": f"ExitRamp {ring}",
                         "geometry": LineString([[x_right, y_right], [x_outer, y_outer]]),
                     }
@@ -277,7 +277,7 @@ def generate_circular_network(
                         "edge_id": f"EntryLeft{ring}-{dir}",
                         "source": n_outer,
                         "target": n_left,
-                        "length": in_ramp_length,
+                        "length": entry_ramps_length,
                         "road_type": f"EntryRamp {ring}",
                         "geometry": LineString([[x_outer, y_outer], [x_left, y_left]]),
                     }
@@ -288,7 +288,7 @@ def generate_circular_network(
                         "edge_id": f"ExitLeft{ring}-{dir}",
                         "source": n_left,
                         "target": n_inner,
-                        "length": out_ramp_length,
+                        "length": exit_ramps_length,
                         "road_type": f"ExitRamp {ring}",
                         "geometry": LineString([[x_left, y_left], [x_inner, y_inner]]),
                     }

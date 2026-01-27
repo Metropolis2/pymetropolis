@@ -1,7 +1,6 @@
 import sys
 
 import click
-import matplotlib.pyplot as plt
 import networkx as nx
 from loguru import logger
 from termcolor import colored
@@ -184,18 +183,19 @@ def run_pipeline(
             dep_str = colored(f"{i + 1}. {step}", color, attrs=attrs)
             s += dep_str + "\n"
         print(s)
-        layers = {i: nodes for i, nodes in enumerate(nx.topological_generations(subgraph))}
-        pos = nx.multipartite_layout(subgraph, subset_key=layers)
-        fig, ax = plt.subplots(figsize=(10, 10))
-        nx.draw_networkx(
-            subgraph,
-            pos=pos,
-            with_labels=True,
-            font_size=8,
-            ax=ax,
-            labels={n: n.__name__ for n in subgraph.nodes},
-        )
-        fig.savefig("tmp.png")
+        # TODO: Plot a graph of the pipeline.
+        # layers = {i: nodes for i, nodes in enumerate(nx.topological_generations(subgraph))}
+        # pos = nx.multipartite_layout(subgraph, subset_key=layers)
+        # fig, ax = plt.subplots(figsize=(10, 10))
+        # nx.draw_networkx(
+        #     subgraph,
+        #     pos=pos,
+        #     with_labels=True,
+        #     font_size=8,
+        #     ax=ax,
+        #     labels={n: n.__name__ for n in subgraph.nodes},
+        # )
+        # fig.savefig("tmp.png")
     else:
         n = len(to_run_steps)
         i = 1

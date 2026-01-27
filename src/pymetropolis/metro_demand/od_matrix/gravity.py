@@ -2,7 +2,7 @@ import polars as pl
 
 from pymetropolis.metro_demand.modes import CarDriverODsFile
 from pymetropolis.metro_network.road_network import AllFreeFlowTravelTimesFile
-from pymetropolis.metro_pipeline.parameters import FloatParameter, IntParameter
+from pymetropolis.metro_pipeline.parameters import FloatParameter, IntParameter, StringParameter
 from pymetropolis.metro_pipeline.steps import MetroStep
 
 from .common import generate_trips_from_od_matrix
@@ -17,6 +17,11 @@ class GravityODMatrixStep(MetroStep):
         "gravity_od_matrix.trips_per_node",
         description="Number of trips to be generated originating from each node",
     )
+    nodes_regex = StringParameter(
+        "gravity_od_matrix.nodes_regex",
+        description="Regular expression specifying the nodes to be selected as possible origin / destination.",
+        note="If not specified, any node can be an origin / destination.",
+    )
     output_files = {"car_driver_ods": CarDriverODsFile}
 
     def is_defined(self) -> bool:
@@ -28,6 +33,11 @@ class GravityODMatrixStep(MetroStep):
     def run(self):
         df = self.input["all_free_flow_travel_times"].read()
         df = df.filter(pl.col("origin_id") != pl.col("destination_id"))
+        if self.nodes_regex is not None:
+            df = df.filter(
+                pl.col("origin_id").str.contains(self.nodes_regex),
+                pl.col("destination_id").str.contains(self.nodes_regex),
+            )
         decay = self.exponential_decay
         df = df.with_columns(
             rate=(-pl.lit(decay) * pl.col("free_flow_travel_time").dt.total_seconds() / 60).exp()
