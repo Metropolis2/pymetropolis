@@ -2,7 +2,7 @@
 
 [project]
 name = "pymetropolis"
-version = "0.2.0"
+version = "0.3.0"
 description = "Helper functions to generate, calibrate, run, and analyze METROPOLIS2 simulation instances"
 readme = "README.md"
 authors = [{ name = "Lucas Javaudin", email = "lucas@lucasjavaudin.com" }]
