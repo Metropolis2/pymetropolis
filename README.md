@@ -26,16 +26,16 @@
 <h3 align="center">Pymetropolis</h3>
 
   <p align="center">
-      Pymetropolis is a Python library to generate, calibrate, run and analyze METROPOLIS2 simulation instances.
+      Pymetropolis is a Python pipeline to generate, calibrate, run and analyze METROPOLIS2 simulation instances.
     <br />
     <a href="https://docs.metropolis2.org"><strong>Explore the docs »</strong></a>
     <br />
     <br />
     <a href="https://metropolis2.org">Website</a>
     &middot;
-    <a href="https://github.com/Metropolis2/pymetropolis/issues/new?labels=bug&template=bug-report---.md">Report Bug</a>
+    <a href="https://github.com/Metropolis2/pymetropolis/issues/new?labels=bug&template=bug_report.yml">Report Bug</a>
     &middot;
-    <a href="https://github.com/Metropolis2/pymetropolis/issues/new?labels=enhancement&template=feature-request---.md">Request Feature</a>
+    <a href="https://github.com/Metropolis2/pymetropolis/issues/new?labels=enhancement&template=feature_request.yml">Request Feature</a>
   </p>
 </div>
 
