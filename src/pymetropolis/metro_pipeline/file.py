@@ -314,8 +314,6 @@ class MetroGeoDataFrameFile(MetroFile):
                 doc += f"{col._md_doc()}\n"
             if not simple:
                 doc += "\n</details>\n"
-            if not simple:
-                doc += "\n</details>\n"
         return doc
 
 
