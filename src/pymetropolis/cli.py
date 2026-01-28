@@ -1,10 +1,18 @@
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Optional
 
 import typer
 
+import pymetropolis
+
 from .metro_pipeline import Config, run_pipeline
 from .schema import STEPS
+
+
+def version_callback(value: bool):
+    if value:
+        print(pymetropolis.__version__)
+        raise typer.Exit()
 
 
 def app(
@@ -16,6 +24,15 @@ def app(
     dry_run: bool = typer.Option(
         False, "--dry-run", help="Show the step that will be run without actually running them."
     ),
+    version: Annotated[
+        Optional[bool],
+        typer.Option(
+            "--version",
+            help="Show Pymetropolis version and exit",
+            callback=version_callback,
+            is_eager=True,
+        ),
+    ] = None,
 ):
     """Python command line tool to generate, calibrate, run and analyse a METROPOLIS2 simulation."""
     # TODO command to list available steps
