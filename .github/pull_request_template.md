@@ -7,10 +7,8 @@ Please, make sure:
   CONTRIBUTING.md
 - you have read the code of conduct:
   CODE_OF_CONDUCT.md
-- you have formatted the code using rustfmt and checked that all tests pass,
-  by running `cargo make`: https://sagiegurari.github.io/cargo-make/
-- you have updated the changelog (if needed):
-  CHANGELOG.md
+- you have formatted the code using ruff
+- you have updated the changelog (if needed): CHANGELOG.md
 -->
 
 ## Fixes Issue
