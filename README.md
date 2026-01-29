@@ -124,7 +124,7 @@ An increase of the PATCH number indicates bug fixes.
 4. Run the pipeline with `pymetropolis my-config.toml`.
 
 For more details, please refer to the
-[documentation](https://docs.metropolis2.org/pymetropolis/getting_started/index.html).
+[documentation](https://docs.metropolis2.org/pymetropolis/getting_started.html).
 You can find complete examples of simulation instances in the
 [official case studies](https://docs.metropolis2.org/pymetropolis/case_study/index.html).
 
