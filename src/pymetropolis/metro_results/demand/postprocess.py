@@ -12,13 +12,11 @@ class TripResultsStep(Step):
     at the trip level.
     """
 
+    input_files = {
+        "metro_trip_results": MetroTripResultsFile,
+        "metro_agent_results": MetroAgentResultsFile,
+    }
     output_files = {"trip_results": TripResultsFile}
-
-    def required_files(self):
-        return {
-            "metro_trip_results": MetroTripResultsFile,
-            "metro_agent_results": MetroAgentResultsFile,
-        }
 
     def run(self):
         trip_results: pl.DataFrame = self.input["metro_trip_results"].read()

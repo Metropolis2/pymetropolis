@@ -7,7 +7,7 @@ from pymetropolis.metro_network.road_network import (
     EdgesCapacitiesFile,
     EdgesPenaltiesFile,
 )
-from pymetropolis.metro_pipeline.steps import Step
+from pymetropolis.metro_pipeline.steps import InputFile, Step
 
 from .files import MetroEdgesFile
 
@@ -15,13 +15,12 @@ from .files import MetroEdgesFile
 class WriteMetroEdgesStep(Step):
     """Generates the input edges file for the Metropolis-Core simulation."""
 
+    input_files = {
+        "clean_edges": CleanEdgesFile,
+        "capacities": InputFile(EdgesCapacitiesFile, optional=True),
+        "penalties": InputFile(EdgesPenaltiesFile, optional=True),
+    }
     output_files = {"metro_edges": MetroEdgesFile}
-
-    def required_files(self):
-        return {"clean_edges": CleanEdgesFile}
-
-    def optional_files(self):
-        return {"capacities": EdgesCapacitiesFile, "penalties": EdgesPenaltiesFile}
 
     def run(self):
         edges: gpd.GeoDataFrame = self.input["clean_edges"].read()

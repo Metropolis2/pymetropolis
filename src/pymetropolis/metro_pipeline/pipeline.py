@@ -9,7 +9,7 @@ from pymetropolis.metro_common import logger as metro_logger
 
 from .config import Config
 from .file import MetroFile
-from .steps import Step
+from .steps import InputFile, Step
 
 
 class NothingFile(MetroFile):
@@ -35,14 +35,15 @@ def run_pipeline(
             # Add step to the graph.
             for ofile in step.output_files.values():
                 defined_output_files.add(ofile)
-                req_files = step.required_files()
-                if req_files:
-                    for ifile in req_files.values():
-                        graph.add_edge(ifile, ofile, optional=False, step=step)
+                if step.input_files:
+                    for file_spec in step.input_files.values():
+                        optional = file_spec.optional if isinstance(file_spec, InputFile) else False
+                        ifile = (
+                            file_spec.file_class if isinstance(file_spec, InputFile) else file_spec
+                        )
+                        graph.add_edge(ifile, ofile, optional=optional, step=step)
                 else:
                     graph.add_edge(NothingFile, ofile, optional=False, step=step)
-                for ifile in step.optional_files().values():
-                    graph.add_edge(ifile, ofile, optional=True, step=step)
     to_delete_files = list()
     for ofile in all_output_files:
         f = ofile.from_dir(config.main_directory)

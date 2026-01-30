@@ -31,23 +31,22 @@ class ExogenousEdgePenaltiesStep(Step):
             " values (see example)"
         ),
         example="""
-        ```toml
-        [road_network.penalties]
-        [road_network.penalties.urban]
-        motorway = 0
-        road = 5
-        [road_network.penalties.rural]
-        motorway = 0
-        road = 2
-        ```""",
+```toml
+[road_network.penalties]
+[road_network.penalties.urban]
+motorway = 0
+road = 5
+[road_network.penalties.rural]
+motorway = 0
+road = 2
+```
+        """,
     )
+    input_files = {"clean_edges": CleanEdgesFile}
     output_files = {"edges_penalties": EdgesPenaltiesFile}
 
     def is_defined(self) -> bool:
         return self.penalties is not None
-
-    def required_files(self):
-        return {"clean_edges": CleanEdgesFile}
 
     def run(self):
         penalties = self.penalties

@@ -79,20 +79,19 @@ class ExogenousCapacitiesStep(Step):
         default=np.nan,
         description="Bottleneck capacity (in PCE/h) of edges.",
         example="""
-        ```toml
-        [road_network.capacities]
-        [road_network.capacities.urban]
-        motorway = 2000
-        road = 1000
-        [road_network.capacities.rural]
-        motorway = 2000
-        road = 1500
-        ```""",
+```toml
+[road_network.capacities]
+[road_network.capacities.urban]
+motorway = 2000
+road = 1000
+[road_network.capacities.rural]
+motorway = 2000
+road = 1500
+```
+        """,
     )
+    input_files = {"clean_edges": CleanEdgesFile}
     output_files = {"edges_capacities": EdgesCapacitiesFile}
-
-    def required_files(self):
-        return {"clean_edges": CleanEdgesFile}
 
     def run(self):
         capacities = self.capacities

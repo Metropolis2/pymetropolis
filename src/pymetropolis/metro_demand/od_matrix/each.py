@@ -19,13 +19,11 @@ class ODMatrixEachStep(RandomStep):
         "node_od_matrix.each",
         description="Number of trips to generate for each origin-destination pair.",
     )
+    input_files = {"clean_edges": CleanEdgesFile}
     output_files = {"car_driver_ods": CarDriverODsFile}
 
     def is_defined(self) -> bool:
         return self.each is not None
-
-    def required_files(self):
-        return {"clean_edges": CleanEdgesFile}
 
     def run(self):
         edges: gpd.GeoDataFrame = self.input["clean_edges"].read()

@@ -10,6 +10,7 @@ from pymetropolis.metro_demand.modes import (
     PublicTransitTravelTimesFile,
 )
 from pymetropolis.metro_demand.population import TripsFile
+from pymetropolis.metro_pipeline.steps import InputFile
 
 from .common import StepWithModes
 from .files import MetroTripsFile
@@ -132,6 +133,33 @@ def generate_public_transit_trips(
 class WriteMetroTripsStep(StepWithModes):
     """Generates the input trips file for the Metropolis-Core simulation."""
 
+    input_files = {
+        "trips": TripsFile,
+        "car_driver_ods": InputFile(
+            CarDriverODsFile,
+            when=lambda inst: inst.has_mode("car_driver"),
+            when_doc='if the "car_driver" mode is defined',
+        ),
+        "public_transit_travel_times": InputFile(
+            PublicTransitTravelTimesFile,
+            when=lambda inst: inst.has_mode("public_transit"),
+            when_doc='if the "public_transit" mode is defined',
+        ),
+        "linear_schedule": InputFile(LinearScheduleFile, optional=True),
+        "tstars": InputFile(TstarsFile, optional=True),
+        "car_driver_preferences": InputFile(
+            CarDriverPreferencesFile,
+            optional=True,
+            when=lambda inst: inst.has_mode("car_driver"),
+            when_doc='if the "car_driver" mode is defined',
+        ),
+        "public_transit_preferences": InputFile(
+            PublicTransitPreferencesFile,
+            optional=True,
+            when=lambda inst: inst.has_mode("public_transit"),
+            when_doc='if the "public_transit" mode is defined',
+        ),
+    }
     output_files = {"metro_trips": MetroTripsFile}
 
     def is_defined(self) -> bool:
@@ -139,22 +167,6 @@ class WriteMetroTripsStep(StepWithModes):
             return False
         # If there is no "trip mode", this step cannot be run (there is no trip to generate).
         return self.has_trip_modes()
-
-    def required_files(self):
-        files = {"trips": TripsFile}
-        if self.has_mode("car_driver"):
-            files["car_driver_ods"] = CarDriverODsFile
-        if self.has_mode("public_transit"):
-            files["public_transit_travel_times"] = PublicTransitTravelTimesFile
-        return files
-
-    def optional_files(self):
-        files = {"linear_schedule": LinearScheduleFile, "tstars": TstarsFile}
-        if self.has_mode("car_driver"):
-            files["car_driver_preferences"] = CarDriverPreferencesFile
-        if self.has_mode("public_transit"):
-            files["public_transit_preferences"] = PublicTransitPreferencesFile
-        return files
 
     def run(self):
         trips: pl.DataFrame = self.input["trips"].read()

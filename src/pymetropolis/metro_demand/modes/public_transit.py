@@ -33,10 +33,8 @@ class PublicTransitPreferencesStep(Step):
         default=0.0,
         description="Value of time in public transit (€/h).",
     )
+    input_files = {"persons": PersonsFile}
     output_files = {"public_transit_preferences": PublicTransitPreferencesFile}
-
-    def required_files(self):
-        return {"persons": PersonsFile}
 
     def run(self):
         persons: pl.DataFrame = self.input["persons"].read()
@@ -57,13 +55,11 @@ class PublicTransitTravelTimesFromRoadDistancesStep(Step):
         "modes.public_transit.road_network_speed",
         description="Speed of public-transit vehicles on the road network (km/h).",
     )
+    input_files = {"car_driver_distances": CarDriverDistancesFile}
     output_files = {"public_transit_travel_times": PublicTransitTravelTimesFile}
 
     def is_defined(self) -> bool:
         return self.speed is not None
-
-    def required_files(self):
-        return {"car_driver_distances": CarDriverDistancesFile}
 
     def run(self):
         df: pl.DataFrame = self.input["car_driver_distances"].read()

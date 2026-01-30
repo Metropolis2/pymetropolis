@@ -207,11 +207,15 @@ class MetroFile:
         self.complete_path.unlink()
 
     @classmethod
-    def _md_doc(cls, simple: bool = True) -> str:
+    def _md_doc(cls) -> str:
         doc = f"## {cls.__name__}\n\n"
         doc += f"{cls.description}\n\n"
         doc += f"- **Path:** `{cls.path}`\n"
         return doc
+
+    @classmethod
+    def _md_doc_schema(cls, simple: bool = True) -> str:
+        return ""
 
 
 class MetroDataFrameFile(MetroFile):
@@ -246,11 +250,17 @@ class MetroDataFrameFile(MetroFile):
 
     @override
     @classmethod
-    def _md_doc(cls, simple: bool = True) -> str:
+    def _md_doc(cls) -> str:
         doc = super()._md_doc()
         doc += "- **Type:** DataFrame\n"
         if cls.max_rows:
             doc += f"- **Max rows:** {cls.max_rows}\n"
+        return doc
+
+    @override
+    @classmethod
+    def _md_doc_schema(cls, simple: bool = True) -> str:
+        doc = ""
         if cls.schema:
             if simple:
                 doc += "- **Columns:**\n\n"
@@ -298,11 +308,17 @@ class MetroGeoDataFrameFile(MetroFile):
 
     @override
     @classmethod
-    def _md_doc(cls, simple: bool = True) -> str:
+    def _md_doc(cls) -> str:
         doc = super()._md_doc()
         doc += "- **Type:** GeoDataFrame\n"
         if cls.max_rows:
             doc += f"- **Max rows:** {cls.max_rows}\n"
+        return doc
+
+    @override
+    @classmethod
+    def _md_doc_schema(cls, simple: bool = True) -> str:
+        doc = ""
         if cls.schema:
             if simple:
                 doc += "- **Columns:**\n"
@@ -333,7 +349,7 @@ class MetroTxtFile(MetroFile):
 
     @override
     @classmethod
-    def _md_doc(cls, simple: bool = True) -> str:
+    def _md_doc(cls) -> str:
         doc = super()._md_doc()
         doc += "- **Type:** Text\n"
         return doc
@@ -346,7 +362,7 @@ class MetroPlotFile(MetroFile):
 
     @override
     @classmethod
-    def _md_doc(cls, simple: bool = True) -> str:
+    def _md_doc(cls) -> str:
         doc = super()._md_doc()
         doc += "- **Type:** Plot\n"
         return doc

@@ -3,6 +3,7 @@ import subprocess
 from pymetropolis.metro_common.errors import MetropyError
 from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import PathParameter
+from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_simulation.demand import (
     MetroAgentsFile,
     MetroAlternativesFile,
@@ -25,23 +26,18 @@ class RunSimulationStep(Step):
         check_file_exists=True,
         description="Path to the metropolis_cli executable.",
     )
+    input_files = {
+        "metro_parameters": MetroParametersFile,
+        "metro_agents": MetroAgentsFile,
+        "metro_alternatives": MetroAlternativesFile,
+        "metro_edges": MetroEdgesFile,
+        "metro_vehicle_types": MetroVehicleTypesFile,
+        "metro_trips": InputFile(MetroTripsFile, optional=True),
+    }
     output_files = {
         "metro_agent_results": MetroAgentResultsFile,
         "metro_trip_results": MetroTripResultsFile,
     }
-
-    def required_files(self):
-        return {
-            "metro_parameters": MetroParametersFile,
-            "metro_agents": MetroAgentsFile,
-            "metro_alternatives": MetroAlternativesFile,
-            "metro_edges": MetroEdgesFile,
-            "metro_vehicle_types": MetroVehicleTypesFile,
-        }
-
-    def optional_files(self):
-        # Simulations can actually be run without any trips.
-        return {"metro_trips": MetroTripsFile}
 
     def run(self):
         params_path = self.input["metro_parameters"].get_path()

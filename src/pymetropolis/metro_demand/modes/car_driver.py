@@ -30,10 +30,8 @@ class CarDriverPreferencesStep(Step):
         default=0.0,
         description="Value of time as a car driver (€/h).",
     )
+    input_files = {"persons": PersonsFile}
     output_files = {"car_driver_preferences": CarDriverPreferencesFile}
-
-    def required_files(self):
-        return {"persons": PersonsFile}
 
     def run(self):
         persons: pl.DataFrame = self.input["persons"].read()
@@ -53,10 +51,8 @@ class CarDriverDistancesStep(Step):
     shortest-path distances of all node pairs (AllRoadDistancesFile).
     """
 
+    input_files = {"car_driver_ods": CarDriverODsFile, "all_distances": AllRoadDistancesFile}
     output_files = {"car_driver_distances": CarDriverDistancesFile}
-
-    def required_files(self):
-        return {"car_driver_ods": CarDriverODsFile, "all_distances": AllRoadDistancesFile}
 
     def run(self):
         trips: pl.DataFrame = self.input["car_driver_ods"].read()

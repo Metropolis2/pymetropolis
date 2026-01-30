@@ -3,6 +3,7 @@ import polars as pl
 from pymetropolis.metro_common.errors import MetropyError
 from pymetropolis.metro_demand.population import TripsFile, UniformDrawsFile
 from pymetropolis.metro_pipeline.parameters import EnumParameter, FloatParameter
+from pymetropolis.metro_pipeline.steps import InputFile
 
 from .common import StepWithModes
 from .files import MetroAgentsFile
@@ -28,18 +29,20 @@ class WriteMetroAgentsStep(StepWithModes):
         description="Value of mu for the Logit choice model",
         note="Only required when mode choice model is Logit",
     )
+    input_files = {
+        "trips": TripsFile,
+        "uniform_draws": InputFile(
+            UniformDrawsFile,
+            when=lambda inst: inst.has_mode_choice(),
+            when_doc="if there are at least two modes",
+        ),
+    }
     output_files = {"metro_agents": MetroAgentsFile}
 
     def is_defined(self) -> bool:
         return self.modes is not None and (
             not self.has_mode_choice() or self.mode_choice_model is not None
         )
-
-    def required_files(self):
-        files = {"trips": TripsFile}
-        if self.has_mode_choice():
-            files["uniform_draws"] = UniformDrawsFile
-        return files
 
     def run(self):
         trips = self.input["trips"].read()

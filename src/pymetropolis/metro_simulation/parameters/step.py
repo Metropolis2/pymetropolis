@@ -24,6 +24,7 @@ class WriteMetroParametersStep(Step):
         inner=Time(),
         length=2,
         description="Time window to be simulated.",
+        example="`[00:00:00, 24:00:00]`",
     )
     recording_interval = DurationParameter(
         "simulation_parameters.recording_interval",

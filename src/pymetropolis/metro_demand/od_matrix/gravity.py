@@ -37,13 +37,11 @@ class GravityODMatrixStep(RandomStep):
         description="Regular expression specifying the nodes to be selected as possible origin / destination.",
         note="If not specified, any node can be an origin / destination.",
     )
+    input_files = {"all_free_flow_travel_times": AllFreeFlowTravelTimesFile}
     output_files = {"car_driver_ods": CarDriverODsFile}
 
     def is_defined(self) -> bool:
         return self.exponential_decay is not None and self.trips_per_node is not None
-
-    def required_files(self):
-        return {"all_free_flow_travel_times": AllFreeFlowTravelTimesFile}
 
     def run(self):
         df = self.input["all_free_flow_travel_times"].read()

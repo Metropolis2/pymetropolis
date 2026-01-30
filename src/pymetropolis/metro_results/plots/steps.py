@@ -11,10 +11,8 @@ from .files import TripDepartureTimeDistributionPlotFile
 class TripDepartureTimeDistributionStep(Step):
     """Generates a histogram of departure-time distribution at the trip level."""
 
+    input_files = {"trip_results": TripResultsFile}
     output_files = {"trip_departure_time_distribution_plot": TripDepartureTimeDistributionPlotFile}
-
-    def required_files(self):
-        return {"trip_results": TripResultsFile}
 
     def run(self):
         df = self.input["trip_results"].read()

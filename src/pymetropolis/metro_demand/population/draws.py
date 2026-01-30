@@ -12,10 +12,8 @@ class UniformDrawsStep(RandomStep):
     The random numbers are drawn from a uniform distribution between 0 and 1.
     """
 
+    input_files = {"trips": TripsFile}
     output_files = {"uniform_draws": UniformDrawsFile}
-
-    def required_files(self):
-        return {"trips": TripsFile}
 
     def run(self):
         trips: pl.DataFrame = self.input["trips"].read()

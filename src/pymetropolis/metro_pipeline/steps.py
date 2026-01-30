@@ -1,8 +1,9 @@
 import hashlib
 import json
+from collections.abc import Callable
 from itertools import chain
 from pathlib import Path
-from typing import Any, Type
+from typing import Any, ClassVar, Optional, Type, Union
 
 import numpy as np
 
@@ -15,8 +16,40 @@ from .parameters import IntParameter, Parameter
 # TODO: Add something to measure running time for each step.
 
 
+class InputFile:
+    def __init__(
+        self,
+        file_class: Type[MetroFile],
+        optional: bool = False,
+        when: Optional[Callable[["Step"], bool]] = None,
+        when_doc: Optional[str] = None,
+    ):
+        self.file_class = file_class
+        self.optional = optional
+        self.when = when
+        self.when_doc = when_doc
+
+    def from_dir(self, dir: Path) -> MetroFile:
+        return self.file_class.from_dir(dir)
+
+    def is_needed(self, step: "Step") -> bool:
+        if self.when:
+            return self.when(step)
+        else:
+            return True
+
+    def _md_doc(self) -> str:
+        doc = f"[`{self.file_class.__name__}`](files.html#{self.file_class.__name__.lower()})"
+        if self.optional:
+            doc += " (optional)"
+        if self.when_doc:
+            doc += f" [{self.when_doc}]"
+        return doc
+
+
 class Step:
-    output_files: dict[str, Type[MetroFile]]
+    input_files: ClassVar[dict[str, Union[InputFile, Type[MetroFile]]]] = {}
+    output_files: ClassVar[dict[str, Type[MetroFile]]] = {}
     _input_files: dict[str, MetroFile]
     _output_files: dict[str, MetroFile]
     _update_file_path: Path
@@ -31,12 +64,13 @@ class Step:
         self._output_files = {
             k: f.from_dir(config.main_directory) for k, f in self.output_files.items()
         }
-        self._input_files = {
-            k: f.from_dir(config.main_directory) for k, f in self.required_files().items()
-        }
-        self._input_files.update(
-            {k: f.from_dir(config.main_directory) for k, f in self.optional_files().items()}
-        )
+        self._input_files = {}
+        for name, file_spec in self.input_files.items():
+            if isinstance(file_spec, InputFile):
+                if file_spec.is_needed(self):
+                    self._input_files[name] = file_spec.from_dir(config.main_directory)
+            else:
+                self._input_files[name] = file_spec.from_dir(config.main_directory)
         self._update_file_path = config.main_directory / "update_files" / f"{self}.json"
 
     @classmethod
@@ -46,12 +80,6 @@ class Step:
             if not isinstance(param_obj, Parameter):
                 continue
             yield param_name, param_obj
-
-    def required_files(self) -> dict[str, Type[MetroFile]]:
-        return dict()
-
-    def optional_files(self) -> dict[str, Type[MetroFile]]:
-        return dict()
 
     def __str__(self) -> str:
         return self.__class__.__name__
@@ -165,8 +193,8 @@ class Step:
         if cls.__doc__:
             doc += cls.__doc__
         doc += cls._md_doc_params()
-        # doc += cls._md_doc_input_files()
-        # doc += cls._md_doc_output_files()
+        doc += cls._md_doc_input_files()
+        doc += cls._md_doc_output_files()
         return doc
 
     @classmethod
@@ -182,6 +210,33 @@ class Step:
             return doc
         else:
             # There is not parameter.
+            return ""
+
+    @classmethod
+    def _md_doc_input_files(cls) -> str:
+        files = list()
+        for ifile in cls.input_files.values():
+            if isinstance(ifile, InputFile):
+                files.append(ifile._md_doc())
+            else:
+                files.append(f"[`{ifile.__name__}`](files.html#{ifile.__name__.lower()})")
+        if files:
+            doc = "\n- **Input files:** " + ", ".join(sorted(files)) + "\n"
+            return doc
+        else:
+            # There is not output file.
+            return ""
+
+    @classmethod
+    def _md_doc_output_files(cls) -> str:
+        files = list()
+        for ofile in cls.output_files.values():
+            files.append(f"[`{ofile.__name__}`](files.html#{ofile.__name__.lower()})")
+        if files:
+            doc = "\n- **Output files:** " + ", ".join(sorted(files)) + "\n"
+            return doc
+        else:
+            # There is not output file.
             return ""
 
 

@@ -8,6 +8,7 @@ from pymetropolis.metro_demand.modes import (
 )
 from pymetropolis.metro_demand.population import TripsFile, UniformDrawsFile
 from pymetropolis.metro_pipeline.parameters import EnumParameter, FloatParameter
+from pymetropolis.metro_pipeline.steps import InputFile
 
 from .common import StepWithModes
 from .files import MetroAlternativesFile
@@ -77,6 +78,24 @@ class WriteMetroAlternativesStep(StepWithModes):
         description="Value of mu for the Continuous Logit departure-time choice model",
         note="Only required when departure-time choice model is ContinuousLogit",
     )
+    input_files = {
+        "trips": InputFile(
+            TripsFile,
+            when=lambda inst: inst.has_trip_modes(),
+            when_doc='if at least one "trip-based" mode is defined',
+        ),
+        "uniform_draws": InputFile(
+            UniformDrawsFile,
+            when=lambda inst: inst.has_trip_modes()
+            and inst.departure_time_choice_model == "ContinuousLogit",
+            when_doc='if at least one "trip-based" mode is defined and departure-time choice is "ContinuousLogit"',
+        ),
+        "outside_option_preferences": InputFile(
+            OutsideOptionPreferencesFile,
+            when=lambda inst: inst.has_mode("outside_option"),
+            when_doc="if the outside-option mode is defined",
+        ),
+    }
     output_files = {"metro_alternatives": MetroAlternativesFile}
 
     def is_defined(self) -> bool:
@@ -85,16 +104,6 @@ class WriteMetroAlternativesStep(StepWithModes):
         if self.has_trip_modes() and self.departure_time_choice_model is None:
             return False
         return True
-
-    def required_files(self):
-        files = dict()
-        if self.has_trip_modes():
-            files["trips"] = TripsFile
-            if self.departure_time_choice_model == "ContinuousLogit":
-                files["uniform_draws"] = UniformDrawsFile
-        if self.has_mode("outside_option"):
-            files["outside_option_preferences"] = OutsideOptionPreferencesFile
-        return files
 
     def run(self):
         trips: pl.DataFrame = self.input["trips"].read()

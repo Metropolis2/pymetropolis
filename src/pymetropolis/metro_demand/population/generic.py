@@ -13,10 +13,8 @@ class GenericPopulationStep(Step):
     Each household is composed of a single person, with a single trip.
     """
 
+    input_files = {"car_driver_ods": CarDriverODsFile}
     output_files = {"trips": TripsFile, "persons": PersonsFile, "households": HouseholdsFile}
-
-    def required_files(self):
-        return {"car_driver_ods": CarDriverODsFile}
 
     def run(self):
         df: pl.DataFrame = self.input["car_driver_ods"].read()

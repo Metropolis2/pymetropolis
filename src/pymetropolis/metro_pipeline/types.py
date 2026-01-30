@@ -105,7 +105,7 @@ class Enum(Type):
 
     @override
     def _describe(self) -> str:
-        values_str = ", ".join(map(repr, self.values))
+        values_str = ", ".join(map(lambda v: f"`{repr(v)}`", self.values))
         return f"either {values_str}"
 
 
@@ -222,14 +222,14 @@ class List(Type):
     def _describe(self) -> str:
         s = f"list of {self.inner._describe()}"
         if self.length:
-            s += " [exactly {self.length} elements]"
+            s += f" [exactly {self.length} elements]"
         if self.min_length is not None or self.max_length is not None:
             s += " ["
             if self.min_length is not None:
-                s += "at least {self.min_length} elements"
+                s += f"at least {self.min_length} elements"
             if self.min_length is not None and self.max_length is not None:
                 s += ", "
             if self.max_length is not None:
-                s += "at most {self.max_length} elements"
+                s += f"at most {self.max_length} elements"
             s += "]"
         return s

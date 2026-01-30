@@ -4,6 +4,7 @@ from loguru import logger
 from pymetropolis.metro_demand.population import TripsFile
 from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import FloatParameter
+from pymetropolis.metro_pipeline.steps import InputFile
 
 from .files import (
     CarDriverDistancesFile,
@@ -34,13 +35,11 @@ class OutsideOptionPreferencesStep(Step):
         description="Value of time for the outside option (€/h).",
         note="This is usually not relevant as the outside option does not imply traveling.",
     )
+    input_files = {
+        "trips": TripsFile,
+        "outside_option_travel_times": InputFile(OutsideOptionTravelTimesFile, optional=True),
+    }
     output_files = {"outside_option_preferences": OutsideOptionPreferencesFile}
-
-    def required_files(self):
-        return {"trips": TripsFile}
-
-    def optional_files(self):
-        return {"outside_option_travel_times": OutsideOptionTravelTimesFile}
 
     def run(self):
         trips = self.input["trips"].read()
@@ -84,13 +83,11 @@ class OutsideOptionTravelTimesFromRoadDistancesStep(Step):
         "modes.outside_option.road_network_speed",
         description="Constant speed on the road network to compute travel time for outside option trips (km/h).",
     )
+    input_files = {"car_driver_distances": CarDriverDistancesFile, "trips": TripsFile}
     output_files = {"outside_option_travel_times": OutsideOptionTravelTimesFile}
 
     def is_defined(self) -> bool:
         return self.speed is not None
-
-    def required_files(self):
-        return {"car_driver_distances": CarDriverDistancesFile, "trips": TripsFile}
 
     def run(self):
         df: pl.DataFrame = self.input["car_driver_distances"].read()

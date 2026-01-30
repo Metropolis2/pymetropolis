@@ -50,10 +50,8 @@ class LinearScheduleStep(Step):
         default=timedelta(0),
         description="Length of the desired time window.",
     )
+    input_files = {"trips": TripsFile}
     output_files = {"linear_schedule": LinearScheduleFile}
-
-    def required_files(self):
-        return {"trips": TripsFile}
 
     def run(self):
         trips: pl.DataFrame = self.input["trips"].read()
@@ -91,13 +89,11 @@ class HomogeneousTstarStep(RandomStep):
         default="Uniform",
         description="Distribution of tstar.",
     )
+    input_files = {"trips": TripsFile}
     output_files = {"tstars": TstarsFile}
 
     def is_defined(self) -> bool:
         return self.tstar is not None
-
-    def required_files(self):
-        return {"trips": TripsFile}
 
     def run(self):
         trips = self.input["trips"].read()

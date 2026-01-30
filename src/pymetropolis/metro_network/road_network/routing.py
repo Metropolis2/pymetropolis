@@ -2,6 +2,7 @@ import networkx as nx
 import polars as pl
 
 from pymetropolis.metro_pipeline import Step
+from pymetropolis.metro_pipeline.steps import InputFile
 
 from .files import (
     AllFreeFlowTravelTimesFile,
@@ -32,13 +33,11 @@ class AllFreeFlowTravelTimesStep(Step):
     of the road network.
     """
 
+    input_files = {
+        "clean_edges": CleanEdgesFile,
+        "edges_penalties": InputFile(EdgesPenaltiesFile, optional=True),
+    }
     output_files = {"all_free_flow_travel_times": AllFreeFlowTravelTimesFile}
-
-    def required_files(self):
-        return {"clean_edges": CleanEdgesFile}
-
-    def optional_files(self):
-        return {"edges_penalties": EdgesPenaltiesFile}
 
     def run(self):
         edges = self.input["clean_edges"].read()
@@ -63,10 +62,8 @@ class AllFreeFlowTravelTimesStep(Step):
 class AllRoadDistancesStep(Step):
     """Computes distance of the shortest path, for all node pairs of the road network."""
 
+    input_files = {"clean_edges": CleanEdgesFile}
     output_files = {"all_distances": AllRoadDistancesFile}
-
-    def required_files(self):
-        return {"clean_edges": CleanEdgesFile}
 
     def run(self):
         edges = self.input["clean_edges"].read()

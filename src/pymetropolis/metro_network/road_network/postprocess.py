@@ -129,10 +129,8 @@ road = 1
 
         """,
     )
+    input_files = {"raw_edges": RawEdgesFile}
     output_files = {"clean_edges": CleanEdgesFile}
-
-    def required_files(self):
-        return {"raw_edges": RawEdgesFile}
 
     def run(self):
         """Reads a GeoDataFrame of edges and performs various operations to make the data ready to
