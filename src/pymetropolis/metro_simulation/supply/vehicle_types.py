@@ -7,6 +7,8 @@ from .files import MetroVehicleTypesFile
 
 
 class WriteMetroVehicleTypesStep(Step):
+    """Generates the input vehicle-types file for the Metropolis-Core simulation."""
+
     car_headway = FloatParameter(
         "vehicle_types.car.headway",
         default=8.0,

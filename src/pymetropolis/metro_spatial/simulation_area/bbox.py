@@ -6,12 +6,33 @@ from pymetropolis.metro_pipeline.parameters import (
     ListParameter,
 )
 from pymetropolis.metro_pipeline.types import Float
-from pymetropolis.metro_spatial import GeoMetroStep
+from pymetropolis.metro_spatial import GeoStep
 
 from .file import SimulationAreaFile
 
 
-class SimulationAreaFromBboxStep(GeoMetroStep):
+class SimulationAreaFromBboxStep(GeoStep):
+    """Creates the simulation area from a bounding box.
+
+    This is the easiest way to specify the simulation area. However, the area is thus limited to
+    rectangles.
+
+    The bounding box needs to be specified as the `bbox` value, which expects a list of coordinates
+    `[minx, miny, maxx, maxy]`.
+
+    By default, the coordinates need to be specified in the simulation CRS.
+    If you want to specify them in WGS84 (longitude, latitude), you can use `bbox_wgs = true`.
+
+    You can go to [www.openstreetmap.org](https://www.openstreetmap.org) to identify the bounding
+    box of a region (as WGS84 coordinates), using the "Export" button.
+
+    ```toml
+    [simulation_area]
+    bbox = [1.4777, 48.3955, 3.6200, 49.2032]
+    bbox_wgs = true
+    ```
+    """
+
     bbox = ListParameter(
         "simulation_area.bbox",
         inner=Float(),

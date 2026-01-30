@@ -11,7 +11,7 @@ from pymetropolis.metro_demand.modes import (
 )
 from pymetropolis.metro_demand.population import TripsFile
 
-from .common import MetroStepWithModes
+from .common import StepWithModes
 from .files import MetroTripsFile
 
 
@@ -129,7 +129,9 @@ def generate_public_transit_trips(
     return df
 
 
-class WriteMetroTripsStep(MetroStepWithModes):
+class WriteMetroTripsStep(StepWithModes):
+    """Generates the input trips file for the Metropolis-Core simulation."""
+
     output_files = {"metro_trips": MetroTripsFile}
 
     def is_defined(self) -> bool:

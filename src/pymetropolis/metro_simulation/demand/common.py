@@ -1,9 +1,9 @@
 from pymetropolis.metro_pipeline.parameters import ListParameter
-from pymetropolis.metro_pipeline.steps import MetroStep
+from pymetropolis.metro_pipeline.steps import Step
 from pymetropolis.metro_pipeline.types import Enum
 
 
-class MetroStepWithModes(MetroStep):
+class StepWithModes(Step):
     modes = ListParameter(
         "mode_choice.modes",
         inner=Enum(values=["car_driver", "public_transit", "outside_option"]),

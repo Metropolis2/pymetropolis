@@ -12,14 +12,34 @@ from .files import CleanEdgesFile, EdgesPenaltiesFile
 
 
 class ExogenousEdgePenaltiesStep(Step):
+    """Generates travel time penalties for the road network edges, from exogenous values.
+
+    The penalties can be:
+
+    - constant over edges
+    - constant by road type
+    - constant by combinations of road type and urban flag
+    """
+
     penalties = CustomParameter(
         "road_network.penalties",
         validator=default_edge_values_validator,
         description="Constant time penalty (in seconds) of edges.",
-        note=(
-            "The value is either a scalar value to be applied to all edges, a table "
-            "`road_type -> penalty` or two tables `road_type -> penalty`, for urban and rural edges."
+        validator_description=(
+            "float (constant penalty for all edges), table with road types as keys and penalties"
+            ' as values, or table with "urban" and "rural" as keys and `road_type->value` tables as'
+            " values (see example)"
         ),
+        example="""
+        ```toml
+        [road_network.penalties]
+        [road_network.penalties.urban]
+        motorway = 0
+        road = 5
+        [road_network.penalties.rural]
+        motorway = 0
+        road = 2
+        ```""",
     )
     output_files = {"edges_penalties": EdgesPenaltiesFile}
 

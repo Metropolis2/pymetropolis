@@ -9,7 +9,7 @@ from pymetropolis.metro_demand.modes import (
 from pymetropolis.metro_demand.population import TripsFile, UniformDrawsFile
 from pymetropolis.metro_pipeline.parameters import EnumParameter, FloatParameter
 
-from .common import MetroStepWithModes
+from .common import StepWithModes
 from .files import MetroAlternativesFile
 
 
@@ -63,7 +63,9 @@ def generate_outside_option_alts(tour_ids: pl.Series, pref_file: OutsideOptionPr
     return df
 
 
-class WriteMetroAlternativesStep(MetroStepWithModes):
+class WriteMetroAlternativesStep(StepWithModes):
+    """Generates the input alternatives file for the Metropolis-Core simulation."""
+
     departure_time_choice_model = EnumParameter(
         "departure_time_choice.model",
         values=["ContinuousLogit", "Exogenous"],

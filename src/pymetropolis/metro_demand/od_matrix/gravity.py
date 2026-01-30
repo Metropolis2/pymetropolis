@@ -3,12 +3,27 @@ import polars as pl
 from pymetropolis.metro_demand.modes import CarDriverODsFile
 from pymetropolis.metro_network.road_network import AllFreeFlowTravelTimesFile
 from pymetropolis.metro_pipeline.parameters import FloatParameter, IntParameter, StringParameter
-from pymetropolis.metro_pipeline.steps import MetroStep
+from pymetropolis.metro_pipeline.steps import RandomStep
 
 from .common import generate_trips_from_od_matrix
 
 
-class GravityODMatrixStep(MetroStep):
+class GravityODMatrixStep(RandomStep):
+    r"""Generates car driver origin-destination pairs by generating trips from a gravity model.
+
+    The model is based on de Palma, A., Kilani, M., & Lindsey, R. (2005). Congestion pricing on a
+    road network: A study using the dynamic equilibrium simulator METROPOLIS. _Transportation
+    Research Part A: Policy and Practice, 39_(7-9), 588-611.
+
+    The total number of trips generated from each node is fixed (parameter `trips_per_node`).
+    Then, the number of trips generated from node \\(i\\) to node \\(j\\) is proportional to:
+
+    \\[ e^{-\\lambda \\cdot {tt}^0} \\]
+
+    where \\(\\lambda\\) is the decay rate (parameter `exponential_decay`) and \\({tt}^0\\) is the
+    free-flow travel time by car from node \\(i\\) to node \\(j\\).
+    """
+
     exponential_decay = FloatParameter(
         "gravity_od_matrix.exponential_decay",
         description="Exponential decay rate of flows as a function of free-flow travel times (rate per minute)",

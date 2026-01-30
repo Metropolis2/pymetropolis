@@ -1,12 +1,12 @@
 from pymetropolis.metro_pipeline.parameters import PathParameter
-from pymetropolis.metro_pipeline.steps import MetroStep
+from pymetropolis.metro_pipeline.steps import Step
 
 
-class OSMMetroStep(MetroStep):
+class OSMStep(Step):
     osm_file = PathParameter(
         "osm_file",
         check_file_exists=True,
-        extensions=[".pdf", ".osm"],
+        extensions=[".pbf", ".osm"],
         description=(
             "Path to the OpenStreetMap file (`.osm` or `.osm.pbf`) with data for the simulation area."
         ),

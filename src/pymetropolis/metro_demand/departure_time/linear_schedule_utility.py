@@ -13,12 +13,28 @@ from pymetropolis.metro_pipeline.parameters import (
     FloatParameter,
     TimeParameter,
 )
-from pymetropolis.metro_pipeline.steps import MetroStep
+from pymetropolis.metro_pipeline.steps import RandomStep, Step
 
 from .files import LinearScheduleFile, TstarsFile
 
 
-class LinearScheduleStep(MetroStep):
+class LinearScheduleStep(Step):
+    """Generates the preference parameters for schedule-delay utility of each trip, using a
+    linear-penalty model (à la Arnott, de Palma, Lindsey), from exogenous values.
+
+    For each trip, the following parameters are created:
+
+    - beta: the penalty for starting the following activity earlier than the desired time
+    - gamma: the penalty for starting the following activity earlier than the desired time
+    - delta: the length of the desired time window
+
+    The values can be constant over trips or sampled from a specific distribution.
+
+    This Step should be combined with a Step that generate desired activity start times.
+    """
+
+    # TODO: allow distributed values
+
     beta = FloatParameter(
         "departure_time.linear_schedule.beta",
         default=0.0,
@@ -50,7 +66,15 @@ class LinearScheduleStep(MetroStep):
         self.output["linear_schedule"].write(df)
 
 
-class HomogeneousTstarStep(MetroStep):
+class HomogeneousTstarStep(RandomStep):
+    """Generates the desired start time of the activity following each trip, from exogenous values.
+
+    The desired start times can be constant over trips or sampled from a specific distribution.
+    It is recommended to only use this Step when each person has one trip only.
+
+    This Step should be combined with a Step that generate schedule-utility parameters.
+    """
+
     tstar = TimeParameter(
         "departure_time.linear_schedule.tstar",
         description="Desired start time of the following activity.",

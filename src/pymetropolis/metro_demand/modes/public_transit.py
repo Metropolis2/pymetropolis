@@ -12,6 +12,17 @@ from .files import (
 
 
 class PublicTransitPreferencesStep(Step):
+    """Generates the preference parameters of traveling by public transit, for each trip, from
+    exogenous values.
+
+    The following parameters are generated:
+
+    - constant: penalty of traveling by public transit, *per trip*
+    - value of time / alpha: penalty per hour spent traveling by public transit
+
+    The values can be constant over trips or sampled from a specific distribution.
+    """
+
     constant = FloatParameter(
         "modes.public_transit.constant",
         default=0.0,
@@ -38,6 +49,10 @@ class PublicTransitPreferencesStep(Step):
 
 
 class PublicTransitTravelTimesFromRoadDistancesStep(Step):
+    """Generates travel times for the public-transit trips by applying a constant speed to
+    the shortest-path distances of the car-driver trips.
+    """
+
     speed = FloatParameter(
         "modes.public_transit.road_network_speed",
         description="Speed of public-transit vehicles on the road network (km/h).",

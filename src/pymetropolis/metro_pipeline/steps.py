@@ -24,10 +24,7 @@ class Step:
 
     def __init__(self, config: Config):
         self._config_dict = dict()
-        for param_name in dir(self.__class__):
-            param_obj = getattr(self.__class__, param_name)
-            if not isinstance(param_obj, Parameter):
-                continue
+        for param_name, param_obj in self.__class__._iter_params():
             value = param_obj.from_config(config)
             self._config_dict[param_name] = value
             setattr(self, param_name, value)
@@ -41,6 +38,14 @@ class Step:
             {k: f.from_dir(config.main_directory) for k, f in self.optional_files().items()}
         )
         self._update_file_path = config.main_directory / "update_files" / f"{self}.json"
+
+    @classmethod
+    def _iter_params(cls):
+        for param_name in dir(cls):
+            param_obj = getattr(cls, param_name)
+            if not isinstance(param_obj, Parameter):
+                continue
+            yield param_name, param_obj
 
     def required_files(self) -> dict[str, Type[MetroFile]]:
         return dict()
@@ -154,8 +159,35 @@ class Step:
         with open(self._update_file_path, "w") as f:
             json.dump(update_dict, f)
 
+    @classmethod
+    def _md_doc(cls) -> str:
+        doc = f"## {cls.__name__}\n\n"
+        if cls.__doc__:
+            doc += cls.__doc__
+        doc += cls._md_doc_params()
+        # doc += cls._md_doc_input_files()
+        # doc += cls._md_doc_output_files()
+        return doc
 
-class MetroStep(Step):
+    @classmethod
+    def _md_doc_params(cls) -> str:
+        params = list()
+        for param_name, param_obj in cls._iter_params():
+            key_str = ".".join(param_obj.key)
+            # Hash is the string that must be used to properly link to the parameters page.
+            hash = "".join(param_obj.key)
+            params.append(f"[`{key_str}`](parameters.html#{hash})")
+        if params:
+            doc = "\n- **Parameters:** " + ", ".join(sorted(params)) + "\n"
+            return doc
+        else:
+            # There is not parameter.
+            return ""
+
+
+class RandomStep(Step):
+    """A Step subclass for Steps that make use of random number generation."""
+
     random_seed = IntParameter(
         "random_seed",
         description="Random seed used to initialize the random number generator.",

@@ -4,11 +4,18 @@ from pymetropolis.metro_common.errors import MetropyError
 from pymetropolis.metro_demand.population import TripsFile, UniformDrawsFile
 from pymetropolis.metro_pipeline.parameters import EnumParameter, FloatParameter
 
-from .common import MetroStepWithModes
+from .common import StepWithModes
 from .files import MetroAgentsFile
 
 
-class WriteMetroAgentsStep(MetroStepWithModes):
+class WriteMetroAgentsStep(StepWithModes):
+    """Generates the input agents file for the Metropolis-Core simulation.
+
+    If mode choice is enabled (more than 1 mode is simulated), the mode-choice parameters of the
+    agents are initiated.
+    """
+
+    # TODO: Implement and explain in the docs the 4 mode choice models.
     mode_choice_model = EnumParameter(
         "mode_choice.model",
         values=["Logit", "DrawnLogit", "DrawnNestedLogit", "Deterministic"],

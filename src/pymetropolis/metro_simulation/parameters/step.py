@@ -10,13 +10,15 @@ from pymetropolis.metro_pipeline.parameters import (
     IntParameter,
     ListParameter,
 )
-from pymetropolis.metro_pipeline.steps import MetroStep
+from pymetropolis.metro_pipeline.steps import Step
 from pymetropolis.metro_pipeline.types import Time
 
 from .file import MetroParametersFile
 
 
-class WriteMetroParametersStep(MetroStep):
+class WriteMetroParametersStep(Step):
+    """Generates the input parameters file for the Metropolis-Core simulation."""
+
     period = ListParameter(
         "simulation_parameters.period",
         inner=Time(),

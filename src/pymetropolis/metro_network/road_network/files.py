@@ -305,7 +305,7 @@ class AllFreeFlowTravelTimesFile(MetroDataFrameFile):
     ]
 
 
-class AllDistancesFile(MetroDataFrameFile):
+class AllRoadDistancesFile(MetroDataFrameFile):
     path = "network/road_network/all_distances.parquet"
     description = "Shortest path distance for each pair of nodes on the road network."
     schema = [

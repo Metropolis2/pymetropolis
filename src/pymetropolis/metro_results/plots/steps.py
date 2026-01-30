@@ -9,6 +9,8 @@ from .files import TripDepartureTimeDistributionPlotFile
 
 
 class TripDepartureTimeDistributionStep(Step):
+    """Generates a histogram of departure-time distribution at the trip level."""
+
     output_files = {"trip_departure_time_distribution_plot": TripDepartureTimeDistributionPlotFile}
 
     def required_files(self):

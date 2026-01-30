@@ -2,18 +2,18 @@ from .capacities import ExogenousCapacitiesStep
 from .circular import CircularNetworkStep
 from .custom import CustomRoadImportStep
 from .files import (
-    AllDistancesFile,
+    AllFreeFlowTravelTimesFile as AllFreeFlowTravelTimesFile,
+)
+from .files import (
+    AllRoadDistancesFile,
     CleanEdgesFile,
     EdgesCapacitiesFile,
     EdgesPenaltiesFile,
     RawEdgesFile,
 )
-from .files import (
-    AllFreeFlowTravelTimesFile as AllFreeFlowTravelTimesFile,
-)
 from .penalties import ExogenousEdgePenaltiesStep
 from .postprocess import PostprocessRoadNetworkStep
-from .routing import AllDistancesStep, AllFreeFlowTravelTimesStep
+from .routing import AllFreeFlowTravelTimesStep, AllRoadDistancesStep
 
 # from .osm import OSMRoadImportStep
 
@@ -23,7 +23,7 @@ ROAD_NETWORK_FILES = [
     EdgesCapacitiesFile,
     EdgesPenaltiesFile,
     RawEdgesFile,
-    AllDistancesFile,
+    AllRoadDistancesFile,
 ]
 
 ROAD_NETWORK_STEPS = [
@@ -33,6 +33,6 @@ ROAD_NETWORK_STEPS = [
     ExogenousCapacitiesStep,
     CircularNetworkStep,
     AllFreeFlowTravelTimesStep,
-    AllDistancesStep,
+    AllRoadDistancesStep,
     ExogenousEdgePenaltiesStep,
 ]

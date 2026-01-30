@@ -5,12 +5,16 @@ import polars as pl
 from pymetropolis.metro_demand.modes import CarDriverODsFile
 from pymetropolis.metro_network.road_network import CleanEdgesFile
 from pymetropolis.metro_pipeline.parameters import FloatParameter
-from pymetropolis.metro_pipeline.steps import MetroStep
+from pymetropolis.metro_pipeline.steps import RandomStep
 
 from .common import generate_trips_from_od_matrix
 
 
-class ODMatrixEachStep(MetroStep):
+class ODMatrixEachStep(RandomStep):
+    """Generates car driver origin-destination pairs by generating a fixed number of trips for each
+    node pair of the road network.
+    """
+
     each = FloatParameter(
         "node_od_matrix.each",
         description="Number of trips to generate for each origin-destination pair.",

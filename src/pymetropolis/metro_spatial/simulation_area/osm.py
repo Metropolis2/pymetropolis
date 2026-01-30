@@ -9,7 +9,7 @@ from osmium.osm import Area
 
 from pymetropolis.metro_common.errors import MetropyError
 from pymetropolis.metro_pipeline.parameters import CustomParameter, FloatParameter, IntParameter
-from pymetropolis.metro_spatial import GeoMetroStep, OSMMetroStep
+from pymetropolis.metro_spatial import GeoStep, OSMStep
 
 from .common import buffer_area, geom_as_gdf
 from .file import SimulationAreaFile
@@ -26,10 +26,50 @@ def name_or_names_validator(value: Any) -> str | list[str]:
     raise MetropyError(f"Invalid value (expected string or list of strings): `{value}`")
 
 
-class SimulationAreaFromOSMStep(GeoMetroStep, OSMMetroStep):
+class SimulationAreaFromOSMStep(GeoStep, OSMStep):
+    """Creates the simulation area by reading administrative boundaries from OpenStreetMap data.
+
+    Administrative boundaries of various subdivisions are specified directly on OpenStreetMap (e.g.,
+    states, counties, municipalities), with the tags
+    [`admin_level=*`](https://wiki.openstreetmap.org/wiki/Key:admin%20level) and
+    [`boundary=administrative`](https://wiki.openstreetmap.org/wiki/Tag:boundary%3Dadministrative).
+    The OpenStreetMap wiki has a
+    [table](https://wiki.openstreetmap.org/wiki/Tag:boundary%3Dadministrative#Table_:_Admin_level_for_all_countries)
+    indicating the meaning of each `admin_level` value by country.
+    For example, `admin_level=6` represents counties in the U.S. and *départements* in France.
+
+    You can use this Step to create the simulation area by reading one or more administrative
+    boundaries from OpenStreetMap data.
+    First, you need to set the `osm_file` value to the path to the OpenStreetMap file.
+    In the `[simulation_area]` section, the `osm_admin_level` value represents the `admin_level`
+    value to be used as filter and the `osm_name` value is a list of the subdivisions names to be
+    selected.
+
+    For example, to get the polygon of Madrid, you can use:
+
+    ```toml
+    osm_file = "path/to/spain.osm.pbf"
+
+    [simulation_area]
+    osm_admin_level = 8
+    osm_name = ["Madrid"]
+    ```
+
+    Or, to get the polygon of Paris and the surrounding departments, you can use:
+
+    ```toml
+    osm_file = "path/to/france.osm.pbf"
+
+    [simulation_area]
+    osm_admin_level = 6
+    osm_name = ["Paris", "Hauts-de-Seine", "Seine-Saint-Denis", "Val-de-Marne"]
+    ```
+    """
+
     osm_name = CustomParameter(
         "simulation_area.osm_name",
         validator=name_or_names_validator,
+        validator_description="string or list of strings",
         description="List of subdivision names to be considered when reading administrative boundaries.",
         example='`"Madrid"`',
         note=(

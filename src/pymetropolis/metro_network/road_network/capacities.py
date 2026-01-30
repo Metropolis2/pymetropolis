@@ -59,16 +59,35 @@ def capacities_validator(value: Any) -> int | float | dict:
 
 
 class ExogenousCapacitiesStep(Step):
-    # TODO: Add custom validation for the parameter.
+    """Generates bottleneck capacities for the road network edges, from exogenous values.
+
+    The bottleneck capacities can be:
+
+    - constant over edges
+    - constant by road type
+    - constant by combinations of road type and urban flag
+    """
+
     capacities = CustomParameter(
         "road_network.capacities",
         validator=capacities_validator,
+        validator_description=(
+            "float (constant capacity for all edges), table with road types as keys and capacities"
+            ' as values, or table with "urban" and "rural" as keys and `road_type->value` tables as'
+            " values (see example)"
+        ),
         default=np.nan,
         description="Bottleneck capacity (in PCE/h) of edges.",
-        note=(
-            "The value is either a scalar value to be applied to all edges, a table "
-            "`road_type -> capacity` or two tables `road_type -> capacity`, for urban and rural edges."
-        ),
+        example="""
+        ```toml
+        [road_network.capacities]
+        [road_network.capacities.urban]
+        motorway = 2000
+        road = 1000
+        [road_network.capacities.rural]
+        motorway = 2000
+        road = 1500
+        ```""",
     )
     output_files = {"edges_capacities": EdgesCapacitiesFile}
 

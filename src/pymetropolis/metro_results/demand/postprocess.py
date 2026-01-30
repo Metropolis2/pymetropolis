@@ -1,13 +1,17 @@
 import polars as pl
 
 from pymetropolis.metro_common.utils import seconds_since_midnight_to_time_pl
-from pymetropolis.metro_pipeline.steps import MetroStep
+from pymetropolis.metro_pipeline.steps import Step
 from pymetropolis.metro_simulation.run import MetroAgentResultsFile, MetroTripResultsFile
 
 from .files import TripResultsFile
 
 
-class TripResultsStep(MetroStep):
+class TripResultsStep(Step):
+    """Reads the results from the Metropolis-Core simulation and produces a clean file for results
+    at the trip level.
+    """
+
     output_files = {"trip_results": TripResultsFile}
 
     def required_files(self):

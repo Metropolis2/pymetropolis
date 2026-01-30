@@ -1,5 +1,5 @@
-from .crs import GeoMetroStep as GeoMetroStep
-from .osm import OSMMetroStep as OSMMetroStep
+from .crs import GeoStep as GeoStep
+from .osm import OSMStep as OSMStep
 from .simulation_area import SIMULATION_AREA_FILES, SIMULATION_AREA_STEPS
 
 FILES = SIMULATION_AREA_FILES

@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from datetime import time, timedelta
 from pathlib import Path
 from typing import Any, Optional, override
@@ -11,13 +12,27 @@ class Type:
     def validate(self, value: Any) -> Any:
         return value
 
+    def _describe(self) -> str:
+        return "any value"
+
 
 class CustomValidator:
-    def __init__(self, validator_fn):
-        self.validator_fn = validator_fn
+    fn: Callable[[Any], Any]
+    description: Optional[str]
+
+    def __init__(self, fn: Callable[[Any], Any], description: Optional[str] = None):
+        self.fn = fn
+        self.description = description
 
     def validate(self, value: Any) -> Any:
-        return self.validator_fn(value)
+        return self.fn(value)
+
+    @override
+    def _describe(self) -> str:
+        if self.description:
+            return self.description
+        else:
+            return "custom value"
 
 
 class Int(Type):
@@ -26,6 +41,10 @@ class Int(Type):
         if not isinstance(value, int):
             raise MetropyError(f"Invalid integer: {value}")
         return value
+
+    @override
+    def _describe(self) -> str:
+        return "integer"
 
 
 class PathType(Type):
@@ -58,6 +77,18 @@ class PathType(Type):
             raise MetropyError(f"Invalid path (not a directory): {value}")
         return value
 
+    @override
+    def _describe(self) -> str:
+        s = "string representing a valid path"
+        if self.check_file_exists:
+            s += " to an existing file"
+        if self.check_dir_exists:
+            s += " to an existing directory"
+        if self.extensions:
+            ext_str = ", ".join(self.extensions)
+            s += f" [possible extensions: {ext_str}]"
+        return s
+
 
 class Enum(Type):
     values: set[Any]
@@ -71,6 +102,11 @@ class Enum(Type):
             values_str = ", ".join(map(repr, self.values))
             raise MetropyError(f"Invalid value: {value} [Expected one of: {values_str}]")
         return value
+
+    @override
+    def _describe(self) -> str:
+        values_str = ", ".join(map(repr, self.values))
+        return f"either {values_str}"
 
 
 class Bool(Type):
@@ -88,6 +124,10 @@ class Float(Type):
             raise MetropyError(f"Invalid float: {value}")
         return float(value)
 
+    @override
+    def _describe(self) -> str:
+        return "boolean"
+
 
 class String(Type):
     @override
@@ -95,6 +135,10 @@ class String(Type):
         if not isinstance(value, str):
             raise MetropyError(f"Invalid string: {repr(value)}")
         return value
+
+    @override
+    def _describe(self) -> str:
+        return "string"
 
 
 class Duration(Type):
@@ -111,6 +155,10 @@ class Duration(Type):
                 pass
         raise MetropyError(f"Invalid duration: {value}")
 
+    @override
+    def _describe(self) -> str:
+        return 'duration (number of seconds or ISO8601 duration, such as "PT1H2M3S")'
+
 
 class Time(Type):
     @override
@@ -123,6 +171,10 @@ class Time(Type):
             except ValueError:
                 pass
         raise MetropyError(f"Invalid time: {value}")
+
+    @override
+    def _describe(self) -> str:
+        return "time (ISO8601 value, such as 07:12:34)"
 
 
 class List(Type):
@@ -142,6 +194,9 @@ class List(Type):
         self.length = length
         self.min_length = min_length
         self.max_length = max_length
+        if self.length is not None:
+            assert self.min_length is None
+            assert self.max_length is None
 
     def validate(self, value: Any) -> list[Any]:
         if not isinstance(value, list):
@@ -162,3 +217,19 @@ class List(Type):
         for elem in value:
             res.append(self.inner.validate(elem))
         return res
+
+    @override
+    def _describe(self) -> str:
+        s = f"list of {self.inner._describe()}"
+        if self.length:
+            s += " [exactly {self.length} elements]"
+        if self.min_length is not None or self.max_length is not None:
+            s += " ["
+            if self.min_length is not None:
+                s += "at least {self.min_length} elements"
+            if self.min_length is not None and self.max_length is not None:
+                s += ", "
+            if self.max_length is not None:
+                s += "at most {self.max_length} elements"
+            s += "]"
+        return s

@@ -13,6 +13,29 @@ EPSILON = np.finfo(float).eps
 
 
 class PostprocessRoadNetworkStep(Step):
+    """Performs some operations on the "raw" road network to make it suitable for simulation.
+
+    The operations performed are:
+
+    - Replace NULL values with defaults for columns `speed_limit`, `nb_lanes` and all the boolean
+      columns.
+    - Remove all parallel edges (edges with same source and target nodes), keeping only the edge
+      of minimum free-flow travel time. This is only done if `remove_duplacites` is `true`.
+    - Keep only the largest strongly connected component of the road-network graph. This ensures
+      that all origin-destination pairs are feasible. This is only done if `ensure_connected` is
+      `true`.
+    - Set edge ids to `1,...,n`, where `n` is the number of edges. This is only done if `reindex` is
+      `true`.
+    - Set a minimum value for the number of lanes, speed limit, and length of edges.
+    - Compute in- and out-degrees of nodes.
+
+    The default values for `speed_limit` and `nb_lanes` can be specified as
+
+    - constant value over edges
+    - constant value by road type
+    - constant value by combinations of road type and urban flag
+    """
+
     min_nb_lanes = FloatParameter(
         "road_network_postprocess.min_nb_lanes",
         default=1.0,
@@ -58,22 +81,53 @@ class PostprocessRoadNetworkStep(Step):
         "road_network_postprocess.default_speed_limit",
         validator=default_edge_values_validator,
         description="Default speed limit (in km/h) to use for edges with no specified value.",
+        validator_description=(
+            "float (constant speed limit for all edges), table with road types as keys and speed "
+            'limits as values, or table with "urban" and "rural" as keys and `road_type->value`'
+            " tables as values (see example)"
+        ),
         note=(
             "The value is either a scalar value to be applied to all edges with no specified value, a "
             "table `road_type -> speed_limit` or two tables `road_type -> speed_limit`, for urban and "
             "rural edges."
         ),
+        example="""
+
+```toml
+[road_network_postprocess.default_speed_limit]
+[road_network_postprocess.default_speed_limit.urban]
+motorway = 110
+road = 50
+[road_network_postprocess.default_speed_limit.rural]
+motorway = 110
+road = 80
+```
+
+        """,
     )
     default_nb_lanes = CustomParameter(
         "road_network_postprocess.default_nb_lanes",
         validator=default_edge_values_validator,
+        validator_description=(
+            "float (constant number of lanes for all edges), table with road types as keys and "
+            'number of lanes as values, or table with "urban" and "rural" as keys and'
+            " `road_type->value` tables as values (see example)"
+        ),
         default=1.0,
         description="Default number of lanes to use for edges with no specified value.",
-        note=(
-            "The value is either a scalar value to be applied to all edges with no specified value, a "
-            "table `road_type -> nb_lanes` or two tables `road_type -> nb_lanes`, for urban and rural "
-            "edges."
-        ),
+        example="""
+
+```toml
+[road_network_postprocess.default_nb_lanes]
+[road_network_postprocess.default_nb_lanes.urban]
+motorway = 2
+road = 1
+[road_network_postprocess.default_nb_lanes.rural]
+motorway = 3
+road = 1
+```
+
+        """,
     )
     output_files = {"clean_edges": CleanEdgesFile}
 
@@ -165,8 +219,7 @@ def set_default_values(gdf, default_speed_limit: float | dict, default_nb_lanes:
 
 
 def remove_duplicates(gdf):
-    """Remove the duplicates edges, keeping in order of priority the one in the main graph, with the
-    largest capacity and with smallest free-flow travel time."""
+    """Remove the duplicates edges, keeping in order the one with smallest free-flow travel time."""
     print("Removing duplicate edges")
     n0 = len(gdf)
     l0 = gdf["length"].sum()
@@ -212,7 +265,7 @@ def select_connected(gdf):
 
 
 def reindex(gdf):
-    gdf["edge_id"] = np.arange(len(gdf), dtype=np.uint64)
+    gdf["edge_id"] = np.arange(1, len(gdf) + 1, dtype=np.uint64)
     return gdf
 
 

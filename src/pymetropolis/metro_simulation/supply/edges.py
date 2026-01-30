@@ -7,12 +7,14 @@ from pymetropolis.metro_network.road_network import (
     EdgesCapacitiesFile,
     EdgesPenaltiesFile,
 )
-from pymetropolis.metro_pipeline.steps import MetroStep
+from pymetropolis.metro_pipeline.steps import Step
 
 from .files import MetroEdgesFile
 
 
-class WriteMetroEdgesStep(MetroStep):
+class WriteMetroEdgesStep(Step):
+    """Generates the input edges file for the Metropolis-Core simulation."""
+
     output_files = {"metro_edges": MetroEdgesFile}
 
     def required_files(self):

@@ -13,6 +13,17 @@ from .files import (
 
 
 class OutsideOptionPreferencesStep(Step):
+    """Generates the preference parameters of the outside option alternative from exogenous values.
+
+    The following parameters are generated:
+
+    - constant: utility of choosing the outside option alternative
+    - value of time / alpha: penalty per hour spent traveling for the outside option (this usually
+      irrelevant as the outside option does not imply traveling)
+
+    The values can be constant over tours or sampled from a specific distribution.
+    """
+
     constant = FloatParameter(
         "modes.outside_option.constant",
         default=0.0,
@@ -62,6 +73,13 @@ class OutsideOptionPreferencesStep(Step):
 
 
 class OutsideOptionTravelTimesFromRoadDistancesStep(Step):
+    """Generates travel times for the outside option alternatives by applying a constant speed to
+    the shortest-path distances of the car-driver trips.
+
+    If a tour has multiple trips, the outside option travel time of the tour depends on the sum of
+    the shortest-path distances of all trips.
+    """
+
     speed = FloatParameter(
         "modes.outside_option.road_network_speed",
         description="Constant speed on the road network to compute travel time for outside option trips (km/h).",

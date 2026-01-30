@@ -23,6 +23,12 @@ T = TypeVar("T", default=Any)
 
 
 class Parameter(Generic[T]):
+    key: list[str]
+    validator: Type
+    description: str
+    example: str
+    note: str
+
     def __init__(
         self,
         key: str,
@@ -40,6 +46,18 @@ class Parameter(Generic[T]):
         self.example = example
         if default is not None:
             self._value = self.validator.validate(default)
+
+    def _md_doc(self) -> str:
+        key_str = ".".join(self.key)
+        doc = f"### `{key_str}`\n\n"
+        if self.description:
+            doc += f"- **Description:** {self.description}\n"
+        doc += f"- **Allowed values:** {self.validator._describe()}\n"
+        if self.example:
+            doc += f"- **Example:** {self.example}\n"
+        if self.note:
+            doc += f"- **Note:** {self.note}\n"
+        return doc
 
     @overload
     def __get__(self, instance: None, owner: Any) -> "Parameter[T]": ...
@@ -66,7 +84,9 @@ class Parameter(Generic[T]):
 
 class CustomParameter(Parameter):
     def __init__(self, *args, validator, **kwargs):
-        kwargs["validator"] = CustomValidator(validator_fn=validator)
+        kwargs["validator"] = CustomValidator(
+            fn=validator, description=kwargs.pop("validator_description")
+        )
         super().__init__(*args, **kwargs)
 
 

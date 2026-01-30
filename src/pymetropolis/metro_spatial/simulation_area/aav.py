@@ -11,7 +11,7 @@ from pymetropolis.metro_pipeline.parameters import (
     PathParameter,
     StringParameter,
 )
-from pymetropolis.metro_spatial import GeoMetroStep
+from pymetropolis.metro_spatial import GeoStep
 
 from .common import buffer_area, geom_as_gdf
 from .file import SimulationAreaFile
@@ -29,10 +29,48 @@ def get_aav_from_url():
             ]
             assert len(valid_files) == 1
             gdf = gpd.read_file(z.open(valid_files[0]), engine="pyogrio")
-    return gdf
+            return gdf
 
 
-class SimulationAreaFromAAVStep(GeoMetroStep):
+class SimulationAreaFromAAVStep(GeoStep):
+    """Creates the simulation area from the boundaries of a Frech metropolitan area.
+
+    A French metropolitan area (*aire d'attraction d'une ville*) is a type of statistical area
+    defined by the French national statistics office INSEE.
+    It is defined by considering the commuting patterns between cities, making it well adapted to
+    define areas for transport simulations.
+
+    The database for these *aires d'attraction des villes* is publicly available on the
+    [INSEE website](https://www.insee.fr/fr/information/4803954).
+    Pymetropolis can automatically download the database and read the polygon of an area if you set
+    the `aav_name` parameter to one of the existing area.
+    The areas' name is usually the name of the biggest city in the area.
+
+    ```toml
+    [simulation_area]
+    aav_name = "Paris"
+    ```
+
+    If the automatic download does not work, you can download the file locally and tell Pymetropolis
+    to use that version:
+
+    - Go to the INSEE page of the *aires d'attraction des villes* database:
+      [https://www.insee.fr/fr/information/4803954](https://www.insee.fr/fr/information/4803954)
+    - Download the zip file "Fonds de cartes des aires d'attraction des villes 2020 au 1er janvier
+      2024"
+    - Unzip the file. You will get two zip files representing shapefiles: `aav2020_2024.zip`
+      (polygons of the areas) and `com_aav2020_2024.zip` (polygons of the municipalities). Only the
+      former is needed.
+    - In the section `[simulation_area]` of the configuration, add the lines
+      `aav_filename = "path/to/aav2020_2024.zip"` and `aav_name = "YOUR_AAV_NAME"`.
+
+    ```toml
+    [simulation_area]
+    aav_name = "Paris"
+    aav_filename = "path/to/aav2020_2024.zip"
+    ```
+    """
+
     aav_name = StringParameter(
         "simulation_area.aav_name",
         description="Name of the _Aire d'attraction des villes_ to be selected.",

@@ -306,11 +306,59 @@ def validate_radius(value: Any) -> float | list[float]:
 
 
 class CircularNetworkStep(Step):
+    """Generates a toy road network of circular form with radial and ring roads.
+
+    The network is inspired by de Palma, A., Kilani, M., & Lindsey, R. (2005). Congestion pricing on
+    a road network: A study using the dynamic equilibrium simulator METROPOLIS. _Transportation
+    Research Part A: Policy and Practice, 39_(7-9), 588-611.
+
+    The network has a center node, called "CBD".
+    From the center, bidirectional *radial roads* are going in all directions.
+    The number of radial roads is controled by the `nb_radials` parameters and they are evenly
+    spaced (in the polar dimension).
+    At fixed distances from the center (controled by the parameter `radius`), bidirectional rings
+    are connecting the radial roads together.
+    The number of rings is controled by the `nb_rings` parameter.
+
+    There is one node at each crossing of a ring road with a radial road.
+    The number of nodes is thus `nb_radials * nb_rings + 1`.
+    The number of edges is `4 * nb_radials * nb_rings`.
+
+    Node ids are set to `"{D}-{i}"`, where `D` is the direction (N, S, E, W, NW, NE, SW, SE, or D1,
+    D2, etc. when the number of radials is different from 2, 4, or 8) and `i` is the ring index
+    (starting at 1).
+    For example, node `"NW-1"` is at the intersection of the Northwest radial with the first ring
+    (closest ring to the center).
+    Node `"D1-2"` is at the intersection of the first radial road (radial roads are generated
+    starting from the east direction and going in a counterclockwise direction, like the unit
+    circle) with the second ring.
+    By convention, the center node is denoted `"CBD"`.
+
+    Edge ids for radial roads are set to `"In{i}-{D}"` for edges going toward the center and
+    `"Out{i}-{D}"` for edges going away from the center, with the same definition of `D` and `i`
+    than for the nodes.
+    For example, edge `"In2-S"` is the radial edge on the South axis, between the first and second
+    ring (its source node is `"S-2"` and its target node is `"S-1"`).
+
+    Edge ids for ring roads are set to `{D1}-{D2}-{i}`, where `D1` is the direction the edge is
+    starting from, `D2` is the direction the edge is going to, and `i` is the ring index.
+    For example, edge `"S-SE-1"` is the ring edge from node `"S-1"` to node `"SE-1"`.
+
+    Road types are set to `"Radial {i}"` for radial roads and `"Ring {i}"` for ring roads.
+
+    The parameter `with_ramps` allows to split each node of the road network (except the CBD node)
+    in four different nodes (inner, outer, left, and right) connected by edges representing entry /
+    exit ramps in and out of highways.
+    """
+
+    # TODO: Add link to map for ramps.
+
     nb_radials = IntParameter("circular_network.nb_radials", description="Number of radial axis.")
     nb_rings = IntParameter("circular_network.nb_rings", description="Number of rings.")
     radius = CustomParameter(
         "circular_network.radius",
         validator=validate_radius,
+        validator_description="float or list of floats",
         description="Radius of each ring, in meters.",
         note="If a scalar, the distance between each ring. If a list, the (cumulative) distance of each ring to the center",
     )

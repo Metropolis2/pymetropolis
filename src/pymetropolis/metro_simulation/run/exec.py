@@ -15,6 +15,11 @@ from .files import MetroAgentResultsFile, MetroTripResultsFile
 
 
 class RunSimulationStep(Step):
+    """Runs the Metropolis-Core simulation.
+
+    This Step can take a few hours or even days to execute for large-scale simulations.
+    """
+
     exec_path = PathParameter(
         "metropolis_core.exec_path",
         check_file_exists=True,

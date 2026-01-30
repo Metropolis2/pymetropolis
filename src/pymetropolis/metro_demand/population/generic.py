@@ -1,12 +1,18 @@
 import polars as pl
 
 from pymetropolis.metro_demand.modes.files import CarDriverODsFile
-from pymetropolis.metro_pipeline.steps import MetroStep
+from pymetropolis.metro_pipeline.steps import Step
 
 from .files import HouseholdsFile, PersonsFile, TripsFile
 
 
-class GenericPopulationStep(MetroStep):
+class GenericPopulationStep(Step):
+    """Generates a population (households, persons, and trips) from a list of car-driver
+    origin-destination pairs.
+
+    Each household is composed of a single person, with a single trip.
+    """
+
     output_files = {"trips": TripsFile, "persons": PersonsFile, "households": HouseholdsFile}
 
     def required_files(self):

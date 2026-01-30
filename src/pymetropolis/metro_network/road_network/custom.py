@@ -6,6 +6,11 @@ from .files import RawEdgesFile
 
 
 class CustomRoadImportStep(Step):
+    """Imports a road network from a geospatial file.
+
+    The file must have the same schema has the `RawEdgesFile`.
+    """
+
     edges_file = PathParameter(
         "custom_road_import.edges_file",
         check_file_exists=True,

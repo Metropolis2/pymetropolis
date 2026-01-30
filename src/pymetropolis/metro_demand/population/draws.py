@@ -1,11 +1,17 @@
 import polars as pl
 
-from pymetropolis.metro_pipeline.steps import MetroStep
+from pymetropolis.metro_pipeline.steps import RandomStep
 
 from .files import TripsFile, UniformDrawsFile
 
 
-class UniformDrawsStep(MetroStep):
+class UniformDrawsStep(RandomStep):
+    """Draws random numbers for the inverse transform sampling of mode choice and departure time
+    choice of each tour.
+
+    The random numbers are drawn from a uniform distribution between 0 and 1.
+    """
+
     output_files = {"uniform_draws": UniformDrawsFile}
 
     def required_files(self):

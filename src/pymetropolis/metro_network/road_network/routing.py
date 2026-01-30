@@ -3,7 +3,12 @@ import polars as pl
 
 from pymetropolis.metro_pipeline import Step
 
-from .files import AllDistancesFile, AllFreeFlowTravelTimesFile, CleanEdgesFile, EdgesPenaltiesFile
+from .files import (
+    AllFreeFlowTravelTimesFile,
+    AllRoadDistancesFile,
+    CleanEdgesFile,
+    EdgesPenaltiesFile,
+)
 
 
 def compute_all_pairs_dijkstra(edges: pl.DataFrame) -> pl.DataFrame:
@@ -23,6 +28,10 @@ def compute_all_pairs_dijkstra(edges: pl.DataFrame) -> pl.DataFrame:
 
 
 class AllFreeFlowTravelTimesStep(Step):
+    """Computes travel time of the fastest path under (car) free-flow conditions, for all node pairs
+    of the road network.
+    """
+
     output_files = {"all_free_flow_travel_times": AllFreeFlowTravelTimesFile}
 
     def required_files(self):
@@ -51,8 +60,10 @@ class AllFreeFlowTravelTimesStep(Step):
         self.output["all_free_flow_travel_times"].write(df)
 
 
-class AllDistancesStep(Step):
-    output_files = {"all_distances": AllDistancesFile}
+class AllRoadDistancesStep(Step):
+    """Computes distance of the shortest path, for all node pairs of the road network."""
+
+    output_files = {"all_distances": AllRoadDistancesFile}
 
     def required_files(self):
         return {"clean_edges": CleanEdgesFile}
