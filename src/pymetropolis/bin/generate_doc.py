@@ -133,6 +133,6 @@ if __name__ == "__main__":
         f.write(steps_doc)
 
     print("Generating Parameters references")
-    params_doc = build_steps_doc()
+    params_doc = build_params_doc()
     with open(os.path.join(args.path, "parameters-generated.md"), "w") as f:
         f.write(params_doc)
