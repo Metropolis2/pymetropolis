@@ -3,6 +3,7 @@ import polars as pl
 from pymetropolis.metro_demand.population import PersonsFile
 from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import FloatParameter
+from pymetropolis.random import FloatDistributionParameter, RandomStep, generate_values
 
 from .files import (
     CarDriverDistancesFile,
@@ -11,7 +12,7 @@ from .files import (
 )
 
 
-class PublicTransitPreferencesStep(Step):
+class PublicTransitPreferencesStep(RandomStep):
     """Generates the preference parameters of traveling by public transit, for each trip, from
     exogenous values.
 
@@ -23,12 +24,12 @@ class PublicTransitPreferencesStep(Step):
     The values can be constant over trips or sampled from a specific distribution.
     """
 
-    constant = FloatParameter(
+    constant = FloatDistributionParameter(
         "modes.public_transit.constant",
         default=0.0,
         description="Constant penalty for each trip in public transit (€).",
     )
-    value_of_time = FloatParameter(
+    value_of_time = FloatDistributionParameter(
         "modes.public_transit.alpha",
         default=0.0,
         description="Value of time in public transit (€/h).",
@@ -38,10 +39,11 @@ class PublicTransitPreferencesStep(Step):
 
     def run(self):
         persons: pl.DataFrame = self.input["persons"].read()
+        rng = self.get_rng()
         df = persons.select(
             "person_id",
-            public_transit_cst=pl.lit(self.constant),
-            public_transit_vot=pl.lit(self.value_of_time),
+            public_transit_cst=generate_values(self.constant, len(persons), rng),
+            public_transit_vot=generate_values(self.value_of_time, len(persons), rng),
         )
         self.output["public_transit_preferences"].write(df)
 

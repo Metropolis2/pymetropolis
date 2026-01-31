@@ -5,13 +5,12 @@ from itertools import chain
 from pathlib import Path
 from typing import Any, ClassVar, Optional, Type, Union
 
-import numpy as np
 
 from pymetropolis.metro_common.errors import MetropyError, error_context
 
 from .config import Config
 from .file import MetroFile
-from .parameters import IntParameter, Parameter
+from .parameters import Parameter
 
 # TODO: Add something to measure running time for each step.
 
@@ -238,19 +237,3 @@ class Step:
         else:
             # There is not output file.
             return ""
-
-
-class RandomStep(Step):
-    """A Step subclass for Steps that make use of random number generation."""
-
-    random_seed = IntParameter(
-        "random_seed",
-        description="Random seed used to initialize the random number generator.",
-        note=(
-            "If the random seed is not defined, some operations are not deterministic, i.e., they can "
-            "produce different results if re-run."
-        ),
-    )
-
-    def get_rng(self) -> np.random.Generator:
-        return np.random.default_rng(self.random_seed)

@@ -2,23 +2,21 @@ from datetime import timedelta
 
 import polars as pl
 
-from pymetropolis.metro_common.utils import (
-    seconds_since_midnight_to_time_pl,
-    time_to_seconds_since_midnight,
-)
 from pymetropolis.metro_demand.population.files import TripsFile
-from pymetropolis.metro_pipeline.parameters import (
-    DurationParameter,
-    EnumParameter,
-    FloatParameter,
-    TimeParameter,
+from pymetropolis.random import (
+    DurationDistributionParameter,
+    FloatDistributionParameter,
+    RandomStep,
+    TimeDistributionParameter,
+    generate_duration_values,
+    generate_time_values,
+    generate_values,
 )
-from pymetropolis.metro_pipeline.steps import RandomStep, Step
 
 from .files import LinearScheduleFile, TstarsFile
 
 
-class LinearScheduleStep(Step):
+class LinearScheduleStep(RandomStep):
     """Generates the preference parameters for schedule-delay utility of each trip, using a
     linear-penalty model (à la Arnott, de Palma, Lindsey), from exogenous values.
 
@@ -33,21 +31,19 @@ class LinearScheduleStep(Step):
     This Step should be combined with a Step that generate desired activity start times.
     """
 
-    # TODO: allow distributed values
-
-    beta = FloatParameter(
+    beta = FloatDistributionParameter(
         "departure_time.linear_schedule.beta",
         default=0.0,
         description="Penalty for starting an activity earlier than the desired time (€/h).",
     )
-    gamma = FloatParameter(
+    gamma = FloatDistributionParameter(
         "departure_time.linear_schedule.gamma",
         default=0.0,
         description="Penalty for starting an activity later than the desired time (€/h).",
     )
-    delta = DurationParameter(
+    delta = DurationDistributionParameter(
         "departure_time.linear_schedule.delta",
-        default=timedelta(0),
+        default=timedelta(0.0),
         description="Length of the desired time window.",
     )
     input_files = {"trips": TripsFile}
@@ -55,11 +51,12 @@ class LinearScheduleStep(Step):
 
     def run(self):
         trips: pl.DataFrame = self.input["trips"].read()
+        rng = self.get_rng()
         df = trips.select(
             "trip_id",
-            beta=pl.lit(self.beta),
-            gamma=pl.lit(self.gamma),
-            delta=pl.lit(self.delta),
+            beta=generate_values(self.beta, len(trips), rng),
+            gamma=generate_values(self.gamma, len(trips), rng),
+            delta=generate_duration_values(self.delta, len(trips), rng),
         )
         self.output["linear_schedule"].write(df)
 
@@ -73,21 +70,9 @@ class HomogeneousTstarStep(RandomStep):
     This Step should be combined with a Step that generate schedule-utility parameters.
     """
 
-    tstar = TimeParameter(
+    tstar = TimeDistributionParameter(
         "departure_time.linear_schedule.tstar",
         description="Desired start time of the following activity.",
-    )
-    std = DurationParameter(
-        "departure_time.linear_schedule.tstar_std",
-        default=timedelta(0),
-        description="Standard-deviation of tstar.",
-        note="For a uniform distribution, this is half the interval instead.",
-    )
-    distr = EnumParameter(
-        "departure_time.linear_schedule.tstar_distr",
-        values=["Uniform", "Normal", "Gaussian"],
-        default="Uniform",
-        description="Distribution of tstar.",
     )
     input_files = {"trips": TripsFile}
     output_files = {"tstars": TstarsFile}
@@ -97,19 +82,6 @@ class HomogeneousTstarStep(RandomStep):
 
     def run(self):
         trips = self.input["trips"].read()
-        if self.std > timedelta(0):
-            rng = self.get_rng()
-            tstar_float = time_to_seconds_since_midnight(self.tstar)
-            std_float = self.std.total_seconds()
-            if self.distr == "Uniform":
-                tstars = rng.uniform(
-                    tstar_float - std_float, tstar_float + std_float, size=len(trips)
-                )
-            elif self.distr in ("Normal", "Gaussian"):
-                tstars = rng.normal(tstar_float, scale=std_float, size=len(trips))
-            df = trips.select("trip_id", tstar=pl.Series(tstars)).with_columns(
-                tstar=seconds_since_midnight_to_time_pl("tstar")
-            )
-        else:
-            df = trips.select("trip_id", tstar=pl.lit(self.tstar))
+        tstars = generate_time_values(self.tstar, len(trips), self.get_rng())
+        df = trips.with_columns(tstar=tstars)
         self.output["tstars"].write(df)

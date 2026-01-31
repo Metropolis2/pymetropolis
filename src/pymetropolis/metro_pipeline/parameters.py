@@ -4,6 +4,8 @@ from typing import Any, Generic, Optional, overload
 
 from typing_extensions import TypeVar
 
+from pymetropolis.metro_common.errors import error_context
+
 from .config import Config
 from .types import (
     Bool,
@@ -47,6 +49,9 @@ class Parameter(Generic[T]):
         if default is not None:
             self._value = self.validator.validate(default)
 
+    def __str__(self) -> str:
+        return ".".join(self.key)
+
     def _md_doc(self) -> str:
         key_str = ".".join(self.key)
         doc = f"### `{key_str}`\n\n"
@@ -68,6 +73,7 @@ class Parameter(Generic[T]):
     def __get__(self, instance: Any, owner: Any) -> Any:
         return self
 
+    @error_context("Cannot validate parameter `{}`", fmt_args=[0])
     def from_config(self, config: Config) -> T | None:
         x = config.dict
         for k in self.key:

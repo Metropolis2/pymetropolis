@@ -1,6 +1,6 @@
 import polars as pl
 
-from pymetropolis.metro_pipeline.steps import RandomStep
+from pymetropolis.random import RandomStep
 
 from .files import TripsFile, UniformDrawsFile
 

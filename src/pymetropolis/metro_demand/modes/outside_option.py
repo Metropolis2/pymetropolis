@@ -5,6 +5,7 @@ from pymetropolis.metro_demand.population import TripsFile
 from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import FloatParameter
 from pymetropolis.metro_pipeline.steps import InputFile
+from pymetropolis.random import FloatDistributionParameter, RandomStep, generate_values
 
 from .files import (
     CarDriverDistancesFile,
@@ -13,7 +14,7 @@ from .files import (
 )
 
 
-class OutsideOptionPreferencesStep(Step):
+class OutsideOptionPreferencesStep(RandomStep):
     """Generates the preference parameters of the outside option alternative from exogenous values.
 
     The following parameters are generated:
@@ -25,12 +26,12 @@ class OutsideOptionPreferencesStep(Step):
     The values can be constant over tours or sampled from a specific distribution.
     """
 
-    constant = FloatParameter(
+    constant = FloatDistributionParameter(
         "modes.outside_option.constant",
         default=0.0,
         description="Constant utility of the outside option (€).",
     )
-    value_of_time = FloatParameter(
+    value_of_time = FloatDistributionParameter(
         "modes.outside_option.alpha",
         description="Value of time for the outside option (€/h).",
         note="This is usually not relevant as the outside option does not imply traveling.",
@@ -43,11 +44,9 @@ class OutsideOptionPreferencesStep(Step):
 
     def run(self):
         trips = self.input["trips"].read()
-        df = (
-            trips.select("tour_id", outside_option_cst=pl.lit(self.constant, dtype=pl.Float64))
-            .unique()
-            .sort("tour_id")
-        )
+        df = trips.select("tour_id").unique().sort("tour_id")
+        rng = self.get_rng()
+        df = df.select("tour_id", outside_option_cst=generate_values(self.constant, len(df), rng))
         if self.input["outside_option_travel_times"].exists():
             tts: pl.DataFrame = self.input["outside_option_travel_times"].read()
             alpha = self.value_of_time
@@ -58,11 +57,14 @@ class OutsideOptionPreferencesStep(Step):
             else:
                 df = (
                     df.join(tts, on="tour_id", how="left")
+                    .with_columns(alpha=generate_values(alpha, len(df), rng))
                     .with_columns(
                         outside_option_cst=pl.col("outside_option_cst")
-                        - alpha * pl.col("outside_option_travel_time").dt.total_seconds() / 3600.0
+                        - pl.col("alpha")
+                        * pl.col("outside_option_travel_time").dt.total_seconds()
+                        / 3600.0
                     )
-                    .drop("outside_option_travel_time")
+                    .drop("outside_option_travel_time", "alpha")
                 )
         elif self.value_of_time is not None and self.value_of_time != 0.0:
             logger.warning(

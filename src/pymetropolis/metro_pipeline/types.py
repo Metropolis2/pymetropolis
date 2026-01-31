@@ -13,7 +13,7 @@ class Type:
         return value
 
     def _describe(self) -> str:
-        return "any value"
+        return "Any value"
 
 
 class CustomValidator:
@@ -32,7 +32,7 @@ class CustomValidator:
         if self.description:
             return self.description
         else:
-            return "custom value"
+            return "Custom value"
 
 
 class Int(Type):
@@ -44,7 +44,7 @@ class Int(Type):
 
     @override
     def _describe(self) -> str:
-        return "integer"
+        return "Integer"
 
 
 class PathType(Type):
@@ -79,7 +79,7 @@ class PathType(Type):
 
     @override
     def _describe(self) -> str:
-        s = "string representing a valid path"
+        s = "String representing a valid path"
         if self.check_file_exists:
             s += " to an existing file"
         if self.check_dir_exists:
@@ -106,7 +106,7 @@ class Enum(Type):
     @override
     def _describe(self) -> str:
         values_str = ", ".join(map(lambda v: f"`{repr(v)}`", self.values))
-        return f"either {values_str}"
+        return f"Either {values_str}"
 
 
 class Bool(Type):
@@ -115,6 +115,10 @@ class Bool(Type):
         if not isinstance(value, bool):
             raise MetropyError(f"Invalid boolean: {value}")
         return value
+
+    @override
+    def _describe(self) -> str:
+        return "Boolean"
 
 
 class Float(Type):
@@ -126,7 +130,7 @@ class Float(Type):
 
     @override
     def _describe(self) -> str:
-        return "boolean"
+        return "Float"
 
 
 class String(Type):
@@ -138,7 +142,7 @@ class String(Type):
 
     @override
     def _describe(self) -> str:
-        return "string"
+        return "String"
 
 
 class Duration(Type):
@@ -157,7 +161,7 @@ class Duration(Type):
 
     @override
     def _describe(self) -> str:
-        return 'duration (number of seconds or ISO8601 duration, such as "PT1H2M3S")'
+        return "Duration"
 
 
 class Time(Type):
@@ -174,7 +178,7 @@ class Time(Type):
 
     @override
     def _describe(self) -> str:
-        return "time (ISO8601 value, such as 07:12:34)"
+        return "Time"
 
 
 class List(Type):
@@ -220,7 +224,7 @@ class List(Type):
 
     @override
     def _describe(self) -> str:
-        s = f"list of {self.inner._describe()}"
+        s = f"List of {self.inner._describe()}"
         if self.length:
             s += f" [exactly {self.length} elements]"
         if self.min_length is not None or self.max_length is not None:
