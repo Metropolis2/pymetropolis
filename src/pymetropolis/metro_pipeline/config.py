@@ -46,7 +46,7 @@ class Config:
         if not isinstance(main_dir, str):
             raise MetropyError(f"Config value `main_directory` should be a path, got `{main_dir}`")
         path = Path(main_dir)
-        path.mkdir(exist_ok=True)
+        path.mkdir(exist_ok=True, parents=True)
         self.main_directory = path
         # Also create the update_files/ directory if needed.
         update_files_path = path / "update_files"

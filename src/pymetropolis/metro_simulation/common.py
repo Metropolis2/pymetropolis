@@ -8,6 +8,7 @@ class StepWithModes(Step):
         "mode_choice.modes",
         inner=Enum(values=["car_driver", "public_transit", "outside_option"]),
         min_length=1,
+        description="List of modes the agents can used to travel.",
     )
 
     def has_trip_modes(self) -> bool:

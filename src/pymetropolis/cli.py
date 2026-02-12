@@ -5,7 +5,7 @@ import typer
 
 import pymetropolis
 
-from .metro_pipeline import Config, run_pipeline
+from .metro_pipeline import run_pipeline
 from .schema import STEPS
 
 
@@ -36,5 +36,4 @@ def app(
 ):
     """Python command line tool to generate, calibrate, run and analyse a METROPOLIS2 simulation."""
     # TODO command to list available steps
-    metro_config = Config.from_toml(config)
-    run_pipeline(metro_config, STEPS, dry_run=dry_run)
+    run_pipeline(config_path=config, step_classes=STEPS, dry_run=dry_run)

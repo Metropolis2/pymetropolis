@@ -11,7 +11,7 @@ def is_valid_map(value: dict) -> bool:
 def default_edge_values_validator(value: Any) -> int | float | dict:
     """A validator function for a parameter that defines default values for edges.
 
-    Returns the value if it is a valid paramete input, otherwise raises an error.
+    Returns the value if it is a valid parameter input, otherwise raises an error.
 
     Three cases:
         - The same value (numeric) for all edges.

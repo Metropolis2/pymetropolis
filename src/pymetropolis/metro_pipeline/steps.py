@@ -5,7 +5,6 @@ from itertools import chain
 from pathlib import Path
 from typing import Any, ClassVar, Optional, Type, Union
 
-
 from pymetropolis.metro_common.errors import MetropyError, error_context
 
 from .config import Config
@@ -46,6 +45,8 @@ class InputFile:
         return doc
 
 
+# TODO: Make some steps "optional" so they are not run if they are not needed (they are not
+# considered a endpoint node)
 class Step:
     input_files: ClassVar[dict[str, Union[InputFile, Type[MetroFile]]]] = {}
     output_files: ClassVar[dict[str, Type[MetroFile]]] = {}

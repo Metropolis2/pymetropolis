@@ -37,28 +37,28 @@ class PostprocessRoadNetworkStep(Step):
     """
 
     min_nb_lanes = FloatParameter(
-        "road_network_postprocess.min_nb_lanes",
+        "road_network.min_nb_lanes",
         default=1.0,
         description="Minimum number of lanes allowed on edges.",
     )
     min_speed_limit = FloatParameter(
-        "road_network_postprocess.min_speed_limit",
+        "road_network.min_speed_limit",
         default=EPSILON,
         description="Minimum speed limit allowed on edges (in km/h).",
     )
     min_length = FloatParameter(
-        "road_network_postprocess.min_length",
+        "road_network.min_length",
         default=0.0,
         description="Minimum length allowed on edges (in meters).",
     )
     remove_duplicates = BoolParameter(
-        "road_network_postprocess.remove_duplicates",
+        "road_network.remove_duplicates",
         default=False,
         description="Whether the duplicate edges (edges with same source and target) should be removed.",
         note="If `True`, the edge with the smallest travel time is kept.",
     )
     ensure_connected = BoolParameter(
-        "road_network_postprocess.ensure_connected",
+        "road_network.ensure_connected",
         default=False,
         description=(
             "Whether the network should be restricted to the largest strongly connected component of "
@@ -70,7 +70,7 @@ class PostprocessRoadNetworkStep(Step):
         ),
     )
     reindex = BoolParameter(
-        "road_network_postprocess.reindex",
+        "road_network.reindex",
         default=False,
         description=(
             "If `true`, the edges are re-index after the postprocessing so that they are indexed from "
@@ -78,7 +78,7 @@ class PostprocessRoadNetworkStep(Step):
         ),
     )
     default_speed_limit = CustomParameter(
-        "road_network_postprocess.default_speed_limit",
+        "road_network.default_speed_limit",
         validator=default_edge_values_validator,
         description="Default speed limit (in km/h) to use for edges with no specified value.",
         validator_description=(
@@ -94,11 +94,11 @@ class PostprocessRoadNetworkStep(Step):
         example="""
 
 ```toml
-[road_network_postprocess.default_speed_limit]
-[road_network_postprocess.default_speed_limit.urban]
+[road_network.default_speed_limit]
+[road_network.default_speed_limit.urban]
 motorway = 110
 road = 50
-[road_network_postprocess.default_speed_limit.rural]
+[road_network.default_speed_limit.rural]
 motorway = 110
 road = 80
 ```
@@ -106,7 +106,7 @@ road = 80
         """,
     )
     default_nb_lanes = CustomParameter(
-        "road_network_postprocess.default_nb_lanes",
+        "road_network.default_nb_lanes",
         validator=default_edge_values_validator,
         validator_description=(
             "float (constant number of lanes for all edges), table with road types as keys and "
@@ -118,11 +118,11 @@ road = 80
         example="""
 
 ```toml
-[road_network_postprocess.default_nb_lanes]
-[road_network_postprocess.default_nb_lanes.urban]
+[road_network.default_nb_lanes]
+[road_network.default_nb_lanes.urban]
 motorway = 2
 road = 1
-[road_network_postprocess.default_nb_lanes.rural]
+[road_network.default_nb_lanes.rural]
 motorway = 3
 road = 1
 ```
@@ -160,7 +160,9 @@ road = 1
 
 
 @error_context("Failed to set default values of edges")
-def set_default_values(gdf, default_speed_limit: float | dict, default_nb_lanes: float | dict):
+def set_default_values(
+    gdf, default_speed_limit: int | float | dict, default_nb_lanes: float | dict
+):
     # Set default for bool columns (default is always False).
     for col in ("toll", "roundabout", "give_way", "stop", "traffic_signals", "urban"):
         if col not in gdf.columns:
@@ -171,7 +173,7 @@ def set_default_values(gdf, default_speed_limit: float | dict, default_nb_lanes:
     if "speed_limit" not in gdf.columns:
         gdf["speed_limit"] = np.nan
     gdf["default_speed_limit"] = gdf["speed_limit"].isna()
-    if isinstance(default_speed_limit, float):
+    if isinstance(default_speed_limit, int | float):
         gdf["speed_limit"] = gdf["speed_limit"].fillna(default_speed_limit)
     elif isinstance(default_speed_limit, dict):
         if "urban" in default_speed_limit.keys() and "rural" in default_speed_limit.keys():
@@ -194,7 +196,7 @@ def set_default_values(gdf, default_speed_limit: float | dict, default_nb_lanes:
     if "lanes" not in gdf.columns:
         gdf["lanes"] = np.nan
     gdf["default_lanes"] = gdf["lanes"].isna()
-    if isinstance(default_nb_lanes, float):
+    if isinstance(default_nb_lanes, int | float):
         gdf["lanes"] = gdf["lanes"].fillna(default_nb_lanes)
     elif isinstance(default_nb_lanes, dict):
         if "urban" in default_nb_lanes.keys() and "rural" in default_nb_lanes.keys():

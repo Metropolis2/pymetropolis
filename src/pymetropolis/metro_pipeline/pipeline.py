@@ -1,4 +1,5 @@
 import sys
+from pathlib import Path
 
 import click
 import networkx as nx
@@ -17,10 +18,11 @@ class NothingFile(MetroFile):
 
 
 def run_pipeline(
-    config: Config,
+    config_path: Path,
     step_classes: list[type[Step]],
     dry_run: bool = False,
 ) -> None:
+    config = Config.from_toml(config_path)
     metro_logger.setup()
     graph = nx.DiGraph()
     defined_steps = list()
@@ -35,12 +37,13 @@ def run_pipeline(
             # Add step to the graph.
             for ofile in step.output_files.values():
                 defined_output_files.add(ofile)
-                if step.input_files:
-                    for file_spec in step.input_files.values():
-                        optional = file_spec.optional if isinstance(file_spec, InputFile) else False
+                if step.input:
+                    for name, ifile in step.input.items():
+                        file_spec = step.input_files[name]
                         ifile = (
                             file_spec.file_class if isinstance(file_spec, InputFile) else file_spec
                         )
+                        optional = file_spec.optional if isinstance(file_spec, InputFile) else False
                         graph.add_edge(ifile, ofile, optional=optional, step=step)
                 else:
                     graph.add_edge(NothingFile, ofile, optional=False, step=step)
@@ -53,6 +56,7 @@ def run_pipeline(
         msg = "The following file(s) are not used anymore and will be removed:\n- "
         msg += "\n- ".join(map(lambda f: str(f.get_path()), to_delete_files))
         logger.warning(msg)
+        breakpoint()
         if click.confirm("Continue?"):
             for f in to_delete_files:
                 f.remove()
@@ -73,10 +77,13 @@ def run_pipeline(
             feasible_files.add(f)
     # Create a subgraph of all the files that can be generated starting from "nothing".
     subgraph = graph.subgraph(feasible_files)
+    if NothingFile not in subgraph.nodes:
+        logger.error("No step can be run. Did you add parameters to the config?")
+        return
     # Find all the files that need to be regenerated (a prerequisite step need to be re-run).
     # A file w needs to be regenerated if there is an edge (u, v) on any path from the origin node
     # to w
-    endpoints = {n for n, d in graph.out_degree(graph.nodes) if d == 0}
+    endpoints = {n for n, d in subgraph.out_degree(subgraph.nodes) if d == 0}
     to_run_steps = set()
     for path in nx.all_simple_edge_paths(subgraph, NothingFile, endpoints):
         update_required = False
@@ -127,11 +134,14 @@ def run_pipeline(
         # )
         # fig.savefig("tmp.png")
     else:
-        n = len(to_run_steps)
-        i = 1
-        for step in step_order:
-            if step not in to_run_steps:
-                continue
-            logger.info(f"=== Step {i} / {n}: {step} ===")
-            step.execute(config)
-            i += 1
+        if to_run_steps:
+            n = len(to_run_steps)
+            i = 1
+            for step in step_order:
+                if step not in to_run_steps:
+                    continue
+                logger.info(f"=== Step {i} / {n}: {step} ===")
+                step.execute(config)
+                i += 1
+        else:
+            logger.success("Nothing to do. All steps are still up-to-date!")

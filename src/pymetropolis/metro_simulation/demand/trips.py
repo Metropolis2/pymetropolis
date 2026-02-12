@@ -11,8 +11,8 @@ from pymetropolis.metro_demand.modes import (
 )
 from pymetropolis.metro_demand.population import TripsFile
 from pymetropolis.metro_pipeline.steps import InputFile
+from pymetropolis.metro_simulation.common import StepWithModes
 
-from .common import StepWithModes
 from .files import MetroTripsFile
 
 

@@ -6,9 +6,10 @@ from typeguard import TypeCheckError, check_type
 from pymetropolis.metro_common.errors import MetropyError
 from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import CustomParameter
+from pymetropolis.metro_pipeline.steps import InputFile
 
 from .common import default_edge_values_validator
-from .files import CleanEdgesFile, EdgesPenaltiesFile
+from .files import CleanEdgesFile, EdgesFreeFlowTravelTimeFile, EdgesPenaltiesFile
 
 
 class ExogenousEdgePenaltiesStep(Step):
@@ -80,3 +81,34 @@ road = 2
         df = pl.from_pandas(edges[["edge_id", "constant"]])
         df = df.with_columns(pl.col("constant").cast(pl.Float64))
         self.output["edges_penalties"].write(df)
+
+
+class EdgesFreeFlowTravelTimesStep(Step):
+    """Generates free-flow travel times for each edge of the road network.
+
+    The free-flow travel time of an edge is:
+
+    `constant_penalty + length / speed`
+    """
+
+    input_files = {
+        "clean_edges": CleanEdgesFile,
+        "penalties": InputFile(EdgesPenaltiesFile, optional=True),
+    }
+    output_files = {"edges_fftt": EdgesFreeFlowTravelTimeFile}
+
+    def run(self):
+        edges: gpd.GeoDataFrame = self.input["clean_edges"].read()
+        df = pl.from_pandas(edges.loc[:, ["edge_id", "length", "speed_limit"]])
+        df = df.select(
+            "edge_id", free_flow_travel_time=pl.col("length") / (pl.col("speed_limit") / 3.6)
+        )
+        if self.input["penalties"].exists():
+            penalties = self.input["penalties"]
+            df = df.join(penalties, on="edge_id", how="left")
+            df = df.select(
+                "edge_id",
+                free_flow_travel_time=pl.col("free_flow_travel_time") + pl.col("constant"),
+            )
+        df = df.with_columns(free_flow_travel_time=pl.duration(seconds="free_flow_travel_time"))
+        self.output["edges_fftt"].write(df)

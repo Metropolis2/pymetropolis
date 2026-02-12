@@ -2,13 +2,12 @@ import networkx as nx
 import polars as pl
 
 from pymetropolis.metro_pipeline import Step
-from pymetropolis.metro_pipeline.steps import InputFile
 
 from .files import (
     AllFreeFlowTravelTimesFile,
     AllRoadDistancesFile,
     CleanEdgesFile,
-    EdgesPenaltiesFile,
+    EdgesFreeFlowTravelTimeFile,
 )
 
 
@@ -33,26 +32,15 @@ class AllFreeFlowTravelTimesStep(Step):
     of the road network.
     """
 
-    input_files = {
-        "clean_edges": CleanEdgesFile,
-        "edges_penalties": InputFile(EdgesPenaltiesFile, optional=True),
-    }
+    input_files = {"edges": CleanEdgesFile, "edges_fftt": EdgesFreeFlowTravelTimeFile}
     output_files = {"all_free_flow_travel_times": AllFreeFlowTravelTimesFile}
 
     def run(self):
-        edges = self.input["clean_edges"].read()
-        edges = pl.from_pandas(
-            edges.loc[:, ["edge_id", "source", "target", "length", "speed_limit"]]
-        )
-        if self.input["edges_penalties"].exists():
-            penalties = self.input["edges_penalties"].read()
-            edges = edges.join(penalties, on="edge_id", how="left")
-        else:
-            edges = edges.with_columns(constant=pl.lit(0.0, dtype=pl.Float64))
-        edges = edges.select(
-            "source",
-            "target",
-            tt=pl.col("length") / pl.col("speed_limit") * 3.6 + pl.col("constant"),
+        edges_gdf = self.input["edges"].read()
+        edges = pl.from_pandas(edges_gdf.loc[:, ["edge_id", "source", "target"]])
+        edges_fftt = self.input["edges_fftt"].read()
+        edges = edges.join(edges_fftt, on="edge_id").select(
+            "source", "target", weight=pl.col("free_flow_travel_time").dt.total_seconds()
         )
         df = compute_all_pairs_dijkstra(edges)
         df = df.with_columns(free_flow_travel_time=pl.duration(seconds="weight")).drop("weight")

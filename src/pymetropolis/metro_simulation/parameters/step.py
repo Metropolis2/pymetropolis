@@ -20,45 +20,45 @@ class WriteMetroParametersStep(Step):
     """Generates the input parameters file for the Metropolis-Core simulation."""
 
     period = ListParameter(
-        "simulation_parameters.period",
+        "simulation.period",
         inner=Time(),
         length=2,
         description="Time window to be simulated.",
         example="`[00:00:00, 24:00:00]`",
     )
     recording_interval = DurationParameter(
-        "simulation_parameters.recording_interval",
+        "simulation.recording_interval",
         description="Time interval between two breakpoints for the travel-time functions.",
     )
     spillback = BoolParameter(
-        "simulation_parameters.spillback",
+        "simulation.spillback",
         default=False,
         description="Whether the number of vehicles on a road should be limited by the total road length.",
     )
     max_pending_duration = DurationParameter(
-        "simulation_parameters.max_pending_duration",
+        "simulation.max_pending_duration",
         description="Maximum amount of time that a vehicle can spend waiting to enter the next road, in case of spillback.",
     )
     backward_wave_speed = FloatParameter(
-        "simulation_parameters.backward_wave_speed",
+        "simulation.backward_wave_speed",
         default=inf,
         description="Speed at which the holes created by a vehicle leaving a road is propagating backward (in km/h).",
     )
     learning_factor = FloatParameter(
-        "simulation_parameters.learning_factor",
+        "simulation.learning_factor",
         default=0.0,
         description="Value of the smoothing factor for the exponential learning model.",
         note="Value must be between 0 and 1. Smaller values lead to slower but steadier convergences.",
     )
     routing_algorithm = EnumParameter(
-        "simulation_parameters.routing_algorithm",
+        "simulation.routing_algorithm",
         values=["Best", "Intersect", "TCH"],
         default="Best",
         description="Algorithm type to use when computing the origin-destination travel-time functions.",
         note='Possible values: "Best", "Intersect", "TCH"',
     )
     nb_iterations = IntParameter(
-        "simulation_parameters.nb_iterations",
+        "simulation.nb_iterations",
         default=1,
         description="Number of iterations to be simulated.",
     )

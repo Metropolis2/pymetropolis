@@ -129,7 +129,9 @@ class Column:
         if self.name not in df.columns:
             return True
         if not self.dtype.is_valid_pl(df[self.name].dtype):
-            logger.warning(f"Invalid dtype for column `{self.name}`: {df[self.name].dtype}")
+            logger.warning(
+                f"Invalid dtype for column `{self.name}`: {df[self.name].dtype} (expected: {self.dtype})"
+            )
             return False
         if not self.nullable and df[self.name].has_nulls():
             logger.warning(f"Column `{self.name}` has null values")
@@ -192,7 +194,7 @@ class MetroFile:
         raise MetropyError("Unimplemented")
 
     def create_dir_if_needed(self):
-        self.complete_path.parent.mkdir(exist_ok=True)
+        self.complete_path.parent.mkdir(exist_ok=True, parents=True)
 
     def exists(self) -> bool:
         return self.complete_path.exists()
@@ -358,7 +360,7 @@ class MetroTxtFile(MetroFile):
 class MetroPlotFile(MetroFile):
     @error_context(msg="Cannot save plot {}", fmt_args=[0])
     def write(self, fig: plt.Figure):
-        fig.savefig(self.complete_path)
+        fig.savefig(self.complete_path, dpi=300)
 
     @override
     @classmethod

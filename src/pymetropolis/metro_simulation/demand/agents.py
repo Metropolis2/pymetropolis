@@ -4,8 +4,8 @@ from pymetropolis.metro_common.errors import MetropyError
 from pymetropolis.metro_demand.population import TripsFile, UniformDrawsFile
 from pymetropolis.metro_pipeline.parameters import EnumParameter, FloatParameter
 from pymetropolis.metro_pipeline.steps import InputFile
+from pymetropolis.metro_simulation.common import StepWithModes
 
-from .common import StepWithModes
 from .files import MetroAgentsFile
 
 

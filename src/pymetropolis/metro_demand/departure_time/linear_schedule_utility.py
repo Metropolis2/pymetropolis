@@ -81,7 +81,7 @@ class HomogeneousTstarStep(RandomStep):
         return self.tstar is not None
 
     def run(self):
-        trips = self.input["trips"].read()
+        trips = self.input["trips"].read().select("trip_id")
         tstars = generate_time_values(self.tstar, len(trips), self.get_rng())
         df = trips.with_columns(tstar=tstars)
         self.output["tstars"].write(df)

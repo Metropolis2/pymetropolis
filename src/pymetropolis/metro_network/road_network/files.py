@@ -280,6 +280,26 @@ class EdgesPenaltiesFile(MetroDataFrameFile):
     ]
 
 
+class EdgesFreeFlowTravelTimeFile(MetroDataFrameFile):
+    path = "network/road_network/edges_free_flow_travel_time.parquet"
+    description = "Free-flow travel time of each road-network edge."
+    schema = [
+        Column(
+            "edge_id",
+            MetroDataType.ID,
+            description="Identifier of the edge.",
+            unique=True,
+            nullable=False,
+        ),
+        Column(
+            "free_flow_travel_time",
+            MetroDataType.DURATION,
+            description="Free-flow travel time of the edge.",
+            nullable=False,
+        ),
+    ]
+
+
 class AllFreeFlowTravelTimesFile(MetroDataFrameFile):
     path = "network/road_network/all_free_flow_travel_times.parquet"
     description = "Free-flow travel time for each pair of nodes on the road network."

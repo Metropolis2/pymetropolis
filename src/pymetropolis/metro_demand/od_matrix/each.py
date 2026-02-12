@@ -12,6 +12,13 @@ from .common import generate_trips_from_od_matrix
 class ODMatrixEachStep(RandomStep):
     """Generates car driver origin-destination pairs by generating a fixed number of trips for each
     node pair of the road network.
+
+    Nodes selected as eligible origins are all nodes with at least one outgoing edge.
+    Nodes selected as eligible destinations are all nodes with at least one incoming edge.
+
+    If the road network is not strongly connected, there is no guarantee that all the
+    origin-destination pairs generated are feasible (i.e., there is a path from origin to
+    destination).
     """
 
     each = IntDistributionParameter(

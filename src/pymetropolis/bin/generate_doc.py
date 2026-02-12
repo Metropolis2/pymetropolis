@@ -9,25 +9,26 @@ from treelib.exceptions import DuplicatedNodeIdError
 from pymetropolis.schema import FILES, STEPS
 
 
-def expand_dir(children, names: dict[str, str], root: bool = False):
+def expand_dir(children, root: bool = False):
     s = ""
     for node in children:
-        if isinstance(node, str):
-            # This is a file.
-            name = names[node].lower()
-            s += f'<li><a href="#{name}">{node}</a></li>\n'
-        elif isinstance(node, dict):
+        assert isinstance(node, dict)
+        assert len(node) == 1
+        name, value = next(iter(node.items()))
+        if "children" in value:
             # This is a directory.
-            assert len(node) == 1
-            dirname = list(node.keys())[0]
-            assert "children" in node[dirname]
+            assert "children" in value
             if not root:
                 s += "<li>\n"
-            s += f"<details open>\n<summary><b>{dirname}</b></summary>\n<ul>\n"
-            s += expand_dir(node[dirname]["children"], names)
+            s += f"<details open>\n<summary><b>{name}</b></summary>\n<ul>\n"
+            s += expand_dir(value["children"])
             s += "</ul>\n</details>\n"
             if not root:
                 s += "</li>\n"
+        else:
+            # This is a file.
+            link = value["data"]["name"].lower()
+            s += f'<li><a href="#{link}">{name}</a></li>\n'
     return s
 
 
@@ -36,7 +37,6 @@ def build_files_doc() -> str:
     tree = Tree()
     tree.create_node(tag="main_directory", identifier="root")
     file_map = dict()
-    file_names = dict()
 
     for f in FILES:
         path = Path(f.path)
@@ -45,12 +45,13 @@ def build_files_doc() -> str:
         for part in path.parts:
             identifier += f".{part}"
             try:
-                tree.create_node(tag=part, identifier=identifier, parent=parent)
+                tree.create_node(
+                    tag=part, identifier=identifier, parent=parent, data={"name": f.__name__}
+                )
             except DuplicatedNodeIdError:
                 pass
             parent = identifier
         file_map[identifier] = f
-        file_names[part] = f.__name__
 
     files_steps = defaultdict(lambda: list())
     # Iterate over the steps to collect the generated files.
@@ -60,9 +61,9 @@ def build_files_doc() -> str:
 
     doc = ""
     # Add tree directory.
-    tree_dict = tree.to_dict(sort=True)
+    tree_dict = tree.to_dict(sort=True, with_data=True)
     tree_str = '<div class="tree">\n'
-    tree_str += expand_dir([tree_dict], file_names, root=True)
+    tree_str += expand_dir([tree_dict], root=True)
     tree_str += "</div>\n\n"
     doc += tree_str
     for identifier in tree.expand_tree():
@@ -110,7 +111,7 @@ def build_params_doc() -> str:
         doc += "- **Steps:** " + ", ".join(
             map(lambda s: f"[`{s}`](steps.html#{s.lower()})", params_steps[param_name])
         )
-        doc += "\n"
+        doc += "\n\n"
     return doc
 
 

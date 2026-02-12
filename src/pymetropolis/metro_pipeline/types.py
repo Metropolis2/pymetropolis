@@ -16,7 +16,7 @@ class Type:
         return "Any value"
 
 
-class CustomValidator:
+class CustomValidator(Type):
     fn: Callable[[Any], Any]
     description: Optional[str]
 

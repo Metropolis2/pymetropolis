@@ -8,10 +8,12 @@ from .files import (
     AllRoadDistancesFile,
     CleanEdgesFile,
     EdgesCapacitiesFile,
+    EdgesFreeFlowTravelTimeFile,
     EdgesPenaltiesFile,
     RawEdgesFile,
 )
-from .penalties import ExogenousEdgePenaltiesStep
+from .grid import GridNetworkStep
+from .penalties import EdgesFreeFlowTravelTimesStep, ExogenousEdgePenaltiesStep
 from .postprocess import PostprocessRoadNetworkStep
 from .routing import AllFreeFlowTravelTimesStep, AllRoadDistancesStep
 
@@ -22,6 +24,7 @@ ROAD_NETWORK_FILES = [
     CleanEdgesFile,
     EdgesCapacitiesFile,
     EdgesPenaltiesFile,
+    EdgesFreeFlowTravelTimeFile,
     RawEdgesFile,
     AllRoadDistancesFile,
 ]
@@ -32,7 +35,9 @@ ROAD_NETWORK_STEPS = [
     PostprocessRoadNetworkStep,
     ExogenousCapacitiesStep,
     CircularNetworkStep,
+    GridNetworkStep,
     AllFreeFlowTravelTimesStep,
     AllRoadDistancesStep,
     ExogenousEdgePenaltiesStep,
+    EdgesFreeFlowTravelTimesStep,
 ]
