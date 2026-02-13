@@ -10,6 +10,6 @@ wheels/
 .venv
 
 # Custom
-bottleneck-sim/output/
+bottleneck-sim/
 circular-city*/
 execs/metropolis_cli

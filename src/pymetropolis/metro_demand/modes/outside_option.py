@@ -29,7 +29,8 @@ class OutsideOptionPreferencesStep(RandomStep):
     constant = FloatDistributionParameter(
         "modes.outside_option.constant",
         default=0.0,
-        description="Constant utility of the outside option (€).",
+        description="Constant penalty of the outside option (€).",
+        note="Use negative values to represent benefits (i.e., a positive utility).",
     )
     value_of_time = FloatDistributionParameter(
         "modes.outside_option.alpha",

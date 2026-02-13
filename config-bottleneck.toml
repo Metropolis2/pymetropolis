@@ -1,6 +1,6 @@
 main_directory = "bottleneck-sim/"
 
-random_seed = 13081996
+random_seed = 123454321
 
 [grid_network]
 nb_rows = 1
@@ -17,24 +17,30 @@ each = 10_000
 
 [mode_choice]
 modes = ["car_driver"]
-# model = "Logit"
-# mu = 1.0
+# Uncomment to add the outside option alternative.
+#modes = ["car_driver", "outside_option"]
+#model = "Logit"
+#mu = 1
 
 [modes]
 [modes.car_driver]
-alpha = 10.0
+alpha = 10
 
-# [modes.outside_option]
-# constant = -5.0
+# Uncomment to add the outside option alternative.
+#[modes.outside_option]
+#constant = -5
 
 [departure_time_choice]
 model = "ContinuousLogit"
-mu = 1.0
+mu = 1
 
 [departure_time.linear_schedule]
-beta = 5.0
-gamma = 7.0
+beta = 5
+gamma = 7
+# Constant tstar over agents.
 tstar = 07:30:00
+# Normally distributed tstar over agents.
+#tstar = { mean = 07:30:00, std = 600, distribution = "Normal" }
 
 [simulation]
 period = [07:00:00, 08:00:00]

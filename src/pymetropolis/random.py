@@ -167,8 +167,8 @@ def generate_time_values(param: Any, n: int, rng: np.random.Generator) -> pl.Ser
     else:
         # Constant value.
         assert isinstance(param, time)
-        param = float(time_to_seconds_since_midnight(param))
-    values = generate_values(param, n, rng)
+        float_param = float(time_to_seconds_since_midnight(param))
+    values = generate_values(float_param, n, rng)
     # Convert back to Time, through a DataFrame.
     df = pl.DataFrame({"value": values})
     return df.select(seconds_since_midnight_to_time_pl("value")).to_series()
