@@ -7,11 +7,8 @@ from pymetropolis.metro_pipeline.parameters import FloatParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.random import FloatDistributionParameter, RandomStep, generate_values
 
-from .files import (
-    CarDriverDistancesFile,
-    OutsideOptionPreferencesFile,
-    OutsideOptionTravelTimesFile,
-)
+from .car import CarShortestDistancesFile
+from .files import OutsideOptionPreferencesFile, OutsideOptionTravelTimesFile
 
 
 class OutsideOptionPreferencesStep(RandomStep):
@@ -42,6 +39,9 @@ class OutsideOptionPreferencesStep(RandomStep):
         "outside_option_travel_times": InputFile(OutsideOptionTravelTimesFile, optional=True),
     }
     output_files = {"outside_option_preferences": OutsideOptionPreferencesFile}
+
+    def is_defined(self):
+        return self.constant != 0.0 or self.value_of_time is not None
 
     def run(self):
         trips = self.input["trips"].read()
@@ -86,7 +86,7 @@ class OutsideOptionTravelTimesFromRoadDistancesStep(Step):
         "modes.outside_option.road_network_speed",
         description="Constant speed on the road network to compute travel time for outside option trips (km/h).",
     )
-    input_files = {"car_driver_distances": CarDriverDistancesFile, "trips": TripsFile}
+    input_files = {"car_driver_distances": CarShortestDistancesFile, "trips": TripsFile}
     output_files = {"outside_option_travel_times": OutsideOptionTravelTimesFile}
 
     def is_defined(self) -> bool:

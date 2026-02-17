@@ -56,7 +56,6 @@ def run_pipeline(
         msg = "The following file(s) are not used anymore and will be removed:\n- "
         msg += "\n- ".join(map(lambda f: str(f.get_path()), to_delete_files))
         logger.warning(msg)
-        breakpoint()
         if click.confirm("Continue?"):
             for f in to_delete_files:
                 f.remove()

@@ -39,18 +39,6 @@ def generate_departure_time_columns(
     return df
 
 
-@error_context(msg="Cannot generate car driver alternatives")
-def generate_car_driver_alts(tour_ids: pl.Series):
-    df = pl.DataFrame({"agent_id": tour_ids, "alt_id": "car_driver"})
-    return df
-
-
-@error_context(msg="Cannot generate public-transit alternatives")
-def generate_public_transit_alts(tour_ids: pl.Series):
-    df = pl.DataFrame({"agent_id": tour_ids, "alt_id": "public_transit"})
-    return df
-
-
 @error_context(msg="Cannot generate outside-option alternatives")
 def generate_outside_option_alts(tour_ids: pl.Series, pref_file: OutsideOptionPreferencesFile):
     df = pl.DataFrame({"agent_id": tour_ids, "alt_id": "outside_option"})
@@ -81,12 +69,12 @@ class WriteMetroAlternativesStep(StepWithModes):
     input_files = {
         "trips": InputFile(
             TripsFile,
-            when=lambda inst: inst.has_trip_modes(),
+            when=lambda inst: inst.has_trip_mode(),
             when_doc='if at least one "trip-based" mode is defined',
         ),
         "uniform_draws": InputFile(
             UniformDrawsFile,
-            when=lambda inst: inst.has_trip_modes()
+            when=lambda inst: inst.has_trip_mode()
             and inst.departure_time_choice_model == "ContinuousLogit",
             when_doc='if at least one "trip-based" mode is defined and departure-time choice is "ContinuousLogit"',
         ),
@@ -101,14 +89,14 @@ class WriteMetroAlternativesStep(StepWithModes):
     def is_defined(self) -> bool:
         if self.modes is None:
             return False
-        if self.has_trip_modes() and self.departure_time_choice_model is None:
+        if self.has_trip_mode() and self.departure_time_choice_model is None:
             return False
         return True
 
     def run(self):
         trips: pl.DataFrame = self.input["trips"].read()
         tour_ids = trips["tour_id"].unique().sort()
-        if self.has_trip_modes():
+        if self.has_trip_mode():
             dep_time_df = generate_departure_time_columns(
                 tour_ids,
                 self.departure_time_choice_model,
@@ -116,19 +104,16 @@ class WriteMetroAlternativesStep(StepWithModes):
                 self.input["uniform_draws"],
             )
         alts = pl.DataFrame()
-        if self.has_mode("car_driver"):
-            car_driver_alts = generate_car_driver_alts(tour_ids)
-            car_driver_alts = car_driver_alts.join(dep_time_df, on="agent_id", how="left")
-            alts = pl.concat((alts, car_driver_alts), how="diagonal")
-            # TODO. Add alternative-level constant utility
-        if self.has_mode("public_transit"):
-            public_transit_alts = generate_public_transit_alts(tour_ids)
-            public_transit_alts = public_transit_alts.join(dep_time_df, on="agent_id", how="left")
-            alts = pl.concat((alts, public_transit_alts), how="diagonal")
-        if self.has_mode("outside_option"):
-            outside_option_alts = generate_outside_option_alts(
-                tour_ids, self.input["outside_option_preferences"]
-            )
-            # There is no departure-time choice for the outside option alternative.
-            alts = pl.concat((alts, outside_option_alts), how="diagonal")
+        for mode in self.modes:
+            if mode == "outside_option":
+                outside_option_alts = generate_outside_option_alts(
+                    tour_ids, self.input["outside_option_preferences"]
+                )
+                # There is no departure-time choice for the outside option alternative.
+                alts = pl.concat((alts, outside_option_alts), how="diagonal")
+            else:
+                mode_alts = pl.DataFrame({"agent_id": tour_ids, "alt_id": mode})
+                mode_alts = mode_alts.join(dep_time_df, on="agent_id", how="left")
+                alts = pl.concat((alts, mode_alts), how="diagonal")
+                # TODO. Add alternative-level constant utility
         self.output["metro_alternatives"].write(alts)

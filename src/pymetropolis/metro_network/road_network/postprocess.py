@@ -2,6 +2,7 @@ import geopandas as gpd
 import networkx as nx
 import numpy as np
 
+from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_common.errors import error_context
 from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import BoolParameter, CustomParameter, FloatParameter
@@ -129,6 +130,34 @@ road = 1
 
         """,
     )
+    hov_lanes = CustomParameter(
+        "road_network.hov_lanes",
+        validator=default_edge_values_validator,
+        validator_description=(
+            "float (constant number of HOV lanes for all edges), table with road types as keys and "
+            'number of lanes as values, or table with "urban" and "rural" as keys and'
+            " `road_type->value` tables as values (see example)"
+        ),
+        default=0.0,
+        description="Number of HOV lanes on edges.",
+        note=(
+            "The HOV lanes are included in the total number of lanes on the edges so there cannot "
+            "be more HOV lanes than there are lanes."
+        ),
+        example="""
+
+```toml
+[road_network.default_nb_lanes]
+[road_network.default_nb_lanes.urban]
+motorway = 2
+road = 1
+[road_network.default_nb_lanes.rural]
+motorway = 3
+road = 1
+```
+
+        """,
+    )
     input_files = {"raw_edges": RawEdgesFile}
     output_files = {"clean_edges": CleanEdgesFile}
 
@@ -142,6 +171,7 @@ road = 1
             gdf,
             default_speed_limit=self.default_speed_limit,
             default_nb_lanes=self.default_nb_lanes,
+            hov_lanes=self.hov_lanes,
         )
         if self.remove_duplicates:
             gdf = remove_duplicates(gdf)
@@ -161,7 +191,10 @@ road = 1
 
 @error_context("Failed to set default values of edges")
 def set_default_values(
-    gdf, default_speed_limit: int | float | dict, default_nb_lanes: float | dict
+    gdf,
+    default_speed_limit: int | float | dict | None,
+    default_nb_lanes: int | float | dict,
+    hov_lanes: int | float | dict,
 ):
     # Set default for bool columns (default is always False).
     for col in ("toll", "roundabout", "give_way", "stop", "traffic_signals", "urban"):
@@ -215,6 +248,30 @@ def set_default_values(
             )
     assert not gdf["lanes"].isna().any(), "Some edges have unknown number of lanes"
     gdf["lanes"] = gdf["lanes"].astype(np.float64)
+    # Set number of HOV lanes.
+    if "hov_lanes" not in gdf.columns:
+        gdf["hov_lanes"] = np.nan
+    if isinstance(hov_lanes, int | float):
+        gdf["hov_lanes"] = hov_lanes
+    elif isinstance(hov_lanes, dict):
+        if "urban" in hov_lanes.keys() and "rural" in hov_lanes.keys():
+            mask = gdf["urban"] & gdf["hov_lanes"].isna()
+            gdf.loc[mask, "hov_lanes"] = gdf.loc[mask, "hov_lanes"].fillna(
+                gdf.loc[mask, "road_type"].map(hov_lanes["urban"])
+            )
+            mask = (~gdf["urban"]) & gdf["hov_lanes"].isna()
+            gdf.loc[mask, "hov_lanes"] = gdf.loc[mask, "hov_lanes"].fillna(
+                gdf.loc[mask, "road_type"].map(hov_lanes["rural"])
+            )
+        else:
+            mask = gdf["hov_lanes"].isna()
+            gdf.loc[mask, "hov_lanes"] = gdf.loc[mask, "hov_lanes"].fillna(
+                gdf.loc[mask, "road_type"].map(hov_lanes)
+            )
+    # By default, there is no HOV lane.
+    gdf["hov_lanes"] = gdf["hov_lanes"].fillna(0).astype(np.float64)
+    if (gdf["hov_lanes"] > gdf["lanes"]).any():
+        raise MetropyError("Some edges have more HOV lanes than there have lanes.")
     return gdf
 
 

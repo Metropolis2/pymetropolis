@@ -1,6 +1,6 @@
 import polars as pl
 
-from pymetropolis.metro_demand.modes.files import CarDriverODsFile
+from pymetropolis.metro_demand.modes.car import CarODsFile
 from pymetropolis.metro_pipeline.steps import Step
 
 from .files import HouseholdsFile, PersonsFile, TripsFile
@@ -13,7 +13,7 @@ class GenericPopulationStep(Step):
     Each household is composed of a single person, with a single trip.
     """
 
-    input_files = {"car_driver_ods": CarDriverODsFile}
+    input_files = {"car_driver_ods": CarODsFile}
     output_files = {"trips": TripsFile, "persons": PersonsFile, "households": HouseholdsFile}
 
     def run(self):

@@ -1,8 +1,5 @@
-from .car_driver import CarDriverDistancesStep, CarDriverPreferencesStep
+from .car import CAR_FILES, CAR_STEPS
 from .files import (
-    CarDriverDistancesFile,
-    CarDriverODsFile,
-    CarDriverPreferencesFile,
     OutsideOptionPreferencesFile,
     OutsideOptionTravelTimesFile,
     PublicTransitPreferencesFile,
@@ -17,19 +14,14 @@ from .public_transit import (
     PublicTransitTravelTimesFromRoadDistancesStep,
 )
 
-MODES_FILES = [
-    CarDriverPreferencesFile,
-    CarDriverDistancesFile,
-    CarDriverODsFile,
+MODES_FILES = CAR_FILES + [
     PublicTransitPreferencesFile,
     PublicTransitTravelTimesFile,
     OutsideOptionPreferencesFile,
     OutsideOptionTravelTimesFile,
 ]
 
-MODES_STEPS = [
-    CarDriverPreferencesStep,
-    CarDriverDistancesStep,
+MODES_STEPS = CAR_STEPS + [
     PublicTransitPreferencesStep,
     PublicTransitTravelTimesFromRoadDistancesStep,
     OutsideOptionPreferencesStep,

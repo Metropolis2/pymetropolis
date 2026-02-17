@@ -121,10 +121,13 @@ class RoadNetworkCongestionFunctionPlotsStep(Step):
             df = self.input[f"{x}_ttfs"].read()
             fig, ax = plt.subplots()
             # TODO. Which vehicle type to select?
+            # For now, we take the fastest.
             df = (
-                df.group_by("departure_time")
-                .agg(pl.col("travel_time").sum())
-                .with_columns(cong=pl.col("travel_time") / tot_fftt - 1)
+                df.group_by("departure_time", "edge_id")
+                .agg(tt=pl.col("travel_time").min())
+                .group_by("departure_time")
+                .agg(pl.col("tt").sum())
+                .with_columns(cong=pl.col("tt") / tot_fftt - 1)
                 .sort("departure_time")
             )
             ax.plot(df["departure_time"], df["cong"], alpha=0.9)

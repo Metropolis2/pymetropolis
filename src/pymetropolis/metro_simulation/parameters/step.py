@@ -26,6 +26,17 @@ class WriteMetroParametersStep(Step):
         description="Time window to be simulated.",
         example="`[00:00:00, 24:00:00]`",
     )
+    departure_time_interval = DurationParameter(
+        "simulation.departure_time_interval",
+        description=(
+            "Interval between two breakpoints in the utility function for departure-time choice."
+        ),
+        default=60.0,
+        note=(
+            "Smaller values make the simulation faster but can lead to approximations in the "
+            "departure-time choice."
+        ),
+    )
     recording_interval = DurationParameter(
         "simulation.recording_interval",
         description="Time interval between two breakpoints for the travel-time functions.",
@@ -87,6 +98,7 @@ class WriteMetroParametersStep(Step):
             },
             "output_directory": "output",
             "period": period,
+            "departure_time_interval": self.departure_time_interval.total_seconds(),
             "learning_model": {
                 "type": "Exponential",
                 "value": self.learning_factor,

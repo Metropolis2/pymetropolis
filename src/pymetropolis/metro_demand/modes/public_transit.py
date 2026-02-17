@@ -5,11 +5,8 @@ from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import FloatParameter
 from pymetropolis.random import FloatDistributionParameter, RandomStep, generate_values
 
-from .files import (
-    CarDriverDistancesFile,
-    PublicTransitPreferencesFile,
-    PublicTransitTravelTimesFile,
-)
+from .car import CarShortestDistancesFile
+from .files import PublicTransitPreferencesFile, PublicTransitTravelTimesFile
 
 
 class PublicTransitPreferencesStep(RandomStep):
@@ -37,6 +34,9 @@ class PublicTransitPreferencesStep(RandomStep):
     input_files = {"persons": PersonsFile}
     output_files = {"public_transit_preferences": PublicTransitPreferencesFile}
 
+    def is_defined(self):
+        return self.constant != 0.0 or self.value_of_time != 0.0
+
     def run(self):
         persons: pl.DataFrame = self.input["persons"].read()
         rng = self.get_rng()
@@ -57,7 +57,7 @@ class PublicTransitTravelTimesFromRoadDistancesStep(Step):
         "modes.public_transit.road_network_speed",
         description="Speed of public-transit vehicles on the road network (km/h).",
     )
-    input_files = {"car_driver_distances": CarDriverDistancesFile}
+    input_files = {"car_driver_distances": CarShortestDistancesFile}
     output_files = {"public_transit_travel_times": PublicTransitTravelTimesFile}
 
     def is_defined(self) -> bool:

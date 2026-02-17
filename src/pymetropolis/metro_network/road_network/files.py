@@ -150,6 +150,12 @@ class CleanEdgesFile(MetroGeoDataFrameFile):
             "lanes", MetroDataType.FLOAT, description="Number of lanes on the edge.", nullable=False
         ),
         Column(
+            "hov_lanes",
+            MetroDataType.FLOAT,
+            description="Number of HOV lanes on the edge (among the edge's lanes).",
+            nullable=False,
+        ),
+        Column(
             "default_lanes",
             MetroDataType.BOOL,
             description="Whether the edge lane number is set from the default value.",
