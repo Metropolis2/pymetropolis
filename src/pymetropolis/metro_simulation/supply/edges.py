@@ -46,7 +46,6 @@ class WriteMetroEdgesStep(Step):
                 source=pl.concat_str("source", pl.lit("-"), "target", pl.lit("-dummy")),
                 length=0.0,
             )
-            breakpoint()
             # Remove HOV lanes from the actual number of lanes.
             # And filter out hov-only edges.
             df = df.with_columns(

@@ -3,6 +3,7 @@ from pathlib import Path
 import geopandas as gpd
 import polars as pl
 from loguru import logger
+from polars.exceptions import ColumnNotFoundError
 from pyogrio.errors import DataSourceError
 
 from .errors import MetropyError, error_context
@@ -25,7 +26,13 @@ def read_dataframe(filename: Path, columns=None, **kwargs):
     """Reads a DataFrame from a Parquet or CSV file."""
     lf = scan_dataframe(filename, **kwargs)
     if columns is not None:
-        lf = lf.select(columns)
+        try:
+            lf = lf.select(columns)
+        except ColumnNotFoundError:
+            cols = lf.collect_schema().columns
+            missing_cols = set(columns).difference(set(cols))
+            missing_cols_str = ", ".join(map(lambda c: f"`{c}`", missing_cols))
+            raise MetropyError(f"Columns {missing_cols_str} are missing from file `{filename}`")
     return lf.collect()
 
 

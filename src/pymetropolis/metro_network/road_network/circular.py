@@ -34,6 +34,8 @@ def generate_circular_network(
             raise MetropyError("The number of `radius` values must be equal to the number of rings")
         center_dist = [0.0] + radius
         min_radius = np.min(np.diff(center_dist))
+        if min_radius <= 0.0:
+            raise MetropyError("The `radius` values must be in increasing order.")
     else:
         assert isinstance(radius, int | float)
         center_dist = [i * float(radius) for i in range(nb_rings + 1)]

@@ -19,11 +19,29 @@ from pymetropolis.metro_simulation.run import (
 from .files import (
     ExpectedRoadNetworkCongestionFunctionPlotFile,
     ExpectedRoadTravelTimesConvergencePlotFile,
+    MeanSurplusConvergencePlotFile,
+    RoadTripsShareConvergencePlotFile,
+    RouteLengthDiffConvergencePlotFile,
     SimulatedRoadTravelTimesConvergencePlotFile,
     SimulationRoadNetworkCongestionFunctionPlotFile,
     TourDepartureTimeConvergencePlotFile,
     TripDepartureTimeDistributionPlotFile,
+    TripModeSharesPlotFile,
 )
+
+# Define a color palette from Okabe and Ito.
+ORANGE = "#E69F00"
+LIGHTBLUE = "#56B4E9"
+GREEN = "#009E73"
+YELLOW = "#F0E442"
+BLUE = "#0072B2"
+RED = "#D55E00"
+PINK = "#CC79A7"
+BLACK = "#000000"
+COLORS = [ORANGE, LIGHTBLUE, GREEN, BLUE, RED, PINK, YELLOW, BLACK]
+
+PURPLE = "#9932CC"
+TEAL = "#008080"
 
 
 class ConvergencePlotStep(Step):
@@ -34,6 +52,9 @@ class ConvergencePlotStep(Step):
         "tour_departure_time": TourDepartureTimeConvergencePlotFile,
         "simulated_travel_time": SimulatedRoadTravelTimesConvergencePlotFile,
         "expected_travel_time": ExpectedRoadTravelTimesConvergencePlotFile,
+        "route_length_diff": RouteLengthDiffConvergencePlotFile,
+        "surplus": MeanSurplusConvergencePlotFile,
+        "road_trips_share": RoadTripsShareConvergencePlotFile,
     }
 
     def run(self):
@@ -43,6 +64,7 @@ class ConvergencePlotStep(Step):
         # Remove first iteration (no value).
         df = df[1:]
         xs = df["iteration"]
+        # Plot graphs for the duration variables.
         for col, ofile, label in (
             ("rmse_tour_departure_time", "tour_departure_time", "Departure time RMSE"),
             (
@@ -66,6 +88,35 @@ class ConvergencePlotStep(Step):
             ax.yaxis.set_major_formatter(
                 FuncFormatter(lambda x, pos: seconds_to_duration_string(x))
             )
+            ax.grid()
+            fig.tight_layout()
+            self.output[ofile].write(fig)
+        # Plot graphs for the float variables.
+        df = df.with_columns(
+            road_trips_share=pl.col("nb_road_trips")
+            / (pl.col("nb_road_trips") + pl.col("nb_non_road_trips"))
+        )
+        for col, ofile, label, bottom_to_zero, percent_format in (
+            (
+                "mean_road_trip_length_diff",
+                "route_length_diff",
+                "Route length difference (m)",
+                True,
+                False,
+            ),
+            ("mean_surplus", "surplus", "Mean surplus (€)", False, False),
+            ("road_trips_share", "road_trips_share", "Share of road trips", False, True),
+        ):
+            fig, ax = plt.subplots()
+            ys = df[col]
+            ax.plot(xs, ys, alpha=0.9)
+            ax.set_xlabel("Iteration")
+            ax.set_ylabel(label)
+            ax.set_xlim(xs.min(), xs.max())
+            if bottom_to_zero:
+                ax.set_ylim(bottom=0)
+            if percent_format:
+                ax.yaxis.set_major_formatter(PercentFormatter(xmax=1))
             ax.grid()
             fig.tight_layout()
             self.output[ofile].write(fig)
@@ -142,3 +193,31 @@ class RoadNetworkCongestionFunctionPlotsStep(Step):
             ax.grid()
             fig.tight_layout()
             self.output[f"{x}_plot"].write(fig)
+
+
+class TripModeSharesStep(Step):
+    """Generates a plot of mode shares at the trip level."""
+
+    input_files = {"trip_results": TripResultsFile}
+    output_files = {"plot": TripModeSharesPlotFile}
+
+    def run(self):
+        df = self.input["trip_results"].read()
+        shares = df["mode"].value_counts(normalize=True, sort=True)
+        fig, ax = plt.subplots()
+        bars = ax.barh(
+            y=shares["mode"],
+            width=shares["proportion"],
+            height=0.9,
+            align="center",
+            color=COLORS,
+            zorder=1,
+        )
+        ax.bar_label(bars, fmt="{:.0%}", padding=5, zorder=3)
+        ax.xaxis.set_major_formatter(PercentFormatter(xmax=1, decimals=0))
+        ax.set_xlim(left=0)
+        ax.tick_params(axis="y", which="both", length=0)
+        ax.set_xlabel("Share")
+        ax.grid(which="major", axis="x", zorder=2)
+        fig.tight_layout(pad=0.5)
+        self.output["plot"].write(fig)

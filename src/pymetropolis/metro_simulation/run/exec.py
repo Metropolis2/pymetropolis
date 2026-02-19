@@ -30,9 +30,8 @@ class RunSimulationStep(Step):
 
     exec_path = PathParameter(
         "metropolis_core.exec_path",
-        check_file_exists=True,
         description="Path to the `metropolis_cli` executable.",
-        note='On Windows, you can ommit the ".exe" extension',
+        note='On Windows, you can omit the ".exe" extension',
     )
     input_files = {
         "metro_parameters": MetroParametersFile,
@@ -50,6 +49,9 @@ class RunSimulationStep(Step):
         "metro_exp_ttfs": MetroExpectedTravelTimeFunctionsFile,
         "metro_next_exp_ttfs": MetroNextExpectedTravelTimeFunctionsFile,
     }
+
+    def is_defined(self):
+        return self.exec_path is not None
 
     def run(self):
         # TODO. Check that metropolis_cli is a sufficiently recent version.

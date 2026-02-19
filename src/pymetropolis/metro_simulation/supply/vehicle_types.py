@@ -60,9 +60,9 @@ class WriteMetroVehicleTypesStep(StepWithModes, StepWithRidesharingCount):
             vehicles.append({"vehicle_id": "car_passenger", "headway": 0.0, "pce": 0.0})
         if self.has_mode("car_ridesharing"):
             c = self.ridesharing_passenger_count
-            if c < 1.0:
+            if c < 0.0:
                 raise MetropyError(
-                    "Number of passenger count for ridesharing is smaller than 1 "
+                    "Number of passenger count for ridesharing is negative "
                     f"(`ridesharing_passenger_count` = {c})"
                 )
             vehicles.append(
