@@ -9,7 +9,7 @@ from treelib.exceptions import DuplicatedNodeIdError
 from pymetropolis.schema import FILES, STEPS
 
 
-def expand_dir(children, root: bool = False):
+def expand_dir(children: list[dict], root: bool = False):
     s = ""
     for node in children:
         assert isinstance(node, dict)
