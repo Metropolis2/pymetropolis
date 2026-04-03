@@ -192,6 +192,9 @@ class Step:
         doc = f"## {cls.__name__}\n\n"
         if cls.__doc__:
             doc += cls.__doc__
+            # There is a non-breakable whitespace there to properly split docstrings finishing by a
+            # list from the following list.
+            doc += "\n \n"
         doc += cls._md_doc_params()
         doc += cls._md_doc_input_files()
         doc += cls._md_doc_output_files()

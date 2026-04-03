@@ -37,15 +37,17 @@ def run_pipeline(
             # Add step to the graph.
             for ofile in step.output_files.values():
                 defined_output_files.add(ofile)
+                has_required_file = False
                 if step.input:
-                    for name, ifile in step.input.items():
+                    for name in step.input.keys():
                         file_spec = step.input_files[name]
                         ifile = (
                             file_spec.file_class if isinstance(file_spec, InputFile) else file_spec
                         )
                         optional = file_spec.optional if isinstance(file_spec, InputFile) else False
+                        has_required_file |= not optional
                         graph.add_edge(ifile, ofile, optional=optional, step=step)
-                else:
+                if not has_required_file:
                     graph.add_edge(NothingFile, ofile, optional=False, step=step)
     to_delete_files = list()
     for ofile in all_output_files:
