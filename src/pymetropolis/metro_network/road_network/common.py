@@ -30,8 +30,7 @@ def default_edge_values_validator(value: Any) -> int | float | dict:
                     raise MetropyError(
                         f"Invalid {k} penalties (map road_type->penalty expected): `{value[k]}`"
                     )
-            else:
-                return value
+            return value
         else:
             # Case 3. map road_type -> penalty
             if is_valid_map(value):

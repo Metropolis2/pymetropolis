@@ -32,7 +32,7 @@ def generate_circular_network(
     if isinstance(radius, list):
         if len(radius) != nb_rings:
             raise MetropyError("The number of `radius` values must be equal to the number of rings")
-        center_dist = [0.0] + radius
+        center_dist = [0.0, *radius]
         min_radius = np.min(np.diff(center_dist))
         if min_radius <= 0.0:
             raise MetropyError("The `radius` values must be in increasing order.")
@@ -45,16 +45,7 @@ def generate_circular_network(
     elif nb_radials == 4:
         directions = ["E", "N", "W", "S"]
     elif nb_radials == 8:
-        directions = [
-            "E",
-            "NE",
-            "N",
-            "NW",
-            "W",
-            "SW",
-            "S",
-            "SE",
-        ]
+        directions = ["E", "NE", "N", "NW", "W", "SW", "S", "SE"]
     else:
         if nb_radials <= 1:
             raise MetropyError("The radial number must be at least 2")
@@ -63,11 +54,13 @@ def generate_circular_network(
         min_ring_length = 2 * pi * center_dist[1] / nb_radials
         if ring_inter_ramp_length > min_ring_length:
             raise MetropyError(
-                f"`ring_inter_ramp_length` cannot be greater than the smallest ring road length ({min_ring_length})"
+                "`ring_inter_ramp_length` cannot be greater than the smallest ring road length "
+                f"({min_ring_length})"
             )
         if radial_inter_ramp_length > min_radius:
             raise MetropyError(
-                f"`radial_inter_ramp_length` cannot be greater than the smallest inter-ring distance ({min_radius:.0f})"
+                "`radial_inter_ramp_length` cannot be greater than the smallest inter-ring "
+                f"distance ({min_radius:.0f})"
             )
     else:
         entry_ramps_length = 0.0
@@ -362,7 +355,10 @@ class CircularNetworkStep(Step):
         validator=validate_radius,
         validator_description="float or list of floats",
         description="Radius of each ring, in meters.",
-        note="If a scalar, the distance between each ring. If a list, the (cumulative) distance of each ring to the center",
+        note=(
+            "If a scalar, the distance between each ring. If a list, the (cumulative) distance of "
+            "each ring to the center."
+        ),
     )
     resolution = IntParameter(
         "circular_network.resolution",
@@ -387,12 +383,18 @@ class CircularNetworkStep(Step):
     ring_inter_ramp_length = FloatParameter(
         "circular_network.ring_inter_ramp_length",
         default=0.0,
-        description="Length of the ring road segments (bridges) between the left and right ramps, in meters.",
+        description=(
+            "Length of the ring road segments (bridges) between the left and right ramps, "
+            "in meters."
+        ),
     )
     radial_inter_ramp_length = FloatParameter(
         "circular_network.radial_inter_ramp_length",
         default=0.0,
-        description="Length of the radial road segments (tunnels) between the clockwise and counter-clockwise ramps, in meters.",
+        description=(
+            "Length of the radial road segments (tunnels) between the clockwise and "
+            "counter-clockwise ramps, in meters."
+        ),
     )
     output_files = {"raw_edges": RawEdgesFile}
 

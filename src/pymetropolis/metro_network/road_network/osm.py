@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Optional
 
 import geopandas as gpd
 import osmium
@@ -22,12 +21,7 @@ from pymetropolis.metro_spatial.simulation_area.file import SimulationAreaFile
 from .files import RawEdgesFile
 
 # Dictionary for special `maxspeed` values.
-SPEED_DICT = {
-    "walk": 8,
-    "FR:walk": 20,
-    "FR:urban": 50,
-    "FR:rural": 80,
-}
+SPEED_DICT = {"walk": 8, "FR:walk": 20, "FR:urban": 50, "FR:rural": 80}
 
 # Conversion miles to kilometers.
 M_TO_KM = 1.609344
@@ -52,7 +46,7 @@ def filter_highway_ways(
     osm_filename: Path,
     highways: list[str],
     crs: pyproj.CRS,
-    filter_polygon: Optional[Polygon],
+    filter_polygon: Polygon | None,
     allowed_access: list[str],
 ) -> IdTracker:
     """Reads all the ways in the OSM file and returns a IdTracker with the id of all the valid way.

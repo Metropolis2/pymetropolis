@@ -53,7 +53,7 @@ def build_files_doc() -> str:
             parent = identifier
         file_map[identifier] = f
 
-    files_steps = defaultdict(lambda: list())
+    files_steps = defaultdict(list)
     # Iterate over the steps to collect the generated files.
     for step in sorted(STEPS, key=lambda s: s.__name__):
         for ofile in step.output_files.values():
@@ -67,7 +67,7 @@ def build_files_doc() -> str:
     tree_str += "</div>\n\n"
     doc += tree_str
     for identifier in tree.expand_tree():
-        if identifier not in file_map.keys():
+        if identifier not in file_map:
             # This is a directory.
             continue
         f = file_map[identifier]
@@ -76,7 +76,7 @@ def build_files_doc() -> str:
         if steps:
             doc += (
                 "- **Steps:** "
-                + ", ".join(map(lambda s: f"[`{s}`](steps.html#{s.lower()})", steps))
+                + ", ".join(f"[`{s}`](steps.html#{s.lower()})" for s in steps)
                 + "\n"
             )
         doc += f._md_doc_schema(simple=False)
@@ -95,7 +95,7 @@ def build_steps_doc() -> str:
 def build_params_doc() -> str:
     doc = ""
     all_params = dict()
-    params_steps = defaultdict(lambda: list())
+    params_steps = defaultdict(list)
     # Iterate over the steps to collect the parameters.
     for step in sorted(STEPS, key=lambda s: s.__name__):
         for _, param_obj in step._iter_params():
@@ -109,7 +109,7 @@ def build_params_doc() -> str:
     ):
         doc += param_obj._md_doc()
         doc += "- **Steps:** " + ", ".join(
-            map(lambda s: f"[`{s}`](steps.html#{s.lower()})", params_steps[param_name])
+            f"[`{s}`](steps.html#{s.lower()})" for s in params_steps[param_name]
         )
         doc += "\n\n"
     return doc
@@ -125,15 +125,15 @@ if __name__ == "__main__":
 
     print("Generating MetroFiles references")
     files_doc = build_files_doc()
-    with open(os.path.join(args.path, "files-generated.md"), "w") as f:
+    with open(os.path.join(args.path, "files-generated.md"), "w", encoding="utf-8") as f:
         f.write(files_doc)
 
     print("Generating Steps references")
     steps_doc = build_steps_doc()
-    with open(os.path.join(args.path, "steps-generated.md"), "w") as f:
+    with open(os.path.join(args.path, "steps-generated.md"), "w", encoding="utf-8") as f:
         f.write(steps_doc)
 
     print("Generating Parameters references")
     params_doc = build_params_doc()
-    with open(os.path.join(args.path, "parameters-generated.md"), "w") as f:
+    with open(os.path.join(args.path, "parameters-generated.md"), "w", encoding="utf-8") as f:
         f.write(params_doc)

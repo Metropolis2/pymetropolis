@@ -53,7 +53,8 @@ class OutsideOptionPreferencesStep(RandomStep):
             alpha = self.value_of_time
             if alpha is None:
                 logger.warning(
-                    "Travel times are defined for the outside option but `modes.outside_option.alpha` is not defined."
+                    "Travel times are defined for the outside option but "
+                    "`modes.outside_option.alpha` is not defined."
                 )
             else:
                 df = (
@@ -69,7 +70,8 @@ class OutsideOptionPreferencesStep(RandomStep):
                 )
         elif self.value_of_time is not None and self.value_of_time != 0.0:
             logger.warning(
-                "`modes.outside_option.alpha` is defined but there is no travel time for the outside options."
+                "`modes.outside_option.alpha` is defined but there is no travel time for the "
+                "outside options."
             )
         self.output["outside_option_preferences"].write(df)
 
@@ -84,7 +86,10 @@ class OutsideOptionTravelTimesFromRoadDistancesStep(Step):
 
     speed = FloatParameter(
         "modes.outside_option.road_network_speed",
-        description="Constant speed on the road network to compute travel time for outside option trips (km/h).",
+        description=(
+            "Constant speed on the road network to compute travel time for outside option trips "
+            "(km/h)."
+        ),
     )
     input_files = {"car_driver_distances": CarShortestDistancesFile, "trips": TripsFile}
     output_files = {"outside_option_travel_times": OutsideOptionTravelTimesFile}

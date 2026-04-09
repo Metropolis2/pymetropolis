@@ -57,7 +57,7 @@ class RunSimulationStep(Step):
         # TODO. Check that metropolis_cli is a sufficiently recent version.
         self.check_exec_path()
         params_path = self.input["metro_parameters"].get_path()
-        res = subprocess.run([self.exec_path, params_path])
+        res = subprocess.run([self.exec_path, params_path], check=False)
         if res.returncode:
             # The run did not succeed.
             raise MetropyError("Metropolis-Core simulation failed.")

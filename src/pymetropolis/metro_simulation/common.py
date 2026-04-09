@@ -34,7 +34,7 @@ class StepWithModes(Step):
         """Returns `True` if the configuration has at least one trip-based mode (i.e., different
         from "outside_option").
         """
-        return self.modes is not None and any(map(lambda m: m != "outside_option", self.modes))
+        return self.modes is not None and any(m != "outside_option" for m in self.modes)
 
     def has_car_mode(self) -> bool:
         """Returns `True` if the configuration has at least one car-based mode."""

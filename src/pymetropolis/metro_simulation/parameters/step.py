@@ -44,34 +44,45 @@ class WriteMetroParametersStep(Step):
     spillback = BoolParameter(
         "simulation.spillback",
         default=False,
-        description="Whether the number of vehicles on a road should be limited by the total road length.",
+        description=(
+            "Whether the number of vehicles on a road should be limited by the total road length."
+        ),
     )
     max_pending_duration = DurationParameter(
         "simulation.max_pending_duration",
-        description="Maximum amount of time that a vehicle can spend waiting to enter the next road, in case of spillback.",
+        description=(
+            "Maximum amount of time that a vehicle can spend waiting to enter the next road, "
+            "in case of spillback."
+        ),
     )
     backward_wave_speed = FloatParameter(
         "simulation.backward_wave_speed",
         default=inf,
-        description="Speed at which the holes created by a vehicle leaving a road is propagating backward (in km/h).",
+        description=(
+            "Speed at which the holes created by a vehicle leaving a road is propagating backward "
+            "(in km/h)."
+        ),
     )
     learning_factor = FloatParameter(
         "simulation.learning_factor",
         default=0.0,
         description="Value of the smoothing factor for the exponential learning model.",
-        note="Value must be between 0 and 1. Smaller values lead to slower but steadier convergences.",
+        note=(
+            "Value must be between 0 and 1. Smaller values lead to slower but steadier "
+            "convergences."
+        ),
     )
     routing_algorithm = EnumParameter(
         "simulation.routing_algorithm",
         values=["Best", "Intersect", "TCH"],
         default="Best",
-        description="Algorithm type to use when computing the origin-destination travel-time functions.",
+        description=(
+            "Algorithm type to use when computing the origin-destination travel-time functions."
+        ),
         note='Possible values: "Best", "Intersect", "TCH"',
     )
     nb_iterations = IntParameter(
-        "simulation.nb_iterations",
-        default=1,
-        description="Number of iterations to be simulated.",
+        "simulation.nb_iterations", default=1, description="Number of iterations to be simulated."
     )
     output_files = {"metro_parameters": MetroParametersFile}
 
@@ -99,10 +110,7 @@ class WriteMetroParametersStep(Step):
             "output_directory": "output",
             "period": period,
             "departure_time_interval": self.departure_time_interval.total_seconds(),
-            "learning_model": {
-                "type": "Exponential",
-                "value": self.learning_factor,
-            },
+            "learning_model": {"type": "Exponential", "value": self.learning_factor},
             "max_iterations": self.nb_iterations,
             "saving_format": "Parquet",
         }

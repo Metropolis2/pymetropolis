@@ -1,6 +1,6 @@
 import os
 from datetime import time, timedelta
-from typing import Any, Optional
+from typing import Any
 
 from isodate import ISO8601Error, parse_duration
 
@@ -82,7 +82,7 @@ class FixedSizeList(MetroType):
 
 
 class Path(MetroType):
-    def __init__(self, extensions: Optional[list[str]] = None):
+    def __init__(self, extensions: list[str] | None = None):
         if extensions:
             self.extensions = set(extensions)
         else:

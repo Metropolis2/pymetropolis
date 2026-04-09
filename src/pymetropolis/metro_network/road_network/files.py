@@ -20,13 +20,13 @@ class RawEdgesFile(MetroGeoDataFrameFile):
         Column(
             "source",
             MetroDataType.ID,
-            description="Identifier of the edge’s first node.",
+            description="Identifier of the edge's first node.",
             nullable=False,
         ),
         Column(
             "target",
             MetroDataType.ID,
-            description="Identifier of the edge’s last node.",
+            description="Identifier of the edge's last node.",
             nullable=False,
         ),
         Column(
@@ -112,13 +112,13 @@ class CleanEdgesFile(MetroGeoDataFrameFile):
         Column(
             "source",
             MetroDataType.ID,
-            description="Identifier of the edge’s first node.",
+            description="Identifier of the edge's first node.",
             nullable=False,
         ),
         Column(
             "target",
             MetroDataType.ID,
-            description="Identifier of the edge’s last node.",
+            description="Identifier of the edge's last node.",
             nullable=False,
         ),
         Column(
@@ -254,7 +254,9 @@ class EdgesCapacitiesFile(MetroDataFrameFile):
         Column(
             "capacities",
             MetroDataType.LIST_OF_FLOATS,
-            description="Bottleneck capacity of the edge for different time periods, in PCE per hour.",
+            description=(
+                "Bottleneck capacity of the edge for different time periods, in PCE per hour."
+            ),
             nullable=True,
         ),
         Column(

@@ -17,11 +17,7 @@ class NothingFile(MetroFile):
     pass
 
 
-def run_pipeline(
-    config_path: Path,
-    step_classes: list[type[Step]],
-    dry_run: bool = False,
-) -> None:
+def run_pipeline(config_path: Path, step_classes: list[type[Step]], dry_run: bool = False) -> None:
     config = Config.from_toml(config_path)
     metro_logger.setup()
     graph = nx.DiGraph()
@@ -39,7 +35,7 @@ def run_pipeline(
                 defined_output_files.add(ofile)
                 has_required_file = False
                 if step.input:
-                    for name in step.input.keys():
+                    for name in step.input:
                         file_spec = step.input_files[name]
                         ifile = (
                             file_spec.file_class if isinstance(file_spec, InputFile) else file_spec
@@ -56,7 +52,7 @@ def run_pipeline(
             to_delete_files.append(f)
     if to_delete_files:
         msg = "The following file(s) are not used anymore and will be removed:\n- "
-        msg += "\n- ".join(map(lambda f: str(f.get_path()), to_delete_files))
+        msg += "\n- ".join(str(f.get_path()) for f in to_delete_files)
         logger.warning(msg)
         if click.confirm("Continue?"):
             for f in to_delete_files:

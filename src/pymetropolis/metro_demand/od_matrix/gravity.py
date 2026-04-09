@@ -26,7 +26,10 @@ class GravityODMatrixStep(RandomStep):
 
     exponential_decay = FloatParameter(
         "gravity_od_matrix.exponential_decay",
-        description="Exponential decay rate of flows as a function of free-flow travel times (rate per minute)",
+        description=(
+            "Exponential decay rate of flows as a function of free-flow travel times "
+            "(rate per minute)"
+        ),
     )
     trips_per_node = IntDistributionParameter(
         "gravity_od_matrix.trips_per_node",
@@ -34,7 +37,10 @@ class GravityODMatrixStep(RandomStep):
     )
     nodes_regex = StringParameter(
         "gravity_od_matrix.nodes_regex",
-        description="Regular expression specifying the nodes to be selected as possible origin / destination.",
+        description=(
+            "Regular expression specifying the nodes to be selected as possible "
+            "origin / destination."
+        ),
         note="If not specified, any node can be an origin / destination.",
     )
     input_files = {"all_free_flow_travel_times": AllFreeFlowTravelTimesFile}

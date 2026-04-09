@@ -36,10 +36,12 @@ class SimulationAreaFromPolygonsStep(GeoStep):
     buffer = FloatParameter(
         "simulation_area.buffer",
         default=0.0,
-        description="Distance by which the polygon of the simulation area must be extended or shrinked.",
+        description=(
+            "Distance by which the polygon of the simulation area must be extended or shrinked."
+        ),
         note=(
-            "The value is expressed in the unit of measure of the CRS (usually meter). Positive values "
-            "extend the area, while negative values shrink it."
+            "The value is expressed in the unit of measure of the CRS (usually meter). "
+            "Positive values extend the area, while negative values shrink it."
         ),
     )
     output_files = {"simulation_area": SimulationAreaFile}

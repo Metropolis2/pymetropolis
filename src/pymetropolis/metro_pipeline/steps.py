@@ -3,7 +3,7 @@ import json
 from collections.abc import Callable
 from itertools import chain
 from pathlib import Path
-from typing import Any, ClassVar, Optional, Type, Union
+from typing import Any, ClassVar
 
 from pymetropolis.metro_common.errors import MetropyError, error_context
 
@@ -17,10 +17,10 @@ from .parameters import Parameter
 class InputFile:
     def __init__(
         self,
-        file_class: Type[MetroFile],
+        file_class: type[MetroFile],
         optional: bool = False,
-        when: Optional[Callable[["Step"], bool]] = None,
-        when_doc: Optional[str] = None,
+        when: Callable[["Step"], bool] | None = None,
+        when_doc: str | None = None,
     ):
         self.file_class = file_class
         self.optional = optional
@@ -48,8 +48,8 @@ class InputFile:
 # TODO: Make some steps "optional" so they are not run if they are not needed (they are not
 # considered a endpoint node)
 class Step:
-    input_files: ClassVar[dict[str, Union[InputFile, Type[MetroFile]]]] = {}
-    output_files: ClassVar[dict[str, Type[MetroFile]]] = {}
+    input_files: ClassVar[dict[str, InputFile | type[MetroFile]]] = {}
+    output_files: ClassVar[dict[str, type[MetroFile]]] = {}
     _input_files: dict[str, MetroFile]
     _output_files: dict[str, MetroFile]
     _update_file_path: Path
@@ -146,9 +146,7 @@ class Step:
                 # The file exists but was updated since the last run (or did not exist before).
                 return True
         # Check that the relevant config has not been modified.
-        if self.config_hash() != update_dict.get("config_hash"):
-            return True
-        return False
+        return self.config_hash() != update_dict.get("config_hash")
 
     def update_dict(self) -> dict | None:
         """Returns a dictionary representing the update file of this step.
@@ -156,7 +154,7 @@ class Step:
         Returns `None` if the update file does not exist.
         """
         if self._update_file_path.is_file():
-            with open(self._update_file_path, "r") as f:
+            with open(self._update_file_path, encoding="utf-8") as f:
                 return json.load(f)
         else:
             return None
@@ -184,7 +182,7 @@ class Step:
                 continue
             update_dict[f"metro_file_{k}_mtime"] = f.last_modified_time()
         update_dict["config_hash"] = self.config_hash()
-        with open(self._update_file_path, "w") as f:
+        with open(self._update_file_path, "w", encoding="utf-8") as f:
             json.dump(update_dict, f)
 
     @classmethod
@@ -194,7 +192,7 @@ class Step:
             doc += cls.__doc__
             # There is a non-breakable whitespace there to properly split docstrings finishing by a
             # list from the following list.
-            doc += "\n \n"
+            doc += "\n&nbsp;\n"
         doc += cls._md_doc_params()
         doc += cls._md_doc_input_files()
         doc += cls._md_doc_output_files()

@@ -55,27 +55,29 @@ class PostprocessRoadNetworkStep(Step):
     remove_duplicates = BoolParameter(
         "road_network.remove_duplicates",
         default=False,
-        description="Whether the duplicate edges (edges with same source and target) should be removed.",
+        description=(
+            "Whether the duplicate edges (edges with same source and target) should be removed."
+        ),
         note="If `True`, the edge with the smallest travel time is kept.",
     )
     ensure_connected = BoolParameter(
         "road_network.ensure_connected",
         default=False,
         description=(
-            "Whether the network should be restricted to the largest strongly connected component of "
-            "the underlying graph."
+            "Whether the network should be restricted to the largest strongly connected component "
+            "of the underlying graph."
         ),
         note=(
-            "If `False`, it is the user's responsibility to ensure that all origin-destination pairs "
-            "are feasible."
+            "If `False`, it is the user's responsibility to ensure that all origin-destination "
+            "pairs are feasible."
         ),
     )
     reindex = BoolParameter(
         "road_network.reindex",
         default=False,
         description=(
-            "If `true`, the edges are re-index after the postprocessing so that they are indexed from "
-            "0 to n-1."
+            "If `true`, the edges are re-index after the postprocessing so that they are indexed "
+            "from 0 to n-1."
         ),
     )
     default_speed_limit = CustomParameter(
@@ -88,9 +90,9 @@ class PostprocessRoadNetworkStep(Step):
             " tables as values (see example)"
         ),
         note=(
-            "The value is either a scalar value to be applied to all edges with no specified value, a "
-            "table `road_type -> speed_limit` or two tables `road_type -> speed_limit`, for urban and "
-            "rural edges."
+            "The value is either a scalar value to be applied to all edges with no specified "
+            "value, a table `road_type -> speed_limit` or two tables `road_type -> speed_limit`, "
+            "for urban and rural edges."
         ),
         example="""
 
@@ -192,9 +194,9 @@ road = 1
 @error_context("Failed to set default values of edges")
 def set_default_values(
     gdf,
-    default_speed_limit: int | float | dict | None,
-    default_nb_lanes: int | float | dict,
-    hov_lanes: int | float | dict,
+    default_speed_limit: float | dict | None,
+    default_nb_lanes: float | dict,
+    hov_lanes: float | dict,
 ):
     # Set default for bool columns (default is always False).
     for col in ("toll", "roundabout", "give_way", "stop", "traffic_signals", "urban"):
@@ -209,7 +211,7 @@ def set_default_values(
     if isinstance(default_speed_limit, int | float):
         gdf["speed_limit"] = gdf["speed_limit"].fillna(default_speed_limit)
     elif isinstance(default_speed_limit, dict):
-        if "urban" in default_speed_limit.keys() and "rural" in default_speed_limit.keys():
+        if "urban" in default_speed_limit and "rural" in default_speed_limit:
             mask = gdf["urban"] & gdf["speed_limit"].isna()
             gdf.loc[mask, "speed_limit"] = gdf.loc[mask, "speed_limit"].fillna(
                 gdf.loc[mask, "road_type"].map(default_speed_limit["urban"])
@@ -232,7 +234,7 @@ def set_default_values(
     if isinstance(default_nb_lanes, int | float):
         gdf["lanes"] = gdf["lanes"].fillna(default_nb_lanes)
     elif isinstance(default_nb_lanes, dict):
-        if "urban" in default_nb_lanes.keys() and "rural" in default_nb_lanes.keys():
+        if "urban" in default_nb_lanes and "rural" in default_nb_lanes:
             mask = gdf["urban"] & gdf["lanes"].isna()
             gdf.loc[mask, "lanes"] = gdf.loc[mask, "lanes"].fillna(
                 gdf.loc[mask, "road_type"].map(default_nb_lanes["urban"])
@@ -254,7 +256,7 @@ def set_default_values(
     if isinstance(hov_lanes, int | float):
         gdf["hov_lanes"] = hov_lanes
     elif isinstance(hov_lanes, dict):
-        if "urban" in hov_lanes.keys() and "rural" in hov_lanes.keys():
+        if "urban" in hov_lanes and "rural" in hov_lanes:
             mask = gdf["urban"] & gdf["hov_lanes"].isna()
             gdf.loc[mask, "hov_lanes"] = gdf.loc[mask, "hov_lanes"].fillna(
                 gdf.loc[mask, "road_type"].map(hov_lanes["urban"])
@@ -289,35 +291,29 @@ def remove_duplicates(gdf):
     n1 = len(gdf)
     if n0 > n1:
         l1 = gdf["length"].sum()
-        print("Number of edges removed: {} ({:.2%})".format(n0 - n1, (n0 - n1) / n0))
-        print("Edge length removed (m): {:.0f} ({:.2%})".format(l0 - l1, (l0 - l1) / l0))
+        print(f"Number of edges removed: {n0 - n1} ({(n0 - n1) / n0:.2%})")
+        print(f"Edge length removed (m): {l0 - l1:.0f} ({(l0 - l1) / l0:.2%})")
     return gdf
 
 
 def select_connected(gdf):
     print("Building graph...")
     G = nx.DiGraph()
-    G.add_edges_from(
-        map(
-            lambda v: (v[0], v[1]),
-            gdf[["source", "target"]].values,
-        )
-    )
+    G.add_edges_from((v[0], v[1]) for v in gdf[["source", "target"]].values)
     # Keep only the nodes of the largest strongly connected component.
     nodes = max(nx.strongly_connected_components(G), key=len)
     if len(nodes) < G.number_of_nodes():
         print(
-            "Warning: discarding {} nodes disconnected from the largest graph component".format(
-                G.number_of_nodes() - len(nodes)
-            )
+            f"Warning: discarding {G.number_of_nodes() - len(nodes)} nodes disconnected from the "
+            "largest graph component"
         )
         n0 = len(gdf)
         l0 = gdf["length"].sum()
         gdf = gdf.loc[gdf["source"].isin(nodes) & gdf["target"].isin(nodes)].copy()
         n1 = len(gdf)
         l1 = gdf["length"].sum()
-        print("Number of edges removed: {} ({:.2%})".format(n0 - n1, (n0 - n1) / n0))
-        print("Edge length removed (m): {:.0f} ({:.2%})".format(l0 - l1, (l0 - l1) / l0))
+        print(f"Number of edges removed: {n0 - n1} ({(n0 - n1) / n0:.2%})")
+        print(f"Edge length removed (m): {l0 - l1:.0f} ({(l0 - l1) / l0:.2%})")
     return gdf
 
 
@@ -382,13 +378,15 @@ def print_stats(gdf: gpd.GeoDataFrame):
     print(f"Number of roundabout edges: {nb_roundabouts:,} ({nb_roundabouts / nb_edges:.1%})")
     nb_traffic_signals = gdf["traffic_signals"].sum()
     print(
-        f"Number of edges with traffic signals: {nb_traffic_signals:,} ({nb_traffic_signals / nb_edges:.1%})"
+        f"Number of edges with traffic signals: {nb_traffic_signals:,} "
+        f"({nb_traffic_signals / nb_edges:.1%})"
     )
     nb_stop_signs = gdf["stop_sign"].sum()
     print(f"Number of edges with stop sign: {nb_stop_signs:,} ({nb_stop_signs / nb_edges:.1%})")
     nb_give_way_signs = gdf["give_way_sign"].sum()
     print(
-        f"Number of edges with give_way sign: {nb_give_way_signs:,} ({nb_give_way_signs / nb_edges:.1%})"
+        f"Number of edges with give_way sign: {nb_give_way_signs:,} "
+        f"({nb_give_way_signs / nb_edges:.1%})"
     )
     nb_tolls = gdf["toll"].sum()
     print(f"Number of edges with toll: {nb_tolls:,} ({nb_tolls / nb_edges:.1%})")

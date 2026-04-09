@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from datetime import time, timedelta
 from pathlib import Path
-from typing import Any, Optional, override
+from typing import Any, override
 
 from isodate import ISO8601Error, parse_duration
 
@@ -18,9 +18,9 @@ class Type:
 
 class CustomValidator(Type):
     fn: Callable[[Any], Any]
-    description: Optional[str]
+    description: str | None
 
-    def __init__(self, fn: Callable[[Any], Any], description: Optional[str] = None):
+    def __init__(self, fn: Callable[[Any], Any], description: str | None = None):
         self.fn = fn
         self.description = description
 
@@ -50,13 +50,13 @@ class Int(Type):
 class PathType(Type):
     check_file_exists: bool
     check_dir_exists: bool
-    extensions: Optional[list[str]]
+    extensions: list[str] | None
 
     def __init__(
         self,
         check_file_exists: bool = False,
         check_dir_exists: bool = False,
-        extensions: Optional[list[str]] = None,
+        extensions: list[str] | None = None,
     ):
         self.check_file_exists = check_file_exists
         self.check_dir_exists = check_dir_exists
@@ -105,7 +105,7 @@ class Enum(Type):
 
     @override
     def _describe(self) -> str:
-        values_str = ", ".join(map(lambda v: f"`{repr(v)}`", self.values))
+        values_str = ", ".join(map(lambda v: f"`{v!r}`", self.values))
         return f"Either {values_str}"
 
 
@@ -137,7 +137,7 @@ class String(Type):
     @override
     def validate(self, value: Any) -> str:
         if not isinstance(value, str):
-            raise MetropyError(f"Invalid string: {repr(value)}")
+            raise MetropyError(f"Invalid string: {value!r}")
         return value
 
     @override
@@ -183,16 +183,16 @@ class Time(Type):
 
 class List(Type):
     inner: Type
-    length: Optional[int]
-    min_length: Optional[int]
-    max_length: Optional[int]
+    length: int | None
+    min_length: int | None
+    max_length: int | None
 
     def __init__(
         self,
         inner: Type,
-        length: Optional[int] = None,
-        min_length: Optional[int] = None,
-        max_length: Optional[int] = None,
+        length: int | None = None,
+        min_length: int | None = None,
+        max_length: int | None = None,
     ):
         self.inner = inner
         self.length = length
@@ -207,15 +207,18 @@ class List(Type):
             raise MetropyError(f"Invalid list: {value}")
         if self.length is not None and len(value) != self.length:
             raise MetropyError(
-                f"List has invalid number of elements (found: {len(value)}, expected: {self.length}): {value}"
+                f"List has invalid number of elements (found: {len(value)}, "
+                f"expected: {self.length}): {value}"
             )
         if self.min_length is not None and len(value) < self.min_length:
             raise MetropyError(
-                f"List has not enough elements (found: {len(value)}, expected: {self.length}+): {value}"
+                f"List has not enough elements (found: {len(value)}, "
+                f"expected: {self.length}+): {value}"
             )
         if self.max_length is not None and len(value) > self.max_length:
             raise MetropyError(
-                f"List has too many elements (found: {len(value)}, expected: {self.length}-): {value}"
+                f"List has too many elements (found: {len(value)}, "
+                f"expected: {self.length}-): {value}"
             )
         res = list()
         for elem in value:

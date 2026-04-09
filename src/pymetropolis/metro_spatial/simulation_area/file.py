@@ -1,5 +1,3 @@
-from typing import Optional
-
 from shapely.geometry import Polygon
 
 from pymetropolis.metro_pipeline.file import MetroGeoDataFrameFile
@@ -19,7 +17,7 @@ class SimulationAreaFile(MetroGeoDataFrameFile):
         assert isinstance(area, Polygon)
         return area
 
-    def get_area_opt(self) -> Optional[Polygon]:
+    def get_area_opt(self) -> Polygon | None:
         """Returns the simulation area as a Polygon.
 
         If the file does not exist, returns None."""

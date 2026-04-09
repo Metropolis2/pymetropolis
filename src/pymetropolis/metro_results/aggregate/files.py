@@ -21,7 +21,10 @@ class IterationResultsFile(MetroDataFrameFile):
         Column(
             "std_surplus",
             MetroDataType.FLOAT,
-            description="Standard-deviation of surplus (or expected utility) over agents. This can be an indicator of equity.",
+            description=(
+                "Standard-deviation of surplus (or expected utility) over agents. "
+                "This can be an indicator of equity."
+            ),
             nullable=False,
         ),
         Column(
@@ -52,7 +55,10 @@ class IterationResultsFile(MetroDataFrameFile):
         Column(
             "mean_tour_departure_time_shift",
             MetroDataType.DURATION,
-            description="Mean tour-level departure-time shift compared to the previous iteration, for tours with no mode shift.",
+            description=(
+                "Mean tour-level departure-time shift compared to the previous iteration, "
+                "for tours with no mode shift."
+            ),
         ),
         Column(
             "rmse_tour_departure_time",
@@ -130,7 +136,10 @@ class IterationResultsFile(MetroDataFrameFile):
         Column(
             "mean_road_trip_global_congestion_time",
             MetroDataType.DURATION,
-            description="Mean time lost in congestion of road trips, compared to the fastest free-flow route.",
+            description=(
+                "Mean time lost in congestion of road trips, "
+                "compared to the fastest free-flow route."
+            ),
         ),
         Column(
             "mean_road_trip_length",
@@ -155,26 +164,42 @@ class IterationResultsFile(MetroDataFrameFile):
         Column(
             "mean_road_trip_exp_travel_time_abs_diff",
             MetroDataType.DURATION,
-            description="Mean absolute difference between expected and simulated travel time of road trips.",
+            description=(
+                "Mean absolute difference between expected and simulated travel time of road trips."
+            ),
         ),
         Column(
             "rmse_road_trip_exp_travel_time_diff",
             MetroDataType.DURATION,
-            description="RMSE of the difference between the expected and simulated travel time of road trips.",
+            description=(
+                "RMSE of the difference between the expected and simulated travel time of road "
+                "trips."
+            ),
         ),
         Column(
             "mean_road_trip_length_diff",
             MetroDataType.FLOAT,
-            description="Mean length of the selected route that was not selected during the previous iteration, for road trips.",
+            description=(
+                "Mean length of the selected route that was not selected during the previous "
+                "iteration, for road trips."
+            ),
         ),
         Column(
             "rmse_simulated_road_travel_times",
             MetroDataType.DURATION,
-            description="RMSE between the simulated edge-level travel-time function for the current iteration and the expected edge-level travel-time function for the previous iteration. The mean is taken over all edges and vehicle types.",
+            description=(
+                "RMSE between the simulated edge-level travel-time function for the current "
+                "iteration and the expected edge-level travel-time function for the previous "
+                "iteration. The mean is taken over all edges and vehicle types."
+            ),
         ),
         Column(
             "rmse_expected_road_travel_times",
             MetroDataType.DURATION,
-            description="RMSE between the expected edge-level travel-time function for the current iteration and the expected edge-level travel-time function for the previous iteration. The mean is taken over all edges and vehicle types.",
+            description=(
+                "RMSE between the expected edge-level travel-time function for the current "
+                "iteration and the expected edge-level travel-time function for the previous "
+                "iteration. The mean is taken over all edges and vehicle types."
+            ),
         ),
     ]

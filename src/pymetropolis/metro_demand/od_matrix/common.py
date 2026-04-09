@@ -5,13 +5,13 @@ import polars as pl
 def generate_trips_from_od_matrix(df: pl.DataFrame, rng: np.random.Generator):
     if df["size"].dtype.is_float():
         decimals = df["size"] % 1.0
-        if (decimals != 0.0).any():
+        if (decimals.is_close(0.0, abs_tol=1e-9)).any():
             # Some values for `size` are not integers: we randomly draw the previous or next integer
             # for each value, with probability equal to the decimal part.
             # The draws are such that, on aggregate, the total number of trips is equal to the sum
             # of `size`.
             nb_extras = decimals.sum()
-            nb_extras = int(nb_extras) + rng.binomial(1, nb_extras % 1.0)
+            nb_extras = int(nb_extras) + rng.binomial(1, nb_extras % 1.0)  # ty: ignore[unsupported-operator]
             extras = rng.choice(
                 len(df), size=nb_extras, replace=False, p=decimals.to_numpy() / decimals.sum()
             )

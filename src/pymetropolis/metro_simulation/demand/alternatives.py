@@ -1,11 +1,7 @@
-from typing import Optional
-
 import polars as pl
 
 from pymetropolis.metro_common.errors import MetropyError, error_context
-from pymetropolis.metro_demand.modes import (
-    OutsideOptionPreferencesFile,
-)
+from pymetropolis.metro_demand.modes import OutsideOptionPreferencesFile
 from pymetropolis.metro_demand.population import TripsFile, UniformDrawsFile
 from pymetropolis.metro_pipeline.parameters import EnumParameter, FloatParameter
 from pymetropolis.metro_pipeline.steps import InputFile
@@ -18,7 +14,7 @@ from .files import MetroAlternativesFile
 def generate_departure_time_columns(
     tour_ids: pl.Series,
     departure_time_choice_model: str,
-    departure_time_choice_mu: Optional[float],
+    departure_time_choice_mu: float | None,
     draw_file: UniformDrawsFile,
 ):
     df = pl.DataFrame({"agent_id": tour_ids})
@@ -74,9 +70,13 @@ class WriteMetroAlternativesStep(StepWithModes):
         ),
         "uniform_draws": InputFile(
             UniformDrawsFile,
-            when=lambda inst: inst.has_trip_mode()
-            and inst.departure_time_choice_model == "ContinuousLogit",
-            when_doc='if at least one "trip-based" mode is defined and departure-time choice is "ContinuousLogit"',
+            when=lambda inst: (
+                inst.has_trip_mode() and inst.departure_time_choice_model == "ContinuousLogit"
+            ),
+            when_doc=(
+                'if at least one "trip-based" mode is defined and departure-time choice '
+                'is "ContinuousLogit"'
+            ),
         ),
         "outside_option_preferences": InputFile(
             OutsideOptionPreferencesFile,
@@ -89,9 +89,9 @@ class WriteMetroAlternativesStep(StepWithModes):
     def is_defined(self) -> bool:
         if self.modes is None:
             return False
-        if self.has_trip_mode() and self.departure_time_choice_model is None:
-            return False
-        return True
+        # Step is NOT defined if there is a trip mode but the departure-time choice model is not
+        # defined.
+        return not self.has_trip_mode() or self.departure_time_choice_model is not None
 
     def run(self):
         trips: pl.DataFrame = self.input["trips"].read()

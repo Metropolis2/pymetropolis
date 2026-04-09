@@ -70,28 +70,33 @@ class SimulationAreaFromOSMStep(GeoStep, OSMStep):
         "simulation_area.osm_name",
         validator=name_or_names_validator,
         validator_description="string or list of strings",
-        description="List of subdivision names to be considered when reading administrative boundaries.",
+        description=(
+            "List of subdivision names to be considered when reading administrative boundaries."
+        ),
         example='`"Madrid"`',
         note=(
-            "The values are compared with the `name=*` tag of the OpenStreetMap features. Be careful, "
-            "the name can sometimes be in the local language."
+            "The values are compared with the `name=*` tag of the OpenStreetMap features. "
+            "Be careful, the name can sometimes be in the local language."
         ),
     )
     osm_admin_level = IntParameter(
         "simulation_area.osm_admin_level",
         description="Administrative level to be considered when reading administrative boundaries.",
         note=(
-            "See https://wiki.openstreetmap.org/wiki/Tag:boundary%3Dadministrative#Table_:_Admin_level_for_all_countries "
+            "See https://wiki.openstreetmap.org/wiki/Tag:boundary%3Dadministrative"
+            "#Table_:_Admin_level_for_all_countries "
             "for a table with the meaning of all possible value for each country."
         ),
     )
     buffer = FloatParameter(
         "simulation_area.buffer",
         default=0.0,
-        description="Distance by which the polygon of the simulation area must be extended or shrinked.",
+        description=(
+            "Distance by which the polygon of the simulation area must be extended or shrunk."
+        ),
         note=(
-            "The value is expressed in the unit of measure of the CRS (usually meter). Positive values "
-            "extend the area, while negative values shrink it."
+            "The value is expressed in the unit of measure of the CRS (usually meter). "
+            "Positive values extend the area, while negative values shrink it."
         ),
     )
     output_files = {"simulation_area": SimulationAreaFile}

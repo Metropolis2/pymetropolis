@@ -1,6 +1,6 @@
 from datetime import time, timedelta
 from pathlib import Path
-from typing import Any, Generic, Optional, overload
+from typing import Any, Generic, overload
 
 from typing_extensions import TypeVar
 
@@ -77,7 +77,7 @@ class Parameter(Generic[T]):
     def from_config(self, config: Config) -> T | None:
         x = config.dict
         for k in self.key:
-            if k in x.keys():
+            if k in x:
                 x = x[k]
             else:
                 # The key is not defined in the config.
@@ -133,7 +133,7 @@ class DurationParameter(Parameter[timedelta]):
 
 
 class EnumParameter(Parameter[Any]):
-    def __init__(self, *args, values: list[Any] = [], **kwargs):
+    def __init__(self, *args, values: list[Any], **kwargs):
         kwargs["validator"] = Enum(values=values)
         super().__init__(*args, **kwargs)
 
@@ -144,7 +144,7 @@ class PathParameter(Parameter[Path]):
         *args,
         check_file_exists: bool = False,
         check_dir_exists: bool = False,
-        extensions: Optional[list[str]] = None,
+        extensions: list[str] | None = None,
         **kwargs,
     ):
         kwargs["validator"] = PathType(
@@ -160,9 +160,9 @@ class ListParameter(Parameter[list[Any]]):
         self,
         *args,
         inner: Type,
-        length: Optional[int] = None,
-        min_length: Optional[int] = None,
-        max_length: Optional[int] = None,
+        length: int | None = None,
+        min_length: int | None = None,
+        max_length: int | None = None,
         **kwargs,
     ):
         kwargs["validator"] = List(inner, length, min_length, max_length)

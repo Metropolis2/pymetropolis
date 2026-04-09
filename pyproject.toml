@@ -56,3 +56,17 @@ dev = [
 [build-system]
 requires = ["setuptools>=61.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.format]
+skip-magic-trailing-comma = true
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "RUF", "PLW"]
+ignore = [
+    "C408",  # C408: allow list() and dict() calls
+    "RUF012",  # mutable-class-default: allow input_files / output_files syntax
+]
+preview = false

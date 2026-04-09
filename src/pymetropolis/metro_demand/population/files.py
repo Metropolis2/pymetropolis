@@ -21,7 +21,9 @@ class TripsFile(MetroDataFrameFile):
         Column(
             "household_id",
             MetroDataType.ID,
-            description="Identifier of the household to which the person performing the trip belongs.",
+            description=(
+                "Identifier of the household to which the person performing the trip belongs."
+            ),
             nullable=False,
         ),
         Column(
@@ -56,12 +58,7 @@ class PersonsFile(MetroDataFrameFile):
             description="Identifier of the household to which the person belongs.",
             nullable=False,
         ),
-        Column(
-            "age",
-            MetroDataType.UINT,
-            description="Age of the person.",
-            nullable=True,
-        ),
+        Column("age", MetroDataType.UINT, description="Age of the person.", nullable=True),
         Column(
             "employed",
             MetroDataType.BOOL,
@@ -69,10 +66,7 @@ class PersonsFile(MetroDataFrameFile):
             nullable=True,
         ),
         Column(
-            "woman",
-            MetroDataType.BOOL,
-            description="Whether the person is a woman.",
-            nullable=True,
+            "woman", MetroDataType.BOOL, description="Whether the person is a woman.", nullable=True
         ),
         Column(
             "socioprofessional_class",
@@ -136,7 +130,10 @@ class HouseholdsFile(MetroDataFrameFile):
 # TODO. Maybe we should consider having the same mode mu for all the tours of a single person?
 class UniformDrawsFile(MetroDataFrameFile):
     path = "demand/population/uniform_draws.parquet"
-    description = "Draws for the inverse transform sampling of mode choice and departure-time choice, of each tour."
+    description = (
+        "Draws for the inverse transform sampling of mode choice and departure-time choice, "
+        "of each tour."
+    )
     schema = [
         Column(
             "tour_id",

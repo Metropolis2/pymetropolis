@@ -104,8 +104,7 @@ def generate_public_transit_trips(
     schedule_pref_file: LinearScheduleFile,
 ):
     df = df.with_columns(
-        pl.lit("public_transit").alias("alt_id"),
-        pl.lit("Virtual").alias("class.type"),
+        pl.lit("public_transit").alias("alt_id"), pl.lit("Virtual").alias("class.type")
     )
     tts: pl.DataFrame = tts_file.read()
     df = (

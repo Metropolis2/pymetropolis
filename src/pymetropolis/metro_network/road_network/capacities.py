@@ -44,8 +44,7 @@ def capacities_validator(value: Any) -> int | float | dict:
                     raise MetropyError(
                         f"Invalid {k} capacities (map road_type->capacity expected): `{value[k]}`"
                     )
-            else:
-                return value
+            return value
         else:
             # Case 3. map road_type -> capacity
             if is_valid_capacity_map(value):
@@ -150,7 +149,8 @@ road = 1500
                     elif isinstance(value, dict):
                         if "times" not in value.keys() and "values" not in value.keys():
                             raise MetropyError(
-                                f"Expected `times` and `values` keys for capacities of road_type `{road_type}`"
+                                "Expected `times` and `values` keys for capacities of road_type "
+                                f"`{road_type}`"
                             )
                         if not isinstance(value["times"], list) and not all(
                             isinstance(t, time) for t in value["times"]

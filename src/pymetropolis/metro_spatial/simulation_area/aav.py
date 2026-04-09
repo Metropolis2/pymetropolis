@@ -6,11 +6,7 @@ from loguru import logger
 from pymetropolis.metro_common.errors import MetropyError, error_context
 from pymetropolis.metro_common.io import read_geodataframe
 from pymetropolis.metro_common.utils import tmp_download
-from pymetropolis.metro_pipeline.parameters import (
-    FloatParameter,
-    PathParameter,
-    StringParameter,
-)
+from pymetropolis.metro_pipeline.parameters import FloatParameter, PathParameter, StringParameter
 from pymetropolis.metro_spatial import GeoStep
 
 from .common import buffer_area, geom_as_gdf
@@ -84,17 +80,19 @@ class SimulationAreaFromAAVStep(GeoStep):
         description="Path to the shapefile of the French's _Aires d'attraction des villes_.",
         example='`"data/aav2020_2024.zip"`',
         note=(
-            "When the value is not specified, pymetropolis will attempt to automatically download the "
-            "shapefile."
+            "When the value is not specified, pymetropolis will attempt to automatically download "
+            "the shapefile."
         ),
     )
     buffer = FloatParameter(
         "simulation_area.buffer",
         default=0.0,
-        description="Distance by which the polygon of the simulation area must be extended or shrinked.",
+        description=(
+            "Distance by which the polygon of the simulation area must be extended or shrinked."
+        ),
         note=(
-            "The value is expressed in the unit of measure of the CRS (usually meter). Positive values "
-            "extend the area, while negative values shrink it."
+            "The value is expressed in the unit of measure of the CRS (usually meter). "
+            "Positive values extend the area, while negative values shrink it."
         ),
     )
     output_files = {"simulation_area": SimulationAreaFile}

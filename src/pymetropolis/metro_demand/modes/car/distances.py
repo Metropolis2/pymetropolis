@@ -1,3 +1,5 @@
+import itertools
+
 import networkx as nx
 import polars as pl
 
@@ -83,7 +85,7 @@ def compute_distances(edges: pl.DataFrame, ods: pl.DataFrame) -> pl.DataFrame:
         destinations = set(row["destination_node_id"])
         for destination, path in nx.single_source_dijkstra_path(G, origin, weight="fftt").items():
             if destination in destinations:
-                distance = sum(G[u][v]["length"] for u, v in zip(path[:-1], path[1:]))
+                distance = sum(G[u][v]["length"] for u, v in itertools.pairwise(path))
                 results.append((origin, destination, distance))
     df = pl.DataFrame(
         results,

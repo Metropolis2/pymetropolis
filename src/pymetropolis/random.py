@@ -1,5 +1,5 @@
 from datetime import time, timedelta
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 import polars as pl
@@ -21,8 +21,8 @@ class RandomStep(Step):
         "random_seed",
         description="Random seed used to initialize the random number generator.",
         note=(
-            "If the random seed is not defined, some operations are not deterministic, i.e., they can "
-            "produce different results if re-run."
+            "If the random seed is not defined, some operations are not deterministic, i.e., they "
+            "can produce different results if re-run."
         ),
     )
 
@@ -82,15 +82,15 @@ class DistributionParameter(Parameter[Any]):
         self,
         *args,
         inner: Type,
-        inner_mean: Optional[Type] = None,
-        inner_std: Optional[Type] = None,
+        inner_mean: Type | None = None,
+        inner_std: Type | None = None,
         **kwargs,
     ):
         if inner_mean is None:
             inner_mean = inner
         if inner_std is None:
             inner_std = inner
-        distrs = ", ".join(map(lambda d: f"`{repr(d)}`", DISTRIBUTIONS))
+        distrs = ", ".join(f"`{d!r}`" for d in DISTRIBUTIONS)
         kwargs["validator"] = CustomValidator(
             fn=lambda v: validate_distribution(
                 v, inner=inner, inner_mean=inner_mean, inner_std=inner_std

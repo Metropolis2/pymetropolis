@@ -1,6 +1,7 @@
 from functools import wraps
 
-def error_context(msg, fmt_args:list[int]|None = None, fmt_kwargs:list[str]|None=None):
+
+def error_context(msg, fmt_args: list[int] | None = None, fmt_kwargs: list[str] | None = None):
     def decorate(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -9,11 +10,13 @@ def error_context(msg, fmt_args:list[int]|None = None, fmt_kwargs:list[str]|None
             except Exception as e:
                 fmt = []
                 if fmt_args is not None:
-                    fmt += [args[i] for i in fmt_args] 
+                    fmt += [args[i] for i in fmt_args]
                 if fmt_kwargs is not None:
-                    fmt += [kwargs[k] for k in fmt_kwargs] 
+                    fmt += [kwargs[k] for k in fmt_kwargs]
                 raise MetropyError(msg.format(*fmt)) from e
+
         return wrapper
+
     return decorate
 
 

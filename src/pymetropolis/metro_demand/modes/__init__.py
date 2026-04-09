@@ -14,16 +14,12 @@ from .public_transit import (
     PublicTransitTravelTimesFromRoadDistancesStep,
 )
 
-MODES_FILES = CAR_FILES + [
-    PublicTransitPreferencesFile,
-    PublicTransitTravelTimesFile,
-    OutsideOptionPreferencesFile,
-    OutsideOptionTravelTimesFile,
-]
+PT_FILES = [PublicTransitPreferencesFile, PublicTransitTravelTimesFile]
+OUTSIDE_FILES = [OutsideOptionPreferencesFile, OutsideOptionTravelTimesFile]
 
-MODES_STEPS = CAR_STEPS + [
-    PublicTransitPreferencesStep,
-    PublicTransitTravelTimesFromRoadDistancesStep,
-    OutsideOptionPreferencesStep,
-    OutsideOptionTravelTimesFromRoadDistancesStep,
-]
+MODES_FILES = CAR_FILES + PT_FILES + OUTSIDE_FILES
+
+PT_STEPS = [PublicTransitPreferencesStep, PublicTransitTravelTimesFromRoadDistancesStep]
+OUTSIDE_STEPS = [OutsideOptionPreferencesStep, OutsideOptionTravelTimesFromRoadDistancesStep]
+
+MODES_STEPS = CAR_STEPS + PT_STEPS + OUTSIDE_STEPS

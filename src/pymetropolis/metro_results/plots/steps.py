@@ -133,13 +133,7 @@ class TripDepartureTimeDistributionStep(Step):
         df = self.input["trip_results"].read()
         fig, ax = plt.subplots()
         values = df.select(time_to_seconds_since_midnight_pl(pl.col("departure_time"))).to_series()
-        ax.hist(
-            values,
-            bins=60,
-            density=True,
-            alpha=0.9,
-            histtype="step",
-        )
+        ax.hist(values, bins=60, density=True, alpha=0.9, histtype="step")
         ax.set_xlabel("Departure time")
         ax.set_ylabel("Density")
         ax.set_xlim(values.min(), values.max())
@@ -153,7 +147,9 @@ class TripDepartureTimeDistributionStep(Step):
 
 
 class RoadNetworkCongestionFunctionPlotsStep(Step):
-    """Generates plots of expected and simulated congestion function over the entire road network."""
+    """Generates plots of expected and simulated congestion function global over the entire road
+    network.
+    """
 
     input_files = {
         "edges_fftt": EdgesFreeFlowTravelTimeFile,

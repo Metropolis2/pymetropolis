@@ -6,10 +6,7 @@ class MetroIterationResultsFile(MetroDataFrameFile):
     description = "Aggregate results over iterations from the Metropolis-Core simulation."
     schema = [
         Column(
-            "iteration_counter",
-            MetroDataType.UINT,
-            description="Iteration counter",
-            nullable=False,
+            "iteration_counter", MetroDataType.UINT, description="Iteration counter", nullable=False
         ),
         Column(
             "surplus_mean",
@@ -44,42 +41,66 @@ class MetroIterationResultsFile(MetroDataFrameFile):
         Column(
             "alt_departure_time_mean",
             MetroDataType.FLOAT,
-            description="Mean departure time of the first trip, over agents (number of seconds since midnight).",
+            description=(
+                "Mean departure time of the first trip, over agents "
+                "(number of seconds since midnight)."
+            ),
         ),
         Column(
             "alt_departure_time_std",
             MetroDataType.FLOAT,
-            description="Standard-deviation of departure time of the first trip, over agents (number of seconds since midnight).",
+            description=(
+                "Standard-deviation of departure time of the first trip, over agents "
+                "(number of seconds since midnight)."
+            ),
         ),
         Column(
             "alt_departure_time_min",
             MetroDataType.FLOAT,
-            description="Minimum departure time of the first trip, over agents (number of seconds since midnight).",
+            description=(
+                "Minimum departure time of the first trip, over agents "
+                "(number of seconds since midnight)."
+            ),
         ),
         Column(
             "alt_departure_time_max",
             MetroDataType.FLOAT,
-            description="Maximum departure time of the first trip, over agents (number of seconds since midnight).",
+            description=(
+                "Maximum departure time of the first trip, over agents "
+                "(number of seconds since midnight)."
+            ),
         ),
         Column(
             "alt_arrival_time_mean",
             MetroDataType.FLOAT,
-            description="Mean arrival time of the last trip, over agents (in number of seconds since midnight).",
+            description=(
+                "Mean arrival time of the last trip, over agents "
+                "(in number of seconds since midnight)."
+            ),
         ),
         Column(
             "alt_arrival_time_std",
             MetroDataType.FLOAT,
-            description="Standard-deviation of arrival time of the last trip, over agents (in number of seconds since midnight).",
+            description=(
+                "Standard-deviation of arrival time of the last trip, over agents "
+                "(in number of seconds since midnight)."
+            ),
         ),
         Column(
             "alt_arrival_time_min",
             MetroDataType.FLOAT,
-            description="Minimum arrival time of the last trip, over agents (in number of seconds since midnight).",
+            description=(
+                "Minimum arrival time of the last trip, over agents "
+                "(in number of seconds since midnight)."
+            ),
         ),
         Column(
             "alt_arrival_time_max",
             MetroDataType.FLOAT,
-            description="Maximum arrival time of the last trip, over agents (in number of seconds since midnight).",
+            description=(
+                "Maximum arrival time of the last trip, over agents "
+                "(in number of seconds since midnight)."
+            ),
         ),
         Column(
             "alt_travel_time_mean",
@@ -89,17 +110,24 @@ class MetroIterationResultsFile(MetroDataFrameFile):
         Column(
             "alt_travel_time_std",
             MetroDataType.FLOAT,
-            description="Standard-deviation of total travel time (i.e., for all trips), over agents (in seconds).",
+            description=(
+                "Standard-deviation of total travel time (i.e., for all trips), over agents "
+                "(in seconds)."
+            ),
         ),
         Column(
             "alt_travel_time_min",
             MetroDataType.FLOAT,
-            description="Minimum total travel time (i.e., for all trips), over agents (in seconds).",
+            description=(
+                "Minimum total travel time (i.e., for all trips), over agents (in seconds)."
+            ),
         ),
         Column(
             "alt_travel_time_max",
             MetroDataType.FLOAT,
-            description="Maximum total travel time (i.e., for all trips), over agents (in seconds).",
+            description=(
+                "Maximum total travel time (i.e., for all trips), over agents (in seconds)."
+            ),
         ),
         Column(
             "alt_utility_mean",
@@ -109,7 +137,9 @@ class MetroIterationResultsFile(MetroDataFrameFile):
         Column(
             "alt_utility_std",
             MetroDataType.FLOAT,
-            description="Standard-deviation of simulated utility of the selected alternative, over agents.",
+            description=(
+                "Standard-deviation of simulated utility of the selected alternative, over agents."
+            ),
         ),
         Column(
             "alt_utility_min",
@@ -124,47 +154,70 @@ class MetroIterationResultsFile(MetroDataFrameFile):
         Column(
             "alt_expected_utility_mean",
             MetroDataType.FLOAT,
-            description="Mean surplus (or expected utility) for the selected alternative, over agents.",
+            description=(
+                "Mean surplus (or expected utility) for the selected alternative, over agents."
+            ),
         ),
         Column(
             "alt_expected_utility_std",
             MetroDataType.FLOAT,
-            description="Standard-deviation of surplus (or expected utility) for the selected alternative, over agents.",
+            description=(
+                "Standard-deviation of surplus (or expected utility) for the selected alternative, "
+                "over agents."
+            ),
         ),
         Column(
             "alt_expected_utility_min",
             MetroDataType.FLOAT,
-            description="Minimum surplus (or expected utility) for the selected alternative, over agents.",
+            description=(
+                "Minimum surplus (or expected utility) for the selected alternative, over agents."
+            ),
         ),
         Column(
             "alt_expected_utility_max",
             MetroDataType.FLOAT,
-            description="Maximum surplus (or expected utility) for the selected alternative, over agents.",
+            description=(
+                "Maximum surplus (or expected utility) for the selected alternative, over agents."
+            ),
         ),
         Column(
             "alt_dep_time_shift_mean",
             MetroDataType.FLOAT,
-            description="Mean departure-time shift of the first trip compared to the previous iteration, over agent keeping the same alternative (in seconds).",
+            description=(
+                "Mean departure-time shift of the first trip compared to the previous iteration, "
+                "over agent keeping the same alternative (in seconds)."
+            ),
         ),
         Column(
             "alt_dep_time_shift_std",
             MetroDataType.FLOAT,
-            description="Standard-deviation of departure-time shift of the first trip compared to the previous iteration, over agent keeping the same alternative (in seconds).",
+            description=(
+                "Standard-deviation of departure-time shift of the first trip compared to the "
+                "previous iteration, over agent keeping the same alternative (in seconds)."
+            ),
         ),
         Column(
             "alt_dep_time_shift_min",
             MetroDataType.FLOAT,
-            description="Minimum departure-time shift of the first trip compared to the previous iteration, over agent keeping the same alternative (in seconds).",
+            description=(
+                "Minimum departure-time shift of the first trip compared to the previous "
+                "iteration, over agent keeping the same alternative (in seconds)."
+            ),
         ),
         Column(
             "alt_dep_time_shift_max",
             MetroDataType.FLOAT,
-            description="Maximum departure-time shift of the first trip compared to the previous iteration, over agent keeping the same alternative (in seconds).",
+            description=(
+                "Maximum departure-time shift of the first trip compared to the previous "
+                "iteration, over agent keeping the same alternative (in seconds)."
+            ),
         ),
         Column(
             "alt_dep_time_rmse",
             MetroDataType.FLOAT,
-            description="RMSE of first-trip departure-time shift over agents keeping the same alternative.",
+            description=(
+                "RMSE of first-trip departure-time shift over agents keeping the same alternative."
+            ),
         ),
         Column(
             "road_trip_count",
@@ -174,7 +227,9 @@ class MetroIterationResultsFile(MetroDataFrameFile):
         Column(
             "nb_agents_at_least_one_road_trip",
             MetroDataType.UINT,
-            description="Number of agents with at least one road trip in their selected alternative.",
+            description=(
+                "Number of agents with at least one road trip in their selected alternative."
+            ),
         ),
         Column(
             "nb_agents_all_road_trips",
@@ -189,77 +244,120 @@ class MetroIterationResultsFile(MetroDataFrameFile):
         Column(
             "road_trip_count_by_agent_std",
             MetroDataType.FLOAT,
-            description="Standard-deviation of number of road trips, over all agents with at least one road trip.",
+            description=(
+                "Standard-deviation of number of road trips, over all agents with at least one "
+                "road trip."
+            ),
         ),
         Column(
             "road_trip_count_by_agent_min",
             MetroDataType.FLOAT,
-            description="Minimum number of road trips, over all agents with at least one road trip.",
+            description=(
+                "Minimum number of road trips, over all agents with at least one road trip."
+            ),
         ),
         Column(
             "road_trip_count_by_agent_max",
             MetroDataType.FLOAT,
-            description="Maximum number of road trips, over all agents with at least one road trip.",
+            description=(
+                "Maximum number of road trips, over all agents with at least one road trip."
+            ),
         ),
         Column(
             "road_trip_departure_time_mean",
             MetroDataType.FLOAT,
-            description="Mean departure time from origin, over all road trips (in number of seconds after midnight).",
+            description=(
+                "Mean departure time from origin, over all road trips "
+                "(in number of seconds after midnight)."
+            ),
         ),
         Column(
             "road_trip_departure_time_std",
             MetroDataType.FLOAT,
-            description="Standard-deviation of departure time from origin, over all road trips (in number of seconds after midnight).",
+            description=(
+                "Standard-deviation of departure time from origin, over all road trips "
+                "(in number of seconds after midnight)."
+            ),
         ),
         Column(
             "road_trip_departure_time_min",
             MetroDataType.FLOAT,
-            description="Minimum departure time from origin, over all road trips (in number of seconds after midnight).",
+            description=(
+                "Minimum departure time from origin, over all road trips "
+                "(in number of seconds after midnight)."
+            ),
         ),
         Column(
             "road_trip_departure_time_max",
             MetroDataType.FLOAT,
-            description="Maximum departure time from origin, over all road trips (in number of seconds after midnight).",
+            description=(
+                "Maximum departure time from origin, over all road trips "
+                "(in number of seconds after midnight)."
+            ),
         ),
         Column(
             "road_trip_arrival_time_mean",
             MetroDataType.FLOAT,
-            description="Mean arrival time at destination, over all road trips (in number of seconds after midnight).",
+            description=(
+                "Mean arrival time at destination, over all road trips "
+                "(in number of seconds after midnight)."
+            ),
         ),
         Column(
             "road_trip_arrival_time_std",
             MetroDataType.FLOAT,
-            description="Standard-deviation of arrival time at destination, over all road trips (in number of seconds after midnight).",
+            description=(
+                "Standard-deviation of arrival time at destination, over all road trips "
+                "(in number of seconds after midnight)."
+            ),
         ),
         Column(
             "road_trip_arrival_time_min",
             MetroDataType.FLOAT,
-            description="Minimum arrival time at destination, over all road trips (in number of seconds after midnight).",
+            description=(
+                "Minimum arrival time at destination, over all road trips "
+                "(in number of seconds after midnight)."
+            ),
         ),
         Column(
             "road_trip_arrival_time_max",
             MetroDataType.FLOAT,
-            description="Maximum arrival time at destination, over all road trips (in number of seconds after midnight).",
+            description=(
+                "Maximum arrival time at destination, over all road trips "
+                "(in number of seconds after midnight)."
+            ),
         ),
         Column(
             "road_trip_road_time_mean",
             MetroDataType.FLOAT,
-            description="Mean time spent on the road segments (i.e., travel time excluding bottleneck delays), over all road trips (in seconds).",
+            description=(
+                "Mean time spent on the road segments (i.e., travel time excluding bottleneck "
+                "delays), over all road trips (in seconds)."
+            ),
         ),
         Column(
             "road_trip_road_time_std",
             MetroDataType.FLOAT,
-            description="Standard-deviation of time spent on the road segments (i.e., travel time excluding bottleneck delays), over all road trips (in seconds).",
+            description=(
+                "Standard-deviation of time spent on the road segments (i.e., travel time "
+                "excluding bottleneck delays), over all road trips (in seconds)."
+            ),
         ),
         Column(
             "road_trip_road_time_min",
             MetroDataType.FLOAT,
-            description="Minimum time spent on the road segments (i.e., travel time excluding bottleneck delays), over all road trips (in seconds).",
+            description=(
+                "Minimum time spent on the road segments (i.e., travel time excluding bottleneck "
+                "delays), over all road trips (in seconds)."
+            ),
         ),
         Column(
             "road_trip_road_time_max",
             MetroDataType.FLOAT,
-            description="Maximum time spent on the road segments (i.e., travel time excluding bottleneck delays), over all road trips (in seconds).",
+            description=(
+                "Maximum time spent on the road segments (i.e., travel time excluding "
+                "bottleneck delays), over all road trips (in seconds)."
+            ),
         ),
         Column(
             "road_trip_in_bottleneck_time_mean",
@@ -269,7 +367,10 @@ class MetroIterationResultsFile(MetroDataFrameFile):
         Column(
             "road_trip_in_bottleneck_time_std",
             MetroDataType.FLOAT,
-            description="Standard-deviation of delay at entry bottlenecks, over all road trips (in seconds).",
+            description=(
+                "Standard-deviation of delay at entry bottlenecks, over all road trips "
+                "(in seconds)."
+            ),
         ),
         Column(
             "road_trip_in_bottleneck_time_min",
@@ -289,7 +390,9 @@ class MetroIterationResultsFile(MetroDataFrameFile):
         Column(
             "road_trip_out_bottleneck_time_std",
             MetroDataType.FLOAT,
-            description="Standard-deviation of delay exit bottlenecks, over all road trips (in seconds).",
+            description=(
+                "Standard-deviation of delay exit bottlenecks, over all road trips (in seconds)."
+            ),
         ),
         Column(
             "road_trip_out_bottleneck_time_min",
@@ -324,82 +427,129 @@ class MetroIterationResultsFile(MetroDataFrameFile):
         Column(
             "road_trip_route_free_flow_travel_time_mean",
             MetroDataType.FLOAT,
-            description="Mean free-flow travel time of the selected route, over all road trips (in seconds).",
+            description=(
+                "Mean free-flow travel time of the selected route, over all road trips "
+                "(in seconds)."
+            ),
         ),
         Column(
             "road_trip_route_free_flow_travel_time_std",
             MetroDataType.FLOAT,
-            description="Standard-deviation of free-flow travel time of the selected route, over all road trips (in seconds).",
+            description=(
+                "Standard-deviation of free-flow travel time of the selected route, over all road "
+                "trips (in seconds)."
+            ),
         ),
         Column(
             "road_trip_route_free_flow_travel_time_min",
             MetroDataType.FLOAT,
-            description="Minimum free-flow travel time of the selected route, over all road trips (in seconds).",
+            description=(
+                "Minimum free-flow travel time of the selected route, over all road trips "
+                "(in seconds)."
+            ),
         ),
         Column(
             "road_trip_route_free_flow_travel_time_max",
             MetroDataType.FLOAT,
-            description="Maximum free-flow travel time of the selected route, over all road trips (in seconds).",
+            description=(
+                "Maximum free-flow travel time of the selected route, over all road trips "
+                "(in seconds)."
+            ),
         ),
         Column(
             "road_trip_global_free_flow_travel_time_mean",
             MetroDataType.FLOAT,
-            description="Mean travel time of the fastest free-flow route, over all road trips (in seconds).",
+            description=(
+                "Mean travel time of the fastest free-flow route, over all road trips (in seconds)."
+            ),
         ),
         Column(
             "road_trip_global_free_flow_travel_time_std",
             MetroDataType.FLOAT,
-            description="Standard-deviation of travel time of the fastest free-flow route, over all road trips (in seconds).",
+            description=(
+                "Standard-deviation of travel time of the fastest free-flow route, over all road "
+                "trips (in seconds)."
+            ),
         ),
         Column(
             "road_trip_global_free_flow_travel_time_min",
             MetroDataType.FLOAT,
-            description="Minimum travel time of the fastest free-flow route, over all road trips (in seconds).",
+            description=(
+                "Minimum travel time of the fastest free-flow route, over all road trips "
+                "(in seconds)."
+            ),
         ),
         Column(
             "road_trip_global_free_flow_travel_time_max",
             MetroDataType.FLOAT,
-            description="Maximum travel time of the fastest free-flow route, over all road trips (in seconds).",
+            description=(
+                "Maximum travel time of the fastest free-flow route, over all road trips "
+                "(in seconds)."
+            ),
         ),
         Column(
             "road_trip_route_congestion_mean",
             MetroDataType.FLOAT,
-            description="Mean share of extra time spent in congestion for the selected route, over all road trips (in seconds).",
+            description=(
+                "Mean share of extra time spent in congestion for the selected route, over all "
+                "road trips (in seconds)."
+            ),
         ),
         Column(
             "road_trip_route_congestion_std",
             MetroDataType.FLOAT,
-            description="Standard-deviation of share of extra time spent in congestion for the selected route, over all road trips (in seconds).",
+            description=(
+                "Standard-deviation of share of extra time spent in congestion for the selected "
+                "route, over all road trips (in seconds)."
+            ),
         ),
         Column(
             "road_trip_route_congestion_min",
             MetroDataType.FLOAT,
-            description="Minimum share of extra time spent in congestion for the selected route, over all road trips (in seconds).",
+            description=(
+                "Minimum share of extra time spent in congestion for the selected route, over all "
+                "road trips (in seconds)."
+            ),
         ),
         Column(
             "road_trip_route_congestion_max",
             MetroDataType.FLOAT,
-            description="Maximum share of extra time spent in congestion for the selected route, over all road trips (in seconds).",
+            description=(
+                "Maximum share of extra time spent in congestion for the selected route, "
+                "over all road trips (in seconds)."
+            ),
         ),
         Column(
             "road_trip_global_congestion_mean",
             MetroDataType.FLOAT,
-            description="Mean share of extra time spent in congestion compared to the fastest free-flow route, over all road trips (in seconds).",
+            description=(
+                "Mean share of extra time spent in congestion compared to the fastest free-flow "
+                "route, over all road trips (in seconds)."
+            ),
         ),
         Column(
             "road_trip_global_congestion_std",
             MetroDataType.FLOAT,
-            description="Standard-deviation of share of extra time spent in congestion compared to the fastest free-flow route, over all road trips (in seconds).",
+            description=(
+                "Standard-deviation of share of extra time spent in congestion compared to the "
+                "fastest free-flow route, over all road trips (in seconds)."
+            ),
         ),
         Column(
             "road_trip_global_congestion_min",
             MetroDataType.FLOAT,
-            description="Minimum share of extra time spent in congestion compared to the fastest free-flow route, over all road trips (in seconds).",
+            description=(
+                "Minimum share of extra time spent in congestion compared to the fastest free-flow "
+                "route, over all road trips (in seconds)."
+            ),
         ),
         Column(
             "road_trip_global_congestion_max",
             MetroDataType.FLOAT,
-            description="Maximum share of extra time spent in congestion compared to the fastest free-flow route, over all road trips (in seconds).",
+            description=(
+                "Maximum share of extra time spent in congestion compared to the fastest free-flow "
+                "route, over all road trips (in seconds)."
+            ),
         ),
         Column(
             "road_trip_length_mean",
@@ -409,7 +559,10 @@ class MetroIterationResultsFile(MetroDataFrameFile):
         Column(
             "road_trip_length_std",
             MetroDataType.FLOAT,
-            description="Standard-deviation of length of the selected route, over all road trips (in meters).",
+            description=(
+                "Standard-deviation of length of the selected route, over all road trips "
+                "(in meters)."
+            ),
         ),
         Column(
             "road_trip_length_min",
@@ -429,7 +582,9 @@ class MetroIterationResultsFile(MetroDataFrameFile):
         Column(
             "road_trip_edge_count_std",
             MetroDataType.FLOAT,
-            description="Standard-deviation of number of edges of the selected route, over all trips.",
+            description=(
+                "Standard-deviation of number of edges of the selected route, over all trips."
+            ),
         ),
         Column(
             "road_trip_edge_count_min",
@@ -464,87 +619,135 @@ class MetroIterationResultsFile(MetroDataFrameFile):
         Column(
             "road_trip_exp_travel_time_mean",
             MetroDataType.FLOAT,
-            description="Mean expected travel time when departing, over all road trips (in seconds).",
+            description=(
+                "Mean expected travel time when departing, over all road trips (in seconds)."
+            ),
         ),
         Column(
             "road_trip_exp_travel_time_std",
             MetroDataType.FLOAT,
-            description="Standard-deviation of expected travel time when departing, over all road trips (in seconds).",
+            description=(
+                "Standard-deviation of expected travel time when departing, over all road trips "
+                "(in seconds)."
+            ),
         ),
         Column(
             "road_trip_exp_travel_time_min",
             MetroDataType.FLOAT,
-            description="Minimum expected travel time when departing, over all road trips (in seconds).",
+            description=(
+                "Minimum expected travel time when departing, over all road trips (in seconds)."
+            ),
         ),
         Column(
             "road_trip_exp_travel_time_max",
             MetroDataType.FLOAT,
-            description="Maximum expected travel time when departing, over all road trips (in seconds).",
+            description=(
+                "Maximum expected travel time when departing, over all road trips (in seconds)."
+            ),
         ),
         Column(
             "road_trip_exp_travel_time_rel_diff_mean",
             MetroDataType.FLOAT,
-            description="Mean relative difference between the expected and simulated travel time, over all road trips.",
+            description=(
+                "Mean relative difference between the expected and simulated travel time, over all "
+                "road trips."
+            ),
         ),
         Column(
             "road_trip_exp_travel_time_rel_diff_std",
             MetroDataType.FLOAT,
-            description="Standard-deviation of relative difference between the expected and simulated travel time, over all road trips.",
+            description=(
+                "Standard-deviation of relative difference between the expected and simulated "
+                "travel time, over all road trips."
+            ),
         ),
         Column(
             "road_trip_exp_travel_time_rel_diff_min",
             MetroDataType.FLOAT,
-            description="Minimum relative difference between the expected and simulated travel time, over all road trips.",
+            description=(
+                "Minimum relative difference between the expected and simulated travel time, "
+                "over all road trips."
+            ),
         ),
         Column(
             "road_trip_exp_travel_time_rel_diff_max",
             MetroDataType.FLOAT,
-            description="Maximum relative difference between the expected and simulated travel time, over all road trips.",
+            description=(
+                "Maximum relative difference between the expected and simulated travel time, "
+                "over all road trips."
+            ),
         ),
         Column(
             "road_trip_exp_travel_time_abs_diff_mean",
             MetroDataType.FLOAT,
-            description="Mean absolute difference between the expected and simulated travel time, over all trips (in seconds).",
+            description=(
+                "Mean absolute difference between the expected and simulated travel time, "
+                "over all trips (in seconds)."
+            ),
         ),
         Column(
             "road_trip_exp_travel_time_abs_diff_std",
             MetroDataType.FLOAT,
-            description="Standard-deviation of absolute difference between the expected and simulated travel time, over all trips (in seconds).",
+            description=(
+                "Standard-deviation of absolute difference between the expected and simulated "
+                "travel time, over all trips (in seconds)."
+            ),
         ),
         Column(
             "road_trip_exp_travel_time_abs_diff_min",
             MetroDataType.FLOAT,
-            description="Minimum absolute difference between the expected and simulated travel time, over all trips (in seconds).",
+            description=(
+                "Minimum absolute difference between the expected and simulated travel time, "
+                "over all trips (in seconds)."
+            ),
         ),
         Column(
             "road_trip_exp_travel_time_abs_diff_max",
             MetroDataType.FLOAT,
-            description="Maximum absolute difference between the expected and simulated travel time, over all trips (in seconds).",
+            description=(
+                "Maximum absolute difference between the expected and simulated travel time, "
+                "over all trips (in seconds)."
+            ),
         ),
         Column(
             "road_trip_exp_travel_time_diff_rmse",
             MetroDataType.FLOAT,
-            description="RMSE of the absolute difference between the expected and simulated travel time, over all road trips (in seconds).",
+            description=(
+                "RMSE of the absolute difference between the expected and simulated travel time, "
+                "over all road trips (in seconds)."
+            ),
         ),
         Column(
             "road_trip_length_diff_mean",
             MetroDataType.FLOAT,
-            description="Mean length of the selected route that was not selected during the previous iteration, over all road trips.",
+            description=(
+                "Mean length of the selected route that was not selected during the previous "
+                "iteration, over all road trips."
+            ),
         ),
         Column(
             "road_trip_length_diff_std",
             MetroDataType.FLOAT,
-            description="Standard-deviation of length of the selected route that was not selected during the previous iteration, over all road trips.",
+            description=(
+                "Standard-deviation of length of the selected route that was not selected during "
+                "the previous iteration, over all road trips."
+            ),
         ),
         Column(
             "road_trip_length_diff_min",
             MetroDataType.FLOAT,
-            description="Minimum length of the selected route that was not selected during the previous iteration, over all road trips.",
+            description=(
+                "Minimum length of the selected route that was not selected during the previous "
+                "iteration, over all road trips."
+            ),
         ),
         Column(
             "road_trip_length_diff_max",
             MetroDataType.FLOAT,
-            description="Maximum length of the selected route that was not selected during the previous iteration, over all road trips.",
+            description=(
+                "Maximum length of the selected route that was not selected during the previous "
+                "iteration, over all road trips."
+            ),
         ),
         Column(
             "virtual_trip_count",
@@ -554,7 +757,9 @@ class MetroIterationResultsFile(MetroDataFrameFile):
         Column(
             "nb_agents_at_least_one_virtual_trip",
             MetroDataType.FLOAT,
-            description="Number of agents with at least one virtual trip in their selected alternative.",
+            description=(
+                "Number of agents with at least one virtual trip in their selected alternative."
+            ),
         ),
         Column(
             "nb_agents_all_virtual_trips",
@@ -564,62 +769,95 @@ class MetroIterationResultsFile(MetroDataFrameFile):
         Column(
             "virtual_trip_count_by_agent_mean",
             MetroDataType.FLOAT,
-            description="Mean number of virtual trips, over all agents with at least one virtual trip.",
+            description=(
+                "Mean number of virtual trips, over all agents with at least one virtual trip."
+            ),
         ),
         Column(
             "virtual_trip_count_by_agent_std",
             MetroDataType.FLOAT,
-            description="Standard-deviation of number of virtual trips, over all agents with at least one virtual trip.",
+            description=(
+                "Standard-deviation of number of virtual trips, over all agents with at least one "
+                "virtual trip."
+            ),
         ),
         Column(
             "virtual_trip_count_by_agent_min",
             MetroDataType.FLOAT,
-            description="Minimum number of virtual trips, over all agents with at least one virtual trip.",
+            description=(
+                "Minimum number of virtual trips, over all agents with at least one virtual trip."
+            ),
         ),
         Column(
             "virtual_trip_count_by_agent_max",
             MetroDataType.FLOAT,
-            description="Maximum number of virtual trips, over all agents with at least one virtual trip.",
+            description=(
+                "Maximum number of virtual trips, over all agents with at least one virtual trip."
+            ),
         ),
         Column(
             "virtual_trip_departure_time_mean",
             MetroDataType.FLOAT,
-            description="Mean departure time from origin, over all virtual trips (in number of seconds after midnight).",
+            description=(
+                "Mean departure time from origin, over all virtual trips "
+                "(in number of seconds after midnight)."
+            ),
         ),
         Column(
             "virtual_trip_departure_time_std",
             MetroDataType.FLOAT,
-            description="Standard-deviation of departure time from origin, over all virtual trips (in number of seconds after midnight).",
+            description=(
+                "Standard-deviation of departure time from origin, over all virtual trips "
+                "(in number of seconds after midnight)."
+            ),
         ),
         Column(
             "virtual_trip_departure_time_min",
             MetroDataType.FLOAT,
-            description="Minimum departure time from origin, over all virtual trips (in number of seconds after midnight).",
+            description=(
+                "Minimum departure time from origin, over all virtual trips "
+                "(in number of seconds after midnight)."
+            ),
         ),
         Column(
             "virtual_trip_departure_time_max",
             MetroDataType.FLOAT,
-            description="Maximum departure time from origin, over all virtual trips (in number of seconds after midnight).",
+            description=(
+                "Maximum departure time from origin, over all virtual trips "
+                "(in number of seconds after midnight)."
+            ),
         ),
         Column(
             "virtual_trip_arrival_time_mean",
             MetroDataType.FLOAT,
-            description="Mean arrival time at destination, over all virtual trips (in number of seconds after midnight).",
+            description=(
+                "Mean arrival time at destination, over all virtual trips "
+                "(in number of seconds after midnight)."
+            ),
         ),
         Column(
             "virtual_trip_arrival_time_std",
             MetroDataType.FLOAT,
-            description="Standard-deviation of arrival time at destination, over all virtual trips (in number of seconds after midnight).",
+            description=(
+                "Standard-deviation of arrival time at destination, over all virtual trips "
+                "(in number of seconds after midnight)."
+            ),
         ),
         Column(
             "virtual_trip_arrival_time_min",
             MetroDataType.FLOAT,
-            description="Minimum arrival time at destination, over all virtual trips (in number of seconds after midnight).",
+            description=(
+                "Minimum arrival time at destination, over all virtual trips "
+                "(in number of seconds after midnight)."
+            ),
         ),
         Column(
             "virtual_trip_arrival_time_max",
             MetroDataType.FLOAT,
-            description="Maximum arrival time at destination, over all virtual trips (in number of seconds after midnight).",
+            description=(
+                "Maximum arrival time at destination, over all virtual trips "
+                "(in number of seconds after midnight)."
+            ),
         ),
         Column(
             "virtual_trip_travel_time_mean",
@@ -629,7 +867,7 @@ class MetroIterationResultsFile(MetroDataFrameFile):
         Column(
             "virtual_trip_travel_time_std",
             MetroDataType.FLOAT,
-            description="Standard-deviation of travel time, over all virtual trips (in seconds).",
+            description=("Standard-deviation of travel time, over all virtual trips (in seconds)."),
         ),
         Column(
             "virtual_trip_travel_time_min",
@@ -644,42 +882,68 @@ class MetroIterationResultsFile(MetroDataFrameFile):
         Column(
             "virtual_trip_global_free_flow_travel_time_mean",
             MetroDataType.FLOAT,
-            description="Mean of the smallest possible travel time, over all virtual trips (in seconds). Only relevant for time-dependent virtual trips. Only relevant for time-dependent virtual trips.",
+            description=(
+                "Mean of the smallest possible travel time, over all virtual trips (in seconds). "
+                "Only relevant for time-dependent virtual trips. "
+            ),
         ),
         Column(
             "virtual_trip_global_free_flow_travel_time_std",
             MetroDataType.FLOAT,
-            description="Standard-deviation of of the smallest possible travel time, over all virtual trips (in seconds). Only relevant for time-dependent virtual trips. Only relevant for time-dependent virtual trips.",
+            description=(
+                "Standard-deviation of of the smallest possible travel time, over all virtual "
+                "trips (in seconds). "
+                "Only relevant for time-dependent virtual trips."
+            ),
         ),
         Column(
             "virtual_trip_global_free_flow_travel_time_min",
             MetroDataType.FLOAT,
-            description="Minimum of the smallest possible travel time, over all virtual trips (in seconds). Only relevant for time-dependent virtual trips. Only relevant for time-dependent virtual trips.",
+            description=(
+                "Minimum of the smallest possible travel time, over all virtual trips "
+                "(in seconds). Only relevant for time-dependent virtual trips."
+            ),
         ),
         Column(
             "virtual_trip_global_free_flow_travel_time_max",
             MetroDataType.FLOAT,
-            description="Maximum of the smallest possible travel time, over all virtual trips (in seconds). Only relevant for time-dependent virtual trips. Only relevant for time-dependent virtual trips.",
+            description=(
+                "Maximum of the smallest possible travel time, over all virtual trips "
+                "(in seconds). Only relevant for time-dependent virtual trips."
+            ),
         ),
         Column(
             "virtual_trip_global_congestion_mean",
             MetroDataType.FLOAT,
-            description="Mean share of extra time spent in congestion compared to the smallest possible travel time, over all road trips. Only relevant for time-dependent virtual trips.",
+            description=(
+                "Mean share of extra time spent in congestion compared to the smallest possible "
+                "travel time, over all road trips. Only relevant for time-dependent virtual trips."
+            ),
         ),
         Column(
             "virtual_trip_global_congestion_std",
             MetroDataType.FLOAT,
-            description="Standard-deviation of share of extra time spent in congestion compared to the smallest possible travel time, over all road trips. Only relevant for time-dependent virtual trips.",
+            description=(
+                "Standard-deviation of share of extra time spent in congestion compared to the "
+                "smallest possible travel time, over all road trips. "
+                "Only relevant for time-dependent virtual trips."
+            ),
         ),
         Column(
             "virtual_trip_global_congestion_min",
             MetroDataType.FLOAT,
-            description="Minimum share of extra time spent in congestion compared to the smallest possible travel time, over all road trips. Only relevant for time-dependent virtual trips.",
+            description=(
+                "Minimum share of extra time spent in congestion compared to the smallest possible "
+                "travel time, over all road trips. Only relevant for time-dependent virtual trips."
+            ),
         ),
         Column(
             "virtual_trip_global_congestion_max",
             MetroDataType.FLOAT,
-            description="Maximum share of extra time spent in congestion compared to the smallest possible travel time, over all road trips. Only relevant for time-dependent virtual trips.",
+            description=(
+                "Maximum share of extra time spent in congestion compared to the smallest possible "
+                "travel time, over all road trips. Only relevant for time-dependent virtual trips."
+            ),
         ),
         Column(
             "virtual_trip_utility_mean",
@@ -710,12 +974,20 @@ class MetroIterationResultsFile(MetroDataFrameFile):
         Column(
             "sim_road_network_cond_rmse",
             MetroDataType.FLOAT,
-            description="RMSE between the simulated edge-level travel-time function for the current iteration and the expected edge-level travel-time function for the previous iteration. The mean is taken over all edges and vehicle types.",
+            description=(
+                "RMSE between the simulated edge-level travel-time function for the current "
+                "iteration and the expected edge-level travel-time function for the previous "
+                "iteration. The mean is taken over all edges and vehicle types."
+            ),
         ),
         Column(
             "exp_road_network_cond_rmse",
             MetroDataType.FLOAT,
-            description="RMSE between the expected edge-level travel-time function for the current iteration and the expected edge-level travel-time function for the previous iteration. The mean is taken over all edges and vehicle types.",
+            description=(
+                "RMSE between the expected edge-level travel-time function for the current "
+                "iteration and the expected edge-level travel-time function for the previous "
+                "iteration. The mean is taken over all edges and vehicle types."
+            ),
         ),
     ]
 
@@ -730,12 +1002,7 @@ class MetroTripResultsFile(MetroDataFrameFile):
             description="Identifier of the agent performing the trip.",
             nullable=False,
         ),
-        Column(
-            "trip_id",
-            MetroDataType.ID,
-            description="Identifier of the trip.",
-            nullable=False,
-        ),
+        Column("trip_id", MetroDataType.ID, description="Identifier of the trip.", nullable=False),
         Column(
             "trip_index",
             MetroDataType.UINT,
@@ -769,7 +1036,9 @@ class MetroTripResultsFile(MetroDataFrameFile):
         Column(
             "departure_time_shift",
             MetroDataType.FLOAT,
-            description="By how much departure time changed compared to the previous iteration, in seconds.",
+            description=(
+                "By how much departure time changed compared to the previous iteration, in seconds."
+            ),
             nullable=False,
         ),
         Column(
@@ -811,32 +1080,40 @@ class MetroTripResultsFile(MetroDataFrameFile):
         Column(
             "length_diff",
             MetroDataType.FLOAT,
-            description="Length of the route taken that was not taken during the previous iteration, in meters.",
+            description=(
+                "Length of the route taken that was not taken during the previous iteration, "
+                "in meters."
+            ),
             nullable=True,
         ),
         Column(
             "pre_exp_departure_time",
             MetroDataType.FLOAT,
-            description="Expected departure time of the trip before the iteration started, in seconds after midnight.",
+            description=(
+                "Expected departure time of the trip before the iteration started, "
+                "in seconds after midnight."
+            ),
             nullable=False,
         ),
         Column(
             "pre_exp_arrival_time",
             MetroDataType.FLOAT,
-            description="Expected arrival time of the trip before the iteration started, in seconds after midnight.",
+            description=(
+                "Expected arrival time of the trip before the iteration started, "
+                "in seconds after midnight."
+            ),
             nullable=False,
         ),
         Column(
             "exp_arrival_time",
             MetroDataType.FLOAT,
-            description="Expected arrival time of the trip at trip start, in seconds after midnight.",
+            description=(
+                "Expected arrival time of the trip at trip start, in seconds after midnight."
+            ),
             nullable=False,
         ),
         Column(
-            "nb_edges",
-            MetroDataType.UINT,
-            description="Number of road edges taken.",
-            nullable=True,
+            "nb_edges", MetroDataType.UINT, description="Number of road edges taken.", nullable=True
         ),
     ]
 
@@ -846,10 +1123,7 @@ class MetroAgentResultsFile(MetroDataFrameFile):
     description = "Agent-level results from the Metropolis-Core Simulation."
     schema = [
         Column(
-            "agent_id",
-            MetroDataType.ID,
-            description="Identifier of the agent.",
-            nullable=False,
+            "agent_id", MetroDataType.ID, description="Identifier of the agent.", nullable=False
         ),
         Column(
             "selected_alt_id",
@@ -866,7 +1140,9 @@ class MetroAgentResultsFile(MetroDataFrameFile):
         Column(
             "shifted_alt",
             MetroDataType.BOOL,
-            description="Whether the agent shifted chosen alternative compared to the previous iteration.",
+            description=(
+                "Whether the agent shifted chosen alternative compared to the previous iteration."
+            ),
             nullable=False,
         ),
         Column(
@@ -902,7 +1178,9 @@ class MetroAgentResultsFile(MetroDataFrameFile):
         Column(
             "departure_time_shift",
             MetroDataType.FLOAT,
-            description="By how much departure time changed compared to the previous iteration, in seconds.",
+            description=(
+                "By how much departure time changed compared to the previous iteration, in seconds."
+            ),
             nullable=True,
         ),
         Column(
@@ -933,12 +1211,7 @@ class MetroSimulatedTravelTimeFunctionsFile(MetroDataFrameFile):
             description="Identifier of the vehicle type.",
             nullable=False,
         ),
-        Column(
-            "edge_id",
-            MetroDataType.ID,
-            description="Identifier of the edge.",
-            nullable=False,
-        ),
+        Column("edge_id", MetroDataType.ID, description="Identifier of the edge.", nullable=False),
         Column(
             "departure_time",
             MetroDataType.FLOAT,
@@ -967,12 +1240,7 @@ class MetroExpectedTravelTimeFunctionsFile(MetroDataFrameFile):
             description="Identifier of the vehicle type.",
             nullable=False,
         ),
-        Column(
-            "edge_id",
-            MetroDataType.ID,
-            description="Identifier of the edge.",
-            nullable=False,
-        ),
+        Column("edge_id", MetroDataType.ID, description="Identifier of the edge.", nullable=False),
         Column(
             "departure_time",
             MetroDataType.FLOAT,
@@ -1001,12 +1269,7 @@ class MetroNextExpectedTravelTimeFunctionsFile(MetroDataFrameFile):
             description="Identifier of the vehicle type.",
             nullable=False,
         ),
-        Column(
-            "edge_id",
-            MetroDataType.ID,
-            description="Identifier of the edge.",
-            nullable=False,
-        ),
+        Column("edge_id", MetroDataType.ID, description="Identifier of the edge.", nullable=False),
         Column(
             "departure_time",
             MetroDataType.FLOAT,

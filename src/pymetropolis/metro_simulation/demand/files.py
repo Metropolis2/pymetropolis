@@ -41,28 +41,27 @@ class MetroAlternativesFile(MetroDataFrameFile):
     description = "Simulated alternatives, as input to Metropolis-Core"
     schema = [
         Column(
-            "agent_id",
-            MetroDataType.ID,
-            description="Identifier of the agent.",
-            nullable=False,
+            "agent_id", MetroDataType.ID, description="Identifier of the agent.", nullable=False
         ),
         Column(
-            "alt_id",
-            MetroDataType.ID,
-            description="Identifier of the alternative.",
-            nullable=False,
+            "alt_id", MetroDataType.ID, description="Identifier of the alternative.", nullable=False
         ),
         Column(
             "origin_delay",
             MetroDataType.FLOAT,
-            description="Extra delay between the chosen departure time and the actual first trip start, in seconds.",
+            description=(
+                "Extra delay between the chosen departure time and the actual first trip start, "
+                "in seconds."
+            ),
             nullable=True,
             optional=True,
         ),
         Column(
             "dt_choice.type",
             MetroDataType.STRING,
-            description="Whether departure time is exogenous, random discrete, or random continuous.",
+            description=(
+                "Whether departure time is exogenous, random discrete, or random continuous."
+            ),
             nullable=True,
         ),
         Column(
@@ -136,29 +135,13 @@ class MetroTripsFile(MetroDataFrameFile):
     description = "Simulated trips, as input to Metropolis-Core."
     schema = [
         Column(
-            "agent_id",
-            MetroDataType.ID,
-            description="Identifier of the agent.",
-            nullable=False,
+            "agent_id", MetroDataType.ID, description="Identifier of the agent.", nullable=False
         ),
         Column(
-            "alt_id",
-            MetroDataType.ID,
-            description="Identifier of the alternative.",
-            nullable=False,
+            "alt_id", MetroDataType.ID, description="Identifier of the alternative.", nullable=False
         ),
-        Column(
-            "trip_id",
-            MetroDataType.ID,
-            description="Identifier of the trip.",
-            nullable=False,
-        ),
-        Column(
-            "class.type",
-            MetroDataType.STRING,
-            description="Type of trip.",
-            nullable=False,
-        ),
+        Column("trip_id", MetroDataType.ID, description="Identifier of the trip.", nullable=False),
+        Column("class.type", MetroDataType.STRING, description="Type of trip.", nullable=False),
         Column(
             "class.origin",
             MetroDataType.ID,
@@ -197,7 +180,9 @@ class MetroTripsFile(MetroDataFrameFile):
         Column(
             "stopping_time",
             MetroDataType.FLOAT,
-            description="Time spent at the end of the trip, before the next trip starts, in seconds.",
+            description=(
+                "Time spent at the end of the trip, before the next trip starts, in seconds."
+            ),
             nullable=True,
             optional=True,
         ),

@@ -15,13 +15,13 @@ class MetroEdgesFile(MetroDataFrameFile):
         Column(
             "source",
             MetroDataType.ID,
-            description="Identifier of the edge’s first node.",
+            description="Identifier of the edge's first node.",
             nullable=False,
         ),
         Column(
             "target",
             MetroDataType.ID,
-            description="Identifier of the edge’s last node.",
+            description="Identifier of the edge's last node.",
             nullable=False,
         ),
         Column(
@@ -37,15 +37,15 @@ class MetroEdgesFile(MetroDataFrameFile):
             nullable=False,
         ),
         Column(
-            "lanes",
-            MetroDataType.FLOAT,
-            description="Number of lanes on the edge.",
-            nullable=False,
+            "lanes", MetroDataType.FLOAT, description="Number of lanes on the edge.", nullable=False
         ),
         Column(
             "bottleneck_flow",
             MetroDataType.FLOAT,
-            description="Maximum incoming and outgoing flow of vehicles at the edge's entry and exit bottlenecks (PCE/s).",
+            description=(
+                "Maximum incoming and outgoing flow of vehicles at the edge's entry and exit "
+                "bottlenecks (PCE/s)."
+            ),
             nullable=True,
             optional=True,
         ),
@@ -93,14 +93,19 @@ class MetroEdgesFile(MetroDataFrameFile):
         # Column(
         #     "speed_density.min_density",
         #     MetroDataType.FLOAT,
-        #     description="Edge density below which free-flow speed is used (for ThreeRegimes speed-density)",
+        #     description=(
+        #         "Edge density below which free-flow speed is used "
+        #         "(for ThreeRegimes speed-density)"
+        #     ),
         #     nullable=True,
         #     optional=True,
         # ),
         # Column(
         #     "speed_density.jam_density",
         #     MetroDataType.FLOAT,
-        #     description="Edge density above which jam speed is used (for ThreeRegimes speed-density)",
+        #     description=(
+        #         "Edge density above which jam speed is used (for ThreeRegimes speed-density)"
+        #     ),
         #     nullable=True,
         #     optional=True,
         # ),
@@ -147,7 +152,10 @@ class MetroVehicleTypesFile(MetroDataFrameFile):
         Column(
             "speed_function.type",
             MetroDataType.STRING,
-            description="Type of function used to convert from the base edge speed to the vehicle-specific edge speed.",
+            description=(
+                "Type of function used to convert from the base edge speed to the vehicle-specific "
+                "edge speed."
+            ),
             nullable=True,
             optional=True,
         ),

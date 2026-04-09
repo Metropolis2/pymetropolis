@@ -1,6 +1,6 @@
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional, override
+from typing import TYPE_CHECKING, Any, override
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
@@ -113,7 +113,7 @@ class Column:
         optional: bool = False,
         nullable: bool = True,
         unique: bool = False,
-        description: Optional[str] = None,
+        description: str | None = None,
     ):
         self.name = name
         self.dtype = dtype
@@ -130,7 +130,8 @@ class Column:
             return True
         if not self.dtype.is_valid_pl(df[self.name].dtype):
             logger.warning(
-                f"Invalid dtype for column `{self.name}`: {df[self.name].dtype} (expected: {self.dtype})"
+                f"Invalid dtype for column `{self.name}`: {df[self.name].dtype} "
+                f"(expected: {self.dtype})"
             )
             return False
         if not self.nullable and df[self.name].has_nulls():
@@ -221,8 +222,8 @@ class MetroFile:
 
 
 class MetroDataFrameFile(MetroFile):
-    schema: Optional[list[Column]] = None
-    max_rows: Optional[int] = None
+    schema: list[Column] | None = None
+    max_rows: int | None = None
 
     def validate(self, df: pl.DataFrame) -> pl.DataFrame:
         if self.max_rows is not None and len(df) > self.max_rows:
@@ -278,8 +279,8 @@ class MetroDataFrameFile(MetroFile):
 
 
 class MetroGeoDataFrameFile(MetroFile):
-    schema: Optional[list[Column]] = None
-    max_rows: Optional[int] = None
+    schema: list[Column] | None = None
+    max_rows: int | None = None
 
     def validate(self, gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         if self.max_rows is not None and len(gdf) > self.max_rows:
@@ -342,7 +343,7 @@ class MetroTxtFile(MetroFile):
             f.write(txt)
 
     def read(self) -> str:
-        with open(self.complete_path, "r") as f:
+        with open(self.complete_path) as f:
             return f.read()
 
     def read_if_exists(self) -> str | None:

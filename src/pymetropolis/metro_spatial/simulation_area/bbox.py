@@ -1,10 +1,7 @@
 import geopandas as gpd
 import shapely
 
-from pymetropolis.metro_pipeline.parameters import (
-    BoolParameter,
-    ListParameter,
-)
+from pymetropolis.metro_pipeline.parameters import BoolParameter, ListParameter
 from pymetropolis.metro_pipeline.types import Float
 from pymetropolis.metro_spatial import GeoStep
 
@@ -40,8 +37,9 @@ class SimulationAreaFromBboxStep(GeoStep):
         description="Bounding box to be used as simulation area.",
         example="`[1.4777, 48.3955, 3.6200, 49.2032]`",
         note=(
-            "Note: The values need to be specified as [minx, miny, maxx, maxy], in the simulation’s "
-            "CRS. If bbox_wgs = true, the values need to be specified in WGS 84 (longitude, latitude)."
+            "Note: The values need to be specified as [minx, miny, maxx, maxy], in the "
+            "simulation's CRS. If bbox_wgs = true, the values need to be specified in WGS 84 "
+            "(longitude, latitude)."
         ),
     )
     bbox_wgs = BoolParameter(
