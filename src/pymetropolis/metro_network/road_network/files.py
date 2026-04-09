@@ -82,12 +82,6 @@ class RawEdgesFile(MetroGeoDataFrameFile):
             description="Whether the edge end intersection has traffic signals.",
             optional=True,
         ),
-        Column(
-            "urban",
-            MetroDataType.BOOL,
-            description="Whether the edge is within a urban area.",
-            optional=True,
-        ),
         Column("name", MetroDataType.STRING, description="Name of the edge.", optional=True),
         Column(
             "original_id",
@@ -192,12 +186,6 @@ class CleanEdgesFile(MetroGeoDataFrameFile):
             "traffic_signals",
             MetroDataType.BOOL,
             description="Whether the edge end intersection has traffic signals.",
-            nullable=False,
-        ),
-        Column(
-            "urban",
-            MetroDataType.BOOL,
-            description="Whether the edge is within a urban area.",
             nullable=False,
         ),
         Column(
@@ -354,5 +342,25 @@ class AllRoadDistancesFile(MetroDataFrameFile):
             MetroDataType.FLOAT,
             description="Distance of the shortest path, in meters.",
             nullable=True,
+        ),
+    ]
+
+
+class UrbanEdgesFile(MetroDataFrameFile):
+    path = "network/road_network/edges_urban.parquet"
+    description = "Urban / rural indicator of each road-network edge."
+    schema = [
+        Column(
+            "edge_id",
+            MetroDataType.ID,
+            description="Identifier of the edge.",
+            unique=True,
+            nullable=False,
+        ),
+        Column(
+            "urban",
+            MetroDataType.BOOL,
+            description="Whether the edge is part of an urban area.",
+            nullable=False,
         ),
     ]

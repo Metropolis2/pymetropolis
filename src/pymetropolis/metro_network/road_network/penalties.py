@@ -9,7 +9,7 @@ from pymetropolis.metro_pipeline.parameters import CustomParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 
 from .common import default_edge_values_validator
-from .files import CleanEdgesFile, EdgesFreeFlowTravelTimeFile, EdgesPenaltiesFile
+from .files import CleanEdgesFile, EdgesFreeFlowTravelTimeFile, EdgesPenaltiesFile, UrbanEdgesFile
 
 
 class ExogenousEdgePenaltiesStep(Step):
@@ -43,11 +43,21 @@ road = 2
 ```
         """,
     )
-    input_files = {"clean_edges": CleanEdgesFile}
+    input_files = {
+        "clean_edges": CleanEdgesFile,
+        "urban_edges": InputFile(
+            UrbanEdgesFile,
+            when=lambda inst: inst.urban_flag_required(),
+            when_doc="default penalties rely on the urban flag",
+        ),
+    }
     output_files = {"edges_penalties": EdgesPenaltiesFile}
 
     def is_defined(self) -> bool:
         return self.penalties is not None
+
+    def urban_flag_required(self) -> bool:
+        return isinstance(self.penalties, dict) and "urban" in self.penalties
 
     def run(self):
         penalties = self.penalties
@@ -69,6 +79,8 @@ road = 2
                 else:
                     if "urban" not in penalties.keys() or "rural" not in penalties.keys():
                         raise MetropyError("Missing keys `urban` or `rural`")
+                    urban_edges = self.input["urban_edges"].read()
+                    edges = edges.join(urban_edges, on="edge_id", how="left")
                     edges["constant"] = np.nan
                     mask = edges["urban"]
                     edges.loc[mask, "constant"] = edges.loc[mask, "road_type"].map(

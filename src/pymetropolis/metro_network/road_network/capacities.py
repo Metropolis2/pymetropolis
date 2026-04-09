@@ -1,14 +1,14 @@
 from datetime import time
 from typing import Any
 
-import numpy as np
 import polars as pl
 
 from pymetropolis.metro_common.errors import MetropyError
 from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import CustomParameter
+from pymetropolis.metro_pipeline.steps import InputFile
 
-from .files import CleanEdgesFile, EdgesCapacitiesFile
+from .files import CleanEdgesFile, EdgesCapacitiesFile, UrbanEdgesFile
 
 
 def is_valid_capacity(value: Any) -> bool:
@@ -75,7 +75,6 @@ class ExogenousCapacitiesStep(Step):
             ' as values, or table with "urban" and "rural" as keys and `road_type->value` tables as'
             " values (see example)"
         ),
-        default=np.nan,
         description="Bottleneck capacity (in PCE/h) of edges.",
         example="""
 ```toml
@@ -89,13 +88,26 @@ road = 1500
 ```
         """,
     )
-    input_files = {"clean_edges": CleanEdgesFile}
+    input_files = {
+        "clean_edges": CleanEdgesFile,
+        "urban_edges": InputFile(
+            UrbanEdgesFile,
+            when=lambda inst: inst.urban_flag_required(),
+            when_doc="default capacities rely on the urban flag",
+        ),
+    }
     output_files = {"edges_capacities": EdgesCapacitiesFile}
+
+    def is_defined(self) -> bool:
+        return self.capacities is not None
+
+    def urban_flag_required(self) -> bool:
+        return isinstance(self.capacities, dict) and "urban" in self.capacities
 
     def run(self):
         capacities = self.capacities
         edges = self.input["clean_edges"].read()
-        df = pl.from_pandas(edges.loc[:, edges.columns.isin(["edge_id", "road_type", "urban"])])
+        df = pl.from_pandas(edges.loc[:, edges.columns.isin(["edge_id", "road_type"])])
         df = df.with_columns(
             capacity=pl.lit(None, dtype=pl.Float64),
             times=pl.lit(None, dtype=pl.List(pl.Time)),
@@ -111,8 +123,8 @@ road = 1500
                 raise MetropyError("Edges have no `road_type` column.")
             road_types = set(df["road_type"].unique())
             if keys == {"urban", "rural"}:
-                if "urban" not in df.columns:
-                    raise MetropyError("Edges have no `urban` column.")
+                urban_flags = self.input["urban_edges"].read()
+                df = df.join(urban_flags, on="edge_id", how="left")
                 # Case 3. Value is nested dict urban -> road_type -> capacity.
                 df = df.with_columns(
                     capacity=pl.when("urban")

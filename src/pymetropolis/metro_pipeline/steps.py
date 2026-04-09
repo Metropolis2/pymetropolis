@@ -50,6 +50,7 @@ class InputFile:
 class Step:
     input_files: ClassVar[dict[str, InputFile | type[MetroFile]]] = {}
     output_files: ClassVar[dict[str, type[MetroFile]]] = {}
+    primary: ClassVar[bool] = True
     _input_files: dict[str, MetroFile]
     _output_files: dict[str, MetroFile]
     _update_file_path: Path

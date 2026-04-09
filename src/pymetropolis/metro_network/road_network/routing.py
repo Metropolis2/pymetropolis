@@ -34,6 +34,7 @@ class AllFreeFlowTravelTimesStep(Step):
 
     input_files = {"edges": CleanEdgesFile, "edges_fftt": EdgesFreeFlowTravelTimeFile}
     output_files = {"all_free_flow_travel_times": AllFreeFlowTravelTimesFile}
+    primary = False
 
     def run(self):
         edges_gdf = self.input["edges"].read()
@@ -52,6 +53,7 @@ class AllRoadDistancesStep(Step):
 
     input_files = {"clean_edges": CleanEdgesFile}
     output_files = {"all_distances": AllRoadDistancesFile}
+    primary = False
 
     def run(self):
         edges = self.input["clean_edges"].read()

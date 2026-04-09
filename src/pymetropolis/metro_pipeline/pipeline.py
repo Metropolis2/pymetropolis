@@ -24,15 +24,22 @@ def run_pipeline(config_path: Path, step_classes: list[type[Step]], dry_run: boo
     defined_steps = list()
     defined_output_files = set()
     all_output_files = set()
+    primary_files = set()
+    used_keys = set()
     for step_class in step_classes:
         # Instantiate the step with the config.
         step = step_class(config)
+        # Keep track of all keys used.
+        for _, p in step_class._iter_params():
+            used_keys.add(str(p))
         all_output_files.update(step.output_files.values())
         if step.is_defined():
             defined_steps.append(step)
             # Add step to the graph.
             for ofile in step.output_files.values():
                 defined_output_files.add(ofile)
+                if step.primary:
+                    primary_files.add(ofile)
                 has_required_file = False
                 if step.input:
                     for name in step.input:
@@ -45,6 +52,11 @@ def run_pipeline(config_path: Path, step_classes: list[type[Step]], dry_run: boo
                         graph.add_edge(ifile, ofile, optional=optional, step=step)
                 if not has_required_file:
                     graph.add_edge(NothingFile, ofile, optional=False, step=step)
+    unused_keys = config.get_unused_keys(used_keys)
+    if unused_keys:
+        logger.warning("The following keys appear in the configuration but are not used:")
+        for k in sorted(unused_keys):
+            logger.warning(f"- {k}")
     to_delete_files = list()
     for ofile in all_output_files:
         f = ofile.from_dir(config.main_directory)
@@ -77,7 +89,26 @@ def run_pipeline(config_path: Path, step_classes: list[type[Step]], dry_run: boo
     if NothingFile not in subgraph.nodes:
         logger.error("No step can be run. Did you add parameters to the config?")
         return
-    # Find all the files that need to be regenerated (a prerequisite step need to be re-run).
+    # Find all files that should not be generated.
+    # A file does not need to be generated if all steps that generate it are flagged as `secondary`
+    # and the file is not a predecessor for a non-`secondary` step.
+    primary_files.add(NothingFile)
+    queue = primary_files.copy()
+    while queue:
+        f = queue.pop()
+        if f in primary_files:
+            continue
+        primary_files.add(f)
+        for pred in subgraph.predecessors(f):
+            queue.add(pred)
+    secondary_files = set()
+    for f in subgraph.nodes:
+        if f in primary_files:
+            continue
+        if not any(data["step"].primary for _, _, data in subgraph.in_edges(f, data=True)):
+            secondary_files.add(f)
+    subgraph = graph.subgraph(feasible_files - secondary_files)
+    # Find all files that need to be regenerated (a prerequisite step need to be re-run).
     # A file w needs to be regenerated if there is an edge (u, v) on any path from the origin node
     # to w
     endpoints = {n for n, d in subgraph.out_degree(subgraph.nodes) if d == 0}

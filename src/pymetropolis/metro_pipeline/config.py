@@ -1,6 +1,7 @@
 import os
 import tomllib
 from pathlib import Path
+from typing import Any
 
 from pymetropolis.metro_common import MetropyError
 
@@ -41,3 +42,24 @@ class Config:
         # Also create the update_files/ directory if needed.
         update_files_path = path / "update_files"
         update_files_path.mkdir(exist_ok=True)
+
+    def get_unused_keys(self, used_keys: set[str]) -> set[str]:
+        """Returns a set of all keys (flatten) in the configuration that are not in `used_keys`."""
+        used_keys.add("main_directory")
+        return get_unused_keys_inner(self.dict, set(), root=None, used_keys=used_keys)
+
+
+def get_unused_keys_inner(
+    d: dict[str, Any], unused_keys: set[str], root: str | None, used_keys: set[str]
+) -> set[str]:
+    for k, v in d.items():
+        if root is None:
+            flat_key = k
+        else:
+            flat_key = f"{root}.{k}"
+        if isinstance(v, dict) and flat_key not in used_keys:
+            unused_keys = get_unused_keys_inner(v, unused_keys, root=flat_key, used_keys=used_keys)
+        else:
+            if flat_key not in used_keys:
+                unused_keys.add(flat_key)
+    return unused_keys
