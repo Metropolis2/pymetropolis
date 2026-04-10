@@ -2,7 +2,7 @@ import geopandas as gpd
 import polars as pl
 
 from pymetropolis.metro_common.errors import MetropyError
-from pymetropolis.metro_network.road_network import CleanEdgesFile
+from pymetropolis.metro_network.road_network import RoadEdgesCleanFile
 from pymetropolis.metro_pipeline.parameters import FloatParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_simulation.common import StepWithModes, StepWithRidesharingCount
@@ -25,7 +25,7 @@ class WriteMetroVehicleTypesStep(StepWithModes, StepWithRidesharingCount):
     )
     input_files = {
         "edges": InputFile(
-            CleanEdgesFile,
+            RoadEdgesCleanFile,
             when=lambda inst: inst.has_mode("car_driver"),
             when_doc='if the "car_driver" mode is defined',
         )

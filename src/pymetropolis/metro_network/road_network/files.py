@@ -6,7 +6,7 @@ from pymetropolis.metro_pipeline.file import (
 )
 
 
-class RawEdgesFile(MetroGeoDataFrameFile):
+class RoadEdgesRawFile(MetroGeoDataFrameFile):
     path = "network/road_network/edges_raw.geo.parquet"
     description = "Characteristics of the road-network edges, before clean up."
     schema = [
@@ -92,7 +92,7 @@ class RawEdgesFile(MetroGeoDataFrameFile):
     ]
 
 
-class CleanEdgesFile(MetroGeoDataFrameFile):
+class RoadEdgesCleanFile(MetroGeoDataFrameFile):
     path = "network/road_network/edges_clean.geo.parquet"
     description = "Characteristics of the road-network edges, after clean up."
     schema = [
@@ -222,7 +222,7 @@ class CleanEdgesFile(MetroGeoDataFrameFile):
     ]
 
 
-class EdgesCapacitiesFile(MetroDataFrameFile):
+class RoadEdgesCapacitiesFile(MetroDataFrameFile):
     path = "network/road_network/edges_capacities.parquet"
     description = "Bottleneck capacity of each road-network edge."
     schema = [
@@ -256,7 +256,7 @@ class EdgesCapacitiesFile(MetroDataFrameFile):
     ]
 
 
-class EdgesPenaltiesFile(MetroDataFrameFile):
+class RoadEdgesPenaltiesFile(MetroDataFrameFile):
     path = "network/road_network/edges_penalties.parquet"
     description = "Free-flow time penalties of each road-network edge."
     schema = [
@@ -276,7 +276,7 @@ class EdgesPenaltiesFile(MetroDataFrameFile):
     ]
 
 
-class EdgesFreeFlowTravelTimeFile(MetroDataFrameFile):
+class RoadEdgesFreeFlowTravelTimeFile(MetroDataFrameFile):
     path = "network/road_network/edges_free_flow_travel_time.parquet"
     description = "Free-flow travel time of each road-network edge."
     schema = [
@@ -296,7 +296,7 @@ class EdgesFreeFlowTravelTimeFile(MetroDataFrameFile):
     ]
 
 
-class AllFreeFlowTravelTimesFile(MetroDataFrameFile):
+class AllRoadFreeFlowTravelTimesFile(MetroDataFrameFile):
     path = "network/road_network/all_free_flow_travel_times.parquet"
     description = "Free-flow travel time for each pair of nodes on the road network."
     schema = [
@@ -346,7 +346,7 @@ class AllRoadDistancesFile(MetroDataFrameFile):
     ]
 
 
-class UrbanEdgesFile(MetroDataFrameFile):
+class RoadEdgesUrbanFlagFile(MetroDataFrameFile):
     path = "network/road_network/edges_urban.parquet"
     description = "Urban / rural indicator of each road-network edge."
     schema = [

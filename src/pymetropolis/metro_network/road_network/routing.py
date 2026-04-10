@@ -4,10 +4,10 @@ import polars as pl
 from pymetropolis.metro_pipeline import Step
 
 from .files import (
-    AllFreeFlowTravelTimesFile,
     AllRoadDistancesFile,
-    CleanEdgesFile,
-    EdgesFreeFlowTravelTimeFile,
+    AllRoadFreeFlowTravelTimesFile,
+    RoadEdgesCleanFile,
+    RoadEdgesFreeFlowTravelTimeFile,
 )
 
 
@@ -32,8 +32,8 @@ class AllFreeFlowTravelTimesStep(Step):
     of the road network.
     """
 
-    input_files = {"edges": CleanEdgesFile, "edges_fftt": EdgesFreeFlowTravelTimeFile}
-    output_files = {"all_free_flow_travel_times": AllFreeFlowTravelTimesFile}
+    input_files = {"edges": RoadEdgesCleanFile, "edges_fftt": RoadEdgesFreeFlowTravelTimeFile}
+    output_files = {"all_free_flow_travel_times": AllRoadFreeFlowTravelTimesFile}
     primary = False
 
     def run(self):
@@ -51,7 +51,7 @@ class AllFreeFlowTravelTimesStep(Step):
 class AllRoadDistancesStep(Step):
     """Computes distance of the shortest path, for all node pairs of the road network."""
 
-    input_files = {"clean_edges": CleanEdgesFile}
+    input_files = {"clean_edges": RoadEdgesCleanFile}
     output_files = {"all_distances": AllRoadDistancesFile}
     primary = False
 

@@ -7,7 +7,7 @@ from pymetropolis.metro_common.utils import (
     seconds_to_duration_string,
     time_to_seconds_since_midnight_pl,
 )
-from pymetropolis.metro_network.road_network import EdgesFreeFlowTravelTimeFile
+from pymetropolis.metro_network.road_network import RoadEdgesFreeFlowTravelTimeFile
 from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_results.aggregate import IterationResultsFile
 from pymetropolis.metro_results.demand import TripResultsFile
@@ -152,7 +152,7 @@ class RoadNetworkCongestionFunctionPlotsStep(Step):
     """
 
     input_files = {
-        "edges_fftt": EdgesFreeFlowTravelTimeFile,
+        "edges_fftt": RoadEdgesFreeFlowTravelTimeFile,
         "sim_ttfs": MetroSimulatedTravelTimeFunctionsFile,
         "exp_ttfs": MetroExpectedTravelTimeFunctionsFile,
     }

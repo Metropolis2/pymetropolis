@@ -2,7 +2,7 @@ import polars as pl
 
 from pymetropolis.metro_common.io import read_dataframe
 from pymetropolis.metro_demand.modes.car import CarODsFile
-from pymetropolis.metro_network.road_network.files import CleanEdgesFile
+from pymetropolis.metro_network.road_network.files import RoadEdgesCleanFile
 from pymetropolis.metro_pipeline.parameters import PathParameter
 from pymetropolis.random import RandomStep
 
@@ -32,7 +32,7 @@ class CustomODMatrixStep(RandomStep):
             "node), and `size` (int or float, number of trips)."
         ),
     )
-    input_files = {"edges": CleanEdgesFile}
+    input_files = {"edges": RoadEdgesCleanFile}
     output_files = {"car_driver_ods": CarODsFile}
 
     def is_defined(self) -> bool:

@@ -3,9 +3,9 @@ import polars as pl
 
 from pymetropolis.metro_common.utils import time_to_seconds_since_midnight_pl
 from pymetropolis.metro_network.road_network import (
-    CleanEdgesFile,
-    EdgesCapacitiesFile,
-    EdgesPenaltiesFile,
+    RoadEdgesCapacitiesFile,
+    RoadEdgesCleanFile,
+    RoadEdgesPenaltiesFile,
 )
 from pymetropolis.metro_pipeline.steps import InputFile, Step
 
@@ -16,9 +16,9 @@ class WriteMetroEdgesStep(Step):
     """Generates the input edges file for the Metropolis-Core simulation."""
 
     input_files = {
-        "clean_edges": CleanEdgesFile,
-        "capacities": InputFile(EdgesCapacitiesFile, optional=True),
-        "penalties": InputFile(EdgesPenaltiesFile, optional=True),
+        "clean_edges": RoadEdgesCleanFile,
+        "capacities": InputFile(RoadEdgesCapacitiesFile, optional=True),
+        "penalties": InputFile(RoadEdgesPenaltiesFile, optional=True),
     }
     output_files = {"metro_edges": MetroEdgesFile}
 

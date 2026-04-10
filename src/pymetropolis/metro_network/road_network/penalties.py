@@ -9,7 +9,12 @@ from pymetropolis.metro_pipeline.parameters import CustomParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 
 from .common import default_edge_values_validator
-from .files import CleanEdgesFile, EdgesFreeFlowTravelTimeFile, EdgesPenaltiesFile, UrbanEdgesFile
+from .files import (
+    RoadEdgesCleanFile,
+    RoadEdgesFreeFlowTravelTimeFile,
+    RoadEdgesPenaltiesFile,
+    RoadEdgesUrbanFlagFile,
+)
 
 
 class ExogenousEdgePenaltiesStep(Step):
@@ -44,14 +49,14 @@ road = 2
         """,
     )
     input_files = {
-        "clean_edges": CleanEdgesFile,
+        "clean_edges": RoadEdgesCleanFile,
         "urban_edges": InputFile(
-            UrbanEdgesFile,
+            RoadEdgesUrbanFlagFile,
             when=lambda inst: inst.urban_flag_required(),
             when_doc="default penalties rely on the urban flag",
         ),
     }
-    output_files = {"edges_penalties": EdgesPenaltiesFile}
+    output_files = {"edges_penalties": RoadEdgesPenaltiesFile}
 
     def is_defined(self) -> bool:
         return self.penalties is not None
@@ -104,10 +109,10 @@ class EdgesFreeFlowTravelTimesStep(Step):
     """
 
     input_files = {
-        "clean_edges": CleanEdgesFile,
-        "penalties": InputFile(EdgesPenaltiesFile, optional=True),
+        "clean_edges": RoadEdgesCleanFile,
+        "penalties": InputFile(RoadEdgesPenaltiesFile, optional=True),
     }
-    output_files = {"edges_fftt": EdgesFreeFlowTravelTimeFile}
+    output_files = {"edges_fftt": RoadEdgesFreeFlowTravelTimeFile}
 
     def run(self):
         edges: gpd.GeoDataFrame = self.input["clean_edges"].read()

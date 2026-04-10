@@ -5,8 +5,8 @@ import polars as pl
 
 from pymetropolis.metro_network.road_network import AllRoadDistancesFile
 from pymetropolis.metro_network.road_network.files import (
-    CleanEdgesFile,
-    EdgesFreeFlowTravelTimeFile,
+    RoadEdgesCleanFile,
+    RoadEdgesFreeFlowTravelTimeFile,
 )
 from pymetropolis.metro_pipeline import Step
 
@@ -48,8 +48,8 @@ class CarFreeFlowDistancesStep(Step):
 
     input_files = {
         "car_driver_ods": CarODsFile,
-        "edges": CleanEdgesFile,
-        "edges_fftt": EdgesFreeFlowTravelTimeFile,
+        "edges": RoadEdgesCleanFile,
+        "edges_fftt": RoadEdgesFreeFlowTravelTimeFile,
     }
     output_files = {"car_distances": CarFreeFlowDistancesFile}
 

@@ -15,7 +15,7 @@ from pymetropolis.metro_pipeline.parameters import (
     IntParameter,
 )
 
-from .files import RawEdgesFile
+from .files import RoadEdgesRawFile
 
 
 def generate_circular_network(
@@ -396,7 +396,7 @@ class CircularNetworkStep(Step):
             "counter-clockwise ramps, in meters."
         ),
     )
-    output_files = {"raw_edges": RawEdgesFile}
+    output_files = {"raw_edges": RoadEdgesRawFile}
 
     def is_defined(self) -> bool:
         return self.nb_radials is not None and self.nb_rings is not None and self.radius is not None

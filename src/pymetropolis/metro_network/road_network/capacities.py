@@ -8,7 +8,7 @@ from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import CustomParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 
-from .files import CleanEdgesFile, EdgesCapacitiesFile, UrbanEdgesFile
+from .files import RoadEdgesCapacitiesFile, RoadEdgesCleanFile, RoadEdgesUrbanFlagFile
 
 
 def is_valid_capacity(value: Any) -> bool:
@@ -89,14 +89,14 @@ road = 1500
         """,
     )
     input_files = {
-        "clean_edges": CleanEdgesFile,
+        "clean_edges": RoadEdgesCleanFile,
         "urban_edges": InputFile(
-            UrbanEdgesFile,
+            RoadEdgesUrbanFlagFile,
             when=lambda inst: inst.urban_flag_required(),
             when_doc="default capacities rely on the urban flag",
         ),
     }
-    output_files = {"edges_capacities": EdgesCapacitiesFile}
+    output_files = {"edges_capacities": RoadEdgesCapacitiesFile}
 
     def is_defined(self) -> bool:
         return self.capacities is not None

@@ -10,7 +10,7 @@ from pymetropolis.metro_pipeline.parameters import BoolParameter, CustomParamete
 from pymetropolis.metro_pipeline.steps import InputFile
 
 from .common import default_edge_values_validator
-from .files import CleanEdgesFile, RawEdgesFile, UrbanEdgesFile
+from .files import RoadEdgesCleanFile, RoadEdgesRawFile, RoadEdgesUrbanFlagFile
 
 EPSILON = np.finfo(float).eps
 
@@ -163,14 +163,14 @@ road = 1
         """,
     )
     input_files = {
-        "raw_edges": RawEdgesFile,
+        "raw_edges": RoadEdgesRawFile,
         "urban_edges": InputFile(
-            UrbanEdgesFile,
+            RoadEdgesUrbanFlagFile,
             when=lambda inst: inst.urban_flag_required(),
             when_doc="default values rely on the urban flag",
         ),
     }
-    output_files = {"clean_edges": CleanEdgesFile}
+    output_files = {"clean_edges": RoadEdgesCleanFile}
 
     def run(self):
         """Reads a GeoDataFrame of edges and performs various operations to make the data ready to

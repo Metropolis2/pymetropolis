@@ -2,11 +2,11 @@ import geopandas as gpd
 import polars as pl
 from shapely.prepared import prep
 
-from pymetropolis.metro_network.road_network.files import RawEdgesFile
+from pymetropolis.metro_network.road_network.files import RoadEdgesRawFile
 from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_spatial.urban_areas.file import UrbanAreasFile
 
-from .files import UrbanEdgesFile
+from .files import RoadEdgesUrbanFlagFile
 
 
 def add_urban_tag(edges: gpd.GeoDataFrame, urban_areas: gpd.GeoDataFrame):
@@ -24,8 +24,8 @@ class UrbanEdgesStep(Step):
     simulation.
     """
 
-    input_files = {"raw_edges": RawEdgesFile, "urban_areas": UrbanAreasFile}
-    output_files = {"urban_edges": UrbanEdgesFile}
+    input_files = {"raw_edges": RoadEdgesRawFile, "urban_areas": UrbanAreasFile}
+    output_files = {"urban_edges": RoadEdgesUrbanFlagFile}
 
     def run(self):
         df = add_urban_tag(

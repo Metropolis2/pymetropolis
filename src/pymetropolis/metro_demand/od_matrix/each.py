@@ -3,7 +3,7 @@ import numpy as np
 import polars as pl
 
 from pymetropolis.metro_demand.modes.car import CarODsFile
-from pymetropolis.metro_network.road_network import CleanEdgesFile
+from pymetropolis.metro_network.road_network import RoadEdgesCleanFile
 from pymetropolis.random import IntDistributionParameter, RandomStep, generate_int_values
 
 from .common import generate_trips_from_od_matrix
@@ -25,7 +25,7 @@ class ODMatrixEachStep(RandomStep):
         "node_od_matrix.each",
         description="Number of trips to generate for each origin-destination pair.",
     )
-    input_files = {"clean_edges": CleanEdgesFile}
+    input_files = {"clean_edges": RoadEdgesCleanFile}
     output_files = {"car_driver_ods": CarODsFile}
 
     def is_defined(self) -> bool:

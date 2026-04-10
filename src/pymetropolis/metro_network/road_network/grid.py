@@ -9,7 +9,7 @@ from pymetropolis.metro_pipeline.parameters import (
     IntParameter,
 )
 
-from .files import RawEdgesFile
+from .files import RoadEdgesRawFile
 
 
 def generate_grid_network(
@@ -161,7 +161,7 @@ class GridNetworkStep(Step):
         default=True,
         description="Whether edges going from top to bottom should be generated.",
     )
-    output_files = {"raw_edges": RawEdgesFile}
+    output_files = {"raw_edges": RoadEdgesRawFile}
 
     def is_defined(self) -> bool:
         return self.nb_rows is not None and self.nb_columns is not None and self.length is not None

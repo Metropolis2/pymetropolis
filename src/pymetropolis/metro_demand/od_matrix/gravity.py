@@ -1,7 +1,7 @@
 import polars as pl
 
 from pymetropolis.metro_demand.modes.car import CarODsFile
-from pymetropolis.metro_network.road_network import AllFreeFlowTravelTimesFile
+from pymetropolis.metro_network.road_network import AllRoadFreeFlowTravelTimesFile
 from pymetropolis.metro_pipeline.parameters import FloatParameter, StringParameter
 from pymetropolis.random import IntDistributionParameter, RandomStep, generate_int_values
 
@@ -43,7 +43,7 @@ class GravityODMatrixStep(RandomStep):
         ),
         note="If not specified, any node can be an origin / destination.",
     )
-    input_files = {"all_free_flow_travel_times": AllFreeFlowTravelTimesFile}
+    input_files = {"all_free_flow_travel_times": AllRoadFreeFlowTravelTimesFile}
     output_files = {"car_driver_ods": CarODsFile}
 
     def is_defined(self) -> bool:

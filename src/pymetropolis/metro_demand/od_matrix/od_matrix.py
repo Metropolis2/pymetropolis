@@ -4,7 +4,7 @@ from shapely.geometry import LineString, Point
 
 from pymetropolis.metro_demand.modes.car import CarODsFile
 from pymetropolis.metro_demand.od_matrix.file import RoadODMatrixFile
-from pymetropolis.metro_network.road_network.files import CleanEdgesFile
+from pymetropolis.metro_network.road_network.files import RoadEdgesCleanFile
 from pymetropolis.metro_pipeline import Step
 
 
@@ -13,7 +13,7 @@ class RoadODMatrixStep(Step):
     origins and destinations.
     """
 
-    input_files = {"edges": CleanEdgesFile, "car_ods": CarODsFile}
+    input_files = {"edges": RoadEdgesCleanFile, "car_ods": CarODsFile}
     output_files = {"od_matrix": RoadODMatrixFile}
 
     def run(self):

@@ -2,7 +2,7 @@ from pymetropolis.metro_common.io import read_geodataframe
 from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import PathParameter
 
-from .files import RawEdgesFile
+from .files import RoadEdgesRawFile
 
 
 class CustomRoadImportStep(Step):
@@ -17,7 +17,7 @@ class CustomRoadImportStep(Step):
         description="Path to the geospatial file containing the edges definition.",
         example='`"data/my_edges.geojson"`',
     )
-    output_files = {"raw_edges": RawEdgesFile}
+    output_files = {"raw_edges": RoadEdgesRawFile}
 
     def is_defined(self) -> bool:
         return self.edges_file is not None
