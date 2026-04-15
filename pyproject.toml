@@ -34,6 +34,7 @@ dependencies = [
     "typeguard>=4.4.4",
     "treelib>=1.8.0",
     "humanize>=4.15.0",
+    "duckdb>=1.5.1",
 ]
 
 [project.urls]

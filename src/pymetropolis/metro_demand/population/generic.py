@@ -3,18 +3,18 @@ import polars as pl
 from pymetropolis.metro_demand.modes.car import CarODsFile
 from pymetropolis.metro_pipeline.steps import Step
 
-from .files import HouseholdsFile, PersonsFile, TripsFile
+from .files import PersonsFile, TripsFile
 
 
 class GenericPopulationStep(Step):
-    """Generates a population (households, persons, and trips) from a list of car-driver
-    origin-destination pairs.
+    """Generates a population (persons and trips) from a list of car-driver origin-destination
+    pairs.
 
-    Each household is composed of a single person, with a single trip.
+    Each person has a single trip.
     """
 
     input_files = {"car_driver_ods": CarODsFile}
-    output_files = {"trips": TripsFile, "persons": PersonsFile, "households": HouseholdsFile}
+    output_files = {"trips": TripsFile, "persons": PersonsFile}
 
     def run(self):
         df: pl.DataFrame = self.input["car_driver_ods"].read()
@@ -35,13 +35,5 @@ class GenericPopulationStep(Step):
             has_driving_license=pl.lit(True, dtype=pl.Boolean),
             has_pt_subscription=pl.lit(True, dtype=pl.Boolean),
         )
-        households = trips.select(
-            "household_id",
-            number_of_persons=pl.lit(1, dtype=pl.UInt8),
-            number_of_vehicles=pl.lit(1, dtype=pl.UInt8),
-            number_of_bikes=pl.lit(1, dtype=pl.UInt8),
-            income=pl.lit(None, dtype=pl.Float64),
-        )
         self.output["trips"].write(trips)
         self.output["persons"].write(persons)
-        self.output["households"].write(households)

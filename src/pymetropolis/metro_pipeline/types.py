@@ -122,14 +122,34 @@ class Bool(Type):
 
 
 class Float(Type):
+    lb: float | None
+    ub: float | None
+
+    def __init__(self, lb: float | None = None, ub: float | None = None):
+        self.lb = lb
+        self.ub = ub
+
     @override
-    def validate(self, value: Any) -> float:
+    def validate(self, value: Any) -> Any:
+        # Float validation.
         if not isinstance(value, int | float):
             raise MetropyError(f"Invalid float: {value}")
-        return float(value)
+        value = float(value)
+        # Bounds validation.
+        if self.lb is not None and value < self.lb:
+            raise MetropyError(f"Value must not be smaller than {self.lb} (got: {value})")
+        if self.ub is not None and value > self.ub:
+            raise MetropyError(f"Value must not be larger than {self.ub} (got: {value})")
+        return value
 
     @override
     def _describe(self) -> str:
+        if self.lb is not None and self.ub is not None:
+            return f"Float between {self.lb} and {self.ub}"
+        if self.lb is not None:
+            return f"Float not smaller than {self.lb}"
+        if self.ub is not None:
+            return f"Float not larger than {self.ub}"
         return "Float"
 
 

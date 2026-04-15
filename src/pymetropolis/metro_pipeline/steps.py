@@ -130,6 +130,7 @@ class Step:
             if not v.exists() and update_dict.get(f"data_file_{k}_mtime") is not None:
                 # A file that was previously read no longer exists.
                 return True
+            # TODO: Handle data directories.
             if v.stat().st_mtime != update_dict.get(f"data_file_{k}_mtime"):
                 # The file exists but was updated since the last run (or did not exist before).
                 return True

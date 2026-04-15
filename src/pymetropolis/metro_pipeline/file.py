@@ -28,10 +28,11 @@ class MetroDataType(Enum):
     FLOAT = 4
     STRING = 5
     TIME = 6
-    DURATION = 7
-    LIST_OF_IDS = 8
-    LIST_OF_FLOATS = 9
-    LIST_OF_TIMES = 10
+    DATETIME = 7
+    DURATION = 8
+    LIST_OF_IDS = 9
+    LIST_OF_FLOATS = 10
+    LIST_OF_TIMES = 11
 
     def is_valid_pl(self, dtype: pl.DataType):
         if self == MetroDataType.ID:
@@ -48,6 +49,8 @@ class MetroDataType(Enum):
             return isinstance(dtype, pl.String)
         elif self == MetroDataType.TIME:
             return isinstance(dtype, pl.Time)
+        elif self == MetroDataType.DATETIME:
+            return isinstance(dtype, pl.Datetime)
         elif self == MetroDataType.DURATION:
             return isinstance(dtype, pl.Duration)
         elif self == MetroDataType.LIST_OF_IDS:
@@ -93,6 +96,8 @@ class MetroDataType(Enum):
             return "string"
         elif self == MetroDataType.TIME:
             return "time"
+        elif self == MetroDataType.DATETIME:
+            return "datetime"
         elif self == MetroDataType.DURATION:
             return "duration"
         elif self == MetroDataType.LIST_OF_IDS:
@@ -226,6 +231,8 @@ class MetroDataFrameFile(MetroFile):
     max_rows: int | None = None
 
     def validate(self, df: pl.DataFrame) -> pl.DataFrame:
+        if not isinstance(df, pl.DataFrame):
+            raise MetropyError(f"DataFrame expected, got {type(df)}")
         if self.max_rows is not None and len(df) > self.max_rows:
             raise MetropyError("DataFrame has too many rows")
         if self.schema is None:
@@ -283,6 +290,8 @@ class MetroGeoDataFrameFile(MetroFile):
     max_rows: int | None = None
 
     def validate(self, gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+        if not isinstance(gdf, gpd.GeoDataFrame):
+            raise MetropyError(f"GeoDataFrame expected, got {type(gdf)}")
         if self.max_rows is not None and len(gdf) > self.max_rows:
             raise MetropyError("DataFrame has too many rows")
         if self.schema is None:

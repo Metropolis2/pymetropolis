@@ -32,6 +32,19 @@ def time_to_seconds_since_midnight_pl(x: str | pl.Expr) -> pl.Expr:
     ).cast(pl.Float64)
 
 
+def seconds_since_midnight_to_datetime_pl(x: str | pl.Expr) -> pl.Expr:
+    expr = get_pl_expr(x)
+    return pl.datetime(
+        year=1900,
+        month=1,
+        day=1 + expr // (60 * 60 * 24),
+        hour=(expr // (60 * 60)) % 24,
+        minute=(expr // 60) % 60,
+        second=expr % 60,
+        microsecond=expr % 1 * 1_000_000,
+    )
+
+
 def seconds_since_midnight_to_time_pl(x: str | pl.Expr) -> pl.Expr:
     expr = get_pl_expr(x)
     return pl.time(

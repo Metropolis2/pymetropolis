@@ -109,9 +109,16 @@ class IntParameter(Parameter[int]):
 
 
 class FloatParameter(Parameter[float]):
-    def __init__(self, *args, **kwargs):
-        kwargs["validator"] = Float()
+    def __init__(
+        self, *args, lower_bound: float | None = None, upper_bound: float | None = None, **kwargs
+    ):
+        kwargs["validator"] = Float(lb=lower_bound, ub=upper_bound)
         super().__init__(*args, **kwargs)
+
+
+class FractionParameter(FloatParameter):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, lower_bound=0.0, upper_bound=1.0, **kwargs)
 
 
 class StringParameter(Parameter[str]):
