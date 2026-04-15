@@ -2,7 +2,7 @@ from pymetropolis.metro_pipeline.file import Column, MetroDataFrameFile, MetroDa
 
 
 class OutsideOptionPreferencesFile(MetroDataFrameFile):
-    path = "demand/population/outside_option_preferences.parquet"
+    path = "demand/population/modes/outside_option/preferences.parquet"
     description = "Utility of the outside option alternative, for each tour."
     schema = [
         Column(
@@ -22,7 +22,7 @@ class OutsideOptionPreferencesFile(MetroDataFrameFile):
 
 
 class OutsideOptionTravelTimesFile(MetroDataFrameFile):
-    path = "demand/population/outside_option_travel_times.parquet"
+    path = "demand/population/modes/outside_option/travel_times.parquet"
     description = "Travel time of the outside option alternative, for each tour."
     schema = [
         Column(
@@ -42,7 +42,7 @@ class OutsideOptionTravelTimesFile(MetroDataFrameFile):
 
 
 class PublicTransitPreferencesFile(MetroDataFrameFile):
-    path = "demand/population/public_transit_preferences.parquet"
+    path = "demand/population/modes/public_transit/preferences.parquet"
     description = "Preferences to travel by public transit, for each person."
     schema = [
         Column(
@@ -68,7 +68,7 @@ class PublicTransitPreferencesFile(MetroDataFrameFile):
 
 
 class PublicTransitTravelTimesFile(MetroDataFrameFile):
-    path = "demand/population/public_transit_travel_times.parquet"
+    path = "demand/population/modes/public_transit/travel_times.parquet"
     description = "Travel time of each trip, when traveling by public transit."
     schema = [
         Column(

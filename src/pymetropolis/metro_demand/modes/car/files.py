@@ -2,7 +2,7 @@ from pymetropolis.metro_pipeline.file import Column, MetroDataFrameFile, MetroDa
 
 
 class CarDriverPreferencesFile(MetroDataFrameFile):
-    path = "demand/population/car_driver_preferences.parquet"
+    path = "demand/population/modes/car/car_driver_preferences.parquet"
     description = "Preferences to travel as a car driver, for each person."
     schema = [
         Column(
@@ -28,7 +28,7 @@ class CarDriverPreferencesFile(MetroDataFrameFile):
 
 
 class CarDriverWithPassengersPreferencesFile(MetroDataFrameFile):
-    path = "demand/population/car_driver_with_passengers_preferences.parquet"
+    path = "demand/population/modes/car/car_driver_with_passengers_preferences.parquet"
     description = "Preferences to travel as a car driver with passengers, for each person."
     schema = [
         Column(
@@ -54,7 +54,7 @@ class CarDriverWithPassengersPreferencesFile(MetroDataFrameFile):
 
 
 class CarPassengerPreferencesFile(MetroDataFrameFile):
-    path = "demand/population/car_passenger_preferences.parquet"
+    path = "demand/population/modes/car/car_passenger_preferences.parquet"
     description = "Preferences to travel as a car passenger, for each person."
     schema = [
         Column(
@@ -80,7 +80,7 @@ class CarPassengerPreferencesFile(MetroDataFrameFile):
 
 
 class CarRidesharingPreferencesFile(MetroDataFrameFile):
-    path = "demand/population/car_ridesharing_preferences.parquet"
+    path = "demand/population/modes/car/car_ridesharing_preferences.parquet"
     description = "Preferences to travel by car ridesharing (driver or passenger), for each person."
     schema = [
         Column(
@@ -106,7 +106,7 @@ class CarRidesharingPreferencesFile(MetroDataFrameFile):
 
 
 class CarODsFile(MetroDataFrameFile):
-    path = "demand/population/car_origins_destinations.parquet"
+    path = "demand/population/modes/car/car_origins_destinations.parquet"
     description = "Origin / destination on the road network for each trip, when traveling by car."
     schema = [
         Column(
@@ -132,7 +132,7 @@ class CarODsFile(MetroDataFrameFile):
 
 
 class CarShortestDistancesFile(MetroDataFrameFile):
-    path = "demand/population/car_driver_shortest_distances.parquet"
+    path = "demand/population/modes/car/car_driver_shortest_distances.parquet"
     description = "Shortest path distance on the road network of each car trip."
     schema = [
         Column(
@@ -152,7 +152,7 @@ class CarShortestDistancesFile(MetroDataFrameFile):
 
 
 class CarFreeFlowDistancesFile(MetroDataFrameFile):
-    path = "demand/population/car_free_flow_distances.parquet"
+    path = "demand/population/modes/car/free_flow_distances.parquet"
     description = "Distance of the fastest free-flow path on the road network of each car trip."
     schema = [
         Column(
@@ -172,7 +172,7 @@ class CarFreeFlowDistancesFile(MetroDataFrameFile):
 
 
 class CarFuelFile(MetroDataFrameFile):
-    path = "demand/population/car_fuel_consumption.parquet"
+    path = "demand/population/modes/car/fuel_consumption.parquet"
     description = (
         "Fuel consumption of each car trip, based on the length of the fastest free-flow path."
     )
