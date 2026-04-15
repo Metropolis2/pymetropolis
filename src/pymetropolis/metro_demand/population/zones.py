@@ -2,7 +2,7 @@ import geopandas as gpd
 import polars as pl
 
 from pymetropolis.metro_spatial import GeoStep
-from pymetropolis.metro_spatial.ign import IGNStep
+from pymetropolis.metro_spatial.ign import AdminExpressStep, IRISStep
 
 from .files import (
     HouseholdsHomesFile,
@@ -33,7 +33,7 @@ def identify_insee(
     return df
 
 
-class FrenchHouseholdsHomesZonesStep(GeoStep, IGNStep):
+class FrenchHouseholdsHomesZonesStep(GeoStep, AdminExpressStep, IRISStep):
     """Identify where the households' homes are located in the French zoning system."""
 
     input_files = {"homes": HouseholdsHomesFile}
@@ -60,7 +60,7 @@ class FrenchHouseholdsHomesZonesStep(GeoStep, IGNStep):
         self.output["zones"].write(df)
 
 
-class FrenchTripsZonesStep(GeoStep, IGNStep):
+class FrenchTripsZonesStep(GeoStep, AdminExpressStep, IRISStep):
     """Identify where the trips' origins are located in the French zoning system."""
 
     input_files = {"origins": TripsOriginsFile, "destinations": TripsDestinationsFile}
