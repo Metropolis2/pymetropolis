@@ -13,6 +13,7 @@ from pymetropolis.metro_pipeline.parameters import FractionParameter, PathParame
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_spatial import GeoStep
 from pymetropolis.metro_spatial.simulation_area import SimulationAreaFile
+from pymetropolis.random import RandomStep
 
 from .files import (
     HouseholdsFile,
@@ -161,6 +162,7 @@ def read_homes(
     gpkg_file: Path | None = None,
     filter_polygon: Polygon | None = None,
     fraction: float = 1.0,
+    random_seed: int | None = None,
 ) -> gpd.GeoDataFrame:
     con = duckdb.connect()
     con.install_extension("spatial")
@@ -188,7 +190,7 @@ def read_homes(
         raise MetropyError("No household within the simulation area")
     if fraction != 1.0:
         assert fraction < 1.0 and fraction >= 0.0
-        df = df.sample(fraction=fraction)
+        df = df.sample(fraction=fraction, seed=random_seed)
     if df.is_empty():
         raise MetropyError("No household selected, choose a larger fraction")
     # Note. Eqasim uses EPSG 2154 CRS.
@@ -228,7 +230,7 @@ def find_file(pattern: str, directory: Path):
     return next(directory.glob(pattern), None)
 
 
-class EqasimImportStep(GeoStep):
+class EqasimImportStep(GeoStep, RandomStep):
     """Imports a synthetic population from the output of the Eqasim pipeline.
 
     To use this step, you first need to generate a synthetic population following the instructions
@@ -310,6 +312,7 @@ class EqasimImportStep(GeoStep):
             gpkg_file=homes_gpkg,
             filter_polygon=self.input["simulation_area"].get_area_opt(),  # ty: ignore[unresolved-attribute]
             fraction=self.fraction,
+            random_seed=self.random_seed,
         )
         household_ids = set(homes["household_id"])
         households = read_households(
