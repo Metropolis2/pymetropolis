@@ -245,7 +245,7 @@ class OpenStreetMapNetworkImport:
 
     def create_edges(self, edges: pl.DataFrame, nodes: pl.DataFrame) -> gpd.GeoDataFrame:
         """Creates edge geometries from node coordinates and duplicate the two-way edges."""
-        self.add_node_features_to_edges(edges, nodes)
+        edges = self.add_node_features_to_edges(edges, nodes)
         logger.debug("Duplicating two-way edges")
         edges = self.duplicate_edges(edges)
         # Create `edge_id` column.

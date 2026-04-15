@@ -8,7 +8,7 @@ from osmium.osm import Node, Way
 from shapely.geometry import Polygon
 
 from pymetropolis.metro_network.osm import OpenStreetMapNetworkImport
-from pymetropolis.metro_pipeline.parameters import ListParameter
+from pymetropolis.metro_pipeline.parameters import BoolParameter, FloatParameter, ListParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_pipeline.types import String
 from pymetropolis.metro_spatial import GeoStep, OSMStep
@@ -284,11 +284,17 @@ class OpenStreetMapRoadImportStep(GeoStep, OSMStep):
     - The way has no tag `access` or tag `access` matches one of the value given in
       [`allowed_access`](parameters.md#osm_road_importallowed_access).
     - The way's geometry is a valid LineString.
-    - The way intersects with the simulation area (if the
-      [SimulationAreaFile](files.md#simulationareafile)) exists).
+    - The way intersects with the simulation area (if
+      [`simulation_area_filter`](parameters.md#osm_road_importsimulation_area_filter) is `true`).
 
     By default, the allowed tags for access are `yes`, `permissive` (non-public roads with allowed
     access), and `destination` (allowed for local traffic only).
+
+    When filtering with the simulation area, the
+    [`simulation_area_buffer`](parameters.md#osm_road_importsimulation_area_buffer) parameter can be
+    used to extend or shrink the area by a given distance.
+    This can be useful to include edges _outside_ the area that might be used when traveling between
+    two points _inside_ the area.
 
     Various processing operations are done to clean the edges:
 
@@ -343,19 +349,49 @@ class OpenStreetMapRoadImportStep(GeoStep, OSMStep):
             "[OpenStreetMap wiki](https://wiki.openstreetmap.org/wiki/Key:access)."
         ),
     )
+    simulation_area_filter = BoolParameter(
+        "osm_road_import.simulation_area_filter",
+        default=True,
+        description=(
+            "Whether the road network must be restricted to the edges within the simulation area."
+        ),
+    )
+    simulation_area_buffer = FloatParameter(
+        "osm_road_import.simulation_area_buffer",
+        default=0.0,
+        description=(
+            "Distance by which the polygon of the simulation area must be extended or shrinked "
+            "when importing the road network."
+        ),
+        note=(
+            "The value is expressed in the unit of measure of the CRS (usually meter). "
+            "Positive values extend the area, while negative values shrink it."
+        ),
+    )
 
-    input_files = {"simulation_area": InputFile(SimulationAreaFile, optional=True)}
+    input_files = {
+        "simulation_area": InputFile(
+            SimulationAreaFile,
+            when=lambda inst: inst.simulation_area_filter,
+            when_doc="`simulation_area_filter` is set to `true`",
+        )
+    }
     output_files = {"raw_edges": RoadEdgesRawFile}
 
     def is_defined(self) -> bool:
         return self.crs is not None and self.osm_file is not None and self.highways is not None
 
     def run(self):
+        if self.simulation_area_filter:
+            filter_polygon: Polygon = self.input["simulation_area"].get_area()  # ty: ignore[unresolved-attribute]
+            filter_polygon = filter_polygon.buffer(self.simulation_area_buffer)
+        else:
+            filter_polygon = None
         importer = OSMRoadNetworkImport(
             osm_file=self.osm_file,
             highway_tags=self.highways,
             crs=self.crs,
-            filter_polygon=self.input["simulation_area"].get_area_opt(),  # ty: ignore[unresolved-attribute]
+            filter_polygon=filter_polygon,
             allowed_access_tags=self.allowed_access,
         )
         edges = importer.run()
