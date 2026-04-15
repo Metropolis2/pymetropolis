@@ -8,7 +8,7 @@ from shapely import wkb
 from shapely.geometry import Polygon
 
 from pymetropolis.metro_common import MetropyError
-from pymetropolis.metro_common.utils import seconds_since_midnight_to_datetime_pl
+from pymetropolis.metro_common.utils import find_file, seconds_since_midnight_to_datetime_pl
 from pymetropolis.metro_pipeline.parameters import FractionParameter, PathParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_spatial import GeoStep
@@ -222,14 +222,6 @@ def clean(
     return households, persons, trips
 
 
-def find_file(pattern: str, directory: Path):
-    """Returns the first file that matches a pattern in the directory.
-
-    Returns None if there is no file matching the pattern.
-    """
-    return next(directory.glob(pattern), None)
-
-
 class EqasimImportStep(GeoStep, RandomStep):
     """Imports a synthetic population from the output of the Eqasim pipeline.
 
@@ -268,7 +260,11 @@ class EqasimImportStep(GeoStep, RandomStep):
       ```
     """
 
-    eqasim_output = PathParameter("synthetic_population.eqasim_output", check_dir_exists=True)
+    eqasim_output = PathParameter(
+        "synthetic_population.eqasim_output",
+        check_dir_exists=True,
+        description="Path to the output directory of the Eqasim synthetic population pipeline.",
+    )
     fraction = FractionParameter(
         "synthetic_population.fraction",
         default=1.0,

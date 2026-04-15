@@ -3,6 +3,7 @@ import os
 import shutil
 import tempfile
 from contextlib import contextmanager
+from pathlib import Path
 
 import polars as pl
 import requests
@@ -115,3 +116,14 @@ def tmp_download(url):
             except OSError:
                 logger.warning(f"Could not remove temporary filename `{tmp_file.name}`")
                 pass
+
+
+def find_file(pattern: str, directory: Path, recursive: bool = False):
+    """Returns the first file that matches a pattern in the directory.
+
+    Returns None if there is no file matching the pattern.
+    """
+    if recursive:
+        return next(directory.rglob(pattern), None)
+    else:
+        return next(directory.glob(pattern), None)
