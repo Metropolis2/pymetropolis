@@ -2,6 +2,7 @@ import geopandas as gpd
 import networkx as nx
 import numpy as np
 import polars as pl
+from loguru import logger
 
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_common.errors import error_context
@@ -309,7 +310,7 @@ def set_default_values(
 
 def remove_duplicates(gdf):
     """Remove the duplicates edges, keeping in order the one with smallest free-flow travel time."""
-    print("Removing duplicate edges")
+    logger.info("Removing duplicate edges")
     n0 = len(gdf)
     l0 = gdf["length"].sum()
     # Sort the dataframe.
@@ -321,20 +322,20 @@ def remove_duplicates(gdf):
     n1 = len(gdf)
     if n0 > n1:
         l1 = gdf["length"].sum()
-        print(f"Number of edges removed: {n0 - n1} ({(n0 - n1) / n0:.2%})")
-        print(f"Edge length removed (m): {l0 - l1:.0f} ({(l0 - l1) / l0:.2%})")
+        logger.debug(f"Number of edges removed: {n0 - n1} ({(n0 - n1) / n0:.2%})")
+        logger.debug(f"Edge length removed (m): {l0 - l1:.0f} ({(l0 - l1) / l0:.2%})")
     return gdf
 
 
 def select_connected(gdf):
-    print("Building graph...")
+    logger.info("Identifying strongly connected components")
     G = nx.DiGraph()
     G.add_edges_from((v[0], v[1]) for v in gdf[["source", "target"]].values)
     # Keep only the nodes of the largest strongly connected component.
     nodes = max(nx.strongly_connected_components(G), key=len)
     if len(nodes) < G.number_of_nodes():
-        print(
-            f"Warning: discarding {G.number_of_nodes() - len(nodes)} nodes disconnected from the "
+        logger.warning(
+            f"Discarding {G.number_of_nodes() - len(nodes)} nodes disconnected from the "
             "largest graph component"
         )
         n0 = len(gdf)
@@ -342,8 +343,8 @@ def select_connected(gdf):
         gdf = gdf.loc[gdf["source"].isin(nodes) & gdf["target"].isin(nodes)].copy()
         n1 = len(gdf)
         l1 = gdf["length"].sum()
-        print(f"Number of edges removed: {n0 - n1} ({(n0 - n1) / n0:.2%})")
-        print(f"Edge length removed (m): {l0 - l1:.0f} ({(l0 - l1) / l0:.2%})")
+        logger.debug(f"Number of edges removed: {n0 - n1} ({(n0 - n1) / n0:.2%})")
+        logger.debug(f"Edge length removed (m): {l0 - l1:.0f} ({(l0 - l1) / l0:.2%})")
     return gdf
 
 

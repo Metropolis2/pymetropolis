@@ -1,6 +1,7 @@
 from .files import PedestrianEdgesCleanFile, PedestrianEdgesRawFile
 from .osm import OpenStreetMapPedestrianImportStep
+from .postprocess import PostprocessPedestrianNetworkStep
 
 PEDESTRIAN_NETWORK_FILES = [PedestrianEdgesCleanFile, PedestrianEdgesRawFile]
 
-PEDESTRIAN_NETWORK_STEPS = [OpenStreetMapPedestrianImportStep]
+PEDESTRIAN_NETWORK_STEPS = [OpenStreetMapPedestrianImportStep, PostprocessPedestrianNetworkStep]
