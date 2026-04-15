@@ -85,3 +85,29 @@ class PublicTransitTravelTimesFile(MetroDataFrameFile):
             nullable=False,
         ),
     ]
+
+
+class WalkingPreferencesFile(MetroDataFrameFile):
+    path = "demand/population/modes/walking/preferences.parquet"
+    description = "Preferences to travel by walk, for each person."
+    schema = [
+        Column(
+            "person_id",
+            MetroDataType.ID,
+            description="Identifier of the person.",
+            unique=True,
+            nullable=False,
+        ),
+        Column(
+            "walking_cst",
+            MetroDataType.FLOAT,
+            description="Penalty for each walking trip (€).",
+            nullable=True,
+        ),
+        Column(
+            "walking_vot",
+            MetroDataType.FLOAT,
+            description="Value of time by walk (€/h).",
+            nullable=True,
+        ),
+    ]
