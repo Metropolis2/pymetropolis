@@ -285,6 +285,9 @@ class EqasimImportStep(GeoStep, RandomStep):
         "destinations": TripsDestinationsFile,
     }
 
+    def is_defined(self) -> bool:
+        return self.eqasim_output is not None
+
     def run(self):
         path = self.eqasim_output
         households_parquet = find_file("*_households.parquet", path)
