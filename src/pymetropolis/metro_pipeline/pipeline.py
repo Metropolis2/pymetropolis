@@ -93,12 +93,14 @@ def run_pipeline(config_path: Path, step_classes: list[type[Step]], dry_run: boo
     # A file does not need to be generated if all steps that generate it are flagged as `secondary`
     # and the file is not a predecessor for a non-`secondary` step.
     primary_files.add(NothingFile)
-    queue = primary_files.copy()
+    queue = primary_files & set(subgraph.nodes)
+    visited = set()
     while queue:
         f = queue.pop()
-        if f in primary_files:
+        if f in visited:
             continue
         primary_files.add(f)
+        visited.add(f)
         for pred in subgraph.predecessors(f):
             queue.add(pred)
     secondary_files = set()
