@@ -28,12 +28,9 @@ class GenericPopulationStep(Step):
         persons = trips.select(
             "person_id",
             "household_id",
-            age=pl.lit(None, dtype=pl.UInt8),
-            employed=pl.lit(None, dtype=pl.Boolean),
-            woman=pl.lit(None, dtype=pl.Boolean),
-            socioprofessional_class=pl.lit(None, dtype=pl.UInt8),
+            person_index=pl.lit(1, dtype=pl.UInt8),
             has_driving_license=pl.lit(True, dtype=pl.Boolean),
-            has_pt_subscription=pl.lit(True, dtype=pl.Boolean),
+            has_public_transit_subscription=pl.lit(True, dtype=pl.Boolean),
         )
         self.output["trips"].write(trips)
         self.output["persons"].write(persons)

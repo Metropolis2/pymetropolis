@@ -179,7 +179,7 @@ road = 1
         Saves the results to the given output file.
         """
         gdf = self.input["raw_edges"].read()
-        if self.input["urban_edges"].exists():
+        if self.urban_flag_required():
             urban_flags = self.input["urban_edges"].read()
         else:
             urban_flags = None

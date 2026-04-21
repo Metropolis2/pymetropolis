@@ -18,7 +18,7 @@ radius = 4000
 "Ring 3" = 70
 "Ring 4" = 70
 
-[road_network.default_nb_lanes]
+[road_network.default_lanes]
 "Radial 1" = 1
 "Radial 2" = 1
 "Radial 3" = 1
