@@ -5,13 +5,20 @@ import tempfile
 from pathlib import Path
 
 import polars as pl
+from loguru import logger
 
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_demand.routing.files import (
+    TripsCarFreeFlowTravelTimesFile,
     TripsPedestrianDistancesFile,
     TripsPedestrianNodesFile,
+    TripsRoadNodesFile,
 )
 from pymetropolis.metro_network.pedestrian_network.files import PedestrianEdgesCleanFile
+from pymetropolis.metro_network.road_network.files import (
+    RoadEdgesCleanFile,
+    RoadEdgesFreeFlowTravelTimeFile,
+)
 from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import BoolParameter, ExecPathParameter
 
@@ -62,10 +69,47 @@ class TripsPedestrianDistancesStep(RoutingCLIStep):
         df = trip_routing(trips, edges, self.exec_path, self.output_path)
         if self.output_path:
             df = df.select("trip_id", pedestrian_distance="value", pedestrian_path="route")
-            breakpoint()
         else:
             df = df.select("trip_id", pedestrian_distance="value")
         self.output["distances"].write(df)
+
+
+class TripsCarFreeFlowTravelTimesStep(RoutingCLIStep):
+    """Computes the trips' travel time on the road network by car, under free-flow conditions.
+
+    The free-flow travel time is defined as the travel time of the fastest path from origin to
+    destination node on the road network, using edge-level car free-flow travel times.
+    """
+
+    input_files = {
+        "od_pairs": TripsRoadNodesFile,
+        "edges": RoadEdgesCleanFile,
+        "edges_fftt": RoadEdgesFreeFlowTravelTimeFile,
+    }
+    output_files = {"fftt": TripsCarFreeFlowTravelTimesFile}
+
+    def run(self):
+        edges_gdf = self.input["edges"].read()
+        edges_fftt = self.input["edges_fftt"].read()
+        edges = (
+            pl.from_pandas(edges_gdf.loc[:, ["edge_id", "source", "target"]])
+            .join(edges_fftt, on="edge_id", how="left")
+            .with_columns(pl.col("free_flow_travel_time").dt.total_nanoseconds() / 1e9)
+            .rename({"free_flow_travel_time": "weight"})
+        )
+        n = edges["weight"].null_count()
+        if n:
+            logger.warning(f"Discarding {n} edges with NULL free-flow travel time")
+            edges = edges.filter(pl.col("weight").is_not_null())
+        od_pairs = self.input["od_pairs"].read()
+        trips = od_pairs.select(
+            "trip_id", origin_node="origin_road_node", destination_node="destination_road_node"
+        )
+        df = trip_routing(trips, edges, self.exec_path, with_routes=True)
+        df = df.select(
+            "trip_id", free_flow_travel_time=pl.duration(seconds="value"), free_flow_route="route"
+        )
+        self.output["fftt"].write(df)
 
 
 def trip_routing(
@@ -76,7 +120,6 @@ def trip_routing(
         prepare_routing(queries, edges, tmp_directory, with_routes)
         run_routing(routing_exec, tmp_directory)
         df = pl.read_parquet(os.path.join(tmp_directory, "output", "ea_results.parquet"))
-        breakpoint()
     if with_routes:
         df = df.select(trip_id="query_id", value="arrival_time", route="route")
     else:

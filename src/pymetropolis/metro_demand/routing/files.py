@@ -221,3 +221,31 @@ class TripsRoadNodesFile(MetroDataFrameFile):
             optional=True,
         ),
     ]
+
+
+class TripsCarFreeFlowTravelTimesFile(MetroDataFrameFile):
+    path = "demand/population/trips_car_free_flow_travel_times.parquet"
+    description = "Travel time by car under free-flow conditions for each trip."
+    schema = [
+        Column(
+            "trip_id",
+            MetroDataType.ID,
+            description="Identifier of the trip.",
+            unique=True,
+            nullable=False,
+        ),
+        Column(
+            "free_flow_travel_time",
+            MetroDataType.DURATION,
+            description="Travel time by car under free-flow conditions.",
+            nullable=True,
+        ),
+        Column(
+            "free_flow_route",
+            MetroDataType.LIST_OF_IDS,
+            description=(
+                "Fastest path on the road network under free-flow conditions, as a list of ids."
+            ),
+            nullable=True,
+        ),
+    ]
