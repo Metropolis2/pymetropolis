@@ -364,3 +364,23 @@ class RoadEdgesUrbanFlagFile(MetroDataFrameFile):
             nullable=False,
         ),
     ]
+
+
+class RoadEdgesPrimaryFlagFile(MetroDataFrameFile):
+    path = "network/road_network/edges_primary.parquet"
+    description = "Primary / secondary indicator of each road-network edge."
+    schema = [
+        Column(
+            "edge_id",
+            MetroDataType.ID,
+            description="Identifier of the edge.",
+            unique=True,
+            nullable=False,
+        ),
+        Column(
+            "primary",
+            MetroDataType.BOOL,
+            description="Whether the edge is part of the primary road network.",
+            nullable=False,
+        ),
+    ]

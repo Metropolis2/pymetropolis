@@ -64,6 +64,23 @@ ensure_connected = true
 reindex = false
 # Edges' types that cannot be used as origin / destination nodes.
 forbidden_types = ["motorway", "motorway_link", "trunk", "trunk_link"]
+# Edges' types that are part of the "primary" road network.
+# By default, all edges are considered to be part of the "primary" road network.
+primary_types = [
+    "motorway",
+    "motorway_link",
+    "trunk",
+    "trunk_link",
+    "primary",
+    "primary_link",
+    "secondary",
+    "secondary_link",
+    "tertiary",
+    "tertiary_link",
+]
+# If true, add secondary edges to the primary road network to ensure that
+# free-flow routes are primary-connected.
+ensure_primary_connected = true
 
 # Default speed limit per roadtype, in km/h, in rural areas.
 [road_network.default_speed_limit.rural]
