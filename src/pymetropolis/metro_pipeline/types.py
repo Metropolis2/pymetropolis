@@ -90,6 +90,24 @@ class PathType(Type):
         return s
 
 
+class ExecPathType(Type):
+    @override
+    def validate(self, value: Any) -> Path:
+        if isinstance(value, str):
+            value = Path(value)
+        if not isinstance(value, Path):
+            raise MetropyError(f"Invalid path: {value}")
+        if value.is_file():
+            return value
+        if value.with_suffix(".exe").is_file():
+            return value
+        raise MetropyError(f"Invalid path (no executable found): {value}")
+
+    @override
+    def _describe(self) -> str:
+        return "String representing a valid path to an executable"
+
+
 class Enum(Type):
     values: set[Any]
 

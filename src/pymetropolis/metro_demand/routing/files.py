@@ -100,6 +100,32 @@ class TripsPedestrianNodesFile(MetroDataFrameFile):
     ]
 
 
+class TripsPedestrianDistancesFile(MetroDataFrameFile):
+    path = "demand/population/trips_pedestrian_distances.parquet"
+    description = "Distance of the shortest path on the pedestrian network for each trip."
+    schema = [
+        Column(
+            "trip_id",
+            MetroDataType.ID,
+            description="Identifier of the trip.",
+            unique=True,
+            nullable=False,
+        ),
+        Column(
+            "pedestrian_distance",
+            MetroDataType.FLOAT,
+            description="Distance of the trip on the pedestrian network, in meters.",
+            nullable=True,
+        ),
+        Column(
+            "pedestrian_path",
+            MetroDataType.LIST_OF_IDS,
+            description="Shortest path of the trip on the pedestrian network, as a list of ids.",
+            nullable=True,
+        ),
+    ]
+
+
 class TripsRoadNodesFile(MetroDataFrameFile):
     path = "demand/population/trips_road_nodes.parquet"
     description = "Origin and destination nodes on the road network for each trip."

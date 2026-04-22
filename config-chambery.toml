@@ -155,6 +155,13 @@ reindex = false
 # Edges' types that cannot be used as origin / destination nodes.
 forbidden_types = ["trunk", "trunk_link"]
 
+[pedestrian_routing]
+output_path = true
+
 [synthetic_population]
 eqasim_output = "../ile-de-france/chambery_output/"
 fraction = 1.0
+
+[metropolis_core]
+exec_path = "execs/metropolis_cli"
+routing_exec_path = "execs/routing_cli"

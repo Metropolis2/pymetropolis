@@ -12,6 +12,7 @@ from .types import (
     CustomValidator,
     Duration,
     Enum,
+    ExecPathType,
     Float,
     Int,
     List,
@@ -159,6 +160,12 @@ class PathParameter(Parameter[Path]):
             check_dir_exists=check_dir_exists,
             extensions=extensions,
         )
+        super().__init__(*args, **kwargs)
+
+
+class ExecPathParameter(Parameter[Path]):
+    def __init__(self, *args, **kwargs):
+        kwargs["validator"] = ExecPathType()
         super().__init__(*args, **kwargs)
 
 

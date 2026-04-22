@@ -2,7 +2,7 @@ import subprocess
 
 from pymetropolis.metro_common.errors import MetropyError
 from pymetropolis.metro_pipeline import Step
-from pymetropolis.metro_pipeline.parameters import PathParameter
+from pymetropolis.metro_pipeline.parameters import ExecPathParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_simulation.demand import (
     MetroAgentsFile,
@@ -28,7 +28,7 @@ class RunSimulationStep(Step):
     This Step can take a few hours or even days to execute for large-scale simulations.
     """
 
-    exec_path = PathParameter(
+    exec_path = ExecPathParameter(
         "metropolis_core.exec_path",
         description="Path to the `metropolis_cli` executable.",
         note='On Windows, you can omit the ".exe" extension',
@@ -55,7 +55,6 @@ class RunSimulationStep(Step):
 
     def run(self):
         # TODO. Check that metropolis_cli is a sufficiently recent version.
-        self.check_exec_path()
         params_path = self.input["metro_parameters"].get_path()
         res = subprocess.run([self.exec_path, params_path], check=False)
         if res.returncode:
@@ -64,7 +63,3 @@ class RunSimulationStep(Step):
         for ofile in self.output.values():
             if not ofile.exists():
                 raise MetropyError(f"Output file not written: `{ofile.get_path()}`")
-
-    def check_exec_path(self):
-        if not self.exec_path.is_file() and not self.exec_path.with_suffix(".exe").is_file():
-            raise MetropyError(f"Cannot find the Metropolis-Core executable at `{self.exec_path}`")
