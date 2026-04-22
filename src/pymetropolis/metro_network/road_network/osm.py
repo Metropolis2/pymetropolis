@@ -129,7 +129,7 @@ class OSMRoadNetworkImport(OpenStreetMapNetworkImport):
             "osm_id",
             "source",
             "target",
-            "road_type",
+            "edge_type",
             "name",
             "toll",
             "roundabout",
@@ -310,7 +310,7 @@ class OpenStreetMapRoadImportStep(GeoStep, OSMStep):
     - `original_id`: OSM id of the way (note that values are generally not unique).
     - `length`: computed as geometric operation on the ways' LineString, after conversion to the
       simulation CRS.
-    - `road_type`: `highway` tag value.
+    - `edge_type`: `highway` tag value.
     - `name`: `name` tag value if any, otherwise `addr:street` tag value if any, otherwise `ref` tag
       value if any.
     - `speed_limit`: read from `maxspeed`, `maxspeed:forward`, or `maxspeed:backward` tag, as

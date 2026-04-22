@@ -104,7 +104,7 @@ def generate_circular_network(
                     "source": nout_inner,
                     "target": nin_outer,
                     "length": length,
-                    "road_type": f"Radial {ring}",
+                    "edge_type": f"Radial {ring}",
                     "geometry": LineString([[x2, y2], [x1, y1]]),
                 }
             )
@@ -114,7 +114,7 @@ def generate_circular_network(
                     "source": nin_outer,
                     "target": nout_inner,
                     "length": length,
-                    "road_type": f"Radial {ring}",
+                    "edge_type": f"Radial {ring}",
                     "geometry": LineString([[x1, y1], [x2, y2]]),
                 }
             )
@@ -130,7 +130,7 @@ def generate_circular_network(
                         "source": nout_outer,
                         "target": nout_inner,
                         "length": radial_inter_ramp_length,
-                        "road_type": f"RadialTunnel {ring}",
+                        "edge_type": f"RadialTunnel {ring}",
                         "geometry": LineString([[x2, y2], [x1, y1]]),
                     }
                 )
@@ -140,7 +140,7 @@ def generate_circular_network(
                         "source": nout_inner,
                         "target": nout_outer,
                         "length": radial_inter_ramp_length,
-                        "road_type": f"RadialTunnel {ring}",
+                        "edge_type": f"RadialTunnel {ring}",
                         "geometry": LineString([[x1, y1], [x2, y2]]),
                     }
                 )
@@ -176,7 +176,7 @@ def generate_circular_network(
                     "source": n_right_left,
                     "target": n_left_right,
                     "length": length,
-                    "road_type": f"Ring {ring}",
+                    "edge_type": f"Ring {ring}",
                     "geometry": LineString(points),
                 }
             )
@@ -186,7 +186,7 @@ def generate_circular_network(
                     "source": n_left_right,
                     "target": n_right_left,
                     "length": length,
-                    "road_type": f"Ring {ring}",
+                    "edge_type": f"Ring {ring}",
                     "geometry": LineString(points[::-1]),
                 }
             )
@@ -202,7 +202,7 @@ def generate_circular_network(
                         "source": n_right_right,
                         "target": n_right_left,
                         "length": ring_inter_ramp_length,
-                        "road_type": f"RingBridge {ring}",
+                        "edge_type": f"RingBridge {ring}",
                         "geometry": LineString(points),
                     }
                 )
@@ -212,7 +212,7 @@ def generate_circular_network(
                         "source": n_right_left,
                         "target": n_right_right,
                         "length": ring_inter_ramp_length,
-                        "road_type": f"RingBridge {ring}",
+                        "edge_type": f"RingBridge {ring}",
                         "geometry": LineString(points[::-1]),
                     }
                 )
@@ -251,7 +251,7 @@ def generate_circular_network(
                         "source": n_inner,
                         "target": n_right,
                         "length": entry_ramps_length,
-                        "road_type": f"EntryRamp {ring}",
+                        "edge_type": f"EntryRamp {ring}",
                         "geometry": LineString([[x_inner, y_inner], [x_right, y_right]]),
                     }
                 )
@@ -262,7 +262,7 @@ def generate_circular_network(
                         "source": n_right,
                         "target": n_outer,
                         "length": exit_ramps_length,
-                        "road_type": f"ExitRamp {ring}",
+                        "edge_type": f"ExitRamp {ring}",
                         "geometry": LineString([[x_right, y_right], [x_outer, y_outer]]),
                     }
                 )
@@ -273,7 +273,7 @@ def generate_circular_network(
                         "source": n_outer,
                         "target": n_left,
                         "length": entry_ramps_length,
-                        "road_type": f"EntryRamp {ring}",
+                        "edge_type": f"EntryRamp {ring}",
                         "geometry": LineString([[x_outer, y_outer], [x_left, y_left]]),
                     }
                 )
@@ -284,7 +284,7 @@ def generate_circular_network(
                         "source": n_left,
                         "target": n_inner,
                         "length": exit_ramps_length,
-                        "road_type": f"ExitRamp {ring}",
+                        "edge_type": f"ExitRamp {ring}",
                         "geometry": LineString([[x_left, y_left], [x_inner, y_inner]]),
                     }
                 )

@@ -3,11 +3,7 @@ from shapely.geometry import LineString
 
 from pymetropolis.metro_common.errors import MetropyError
 from pymetropolis.metro_pipeline import Step
-from pymetropolis.metro_pipeline.parameters import (
-    BoolParameter,
-    FloatParameter,
-    IntParameter,
-)
+from pymetropolis.metro_pipeline.parameters import BoolParameter, FloatParameter, IntParameter
 
 from .files import RoadEdgesRawFile
 
@@ -47,7 +43,7 @@ def generate_grid_network(
                         "source": source,
                         "target": target,
                         "length": length,
-                        "road_type": "LeftToRight",
+                        "edge_type": "LeftToRight",
                         "geometry": LineString([[x, y], [x + 1, y]]),
                     }
                 )
@@ -58,7 +54,7 @@ def generate_grid_network(
                         "source": target,
                         "target": source,
                         "length": length,
-                        "road_type": "RightToLeft",
+                        "edge_type": "RightToLeft",
                         "geometry": LineString([[x + 1, y], [x, y]]),
                     }
                 )
@@ -76,7 +72,7 @@ def generate_grid_network(
                         "source": source,
                         "target": target,
                         "length": length,
-                        "road_type": "BottomToTop",
+                        "edge_type": "BottomToTop",
                         "geometry": LineString([[x, y], [x, y + 1]]),
                     }
                 )
@@ -87,7 +83,7 @@ def generate_grid_network(
                         "source": target,
                         "target": source,
                         "length": length,
-                        "road_type": "TopToBottom",
+                        "edge_type": "TopToBottom",
                         "geometry": LineString([[x, y + 1], [x, y]]),
                     }
                 )

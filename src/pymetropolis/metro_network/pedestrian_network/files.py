@@ -25,7 +25,7 @@ class PedestrianEdgesRawFile(MetroGeoDataFrameFile):
             nullable=False,
         ),
         Column(
-            "road_type",
+            "edge_type",
             MetroDataType.ID,
             description="Identifier of the edge's type.",
             nullable=False,
@@ -71,7 +71,7 @@ class PedestrianEdgesCleanFile(MetroGeoDataFrameFile):
             nullable=False,
         ),
         Column(
-            "road_type",
+            "edge_type",
             MetroDataType.ID,
             description="Identifier of the edge's type.",
             nullable=False,

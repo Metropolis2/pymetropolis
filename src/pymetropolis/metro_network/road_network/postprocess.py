@@ -36,8 +36,8 @@ class PostprocessRoadNetworkStep(Step):
     The default values for `speed_limit` and `lanes` can be specified as
 
     - constant value over edges
-    - constant value by road type
-    - constant value by combinations of road type and urban flag
+    - constant value by edge type
+    - constant value by combinations of edge type and urban flag
     """
 
     min_lanes = FloatParameter(
@@ -88,13 +88,13 @@ class PostprocessRoadNetworkStep(Step):
         validator=default_edge_values_validator,
         description="Default speed limit (in km/h) to use for edges with no specified value.",
         validator_description=(
-            "float (constant speed limit for all edges), table with road types as keys and speed "
-            'limits as values, or table with "urban" and "rural" as keys and `road_type->value`'
+            "float (constant speed limit for all edges), table with edge types as keys and speed "
+            'limits as values, or table with "urban" and "rural" as keys and `edge_type->value`'
             " tables as values (see example)"
         ),
         note=(
             "The value is either a scalar value to be applied to all edges with no specified "
-            "value, a table `road_type -> speed_limit` or two tables `road_type -> speed_limit`, "
+            "value, a table `edge_type -> speed_limit` or two tables `edge_type -> speed_limit`, "
             "for urban and rural edges."
         ),
         example="""
@@ -115,9 +115,9 @@ road = 80
         "road_network.default_lanes",
         validator=default_edge_values_validator,
         validator_description=(
-            "float (constant number of lanes for all edges), table with road types as keys and "
+            "float (constant number of lanes for all edges), table with edge types as keys and "
             'number of lanes as values, or table with "urban" and "rural" as keys and'
-            " `road_type->value` tables as values (see example)"
+            " `edge_type->value` tables as values (see example)"
         ),
         default=1.0,
         description="Default number of lanes to use for edges with no specified value.",
@@ -139,9 +139,9 @@ road = 1
         "road_network.hov_lanes",
         validator=default_edge_values_validator,
         validator_description=(
-            "float (constant number of HOV lanes for all edges), table with road types as keys and "
+            "float (constant number of HOV lanes for all edges), table with edge types as keys and "
             'number of lanes as values, or table with "urban" and "rural" as keys and'
-            " `road_type->value` tables as values (see example)"
+            " `edge_type->value` tables as values (see example)"
         ),
         default=0.0,
         description="Number of HOV lanes on edges.",
@@ -241,16 +241,16 @@ def set_default_values(
             urban_edges = set(urban_flags.filter("urban")["edge_id"])
             mask = gdf["edge_id"].isin(urban_edges) & gdf["speed_limit"].isna()
             gdf.loc[mask, "speed_limit"] = gdf.loc[mask, "speed_limit"].fillna(
-                gdf.loc[mask, "road_type"].map(default_speed_limit["urban"])
+                gdf.loc[mask, "edge_type"].map(default_speed_limit["urban"])
             )
             mask = (~gdf["edge_id"].isin(urban_edges)) & gdf["speed_limit"].isna()
             gdf.loc[mask, "speed_limit"] = gdf.loc[mask, "speed_limit"].fillna(
-                gdf.loc[mask, "road_type"].map(default_speed_limit["rural"])
+                gdf.loc[mask, "edge_type"].map(default_speed_limit["rural"])
             )
         else:
             mask = gdf["speed_limit"].isna()
             gdf.loc[mask, "speed_limit"] = gdf.loc[mask, "speed_limit"].fillna(
-                gdf.loc[mask, "road_type"].map(default_speed_limit)
+                gdf.loc[mask, "edge_type"].map(default_speed_limit)
             )
     assert not gdf["speed_limit"].isna().any(), "Some edges have unknown speed limit"
     gdf["speed_limit"] = gdf["speed_limit"].astype(np.float64)
@@ -266,16 +266,16 @@ def set_default_values(
             urban_edges = set(urban_flags.filter("urban")["edge_id"])
             mask = gdf["edge_id"].isin(urban_edges) & gdf["lanes"].isna()
             gdf.loc[mask, "lanes"] = gdf.loc[mask, "lanes"].fillna(
-                gdf.loc[mask, "road_type"].map(default_lanes["urban"])
+                gdf.loc[mask, "edge_type"].map(default_lanes["urban"])
             )
             mask = (~gdf["edges_id"].isin(urban_edges)) & gdf["lanes"].isna()
             gdf.loc[mask, "lanes"] = gdf.loc[mask, "lanes"].fillna(
-                gdf.loc[mask, "road_type"].map(default_lanes["rural"])
+                gdf.loc[mask, "edge_type"].map(default_lanes["rural"])
             )
         else:
             mask = gdf["lanes"].isna()
             gdf.loc[mask, "lanes"] = gdf.loc[mask, "lanes"].fillna(
-                gdf.loc[mask, "road_type"].map(default_lanes)
+                gdf.loc[mask, "edge_type"].map(default_lanes)
             )
     assert not gdf["lanes"].isna().any(), "Some edges have unknown number of lanes"
     gdf["lanes"] = gdf["lanes"].astype(np.float64)
@@ -290,16 +290,16 @@ def set_default_values(
             urban_edges = set(urban_flags.filter("urban")["edge_id"])
             mask = gdf["edge_id"].isin(urban_edges) & gdf["hov_lanes"].isna()
             gdf.loc[mask, "hov_lanes"] = gdf.loc[mask, "hov_lanes"].fillna(
-                gdf.loc[mask, "road_type"].map(hov_lanes["urban"])
+                gdf.loc[mask, "edge_type"].map(hov_lanes["urban"])
             )
             mask = (~gdf["edge_id"].isin(urban_edges)) & gdf["hov_lanes"].isna()
             gdf.loc[mask, "hov_lanes"] = gdf.loc[mask, "hov_lanes"].fillna(
-                gdf.loc[mask, "road_type"].map(hov_lanes["rural"])
+                gdf.loc[mask, "edge_type"].map(hov_lanes["rural"])
             )
         else:
             mask = gdf["hov_lanes"].isna()
             gdf.loc[mask, "hov_lanes"] = gdf.loc[mask, "hov_lanes"].fillna(
-                gdf.loc[mask, "road_type"].map(hov_lanes)
+                gdf.loc[mask, "edge_type"].map(hov_lanes)
             )
     # By default, there is no HOV lane.
     gdf["hov_lanes"] = gdf["hov_lanes"].fillna(0).astype(np.float64)

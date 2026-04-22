@@ -107,7 +107,7 @@ class OpenStreetMapNetworkImport:
         return {
             "osm_id": way.id,
             "nodes": tuple(n.ref for n in way.nodes),
-            "road_type": way.tags["highway"],
+            "edge_type": way.tags["highway"],
             "name": way.tags.get("name") or way.tags.get("addr:street") or way.tags.get("ref"),
         }
 
@@ -117,7 +117,7 @@ class OpenStreetMapNetworkImport:
         return {
             "osm_id": pl.UInt64,
             "nodes": pl.List(pl.UInt64),
-            "road_type": pl.String,
+            "edge_type": pl.String,
             "name": pl.String,
         }
 
@@ -165,7 +165,7 @@ class OpenStreetMapNetworkImport:
         """Returns a cleaned version of data collected from `way_data`."""
         # Drop rows with source == target.
         df = df.filter(pl.col("source") != pl.col("target"))
-        df: pl.DataFrame = df.select("osm_id", "source", "target", "road_type", "name", "nodes")
+        df: pl.DataFrame = df.select("osm_id", "source", "target", "edge_type", "name", "nodes")
         return df
 
     def read_highway_ways(self, way_id_tracker: IdTracker) -> tuple[pl.DataFrame, IdTracker]:
@@ -241,7 +241,7 @@ class OpenStreetMapNetworkImport:
 
     def edge_columns(self) -> list[str]:
         """Returns a list of columns to be kept in the final edge DataFrame."""
-        return ["edge_id", "source", "target", "road_type", "name", "nodes", "original_id"]
+        return ["edge_id", "source", "target", "edge_type", "name", "nodes", "original_id"]
 
     def create_edges(self, edges: pl.DataFrame, nodes: pl.DataFrame) -> gpd.GeoDataFrame:
         """Creates edge geometries from node coordinates and duplicate the two-way edges."""

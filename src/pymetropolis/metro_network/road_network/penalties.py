@@ -23,8 +23,8 @@ class ExogenousEdgePenaltiesStep(Step):
     The penalties can be:
 
     - constant over edges
-    - constant by road type
-    - constant by combinations of road type and urban flag
+    - constant by edge type
+    - constant by combinations of edge type and urban flag
     """
 
     penalties = CustomParameter(
@@ -32,8 +32,8 @@ class ExogenousEdgePenaltiesStep(Step):
         validator=default_edge_values_validator,
         description="Constant time penalty (in seconds) of edges.",
         validator_description=(
-            "float (constant penalty for all edges), table with road types as keys and penalties"
-            ' as values, or table with "urban" and "rural" as keys and `road_type->value` tables as'
+            "float (constant penalty for all edges), table with edge types as keys and penalties"
+            ' as values, or table with "urban" and "rural" as keys and `edge_type->value` tables as'
             " values (see example)"
         ),
         example="""
@@ -71,12 +71,12 @@ road = 2
             # Case 1. Value is number.
             edges["constant"] = penalties
         else:
-            # Case 2. Value is dict road_type -> penalty.
+            # Case 2. Value is dict edge_type -> penalty.
             try:
                 check_type(penalties, dict[str, float])
-                edges["constant"] = edges["road_type"].map(penalties)
+                edges["constant"] = edges["edge_type"].map(penalties)
             except TypeCheckError:
-                # Case 3. Value is nested dict urban -> road_type -> penalty.
+                # Case 3. Value is nested dict urban -> edge_type -> penalty.
                 try:
                     check_type(penalties, dict[str, dict[str, float]])
                 except TypeCheckError:
@@ -88,11 +88,11 @@ road = 2
                     edges = edges.join(urban_edges, on="edge_id", how="left")
                     edges["constant"] = np.nan
                     mask = edges["urban"]
-                    edges.loc[mask, "constant"] = edges.loc[mask, "road_type"].map(
+                    edges.loc[mask, "constant"] = edges.loc[mask, "edge_type"].map(
                         penalties["urban"]
                     )
                     mask = ~edges["urban"]
-                    edges.loc[mask, "constant"] = edges.loc[mask, "road_type"].map(
+                    edges.loc[mask, "constant"] = edges.loc[mask, "edge_type"].map(
                         penalties["rural"]
                     )
         df = pl.from_pandas(edges[["edge_id", "constant"]])

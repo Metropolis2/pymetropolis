@@ -38,20 +38,20 @@ def capacities_validator(value: Any) -> int | float | dict:
     elif isinstance(value, dict):
         keys = set(value.keys())
         if keys == {"urban", "rural"}:
-            # Case 2. nested map urban/rural -> road_type -> capacity
+            # Case 2. nested map urban/rural -> edge_type -> capacity
             for k in keys:
                 if not is_valid_capacity_map(value[k]):
                     raise MetropyError(
-                        f"Invalid {k} capacities (map road_type->capacity expected): `{value[k]}`"
+                        f"Invalid {k} capacities (map edge_type->capacity expected): `{value[k]}`"
                     )
             return value
         else:
-            # Case 3. map road_type -> capacity
+            # Case 3. map edge_type -> capacity
             if is_valid_capacity_map(value):
                 return value
             else:
                 raise MetropyError(
-                    f"Invalid capacities (map road_type->capacity expected): `{value}`"
+                    f"Invalid capacities (map edge_type->capacity expected): `{value}`"
                 )
     else:
         raise MetropyError(f"Invalid capacities (number or dictionary expected): `{value}`")
@@ -63,16 +63,16 @@ class ExogenousCapacitiesStep(Step):
     The bottleneck capacities can be:
 
     - constant over edges
-    - constant by road type
-    - constant by combinations of road type and urban flag
+    - constant by edge type
+    - constant by combinations of edge type and urban flag
     """
 
     capacities = CustomParameter(
         "road_network.capacities",
         validator=capacities_validator,
         validator_description=(
-            "float (constant capacity for all edges), table with road types as keys and capacities"
-            ' as values, or table with "urban" and "rural" as keys and `road_type->value` tables as'
+            "float (constant capacity for all edges), table with edge types as keys and capacities"
+            ' as values, or table with "urban" and "rural" as keys and `edge_type->value` tables as'
             " values (see example)"
         ),
         description="Bottleneck capacity (in PCE/h) of edges.",
@@ -107,7 +107,7 @@ road = 1500
     def run(self):
         capacities = self.capacities
         edges = self.input["clean_edges"].read()
-        df = pl.from_pandas(edges.loc[:, edges.columns.isin(["edge_id", "road_type"])])
+        df = pl.from_pandas(edges.loc[:, edges.columns.isin(["edge_id", "edge_type"])])
         df = df.with_columns(
             capacity=pl.lit(None, dtype=pl.Float64),
             times=pl.lit(None, dtype=pl.List(pl.Time)),
@@ -119,22 +119,22 @@ road = 1500
         else:
             assert isinstance(capacities, dict)
             keys = set(capacities.keys())
-            if "road_type" not in df.columns:
-                raise MetropyError("Edges have no `road_type` column.")
-            road_types = set(df["road_type"].unique())
+            if "edge_type" not in df.columns:
+                raise MetropyError("Edges have no `edge_type` column.")
+            edge_types = set(df["edge_type"].unique())
             if keys == {"urban", "rural"}:
                 urban_flags = self.input["urban_edges"].read()
                 df = df.join(urban_flags, on="edge_id", how="left")
-                # Case 3. Value is nested dict urban -> road_type -> capacity.
+                # Case 3. Value is nested dict urban -> edge_type -> capacity.
                 df = df.with_columns(
                     capacity=pl.when("urban")
                     .then(
-                        pl.col("road_type").replace_strict(
+                        pl.col("edge_type").replace_strict(
                             capacities["urban"], return_dtype=pl.Float64
                         )
                     )
                     .otherwise(
-                        pl.col("road_type").replace_strict(
+                        pl.col("edge_type").replace_strict(
                             capacities["rural"], return_dtype=pl.Float64
                         )
                     )
@@ -147,22 +147,22 @@ road = 1500
                 df = df.with_columns(
                     times=pl.lit(capacities["times"]), capacities=pl.lit(capacities["values"])
                 )
-            elif all(k in road_types for k in keys):
-                # Case 2. Value is dict road_type -> capacity.
+            elif all(k in edge_types for k in keys):
+                # Case 2. Value is dict edge_type -> capacity.
                 # Capacity value can be a constant or a dict with keys time / values.
-                for road_type in keys:
-                    value = capacities[road_type]
+                for edge_type in keys:
+                    value = capacities[edge_type]
                     if isinstance(value, int | float):
                         df = df.with_columns(
-                            capacity=pl.when(road_type=road_type)
+                            capacity=pl.when(edge_type=edge_type)
                             .then(pl.lit(value))
                             .otherwise("capacity")
                         )
                     elif isinstance(value, dict):
                         if "times" not in value.keys() and "values" not in value.keys():
                             raise MetropyError(
-                                "Expected `times` and `values` keys for capacities of road_type "
-                                f"`{road_type}`"
+                                "Expected `times` and `values` keys for capacities of edge_type "
+                                f"`{edge_type}`"
                             )
                         if not isinstance(value["times"], list) and not all(
                             isinstance(t, time) for t in value["times"]
@@ -173,16 +173,16 @@ road = 1500
                         ):
                             raise MetropyError("Values for key `values` should be numbers")
                         df = df.with_columns(
-                            times=pl.when(road_type=road_type)
+                            times=pl.when(edge_type=edge_type)
                             .then(pl.lit(value["times"]))
                             .otherwise("times"),
-                            capacities=pl.when(road_type=road_type)
+                            capacities=pl.when(edge_type=edge_type)
                             .then(pl.lit(value["values"]))
                             .otherwise("capacities"),
                         )
                     else:
                         raise MetropyError(
-                            f"Unexpected type for capacities values of road type `{road_type}`"
+                            f"Unexpected type for capacities values of edge type `{edge_type}`"
                         )
-        df = df.drop("road_type", "urban", strict=False)
+        df = df.drop("edge_type", "urban", strict=False)
         self.output["edges_capacities"].write(df)

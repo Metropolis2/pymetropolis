@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+Breaking changes:
+
+- Renamed `road_type` to `edge_type`
+
 ## [0.7.0] – 2026-04-21
 
 New steps:

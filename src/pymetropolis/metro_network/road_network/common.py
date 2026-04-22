@@ -15,8 +15,8 @@ def default_edge_values_validator(value: Any) -> int | float | dict:
 
     Three cases:
         - The same value (numeric) for all edges.
-        - A map road_type -> numeric value.
-        - A nested map urban/rural -> road_type -> numeric value.
+        - A map edge_type -> numeric value.
+        - A nested map urban/rural -> edge_type -> numeric value.
     """
     if isinstance(value, int | float):
         # Case 1. constant penalty
@@ -24,20 +24,20 @@ def default_edge_values_validator(value: Any) -> int | float | dict:
     elif isinstance(value, dict):
         keys = set(value.keys())
         if keys == {"urban", "rural"}:
-            # Case 2. nested map urban/rural -> road_type -> penalty
+            # Case 2. nested map urban/rural -> edge_type -> penalty
             for k in keys:
                 if not is_valid_map(value[k]):
                     raise MetropyError(
-                        f"Invalid {k} penalties (map road_type->penalty expected): `{value[k]}`"
+                        f"Invalid {k} penalties (map edge_type->penalty expected): `{value[k]}`"
                     )
             return value
         else:
-            # Case 3. map road_type -> penalty
+            # Case 3. map edge_type -> penalty
             if is_valid_map(value):
                 return value
             else:
                 raise MetropyError(
-                    f"Invalid penalties (map road_type->penalty expected): `{value}`"
+                    f"Invalid penalties (map edge_type->penalty expected): `{value}`"
                 )
     else:
         raise MetropyError(f"Invalid penalties (number or dictionary expected): `{value}`")

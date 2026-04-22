@@ -30,9 +30,9 @@ class RoadEdgesRawFile(MetroGeoDataFrameFile):
             nullable=False,
         ),
         Column(
-            "road_type",
+            "edge_type",
             MetroDataType.ID,
-            description="Identifier of the edge's road type.",
+            description="Identifier of the edge's type.",
             nullable=False,
             optional=True,
         ),
@@ -116,9 +116,9 @@ class RoadEdgesCleanFile(MetroGeoDataFrameFile):
             nullable=False,
         ),
         Column(
-            "road_type",
+            "edge_type",
             MetroDataType.ID,
-            description="Identifier of the edge's road type.",
+            description="Identifier of the edge's type.",
             nullable=False,
             optional=True,
         ),
