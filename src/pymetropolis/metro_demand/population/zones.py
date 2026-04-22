@@ -1,7 +1,6 @@
 import geopandas as gpd
 import polars as pl
 
-from pymetropolis.metro_spatial import GeoStep
 from pymetropolis.metro_spatial.ign import AdminExpressStep, IRISStep
 
 from .files import (
@@ -11,6 +10,8 @@ from .files import (
     TripsOriginsFile,
     TripsZonesFile,
 )
+
+# TODO: Add EPCI zone3.
 
 
 def identify_iris(points: gpd.GeoDataFrame, iris: gpd.GeoDataFrame, id_col: str) -> pl.DataFrame:
@@ -33,8 +34,21 @@ def identify_insee(
     return df
 
 
-class FrenchHouseholdsHomesZonesStep(GeoStep, AdminExpressStep, IRISStep):
-    """Identify where the households' homes are located in the French zoning system."""
+class FrenchHouseholdsHomesZonesStep(AdminExpressStep, IRISStep):
+    """Identifies the geographic zones where households' homes are located in the French zoning
+    system.
+
+    The French zoning system uses multiple levels of geographic zones:
+
+    - Zone 1: Region
+    - Zone 2: Department
+    - Zone 3: EPCI (Établissement Public de Coopération Intercommunale)
+    - Zone 4: INSEE commune
+    - Zone 5: IRIS
+
+    Check the [`AdminExpressStep`](steps.md#adminexpressstep) and [`IRISStep`](steps.md#irisstep)
+    abstract steps to know how to configure this step.
+    """
 
     input_files = {"homes": HouseholdsHomesFile}
     output_files = {"zones": HouseholdsZonesFile}
@@ -60,8 +74,21 @@ class FrenchHouseholdsHomesZonesStep(GeoStep, AdminExpressStep, IRISStep):
         self.output["zones"].write(df)
 
 
-class FrenchTripsZonesStep(GeoStep, AdminExpressStep, IRISStep):
-    """Identify where the trips' origins are located in the French zoning system."""
+class FrenchTripsZonesStep(AdminExpressStep, IRISStep):
+    """Identifies the geographic zones where trips' origins and destinations are located in the
+    French zoning system.
+
+    The French zoning system uses multiple levels of geographic zones:
+
+    - Zone 1: Region
+    - Zone 2: Department
+    - Zone 3: EPCI (Établissement Public de Coopération Intercommunale)
+    - Zone 4: INSEE commune
+    - Zone 5: IRIS
+
+    Check the [`AdminExpressStep`](steps.md#adminexpressstep) and [`IRISStep`](steps.md#irisstep)
+    abstract steps to know how to configure this step.
+    """
 
     input_files = {"origins": TripsOriginsFile, "destinations": TripsDestinationsFile}
     output_files = {"zones": TripsZonesFile}

@@ -83,7 +83,8 @@ class IGNStep(Step):
 class AdminExpressStep(IGNStep):
     """Abstract Step to retrieve data from the ADMIN EXPRESS database.
 
-    Data is retrieved from local data when the `admin_express_directory` parameter is defined,
+    Data is retrieved from local files when the
+    [`admin_express_directory`](parameters.md#ignadmin_express_directory) parameter is defined,
     otherwise data is requested from the WFS API.
     """
 
@@ -189,7 +190,8 @@ class AdminExpressStep(IGNStep):
 class IRISStep(IGNStep):
     """Abstract Step to retrieve data from the Contours IRIS database.
 
-    Data is retrieved from local data when the `contours_iris_directory` parameter is defined,
+    Data is retrieved from local file when the
+    [`contours_iris_directory`](parameters.md#igncontours_iris_directory) parameter is defined,
     otherwise data is requested from the WFS API.
     """
 
@@ -259,3 +261,6 @@ class IRISStep(IGNStep):
                 inplace=True,
             )
         return iris
+
+
+IGN_STEPS = [AdminExpressStep, IRISStep]

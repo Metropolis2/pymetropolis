@@ -250,10 +250,6 @@ class EqasimImportStep(GeoStep, RandomStep):
       use_urban_type: true
       matching_attributes: ["professional_activity", "urban_type", "*default*"]
       ```
-    - Add `"escort"` as an activity purpose:
-      ```yaml
-      escort_purpose: true
-      ```
     - Do not activate mode choice (unused):
       ```yaml
       mode_choice: false
