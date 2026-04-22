@@ -14,7 +14,7 @@ from .public_transit import (
     PublicTransitPreferencesStep,
     PublicTransitTravelTimesFromRoadDistancesStep,
 )
-from .walking import PedestrianODNodesFromCoordinatesStep, WalkingPreferencesStep
+from .walking import WalkingPreferencesStep
 
 PT_FILES = [PublicTransitPreferencesFile, PublicTransitTravelTimesFile]
 OUTSIDE_FILES = [OutsideOptionPreferencesFile, OutsideOptionTravelTimesFile]
@@ -24,6 +24,6 @@ MODES_FILES = CAR_FILES + PT_FILES + WALKING_FILES + OUTSIDE_FILES
 
 PT_STEPS = [PublicTransitPreferencesStep, PublicTransitTravelTimesFromRoadDistancesStep]
 OUTSIDE_STEPS = [OutsideOptionPreferencesStep, OutsideOptionTravelTimesFromRoadDistancesStep]
-WALKING_STEPS = [WalkingPreferencesStep, PedestrianODNodesFromCoordinatesStep]
+WALKING_STEPS = [WalkingPreferencesStep]
 
 MODES_STEPS = CAR_STEPS + PT_STEPS + WALKING_STEPS + OUTSIDE_STEPS

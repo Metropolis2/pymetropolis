@@ -98,3 +98,100 @@ class TripsPedestrianNodesFile(MetroDataFrameFile):
             optional=True,
         ),
     ]
+
+
+class TripsRoadNodesFile(MetroDataFrameFile):
+    path = "demand/population/trips_road_nodes.parquet"
+    description = "Origin and destination nodes on the road network for each trip."
+    schema = [
+        Column(
+            "trip_id",
+            MetroDataType.ID,
+            description="Identifier of the trip.",
+            unique=True,
+            nullable=False,
+        ),
+        Column(
+            "origin_road_node",
+            MetroDataType.ID,
+            description="Identifier of the origin node on the road network.",
+            nullable=True,
+        ),
+        Column(
+            "origin_road_node_dist",
+            MetroDataType.FLOAT,
+            description=(
+                "Distance between the trip's origin and the corresponding road node, in meters."
+            ),
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "origin_road_node_dist_on_edge",
+            MetroDataType.FLOAT,
+            description=(
+                "Distance between the trip's origin and the corresponding road node, "
+                "projected on the closest edge, in meters."
+            ),
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "origin_road_edge",
+            MetroDataType.ID,
+            description="Identifier of the road edge closest to the trip's origin.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "origin_road_edge_dist",
+            MetroDataType.FLOAT,
+            description=(
+                "Distance between the trip's origin and the closest road edge, in meters."
+            ),
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "destination_road_node",
+            MetroDataType.ID,
+            description="Identifier of the destination node on the road network.",
+            nullable=True,
+        ),
+        Column(
+            "destination_road_node_dist",
+            MetroDataType.FLOAT,
+            description=(
+                "Distance between the trip's destination and the corresponding road node, "
+                "in meters."
+            ),
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "destination_road_node_dist_on_edge",
+            MetroDataType.FLOAT,
+            description=(
+                "Distance between the trip's destination and the corresponding road node, "
+                "projected on the closest edge, in meters."
+            ),
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "destination_road_edge",
+            MetroDataType.ID,
+            description="Identifier of the road edge closest to the trip's destination.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "destination_road_edge_dist",
+            MetroDataType.FLOAT,
+            description=(
+                "Distance between the trip's destination and the closest road edge, in meters."
+            ),
+            nullable=True,
+            optional=True,
+        ),
+    ]

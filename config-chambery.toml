@@ -62,6 +62,8 @@ remove_duplicates = false
 ensure_connected = true
 # If `true`, the edges are re-index after the postprocessing so that they are indexed from 0 to n-1.
 reindex = false
+# Edges' types that cannot be used as origin / destination nodes.
+forbidden_types = ["motorway", "motorway_link", "trunk", "trunk_link"]
 
 # Default speed limit per roadtype, in km/h, in rural areas.
 [road_network.default_speed_limit.rural]
