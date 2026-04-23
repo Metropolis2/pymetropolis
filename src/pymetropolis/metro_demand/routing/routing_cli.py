@@ -92,7 +92,7 @@ class TripsCarFreeFlowTravelTimesStep(RoutingCLIStep):
         edges_gdf = self.input["edges"].read()
         edges_fftt = self.input["edges_fftt"].read()
         edges = (
-            pl.from_pandas(edges_gdf.loc[:, ["edge_id", "source", "target"]])
+            pl.from_pandas(edges_gdf.loc[:, ["edge_id", "source", "target", "length"]])
             .join(edges_fftt, on="edge_id", how="left")
             .with_columns(pl.col("free_flow_travel_time").dt.total_nanoseconds() / 1e9)
             .rename({"free_flow_travel_time": "weight"})
@@ -108,6 +108,12 @@ class TripsCarFreeFlowTravelTimesStep(RoutingCLIStep):
         df = trip_routing(trips, edges, self.exec_path, with_routes=True)
         df = df.select(
             "trip_id", free_flow_travel_time=pl.duration(seconds="value"), free_flow_route="route"
+        )
+        # Add route distance.
+        df = df.with_columns(
+            free_flow_distance=pl.col("free_flow_route")
+            .list.eval(pl.element().replace_strict(edges["edge_id"], edges["length"]))
+            .list.sum()
         )
         self.output["fftt"].write(df)
 

@@ -248,6 +248,15 @@ class TripsCarFreeFlowTravelTimesFile(MetroDataFrameFile):
             ),
             nullable=True,
         ),
+        Column(
+            "free_flow_distance",
+            MetroDataType.FLOAT,
+            description=(
+                "Length of the fastest path on the road network under free-flow conditions, "
+                "in meters."
+            ),
+            nullable=True,
+        ),
     ]
 
 
