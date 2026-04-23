@@ -1,11 +1,12 @@
 from .files import (
+    TripsCarAccessEgressFile,
     TripsCarFreeFlowTravelTimesFile,
     TripsPedestrianDistancesFile,
     TripsPedestrianNodesFile,
     TripsRoadNodesFile,
 )
 from .od_pairs import PedestrianODNodesFromCoordinatesStep, RoadODNodesFromCoordinatesStep
-from .road_split import RoadNetworkPrimaryEdgesStep
+from .road_split import CarAccessEgressStep, RoadNetworkPrimaryEdgesStep
 from .routing_cli import TripsCarFreeFlowTravelTimesStep, TripsPedestrianDistancesStep
 
 ROUTING_FILES = [
@@ -13,6 +14,7 @@ ROUTING_FILES = [
     TripsPedestrianDistancesFile,
     TripsRoadNodesFile,
     TripsCarFreeFlowTravelTimesFile,
+    TripsCarAccessEgressFile,
 ]
 
 ROUTING_STEPS = [
@@ -21,4 +23,5 @@ ROUTING_STEPS = [
     TripsPedestrianDistancesStep,
     TripsCarFreeFlowTravelTimesStep,
     RoadNetworkPrimaryEdgesStep,
+    CarAccessEgressStep,
 ]

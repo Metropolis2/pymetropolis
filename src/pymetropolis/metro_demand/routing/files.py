@@ -249,3 +249,59 @@ class TripsCarFreeFlowTravelTimesFile(MetroDataFrameFile):
             nullable=True,
         ),
     ]
+
+
+class TripsCarAccessEgressFile(MetroDataFrameFile):
+    path = "demand/population/trips_car_access_egress.parquet"
+    description = "Data on the access / egress parts of the car trips."
+    schema = [
+        Column(
+            "trip_id",
+            MetroDataType.ID,
+            description="Identifier of the trip.",
+            unique=True,
+            nullable=False,
+        ),
+        Column(
+            "access_node",
+            MetroDataType.ID,
+            description="Identifier of the road-network node where the primary part starts.",
+            nullable=True,
+        ),
+        Column(
+            "access_path",
+            MetroDataType.LIST_OF_IDS,
+            description="List of node ids that consists the access part of the trip.",
+            nullable=True,
+        ),
+        Column(
+            "access_time",
+            MetroDataType.DURATION,
+            description=(
+                "Time spent on the access part of the trip when traveling by car under free-flow "
+                "conditions."
+            ),
+            nullable=True,
+        ),
+        Column(
+            "egress_node",
+            MetroDataType.ID,
+            description="Identifier of the road-network node where the primary part ends.",
+            nullable=True,
+        ),
+        Column(
+            "egress_path",
+            MetroDataType.LIST_OF_IDS,
+            description="List of node ids that consists the egress part of the trip.",
+            nullable=True,
+        ),
+        Column(
+            "egress_time",
+            MetroDataType.DURATION,
+            description=(
+                "Time spent on the egress part of the trip when traveling by car under free-flow "
+                "conditions."
+            ),
+            nullable=True,
+        ),
+    ]
