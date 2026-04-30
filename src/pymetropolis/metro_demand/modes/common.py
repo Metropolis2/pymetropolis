@@ -7,6 +7,55 @@ from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_demand.population.files import PersonsFile
 from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import PathParameter
+from pymetropolis.random import FloatDistributionParameter, RandomStep, generate_values
+
+
+def pref_constant_parameter(mode: str):
+    return FloatDistributionParameter(
+        f"modes.{mode}.constant",
+        default=0.0,
+        description=f"Constant penalty for each {mode} trip (€).",
+    )
+
+
+def pref_value_of_time_parameter(mode: str):
+    return FloatDistributionParameter(
+        f"modes.{mode}.alpha", default=0.0, description=f"Value of time by {mode} (€/h)."
+    )
+
+
+def cst_preferences_step_docstring(mode: str):
+    doc = f"""Generates the preference parameters of traveling by {mode}, for each trip, from
+    exogenous values.
+
+    The following parameters are generated:
+
+    - constant: penalty of traveling by {mode}, *per trip*
+    - value of time / alpha: penalty per hour spent traveling by {mode}
+
+    The values can be constant over trips or sampled from a specific distribution.
+    """
+    return inspect.cleandoc(doc)
+
+
+class PreferencesStep(RandomStep):
+    """Abstract Step to generate the preference parameters of traveling from exogenous values."""
+
+    constant = 0.0
+    value_of_time = 0.0
+    input_files = {"persons": PersonsFile}
+
+    def is_defined(self):
+        return self.constant != 0.0 or self.value_of_time != 0.0
+
+    def get_preferences(self, mode: str, persons: pl.DataFrame):
+        rng = self.get_rng()
+        df = persons.select(
+            "person_id",
+            generate_values(self.constant, len(persons), rng).alias(f"{mode}_cst"),
+            generate_values(self.value_of_time, len(persons), rng).alias(f"{mode}_vot"),
+        )
+        return df
 
 
 def pref_file_parameter(mode: str):

@@ -3,68 +3,46 @@ import polars as pl
 from pymetropolis.metro_common.io import read_dataframe
 from pymetropolis.metro_demand.modes.common import (
     ModePreferencesFromPopulationStep,
+    PreferencesStep,
+    cst_preferences_step_docstring,
+    pref_constant_parameter,
     pref_file_parameter,
+    pref_value_of_time_parameter,
     preferences_step_docstring,
 )
-from pymetropolis.metro_demand.population import PersonsFile
 from pymetropolis.metro_demand.routing.files import TripsCarFreeFlowTravelTimesFile
 from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import FloatParameter
-from pymetropolis.random import FloatDistributionParameter, RandomStep, generate_values
 
 from .files import PublicTransitPreferencesFile, PublicTransitTravelTimesFile
 
+MODE = "public_transit"
 
-class PublicTransitPreferencesStep(RandomStep):
-    """Generates the preference parameters of traveling by public transit, for each trip, from
-    exogenous values.
 
-    The following parameters are generated:
+class PublicTransitPreferencesStep(PreferencesStep):
+    __doc__ = cst_preferences_step_docstring(MODE)
 
-    - constant: penalty of traveling by public transit, *per trip*
-    - value of time / alpha: penalty per hour spent traveling by public transit
-
-    The values can be constant over trips or sampled from a specific distribution.
-    """
-
-    constant = FloatDistributionParameter(
-        "modes.public_transit.constant",
-        default=0.0,
-        description="Constant penalty for each trip in public transit (€).",
-    )
-    value_of_time = FloatDistributionParameter(
-        "modes.public_transit.alpha",
-        default=0.0,
-        description="Value of time in public transit (€/h).",
-    )
-    input_files = {"persons": PersonsFile}
-    output_files = {"public_transit_preferences": PublicTransitPreferencesFile}
-
-    def is_defined(self):
-        return self.constant != 0.0 or self.value_of_time != 0.0
+    constant = pref_constant_parameter(MODE)
+    value_of_time = pref_value_of_time_parameter(MODE)
+    output_files = {"preferences": PublicTransitPreferencesFile}
 
     def run(self):
         persons: pl.DataFrame = self.input["persons"].read()
-        rng = self.get_rng()
-        df = persons.select(
-            "person_id",
-            public_transit_cst=generate_values(self.constant, len(persons), rng),
-            public_transit_vot=generate_values(self.value_of_time, len(persons), rng),
-        )
-        self.output["public_transit_preferences"].write(df)
+        df = self.get_preferences(MODE, persons)
+        self.output["preferences"].write(df)
 
 
 class PublicTransitPreferencesFromPopulationStep(ModePreferencesFromPopulationStep):
-    __doc__ = preferences_step_docstring("public_transit")
+    __doc__ = preferences_step_docstring(MODE)
 
-    pref_file = pref_file_parameter("public_transit")
-    output_files = {"public_transit_preferences": PublicTransitPreferencesFile}
+    pref_file = pref_file_parameter(MODE)
+    output_files = {"preferences": PublicTransitPreferencesFile}
 
     def run(self):
         persons: pl.DataFrame = self.input["persons"].read()
         pref = read_dataframe(self.pref_file)
-        df = self.get_person_preferences(persons, pref, "public_transit")
-        self.output["public_transit_preferences"].write(df)
+        df = self.get_person_preferences(persons, pref, MODE)
+        self.output["preferences"].write(df)
 
 
 class PublicTransitTravelTimesFromRoadDistancesStep(Step):
