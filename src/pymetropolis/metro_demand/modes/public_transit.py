@@ -1,5 +1,11 @@
 import polars as pl
 
+from pymetropolis.metro_common.io import read_dataframe
+from pymetropolis.metro_demand.modes.common import (
+    ModePreferencesFromPopulationStep,
+    pref_file_parameter,
+    preferences_step_docstring,
+)
 from pymetropolis.metro_demand.population import PersonsFile
 from pymetropolis.metro_demand.routing.files import TripsCarFreeFlowTravelTimesFile
 from pymetropolis.metro_pipeline import Step
@@ -45,6 +51,19 @@ class PublicTransitPreferencesStep(RandomStep):
             public_transit_cst=generate_values(self.constant, len(persons), rng),
             public_transit_vot=generate_values(self.value_of_time, len(persons), rng),
         )
+        self.output["public_transit_preferences"].write(df)
+
+
+class PublicTransitPreferencesFromPopulationStep(ModePreferencesFromPopulationStep):
+    __doc__ = preferences_step_docstring("public_transit")
+
+    pref_file = pref_file_parameter("public_transit")
+    output_files = {"public_transit_preferences": PublicTransitPreferencesFile}
+
+    def run(self):
+        persons: pl.DataFrame = self.input["persons"].read()
+        pref = read_dataframe(self.pref_file)
+        df = self.get_person_preferences(persons, pref, "public_transit")
         self.output["public_transit_preferences"].write(df)
 
 

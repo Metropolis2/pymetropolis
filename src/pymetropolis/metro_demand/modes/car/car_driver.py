@@ -1,5 +1,11 @@
 import polars as pl
 
+from pymetropolis.metro_common.io import read_dataframe
+from pymetropolis.metro_demand.modes.common import (
+    ModePreferencesFromPopulationStep,
+    pref_file_parameter,
+    preferences_step_docstring,
+)
 from pymetropolis.metro_demand.population import PersonsFile
 from pymetropolis.random import FloatDistributionParameter, RandomStep, generate_values
 
@@ -24,9 +30,7 @@ class CarDriverPreferencesStep(RandomStep):
         description="Constant penalty for each trip as a car driver (€).",
     )
     value_of_time = FloatDistributionParameter(
-        "modes.car_driver.alpha",
-        default=0.0,
-        description="Value of time as a car driver (€/h).",
+        "modes.car_driver.alpha", default=0.0, description="Value of time as a car driver (€/h)."
     )
     input_files = {"persons": PersonsFile}
     output_files = {"preferences": CarDriverPreferencesFile}
@@ -43,3 +47,16 @@ class CarDriverPreferencesStep(RandomStep):
             car_driver_vot=generate_values(self.value_of_time, len(persons), rng),
         )
         self.output["preferences"].write(df)
+
+
+class CarDriverPreferencesFromPopulationStep(ModePreferencesFromPopulationStep):
+    __doc__ = preferences_step_docstring("car_driver")
+
+    pref_file = pref_file_parameter("car_driver")
+    output_files = {"car_driver_preferences": CarDriverPreferencesFile}
+
+    def run(self):
+        persons: pl.DataFrame = self.input["persons"].read()
+        pref = read_dataframe(self.pref_file)
+        df = self.get_person_preferences(persons, pref, "car_driver")
+        self.output["car_driver_preferences"].write(df)

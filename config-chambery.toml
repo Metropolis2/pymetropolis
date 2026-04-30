@@ -189,3 +189,7 @@ headway = 8.0
 modes = ["bicycle"]
 model = "Logit"
 mu = 1.0
+
+[modes]
+[modes.bicycle]
+preferences_file = "chambery/data/mode_preferences.csv"

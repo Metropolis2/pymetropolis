@@ -1,5 +1,11 @@
 import polars as pl
 
+from pymetropolis.metro_common.io import read_dataframe
+from pymetropolis.metro_demand.modes.common import (
+    ModePreferencesFromPopulationStep,
+    pref_file_parameter,
+    preferences_step_docstring,
+)
 from pymetropolis.metro_demand.population import PersonsFile
 from pymetropolis.random import FloatDistributionParameter, RandomStep, generate_values
 
@@ -40,4 +46,17 @@ class WalkingPreferencesStep(RandomStep):
             walking_cst=generate_values(self.constant, len(persons), rng),
             walking_vot=generate_values(self.value_of_time, len(persons), rng),
         )
+        self.output["walking_preferences"].write(df)
+
+
+class WalkingPreferencesFromPopulationStep(ModePreferencesFromPopulationStep):
+    __doc__ = preferences_step_docstring("walking")
+
+    pref_file = pref_file_parameter("walking")
+    output_files = {"walking_preferences": WalkingPreferencesFile}
+
+    def run(self):
+        persons: pl.DataFrame = self.input["persons"].read()
+        pref = read_dataframe(self.pref_file)
+        df = self.get_person_preferences(persons, pref, "walking")
         self.output["walking_preferences"].write(df)

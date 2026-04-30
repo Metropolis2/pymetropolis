@@ -1,7 +1,13 @@
-from .car_driver import CarDriverPreferencesStep
-from .car_driver_with_passengers import CarDriverWithPassengersPreferencesStep
-from .car_passenger import CarPassengerPreferencesStep
-from .car_ridesharing import CarRidesharingPreferencesStep
+from .car_driver import CarDriverPreferencesFromPopulationStep, CarDriverPreferencesStep
+from .car_driver_with_passengers import (
+    CarDriverWithPassengersPreferencesFromPopulationStep,
+    CarDriverWithPassengersPreferencesStep,
+)
+from .car_passenger import CarPassengerPreferencesFromPopulationStep, CarPassengerPreferencesStep
+from .car_ridesharing import (
+    CarRidesharingPreferencesFromPopulationStep,
+    CarRidesharingPreferencesStep,
+)
 from .files import (
     CarDriverPreferencesFile,
     CarDriverWithPassengersPreferencesFile,
@@ -21,8 +27,12 @@ CAR_FILES = [
 
 CAR_STEPS = [
     CarDriverPreferencesStep,
+    CarDriverPreferencesFromPopulationStep,
     CarDriverWithPassengersPreferencesStep,
+    CarDriverWithPassengersPreferencesFromPopulationStep,
     CarPassengerPreferencesStep,
+    CarPassengerPreferencesFromPopulationStep,
     CarRidesharingPreferencesStep,
+    CarRidesharingPreferencesFromPopulationStep,
     CarFuelStep,
 ]

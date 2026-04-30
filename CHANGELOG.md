@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+New mode: `bicycle`
+
 New steps:
 
 - `PedestrianODNodesFromCoordinatesStep`
@@ -11,6 +13,13 @@ New steps:
 - `RoadNetworkPrimaryEdgesStep`
 - `CarAccessEgressStep`
 - `BicyclePreferencesStep`
+- `BicyclePreferencesFromPopulationStep`
+- `WalkingPreferencesFromPopulationStep`
+- `PublicTransitPreferencesFromPopulationStep`
+- `CarDriverPreferencesFromPopulationStep`
+- `CarDriverWithPassengersPreferencesFromPopulationStep`
+- `CarPassengerPreferencesFromPopulationStep`
+- `CarRidesharingPreferencesFromPopulationStep`
 
 New files:
 

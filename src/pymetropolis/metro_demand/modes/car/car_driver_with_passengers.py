@@ -1,5 +1,11 @@
 import polars as pl
 
+from pymetropolis.metro_common.io import read_dataframe
+from pymetropolis.metro_demand.modes.common import (
+    ModePreferencesFromPopulationStep,
+    pref_file_parameter,
+    preferences_step_docstring,
+)
 from pymetropolis.metro_demand.population import PersonsFile
 from pymetropolis.random import FloatDistributionParameter, RandomStep, generate_values
 
@@ -43,3 +49,18 @@ class CarDriverWithPassengersPreferencesStep(RandomStep):
             car_driver_with_passengers_vot=generate_values(self.value_of_time, len(persons), rng),
         )
         self.output["preferences"].write(df)
+
+
+class CarDriverWithPassengersPreferencesFromPopulationStep(ModePreferencesFromPopulationStep):
+    __doc__ = preferences_step_docstring("car_driver_with_passengers")
+
+    pref_file = pref_file_parameter("car_driver_with_passengers")
+    output_files = {
+        "car_driver_with_passengers_preferences": CarDriverWithPassengersPreferencesFile
+    }
+
+    def run(self):
+        persons: pl.DataFrame = self.input["persons"].read()
+        pref = read_dataframe(self.pref_file)
+        df = self.get_person_preferences(persons, pref, "car_driver_with_passengers")
+        self.output["car_driver_with_passengers_preferences"].write(df)
