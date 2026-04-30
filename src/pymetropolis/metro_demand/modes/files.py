@@ -111,3 +111,29 @@ class WalkingPreferencesFile(MetroDataFrameFile):
             nullable=True,
         ),
     ]
+
+
+class BicyclePreferencesFile(MetroDataFrameFile):
+    path = "demand/population/modes/bicycle/preferences.parquet"
+    description = "Preferences to travel by bicycle, for each person."
+    schema = [
+        Column(
+            "person_id",
+            MetroDataType.ID,
+            description="Identifier of the person.",
+            unique=True,
+            nullable=False,
+        ),
+        Column(
+            "bicycle_cst",
+            MetroDataType.FLOAT,
+            description="Penalty for each bicycle trip (€).",
+            nullable=True,
+        ),
+        Column(
+            "bicycle_vot",
+            MetroDataType.FLOAT,
+            description="Value of time by bicycle (€/h).",
+            nullable=True,
+        ),
+    ]

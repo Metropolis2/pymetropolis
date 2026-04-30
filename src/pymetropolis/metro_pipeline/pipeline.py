@@ -42,6 +42,7 @@ class MetroPipeline:
         all_output_files = set()
         used_keys = set()
         for step_class in step_classes:
+            assert issubclass(step_class, Step), f"Not a valid Step: {step_class}"
             # Instantiate the step with the config.
             step = step_class(self.config)
             # Keep track of all keys used.

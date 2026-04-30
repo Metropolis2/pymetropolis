@@ -185,6 +185,7 @@ price = 1.9
 headway = 8.0
 
 [mode_choice]
-modes = ["car_driver"]
+# modes = ["car_driver", "car_ridesharing", "public_transit", "walking", "bicycle"]
+modes = ["bicycle"]
 model = "Logit"
 mu = 1.0

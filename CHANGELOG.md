@@ -10,6 +10,7 @@ New steps:
 - `TripsCarFreeFlowTravelTimesStep`
 - `RoadNetworkPrimaryEdgesStep`
 - `CarAccessEgressStep`
+- `BicyclePreferencesStep`
 
 New files:
 
@@ -19,6 +20,7 @@ New files:
 - `TripsCarFreeFlowTravelTimesFile`
 - `RoadEdgesPrimaryFlagFile`
 - `TripsCarAccessEgressFile`
+- `BicyclePreferencesFile`
 
 New features:
 

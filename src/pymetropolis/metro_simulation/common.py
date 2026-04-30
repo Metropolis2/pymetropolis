@@ -14,6 +14,7 @@ class StepWithModes(Step):
                 "car_ridesharing",
                 "public_transit",
                 "walking",
+                "bicycle",
                 "outside_option",
             ]
         ),
