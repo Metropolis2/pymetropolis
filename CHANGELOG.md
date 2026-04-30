@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+New steps:
+
+- `PedestrianODNodesFromCoordinatesStep`
+- `RoadODNodesFromCoordinatesStep`
+- `TripsPedestrianDistancesStep`
+- `TripsCarFreeFlowTravelTimesStep`
+- `RoadNetworkPrimaryEdgesStep`
+- `CarAccessEgressStep`
+
+New files:
+
+- `TripsPedestrianNodesFile`
+- `TripsPedestrianDistancesFile`
+- `TripsRoadNodesFile`
+- `TripsCarFreeFlowTravelTimesFile`
+- `RoadEdgesPrimaryFlagFile`
+- `TripsCarAccessEgressFile`
+
 Breaking changes:
 
 - Renamed `road_type` to `edge_type`
