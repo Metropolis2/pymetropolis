@@ -2,8 +2,8 @@ import geopandas as gpd
 import polars as pl
 from shapely.geometry import LineString, Point
 
-from pymetropolis.metro_demand.modes.car import CarODsFile
 from pymetropolis.metro_demand.od_matrix.file import RoadODMatrixFile
+from pymetropolis.metro_demand.routing.files import TripsRoadNodesFile
 from pymetropolis.metro_network.road_network.files import RoadEdgesCleanFile
 from pymetropolis.metro_pipeline import Step
 
@@ -13,12 +13,13 @@ class RoadODMatrixStep(Step):
     origins and destinations.
     """
 
-    input_files = {"edges": RoadEdgesCleanFile, "car_ods": CarODsFile}
+    input_files = {"edges": RoadEdgesCleanFile, "road_ods": TripsRoadNodesFile}
     output_files = {"od_matrix": RoadODMatrixFile}
+    primary = False
 
     def run(self):
-        ods = self.input["car_ods"].read()
-        od_matrix = ods.group_by("origin_node_id", "destination_node_id").len()
+        ods = self.input["road_ods"].read()
+        od_matrix = ods.group_by("origin_road_node", "destination_road_node").len()
         edges_gdf = self.input["edges"].read()
         source_points = dict()
         target_points = dict()
@@ -26,8 +27,8 @@ class RoadODMatrixStep(Step):
             source_points[row["source"]] = Point(row["geometry"].coords[0]).wkb
             target_points[row["target"]] = Point(row["geometry"].coords[-1]).wkb
         od_matrix = od_matrix.with_columns(
-            source_point=pl.col("origin_node_id").replace_strict(source_points),
-            target_point=pl.col("destination_node_id").replace_strict(target_points),
+            source_point=pl.col("origin_road_node").replace_strict(source_points),
+            target_point=pl.col("destination_road_node").replace_strict(target_points),
         )
         linestrings = [
             LineString([s, t])
@@ -37,7 +38,7 @@ class RoadODMatrixStep(Step):
             )
         ]
         gdf = gpd.GeoDataFrame(
-            od_matrix.select("origin_node_id", "destination_node_id", size="len").to_pandas(),
+            od_matrix.select("origin_road_node", "destination_road_node", size="len").to_pandas(),
             geometry=linestrings,
         )
         self.output["od_matrix"].write(gdf)

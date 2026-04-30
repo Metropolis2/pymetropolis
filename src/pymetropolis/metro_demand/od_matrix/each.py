@@ -2,7 +2,7 @@ import geopandas as gpd
 import numpy as np
 import polars as pl
 
-from pymetropolis.metro_demand.modes.car import CarODsFile
+from pymetropolis.metro_demand.routing.files import TripsRoadNodesFile
 from pymetropolis.metro_network.road_network import RoadEdgesCleanFile
 from pymetropolis.random import IntDistributionParameter, RandomStep, generate_int_values
 
@@ -26,7 +26,7 @@ class ODMatrixEachStep(RandomStep):
         description="Number of trips to generate for each origin-destination pair.",
     )
     input_files = {"clean_edges": RoadEdgesCleanFile}
-    output_files = {"car_driver_ods": CarODsFile}
+    output_files = {"road_ods": TripsRoadNodesFile}
 
     def is_defined(self) -> bool:
         return self.each is not None
@@ -44,4 +44,4 @@ class ODMatrixEachStep(RandomStep):
         rng = self.get_rng()
         df = df.with_columns(size=generate_int_values(self.each, len(df), rng))
         trips = generate_trips_from_od_matrix(df, self.get_rng())
-        self.output["car_driver_ods"].write(trips)
+        self.output["road_ods"].write(trips)

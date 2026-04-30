@@ -2,12 +2,12 @@ import polars as pl
 from loguru import logger
 
 from pymetropolis.metro_demand.population import TripsFile
+from pymetropolis.metro_demand.routing.files import TripsCarFreeFlowTravelTimesFile
 from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import FloatParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.random import FloatDistributionParameter, RandomStep, generate_values
 
-from .car import CarShortestDistancesFile
 from .files import OutsideOptionPreferencesFile, OutsideOptionTravelTimesFile
 
 
@@ -91,7 +91,7 @@ class OutsideOptionTravelTimesFromRoadDistancesStep(Step):
             "(km/h)."
         ),
     )
-    input_files = {"car_driver_distances": CarShortestDistancesFile, "trips": TripsFile}
+    input_files = {"car_driver_distances": TripsCarFreeFlowTravelTimesFile, "trips": TripsFile}
     output_files = {"outside_option_travel_times": OutsideOptionTravelTimesFile}
 
     def is_defined(self) -> bool:
@@ -101,7 +101,9 @@ class OutsideOptionTravelTimesFromRoadDistancesStep(Step):
         df: pl.DataFrame = self.input["car_driver_distances"].read()
         df = df.select(
             "trip_id",
-            outside_option_travel_time=pl.duration(seconds=pl.col("distance") / self.speed * 3.6),
+            outside_option_travel_time=pl.duration(
+                seconds=pl.col("free_flow_distance") / self.speed * 3.6
+            ),
         )
         trips = self.input["trips"].read()
         df = df.join(trips, on="trip_id", how="left")

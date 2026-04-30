@@ -74,3 +74,4 @@ nb_iterations = 200
 
 [metropolis_core]
 exec_path = "execs/metropolis_cli"
+routing_exec_path = "execs/routing_cli"

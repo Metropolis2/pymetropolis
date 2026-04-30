@@ -179,8 +179,8 @@ class RoadNetworkPrimaryEdgesStep(Step):
         "edges": RoadEdgesCleanFile,
         "car_ff_routes": InputFile(
             TripsCarFreeFlowTravelTimesFile,
-            when=lambda inst: inst.ensure_primary_connected,
-            when_doc="`ensure_primary_connected` is `true`",
+            when=lambda inst: inst.secondary_types and inst.ensure_primary_connected,
+            when_doc="`secondary_types` is not empty and `ensure_primary_connected` is `true`",
         ),
     }
     output_files = {"edges_primary": RoadEdgesPrimaryFlagFile}
@@ -195,7 +195,7 @@ class RoadNetworkPrimaryEdgesStep(Step):
         else:
             # Default case: all edges are primary.
             df = edges.select("edge_id", primary=True)
-        if self.ensure_primary_connected:
+        if not df["primary"].all() and self.ensure_primary_connected:
             routes = self.input["car_ff_routes"].read().select("trip_id", route="free_flow_route")
             primary_edges = set(df.filter("primary")["edge_id"])
             find_primary_edges(routes, primary_edges)

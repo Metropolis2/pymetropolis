@@ -20,9 +20,24 @@ New files:
 - `RoadEdgesPrimaryFlagFile`
 - `TripsCarAccessEgressFile`
 
+New features:
+
+- `--step` command line argument to force a Step to be run
+
 Breaking changes:
 
 - Renamed `road_type` to `edge_type`
+
+Removed steps:
+
+- `CarFreeFlowDistancesStep` (superseded by `TripsCarFreeFlowTravelTimesStep`)
+- `CarShortestDistancesStep`
+
+Removed files:
+
+- `CarODsFile` (replaced by `TripsRoadNodesFile`)
+- `CarFreeFlowDistancesFile` (superseded by `TripsCarFreeFlowTravelTimesFile`)
+- `CarShortestDistancesFile`
 
 ## [0.7.0] – 2026-04-21
 

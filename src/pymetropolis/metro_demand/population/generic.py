@@ -1,6 +1,6 @@
 import polars as pl
 
-from pymetropolis.metro_demand.modes.car import CarODsFile
+from pymetropolis.metro_demand.routing.files import TripsRoadNodesFile
 from pymetropolis.metro_pipeline.steps import Step
 
 from .files import PersonsFile, TripsFile
@@ -13,11 +13,12 @@ class GenericPopulationStep(Step):
     Each person has a single trip.
     """
 
-    input_files = {"car_driver_ods": CarODsFile}
+    input_files = {"road_ods": TripsRoadNodesFile}
     output_files = {"trips": TripsFile, "persons": PersonsFile}
+    primary = False
 
     def run(self):
-        df: pl.DataFrame = self.input["car_driver_ods"].read()
+        df: pl.DataFrame = self.input["road_ods"].read()
         trips = df.select(
             "trip_id",
             person_id="trip_id",

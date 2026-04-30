@@ -26,6 +26,7 @@ class UrbanEdgesStep(Step):
 
     input_files = {"raw_edges": RoadEdgesRawFile, "urban_areas": UrbanAreasFile}
     output_files = {"urban_edges": RoadEdgesUrbanFlagFile}
+    primary = False
 
     def run(self):
         df = add_urban_tag(

@@ -5,7 +5,7 @@ import typer
 
 import pymetropolis
 
-from .metro_pipeline import run_pipeline
+from .metro_pipeline import Config, MetroPipeline
 from .schema import STEPS
 
 
@@ -17,13 +17,10 @@ def version_callback(value: bool):
 
 def app(
     config: Annotated[Path, typer.Argument(help="Path to the TOML configuration path to be used.")],
-    # step: Annotated[
-    #     Optional[str],
-    #     typer.Argument(help="Slug of the step to be run."),
-    # ],
     dry_run: bool = typer.Option(
         False, "--dry-run", help="Show the step that will be run without actually running them."
     ),
+    step: Annotated[str | None, typer.Option(help="Explicitly ask for a step to be run.")] = None,
     version: Annotated[
         bool | None,
         typer.Option(
@@ -36,4 +33,6 @@ def app(
 ):
     """Python command line tool to generate, calibrate, run and analyse a METROPOLIS2 simulation."""
     # TODO command to list available steps
-    run_pipeline(config_path=config, step_classes=STEPS, dry_run=dry_run)
+    config = Config.from_toml(config)
+    pipeline = MetroPipeline(config, STEPS, target_step=step)
+    pipeline.run(dry_run)

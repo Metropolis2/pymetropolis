@@ -24,8 +24,8 @@ def generate_trips_from_od_matrix(df: pl.DataFrame, rng: np.random.Generator):
             )
     trips = pl.DataFrame(
         {
-            "origin_node_id": np.repeat(df["origin"], df["size"]),
-            "destination_node_id": np.repeat(df["destination"], df["size"]),
+            "origin_road_node": np.repeat(df["origin"], df["size"]),
+            "destination_road_node": np.repeat(df["destination"], df["size"]),
         }
     )
     trips = trips.with_columns(trip_id=pl.arange(1, pl.len() + 1, dtype=pl.UInt64))

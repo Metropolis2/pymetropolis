@@ -11,11 +11,11 @@ from pymetropolis.metro_demand.modes.car import (
     CarDriverPreferencesFile,
     CarDriverWithPassengersPreferencesFile,
     CarFuelFile,
-    CarODsFile,
     CarPassengerPreferencesFile,
     CarRidesharingPreferencesFile,
 )
 from pymetropolis.metro_demand.population import TripsFile
+from pymetropolis.metro_demand.routing.files import TripsRoadNodesFile
 from pymetropolis.metro_pipeline.file import MetroDataFrameFile
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_simulation.common import StepWithModes, StepWithRidesharingCount
@@ -28,7 +28,7 @@ def generate_car_trips(
     mode: str,
     vehicle_type: str,
     df: pl.DataFrame,
-    ods_file: CarODsFile,
+    ods_file: TripsRoadNodesFile,
     pref_file: MetroDataFrameFile,
     tstars_file: TstarsFile,
     schedule_pref_file: LinearScheduleFile,
@@ -41,13 +41,8 @@ def generate_car_trips(
         pl.lit(vehicle_type).alias("class.vehicle"),
     )
     ods: pl.DataFrame = ods_file.read()
-    df = (
-        df.join(ods, on="trip_id", how="left")
-        .with_columns(
-            pl.col("origin_node_id").alias("class.origin"),
-            pl.col("destination_node_id").alias("class.destination"),
-        )
-        .drop("origin_node_id", "destination_node_id")
+    df = df.join(ods, on="trip_id", how="left").rename(
+        {"origin_road_node": "class.origin", "destination_road_node": "class.destination"}
     )
     if pref_file.exists():
         params: pl.DataFrame = pref_file.read().select(
@@ -157,9 +152,9 @@ class WriteMetroTripsStep(StepWithModes, StepWithRidesharingCount):
     input_files = {
         "trips": TripsFile,
         "car_driver_ods": InputFile(
-            CarODsFile,
-            when=lambda inst: inst.has_mode("car_driver"),
-            when_doc='if the "car_driver" mode is defined',
+            TripsRoadNodesFile,
+            when=lambda inst: inst.has_car_mode(),
+            when_doc='if any "car_*" mode is defined',
         ),
         "public_transit_travel_times": InputFile(
             PublicTransitTravelTimesFile,
@@ -190,7 +185,7 @@ class WriteMetroTripsStep(StepWithModes, StepWithRidesharingCount):
             CarRidesharingPreferencesFile,
             optional=True,
             when=lambda inst: inst.has_mode("car_ridesharing"),
-            when_doc='if the "car_driver" mode is defined',
+            when_doc='if the "car_ridesharing" mode is defined',
         ),
         "car_fuel": InputFile(
             CarFuelFile,
