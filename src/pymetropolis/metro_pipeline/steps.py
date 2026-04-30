@@ -27,9 +27,6 @@ class InputFile:
         self.when = when
         self.when_doc = when_doc
 
-    def from_dir(self, dir: Path) -> MetroFile:
-        return self.file_class.from_dir(dir)
-
     def is_needed(self, step: "Step") -> bool:
         if self.when:
             return self.when(step)
@@ -62,16 +59,12 @@ class Step:
             value = param_obj.from_config(config)
             self._config_dict[param_name] = value
             setattr(self, param_name, value)
+        self._input_files = {
+            k: f.from_dir(config.main_directory) for k, f in self._iter_input_files()
+        }
         self._output_files = {
             k: f.from_dir(config.main_directory) for k, f in self.output_files.items()
         }
-        self._input_files = {}
-        for name, file_spec in self.input_files.items():
-            if isinstance(file_spec, InputFile):
-                if file_spec.is_needed(self):
-                    self._input_files[name] = file_spec.from_dir(config.main_directory)
-            else:
-                self._input_files[name] = file_spec.from_dir(config.main_directory)
         self._update_file_path = config.main_directory / "update_files" / f"{self}.json"
 
     @classmethod
@@ -82,8 +75,44 @@ class Step:
                 continue
             yield param_name, param_obj
 
+    def _iter_input_files(self, required: bool | None = None):
+        for name, file_spec in self.input_files.items():
+            if isinstance(file_spec, InputFile):
+                if required and file_spec.optional:
+                    # File is optional but only required files are demanded.
+                    continue
+                if required is False and not file_spec.optional:
+                    # File is not optional but only optional files are demanded.
+                    continue
+                if not file_spec.is_needed(self):
+                    # File is not used given the configured parameters.
+                    continue
+                yield name, file_spec.file_class
+            else:
+                if required is False:
+                    # File is not optional but only optional files are demanded.
+                    continue
+                yield name, file_spec
+
     def __str__(self) -> str:
         return self.__class__.__name__
+
+    def __lt__(self, other) -> bool:
+        """Compares `self` to `other`.
+
+        The ordering is based on:
+
+        1. The `primary` attribute (primary Steps are "above" secondary Steps).
+        2. The number of output files.
+        3. Class name.
+        """
+        if not self.primary and other.primary:
+            return True
+        if self.primary and not other.primary:
+            return False
+        if self.__class__.__name__ != other.__class__.__name__:
+            return len(self.output) < len(other.output)
+        return self.__class__.__name__ < other.__class__.__name__
 
     def run(self):
         """Executes the step.

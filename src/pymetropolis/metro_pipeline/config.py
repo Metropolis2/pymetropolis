@@ -11,6 +11,7 @@ class Config:
 
     def __init__(self, d: dict):
         self.dict = d
+        self.check_main_directory()
 
     @classmethod
     def from_toml(cls, path: Path):
@@ -23,7 +24,6 @@ class Config:
         with open(path, "rb") as f:
             input_dict = tomllib.load(f)
         inst = cls(input_dict)
-        inst.check_main_directory()
         return inst
 
     def check_main_directory(self):

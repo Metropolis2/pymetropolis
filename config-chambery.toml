@@ -4,6 +4,10 @@ crs = "epsg:2154"
 
 osm_file = "chambery/data/rhone-alpes-250101.osm.pbf"
 
+[metropolis_core]
+exec_path = "execs/metropolis_cli"
+routing_exec_path = "execs/routing_cli"
+
 # [ign]
 # admin_express_directory = "data/ADMIN-EXPRESS-COG-CARTO_4-0__GPKG_LAMB93_FXX_2025-01-01/"
 # contours_iris_directory = "data/CONTOURS-IRIS_3-0__GPKG_LAMB93_FXX_2026-01-01/"
@@ -172,6 +176,15 @@ output_path = true
 eqasim_output = "../ile-de-france/chambery_output/"
 fraction = 1.0
 
-[metropolis_core]
-exec_path = "execs/metropolis_cli"
-routing_exec_path = "execs/routing_cli"
+[fuel]
+consumption_factor = 0.08
+price = 1.9
+
+[vehicle_types]
+[vehicle_types.car]
+headway = 8.0
+
+[mode_choice]
+modes = ["car_driver"]
+model = "Logit"
+mu = 1.0

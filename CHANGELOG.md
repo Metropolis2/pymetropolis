@@ -39,6 +39,10 @@ Removed files:
 - `CarFreeFlowDistancesFile` (superseded by `TripsCarFreeFlowTravelTimesFile`)
 - `CarShortestDistancesFile`
 
+Other changes:
+
+- Completely rewrote the pipeline to handle Steps' conflicts
+
 ## [0.7.0] – 2026-04-21
 
 New steps:
