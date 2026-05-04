@@ -6,7 +6,7 @@ import polars as pl
 
 from pymetropolis.metro_common.errors import MetropyError, error_context
 from pymetropolis.metro_common.utils import (
-    seconds_since_midnight_to_time_pl,
+    seconds_since_midnight_to_datetime_pl,
     time_to_seconds_since_midnight,
 )
 from pymetropolis.metro_pipeline.parameters import IntParameter, Parameter
@@ -159,7 +159,7 @@ def generate_int_values(param: Any, n: int, rng: np.random.Generator) -> pl.Seri
     return values.round().cast(pl.Int64)
 
 
-def generate_time_values(param: Any, n: int, rng: np.random.Generator) -> pl.Series:
+def generate_datetime_values(param: Any, n: int, rng: np.random.Generator) -> pl.Series:
     if isinstance(param, dict):
         float_param = param.copy()
         float_param["mean"] = float(time_to_seconds_since_midnight(param["mean"]))
@@ -169,9 +169,9 @@ def generate_time_values(param: Any, n: int, rng: np.random.Generator) -> pl.Ser
         assert isinstance(param, time)
         float_param = float(time_to_seconds_since_midnight(param))
     values = generate_values(float_param, n, rng)
-    # Convert back to Time, through a DataFrame.
+    # Convert back to DateTime, through a DataFrame.
     df = pl.DataFrame({"value": values})
-    return df.select(seconds_since_midnight_to_time_pl("value")).to_series()
+    return df.select(seconds_since_midnight_to_datetime_pl("value")).to_series()
 
 
 def generate_duration_values(param: Any, n: int, rng: np.random.Generator) -> pl.Series:

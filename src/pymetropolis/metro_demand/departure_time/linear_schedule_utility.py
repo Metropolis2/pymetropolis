@@ -13,8 +13,8 @@ from pymetropolis.random import (
     FloatDistributionParameter,
     RandomStep,
     TimeDistributionParameter,
+    generate_datetime_values,
     generate_duration_values,
-    generate_time_values,
     generate_values,
 )
 
@@ -177,6 +177,25 @@ class HomogeneousTstarStep(RandomStep):
 
     def run(self):
         trips = self.input["trips"].read().select("trip_id")
-        tstars = generate_time_values(self.tstar, len(trips), self.get_rng())
+        tstars = generate_datetime_values(self.tstar, len(trips), self.get_rng())
         df = trips.with_columns(tstar=tstars)
+        self.output["tstars"].write(df)
+
+
+class TstarFromArrivalTimeStep(Step):
+    """Generates the desired start time of the activity following each trip, from the trip's ex-ante
+    arrival time.
+
+    This Step is useful to generate activity desired start times for the synthetic population
+    imported from `EqasimImportStep`.
+    """
+
+    input_files = {"trips": TripsFile}
+    output_files = {"tstars": TstarsFile}
+
+    def run(self):
+        trips = self.input["trips"].read()
+        if "arrival_time" not in trips.columns:
+            raise MetropyError("Ex-ante arrival times are not defined for trips.")
+        df = trips.select("trip_id", tstar="arrival_time")
         self.output["tstars"].write(df)

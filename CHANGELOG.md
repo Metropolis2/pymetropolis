@@ -23,6 +23,7 @@ New steps:
 - `LinearScheduleFromPurposeStep`
 - `BicycleTravelTimesStep`
 - `WalkingTravelTimesStep`
+- `TstarFromArrivalTimeStep`
 
 New files:
 
