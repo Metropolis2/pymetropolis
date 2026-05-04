@@ -113,6 +113,26 @@ class WalkingPreferencesFile(MetroDataFrameFile):
     ]
 
 
+class WalkingTravelTimesFile(MetroDataFrameFile):
+    path = "demand/population/modes/walking/travel_times.parquet"
+    description = "Travel time of each trip, when traveling by walking."
+    schema = [
+        Column(
+            "trip_id",
+            MetroDataType.ID,
+            description="Identifier of the trip.",
+            unique=True,
+            nullable=False,
+        ),
+        Column(
+            "walking_travel_time",
+            MetroDataType.DURATION,
+            description="Duration of the trip by walking.",
+            nullable=False,
+        ),
+    ]
+
+
 class BicyclePreferencesFile(MetroDataFrameFile):
     path = "demand/population/modes/bicycle/preferences.parquet"
     description = "Preferences to travel by bicycle, for each person."
@@ -135,5 +155,25 @@ class BicyclePreferencesFile(MetroDataFrameFile):
             MetroDataType.FLOAT,
             description="Value of time by bicycle (€/h).",
             nullable=True,
+        ),
+    ]
+
+
+class BicycleTravelTimesFile(MetroDataFrameFile):
+    path = "demand/population/modes/bicycle/travel_times.parquet"
+    description = "Travel time of each trip, when traveling by bicycle."
+    schema = [
+        Column(
+            "trip_id",
+            MetroDataType.ID,
+            description="Identifier of the trip.",
+            unique=True,
+            nullable=False,
+        ),
+        Column(
+            "bicycle_travel_time",
+            MetroDataType.DURATION,
+            description="Duration of the trip by bicycle.",
+            nullable=False,
         ),
     ]

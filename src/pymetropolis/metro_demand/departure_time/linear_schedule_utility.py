@@ -1,8 +1,13 @@
 from datetime import timedelta
 
 import polars as pl
+from loguru import logger
 
+from pymetropolis.metro_common import MetropyError
+from pymetropolis.metro_common.io import read_dataframe
 from pymetropolis.metro_demand.population.files import TripsFile
+from pymetropolis.metro_pipeline import Step
+from pymetropolis.metro_pipeline.parameters import PathParameter
 from pymetropolis.random import (
     DurationDistributionParameter,
     FloatDistributionParameter,
@@ -57,6 +62,96 @@ class LinearScheduleStep(RandomStep):
             beta=generate_values(self.beta, len(trips), rng),
             gamma=generate_values(self.gamma, len(trips), rng),
             delta=generate_duration_values(self.delta, len(trips), rng),
+        )
+        self.output["linear_schedule"].write(df)
+
+
+class LinearScheduleFromPurposeStep(Step):
+    """Generates the preference parameters for schedule-delay utility of each trip, from constant
+    values over purposes.
+
+    The following parameters are generated:
+
+    - beta: the penalty for starting the following activity earlier than the desired time
+    - gamma: the penalty for starting the following activity earlier than the desired time
+    - delta: the length of the desired time window
+
+    The
+    [`departure_time.linear_schedule.preferences_file`](parameters.md#departure_timelinear_schedulepreferences_file)
+    parameter must point to a Parquet or CSV file with the beta, gamma and/or delta values for each
+    purpose.
+    The file can have the following columns:
+
+    - `purpose`: purpose for which the given values apply
+    - `beta`: early penalty, in euros per hour (default is 0 when omitted)
+    - `gamma`: late penalty, in euros per hour (default is 0 when omitted)
+    - `delta`: desired-time window length, given in number of seconds or directly as Duration dtype
+      (default is 0 when omitted)
+
+    For example, to set the beta and gamma values for work and education purposes:
+
+    ```csv
+    purpose,beta,gamma
+    work,5,15
+    education,4,10
+    ```
+    """
+
+    # TODO: values as function of value of time? (which mode?)
+    pref_file = PathParameter(
+        "departure_time.linear_schedule.preferences_file",
+        check_file_exists=True,
+        description=(
+            "Path to a Parquet or CSV file with the beta, gamma and delta values for different "
+            "activity purposes."
+        ),
+        note="Possible columns: `purpose`, `beta`, `gamma`, `delta`.",
+    )
+    input_files = {"trips": TripsFile}
+    output_files = {"linear_schedule": LinearScheduleFile}
+
+    def is_defined(self):
+        return self.pref_file is not None
+
+    def run(self):
+        trips: pl.DataFrame = self.input["trips"].read()
+        pref = read_dataframe(self.pref_file)
+        # Check that the "purpose" column exists.
+        if "purpose" not in pref.columns:
+            raise MetropyError(f'File `{self.pref_file}` has no "purpose" column.')
+        # Cast purpose column to the expected dtype.
+        dtype = trips.schema["destination_purpose_group"]
+        pref = pref.with_columns(pl.col("purpose").cast(dtype))
+        # Check that at least one preference column is present.
+        pref_cols = (("beta", pl.Float64), ("gamma", pl.Float64), ("delta", pl.Duration))
+        avail_cols = set()
+        for col, dtype in pref_cols:
+            if col in pref.columns:
+                avail_cols.add(col)
+                if dtype == pl.Duration:
+                    if pref.schema[col] != pl.Duration:
+                        # When "delta" column is not given directly as Duration, assume it is
+                        # seconds.
+                        pref = pref.with_columns(pl.duration(seconds=pl.col(col)))
+                else:
+                    pref = pref.with_columns(pl.col(col).cast(dtype))
+            else:
+                pref = pref.with_columns(pl.lit(None, dtype=dtype).alias(col))
+        # Send a warning for unused columns in the input file.
+        unused_columns = set(pref.columns).difference({"beta", "gamma", "delta", "purpose"})
+        if unused_columns:
+            for col in unused_columns:
+                logger.warning(f"Column `{col}` is ignored.")
+            pref = pref.drop(list(unused_columns))
+        if not avail_cols:
+            raise MetropyError(
+                f'File `{self.pref_file}` must have at least one column from: "beta", "gamma", '
+                '"delta".'
+            )
+        df = (
+            trips.select("trip_id", "destination_purpose_group")
+            .join(pref, left_on="destination_purpose_group", right_on="purpose", how="left")
+            .drop("destination_purpose_group")
         )
         self.output["linear_schedule"].write(df)
 

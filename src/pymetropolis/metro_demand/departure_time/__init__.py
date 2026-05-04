@@ -1,13 +1,10 @@
 from .linear_schedule_utility import (
     HomogeneousTstarStep,
+    LinearScheduleFromPurposeStep,
     LinearScheduleStep,
 )
-from .linear_schedule_utility import (
-    LinearScheduleFile as LinearScheduleFile,
-)
-from .linear_schedule_utility import (
-    TstarsFile as TstarsFile,
-)
+from .linear_schedule_utility import LinearScheduleFile as LinearScheduleFile
+from .linear_schedule_utility import TstarsFile as TstarsFile
 
 DEPARTURE_TIME_FILES = [LinearScheduleFile, TstarsFile]
-DEPARTURE_TIME_STEPS = [LinearScheduleStep, HomogeneousTstarStep]
+DEPARTURE_TIME_STEPS = [LinearScheduleStep, LinearScheduleFromPurposeStep, HomogeneousTstarStep]

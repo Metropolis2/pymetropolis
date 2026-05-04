@@ -20,6 +20,9 @@ New steps:
 - `CarDriverWithPassengersPreferencesFromPopulationStep`
 - `CarPassengerPreferencesFromPopulationStep`
 - `CarRidesharingPreferencesFromPopulationStep`
+- `LinearScheduleFromPurposeStep`
+- `BicycleTravelTimesStep`
+- `WalkingTravelTimesStep`
 
 New files:
 
@@ -30,6 +33,8 @@ New files:
 - `RoadEdgesPrimaryFlagFile`
 - `TripsCarAccessEgressFile`
 - `BicyclePreferencesFile`
+- `BicycleTravelTimesFile`
+- `WalkingTravelTimesFile`
 
 New features:
 
