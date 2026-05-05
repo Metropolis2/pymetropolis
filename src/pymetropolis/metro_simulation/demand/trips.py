@@ -14,6 +14,12 @@ from pymetropolis.metro_demand.modes.car import (
     CarPassengerPreferencesFile,
     CarRidesharingPreferencesFile,
 )
+from pymetropolis.metro_demand.modes.files import (
+    BicyclePreferencesFile,
+    BicycleTravelTimesFile,
+    WalkingPreferencesFile,
+    WalkingTravelTimesFile,
+)
 from pymetropolis.metro_demand.population import TripsFile
 from pymetropolis.metro_demand.routing.files import TripsRoadNodesFile
 from pymetropolis.metro_pipeline.file import MetroDataFrameFile
@@ -146,6 +152,112 @@ def generate_public_transit_trips(
     return df
 
 
+@error_context(msg="Cannot generate walking trips")
+def generate_walking_trips(
+    df: pl.DataFrame,
+    tts_file: WalkingTravelTimesFile,
+    pref_file: WalkingPreferencesFile,
+    tstars_file: TstarsFile,
+    schedule_pref_file: LinearScheduleFile,
+):
+    df = df.with_columns(pl.lit("walking").alias("alt_id"), pl.lit("Virtual").alias("class.type"))
+    tts: pl.DataFrame = tts_file.read()
+    df = (
+        df.join(tts, on="trip_id", how="left")
+        .with_columns(
+            pl.col("walking_travel_time")
+            .dt.total_seconds()
+            .cast(pl.Float64)
+            .alias("class.travel_time")
+        )
+        .drop("walking_travel_time")
+    )
+    if pref_file.exists():
+        params: pl.DataFrame = pref_file.read()
+        df = (
+            df.join(params, on="person_id", how="left")
+            .with_columns(
+                constant_utility=-pl.col("walking_cst"), alpha=pl.col("walking_vot") / 3600.0
+            )
+            .drop("walking_cst", "walking_vot")
+        )
+    if tstars_file.exists():
+        tstars: pl.DataFrame = tstars_file.read()
+        df = (
+            df.join(tstars, on="trip_id", how="left")
+            .with_columns(
+                time_to_seconds_since_midnight_pl(pl.col("tstar")).alias("schedule_utility.tstar")
+            )
+            .drop("tstar")
+        )
+    if schedule_pref_file.exists():
+        params: pl.DataFrame = schedule_pref_file.read()
+        df = (
+            df.join(params, on="trip_id", how="left")
+            .with_columns(
+                pl.lit("Linear").alias("schedule_utility.type"),
+                (pl.col("beta") / 3600.0).alias("schedule_utility.beta"),
+                (pl.col("gamma") / 3600.0).alias("schedule_utility.gamma"),
+                pl.col("delta").dt.total_seconds().cast(pl.Float64).alias("schedule_utility.delta"),
+            )
+            .drop("beta", "gamma", "delta")
+        )
+    return df
+
+
+@error_context(msg="Cannot generate bicycle trips")
+def generate_bicycle_trips(
+    df: pl.DataFrame,
+    tts_file: BicycleTravelTimesFile,
+    pref_file: BicyclePreferencesFile,
+    tstars_file: TstarsFile,
+    schedule_pref_file: LinearScheduleFile,
+):
+    df = df.with_columns(pl.lit("bicycle").alias("alt_id"), pl.lit("Virtual").alias("class.type"))
+    tts: pl.DataFrame = tts_file.read()
+    df = (
+        df.join(tts, on="trip_id", how="left")
+        .with_columns(
+            pl.col("bicycle_travel_time")
+            .dt.total_seconds()
+            .cast(pl.Float64)
+            .alias("class.travel_time")
+        )
+        .drop("bicycle_travel_time")
+    )
+    if pref_file.exists():
+        params: pl.DataFrame = pref_file.read()
+        df = (
+            df.join(params, on="person_id", how="left")
+            .with_columns(
+                constant_utility=-pl.col("bicycle_cst"), alpha=pl.col("bicycle_vot") / 3600.0
+            )
+            .drop("bicycle_cst", "bicycle_vot")
+        )
+    if tstars_file.exists():
+        tstars: pl.DataFrame = tstars_file.read()
+        df = (
+            df.join(tstars, on="trip_id", how="left")
+            .with_columns(
+                time_to_seconds_since_midnight_pl(pl.col("tstar")).alias("schedule_utility.tstar")
+            )
+            .drop("tstar")
+        )
+    if schedule_pref_file.exists():
+        params: pl.DataFrame = schedule_pref_file.read()
+        df = (
+            df.join(params, on="trip_id", how="left")
+            .with_columns(
+                pl.lit("Linear").alias("schedule_utility.type"),
+                (pl.col("beta") / 3600.0).alias("schedule_utility.beta"),
+                (pl.col("gamma") / 3600.0).alias("schedule_utility.gamma"),
+                pl.col("delta").dt.total_seconds().cast(pl.Float64).alias("schedule_utility.delta"),
+            )
+            .drop("beta", "gamma", "delta")
+        )
+    return df
+
+
 class WriteMetroTripsStep(StepWithModes, StepWithRidesharingCount):
     """Generates the input trips file for the Metropolis-Core simulation."""
 
@@ -160,6 +272,16 @@ class WriteMetroTripsStep(StepWithModes, StepWithRidesharingCount):
             PublicTransitTravelTimesFile,
             when=lambda inst: inst.has_mode("public_transit"),
             when_doc='if the "public_transit" mode is defined',
+        ),
+        "walking_travel_times": InputFile(
+            WalkingTravelTimesFile,
+            when=lambda inst: inst.has_mode("walking"),
+            when_doc='if the "walking" mode is defined',
+        ),
+        "bicycle_travel_times": InputFile(
+            BicycleTravelTimesFile,
+            when=lambda inst: inst.has_mode("bicycle"),
+            when_doc='if the "bicycle" mode is defined',
         ),
         "linear_schedule": InputFile(LinearScheduleFile, optional=True),
         "tstars": InputFile(TstarsFile, optional=True),
@@ -198,6 +320,18 @@ class WriteMetroTripsStep(StepWithModes, StepWithRidesharingCount):
             optional=True,
             when=lambda inst: inst.has_mode("public_transit"),
             when_doc='if the "public_transit" mode is defined',
+        ),
+        "walking_preferences": InputFile(
+            WalkingPreferencesFile,
+            optional=True,
+            when=lambda inst: inst.has_mode("walking"),
+            when_doc='if the "walking" mode is defined',
+        ),
+        "bicycle_preferences": InputFile(
+            BicyclePreferencesFile,
+            optional=True,
+            when=lambda inst: inst.has_mode("bicycle"),
+            when_doc='if the "bicycle" mode is defined',
         ),
     }
     output_files = {"metro_trips": MetroTripsFile}
@@ -241,6 +375,24 @@ class WriteMetroTripsStep(StepWithModes, StepWithRidesharingCount):
                 self.input["linear_schedule"],
             )
             metro_trips = pl.concat((metro_trips, public_transit_trips), how="diagonal")
+        if self.has_mode("walking"):
+            walking_trips = generate_walking_trips(
+                df,
+                self.input["walking_travel_times"],
+                self.input["walking_preferences"],
+                self.input["tstars"],
+                self.input["linear_schedule"],
+            )
+            metro_trips = pl.concat((metro_trips, walking_trips), how="diagonal")
+        if self.has_mode("bicycle"):
+            bicycle_trips = generate_bicycle_trips(
+                df,
+                self.input["bicycle_travel_times"],
+                self.input["bicycle_preferences"],
+                self.input["tstars"],
+                self.input["linear_schedule"],
+            )
+            metro_trips = pl.concat((metro_trips, bicycle_trips), how="diagonal")
         metro_trips = metro_trips.drop("person_id")
         self.output["metro_trips"].write(metro_trips)
 
