@@ -61,5 +61,10 @@ class WalkingTravelTimesStep(Step):
 
     def run(self):
         distances = self.input["distances"].read()
-        df = distances.select("trip_id", walking=self.speed * pl.col("pedestrian_distance") / 1000)
+        df = distances.select(
+            "trip_id",
+            walking_travel_time=pl.duration(
+                seconds=3600 * (pl.col("pedestrian_distance") / 1000) / self.speed
+            ),
+        )
         self.output["tts"].write(df)

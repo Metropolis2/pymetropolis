@@ -118,7 +118,7 @@ class ModePreferencesFromPopulationStep(Step):
     def get_person_preferences(self, persons: pl.DataFrame, pref: pl.DataFrame, mode: str):
         # Filter by mode if the column is present.
         if "mode" in pref.columns:
-            pref = pref.filter(mode=mode)
+            pref = pref.filter(mode=mode).drop("mode")
         if pref.is_empty():
             raise MetropyError(f'No preference values for mode "{mode}" in `{self.pref_file}`.')
         # Check that the value of time column is present at most once.
@@ -136,7 +136,7 @@ class ModePreferencesFromPopulationStep(Step):
         characs_columns = set(pref.columns) & set(persons.columns)
         # Send a warning for unused columns in the input file.
         unused_columns = (
-            set(pref.columns).difference(characs_columns).difference({"constant"} | alpha_columns)
+            set(pref.columns).difference(characs_columns).difference({f"{mode}_cst", f"{mode}_vot"})
         )
         if unused_columns:
             for col in unused_columns:
@@ -156,7 +156,9 @@ class ModePreferencesFromPopulationStep(Step):
                 raise MetropyError(
                     f"Cannot cast column {col} to {dtype} in file `{self.pref_file}`"
                 )
-        df = persons.select("person_id", *characs_columns).join(
-            pref, on=list(characs_columns), how="left"
+        df = (
+            persons.select("person_id", *characs_columns)
+            .join(pref, on=list(characs_columns), how="left")
+            .drop(characs_columns)
         )
         return df
