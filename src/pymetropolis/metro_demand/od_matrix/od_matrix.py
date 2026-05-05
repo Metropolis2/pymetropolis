@@ -15,7 +15,7 @@ class RoadODMatrixStep(Step):
 
     input_files = {"edges": RoadEdgesCleanFile, "road_ods": TripsRoadNodesFile}
     output_files = {"od_matrix": RoadODMatrixFile}
-    primary = False
+    priority = 0
 
     def run(self):
         ods = self.input["road_ods"].read()

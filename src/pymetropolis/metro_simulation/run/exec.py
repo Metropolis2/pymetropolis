@@ -3,14 +3,7 @@ import subprocess
 from pymetropolis.metro_common.errors import MetropyError
 from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import ExecPathParameter
-from pymetropolis.metro_pipeline.steps import InputFile
-from pymetropolis.metro_simulation.demand import (
-    MetroAgentsFile,
-    MetroAlternativesFile,
-    MetroTripsFile,
-)
 from pymetropolis.metro_simulation.parameters import MetroParametersFile
-from pymetropolis.metro_simulation.supply import MetroEdgesFile, MetroVehicleTypesFile
 
 from .files import (
     MetroAgentResultsFile,
@@ -33,14 +26,8 @@ class RunSimulationStep(Step):
         description="Path to the `metropolis_cli` executable.",
         note='On Windows, you can omit the ".exe" extension',
     )
-    input_files = {
-        "metro_parameters": MetroParametersFile,
-        "metro_agents": MetroAgentsFile,
-        "metro_alternatives": MetroAlternativesFile,
-        "metro_edges": MetroEdgesFile,
-        "metro_vehicle_types": MetroVehicleTypesFile,
-        "metro_trips": InputFile(MetroTripsFile, optional=True),
-    }
+    # The Step depends only on the parameters.json, which itself depends on all the input files.
+    input_files = {"metro_parameters": MetroParametersFile}
     output_files = {
         "metro_iteration_results": MetroIterationResultsFile,
         "metro_agent_results": MetroAgentResultsFile,

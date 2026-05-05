@@ -29,6 +29,7 @@ class MetroPipeline:
     # List of files that can be generated, with the Step(s) that generate them.
     generated_files: dict[MetroFile, set[Step]]
     # List of files which are required or optional input for primary steps.
+    # A step is "primary" if its priority is > 0.
     primary_input_files: set[MetroFile]
     config: Config
     target_step: Step | None = None
@@ -123,7 +124,7 @@ class MetroPipeline:
                 break
             remaining -= steps_to_add
             for s in steps_to_add:
-                if s.primary:
+                if s.is_primary():
                     for f in self.steps[s]["required_inputs"] | self.steps[s]["optional_inputs"]:
                         self.primary_input_files.add(f)
                 for f in self.steps[s]["outputs"]:
@@ -193,7 +194,7 @@ class MetroPipeline:
                 # Condition 3: step is primary or one of its output file is needed for a primary
                 # step.
                 and (
-                    s.primary
+                    s.is_primary()
                     or any(f in self.primary_input_files for f in self.steps[s]["outputs"])
                 )
             ]
@@ -218,7 +219,7 @@ class MetroPipeline:
                 remaining.remove(step)
                 available_files.update(set(self.steps[step]["outputs"]))
         # Check that all feasible *primary* steps were added to the sequence.
-        remaining_primary = list(filter(lambda s: s.primary, remaining))
+        remaining_primary = list(filter(lambda s: s.is_primary(), remaining))
         assert not remaining_primary, (
             "Some Steps could not be added to the sequence: "
             f"{', '.join(map(str, remaining_primary))}"

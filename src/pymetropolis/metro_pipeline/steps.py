@@ -47,7 +47,7 @@ class InputFile:
 class Step:
     input_files: ClassVar[dict[str, InputFile | type[MetroFile]]] = {}
     output_files: ClassVar[dict[str, type[MetroFile]]] = {}
-    primary: ClassVar[bool] = True
+    priority: ClassVar[int] = 1
     _input_files: dict[str, MetroFile]
     _output_files: dict[str, MetroFile]
     _update_file_path: Path
@@ -102,15 +102,13 @@ class Step:
 
         The ordering is based on:
 
-        1. The `primary` attribute (primary Steps are "above" secondary Steps).
+        1. The `priority` attribute.
         2. The number of output files.
         3. Class name.
         """
-        if not self.primary and other.primary:
-            return True
-        if self.primary and not other.primary:
-            return False
-        if self.__class__.__name__ != other.__class__.__name__:
+        if self.priority != other.priority:
+            return self.priority < other.priority
+        if len(self.output) != len(other.output):
             return len(self.output) < len(other.output)
         return self.__class__.__name__ < other.__class__.__name__
 
@@ -132,6 +130,15 @@ class Step:
     def is_defined(self) -> bool:
         """Returns `True` if this step is properly defined in the config."""
         return True
+
+    def is_primary(self) -> bool:
+        """Returns whether the Step is a "primary" step.
+
+        Primary steps are steps whose priority is greater than 0.
+
+        A non-primary step is run only if its output is required for another primary step.
+        """
+        return self.priority > 0
 
     @error_context(msg="Failed to execute step `{}`", fmt_args=[0])
     def execute(self, config: Config):

@@ -10,8 +10,14 @@ from pymetropolis.metro_pipeline.parameters import (
     IntParameter,
     ListParameter,
 )
-from pymetropolis.metro_pipeline.steps import Step
+from pymetropolis.metro_pipeline.steps import InputFile, Step
 from pymetropolis.metro_pipeline.types import Time
+from pymetropolis.metro_simulation.demand.files import (
+    MetroAgentsFile,
+    MetroAlternativesFile,
+    MetroTripsFile,
+)
+from pymetropolis.metro_simulation.supply.files import MetroEdgesFile, MetroVehicleTypesFile
 
 from .file import MetroParametersFile
 
@@ -84,7 +90,14 @@ class WriteMetroParametersStep(Step):
     nb_iterations = IntParameter(
         "simulation.nb_iterations", default=1, description="Number of iterations to be simulated."
     )
-    output_files = {"metro_parameters": MetroParametersFile}
+    input_files = {
+        "agents": MetroAgentsFile,
+        "alternatives": MetroAlternativesFile,
+        "edges": InputFile(MetroEdgesFile, optional=True),
+        "vehicle_types": InputFile(MetroVehicleTypesFile, optional=True),
+        "trips": InputFile(MetroTripsFile, optional=True),
+    }
+    output_files = {"parameters": MetroParametersFile}
 
     def is_defined(self) -> bool:
         return (
@@ -97,15 +110,13 @@ class WriteMetroParametersStep(Step):
         t0, t1 = self.period
         period = [time_to_seconds_since_midnight(t0), time_to_seconds_since_midnight(t1)]
         recording_interval = self.recording_interval.total_seconds()
+        # `wdir` is the working directory from which Metropolis-Core is run.
+        # Input file paths can be defined relative to the working directory.
+        wdir = self.output["parameters"].complete_path.parent
         params = {
             "input_files": {
-                # TODO: Is there any way not to hardcode these values?
-                # TODO: What if there is no trips defined?
-                "agents": "input/agents.parquet",
-                "alternatives": "input/alts.parquet",
-                "trips": "input/trips.parquet",
-                "edges": "input/edges.parquet",
-                "vehicle_types": "input/vehicle_types.parquet",
+                "agents": self.input["agents"].relative_path_from(wdir),
+                "alternatives": self.input["alternatives"].relative_path_from(wdir),
             },
             "output_directory": "output",
             "period": period,
@@ -114,6 +125,9 @@ class WriteMetroParametersStep(Step):
             "max_iterations": self.nb_iterations,
             "saving_format": "Parquet",
         }
+        for name in ("edges", "vehicle_types", "trips"):
+            if self.input[name].exists():
+                params["input_files"][name] = self.input[name].relative_path_from(wdir)
         params["road_network"] = {
             "recording_interval": recording_interval,
             "spillback": self.spillback,
@@ -127,4 +141,4 @@ class WriteMetroParametersStep(Step):
         if isfinite(backward_wave_speed):
             params["road_network"]["backward_wave_speed"] = backward_wave_speed
         params_str = json.dumps(params, indent=2, sort_keys=True)
-        self.output["metro_parameters"].write(params_str)
+        self.output["parameters"].write(params_str)

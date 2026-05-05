@@ -214,6 +214,10 @@ class MetroFile:
     def remove(self):
         self.complete_path.unlink()
 
+    def relative_path_from(self, working_directory: Path) -> str:
+        """Returns the relative path of `self` from `working_directory`, as a string."""
+        return str(self.complete_path.relative_to(working_directory, walk_up=True))
+
     @classmethod
     def _md_doc(cls) -> str:
         doc = f"## {cls.__name__}\n\n"

@@ -15,7 +15,7 @@ class GenericPopulationStep(Step):
 
     input_files = {"road_ods": TripsRoadNodesFile}
     output_files = {"trips": TripsFile, "persons": PersonsFile}
-    primary = False
+    priority = 0
 
     def run(self):
         df: pl.DataFrame = self.input["road_ods"].read()
