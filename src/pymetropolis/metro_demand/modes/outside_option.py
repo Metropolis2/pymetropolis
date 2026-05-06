@@ -1,4 +1,3 @@
-import polars as pl
 from loguru import logger
 
 from pymetropolis.metro_demand.population import TripsFile
@@ -44,6 +43,8 @@ class OutsideOptionPreferencesStep(RandomStep):
         return self.constant != 0.0 or self.value_of_time is not None
 
     def run(self):
+        import polars as pl
+
         trips = self.input["trips"].read()
         df = trips.select("tour_id").unique().sort("tour_id")
         rng = self.get_rng()
@@ -98,6 +99,8 @@ class OutsideOptionTravelTimesFromRoadDistancesStep(Step):
         return self.speed is not None
 
     def run(self):
+        import polars as pl
+
         df: pl.DataFrame = self.input["car_driver_distances"].read()
         df = df.select(
             "trip_id",

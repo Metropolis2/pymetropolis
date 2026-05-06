@@ -1,23 +1,17 @@
+from __future__ import annotations
+
 from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, override
 
-import geopandas as gpd
-import matplotlib.pyplot as plt
-import polars as pl
 from loguru import logger
-from pandas.api.types import (
-    is_bool_dtype,
-    is_float_dtype,
-    is_integer_dtype,
-    is_string_dtype,
-    is_unsigned_integer_dtype,
-)
 
 from pymetropolis.metro_common.errors import MetropyError, error_context
 
 if TYPE_CHECKING:
-    pass
+    import geopandas as gpd
+    import matplotlib.pyplot as plt
+    import polars as pl
 
 
 class MetroDataType(Enum):
@@ -35,6 +29,8 @@ class MetroDataType(Enum):
     LIST_OF_TIMES = 11
 
     def is_valid_pl(self, dtype: pl.DataType):
+        import polars as pl
+
         if self == MetroDataType.ID:
             return dtype.is_integer() or isinstance(dtype, pl.String)
         elif self == MetroDataType.BOOL:
@@ -65,6 +61,14 @@ class MetroDataType(Enum):
             return False
 
     def is_valid_gdf(self, dtype: Any):
+        from pandas.api.types import (
+            is_bool_dtype,
+            is_float_dtype,
+            is_integer_dtype,
+            is_string_dtype,
+            is_unsigned_integer_dtype,
+        )
+
         if self == MetroDataType.ID:
             return is_integer_dtype(dtype) or is_string_dtype(dtype)
         elif self == MetroDataType.BOOL:
@@ -187,7 +191,7 @@ class MetroFile:
         return self.__class__.__name__
 
     @classmethod
-    def from_dir(cls, main_directory: Path) -> "MetroFile":
+    def from_dir(cls, main_directory: Path) -> MetroFile:
         instance = cls.__new__(cls)
         instance.complete_path = main_directory / Path(cls.path)
         instance.create_dir_if_needed()
@@ -235,6 +239,8 @@ class MetroDataFrameFile(MetroFile):
     max_rows: int | None = None
 
     def validate(self, df: pl.DataFrame) -> pl.DataFrame:
+        import polars as pl
+
         if not isinstance(df, pl.DataFrame):
             raise MetropyError(f"DataFrame expected, got {type(df)}")
         if self.max_rows is not None and len(df) > self.max_rows:
@@ -256,6 +262,8 @@ class MetroDataFrameFile(MetroFile):
         df.write_parquet(self.complete_path)
 
     def read(self) -> pl.DataFrame:
+        import polars as pl
+
         return pl.read_parquet(self.complete_path)
 
     def read_if_exists(self) -> pl.DataFrame | None:
@@ -294,6 +302,8 @@ class MetroGeoDataFrameFile(MetroFile):
     max_rows: int | None = None
 
     def validate(self, gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+        import geopandas as gpd
+
         if not isinstance(gdf, gpd.GeoDataFrame):
             raise MetropyError(f"GeoDataFrame expected, got {type(gdf)}")
         if self.max_rows is not None and len(gdf) > self.max_rows:
@@ -316,6 +326,8 @@ class MetroGeoDataFrameFile(MetroFile):
         gdf.to_parquet(self.complete_path)
 
     def read(self) -> gpd.GeoDataFrame:
+        import geopandas as gpd
+
         return gpd.read_parquet(self.complete_path)
 
     def read_if_exists(self) -> gpd.GeoDataFrame | None:

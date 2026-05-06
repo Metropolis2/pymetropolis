@@ -1,7 +1,3 @@
-import matplotlib.pyplot as plt
-import polars as pl
-from matplotlib.ticker import FuncFormatter, PercentFormatter
-
 from pymetropolis.metro_common.utils import (
     seconds_since_midnight_to_time_string,
     seconds_to_duration_string,
@@ -58,6 +54,10 @@ class ConvergencePlotStep(Step):
     }
 
     def run(self):
+        import matplotlib.pyplot as plt
+        import polars as pl
+        from matplotlib.ticker import FuncFormatter, PercentFormatter
+
         # TODO. What if the values are all null? (e.g., no trip simulation).
         # TODO. Add configuration for log vs linear scale (and labels?).
         df = self.input["iteration_results"].read()
@@ -129,6 +129,10 @@ class TripDepartureTimeDistributionStep(Step):
     output_files = {"trip_departure_time_distribution_plot": TripDepartureTimeDistributionPlotFile}
 
     def run(self):
+        import matplotlib.pyplot as plt
+        import polars as pl
+        from matplotlib.ticker import FuncFormatter
+
         # TODO. Add configuration for number of bins (and maybe axis labels?)
         df = self.input["trip_results"].read()
         fig, ax = plt.subplots()
@@ -162,6 +166,10 @@ class RoadNetworkCongestionFunctionPlotsStep(Step):
     }
 
     def run(self):
+        import matplotlib.pyplot as plt
+        import polars as pl
+        from matplotlib.ticker import FuncFormatter, PercentFormatter
+
         edges_fftt = self.input["edges_fftt"].read()
         tot_fftt = edges_fftt["free_flow_travel_time"].sum().total_seconds()
         for x, label in (("sim", "Simulated"), ("exp", "Expected")):
@@ -198,6 +206,9 @@ class TripModeSharesStep(Step):
     output_files = {"plot": TripModeSharesPlotFile}
 
     def run(self):
+        import matplotlib.pyplot as plt
+        from matplotlib.ticker import PercentFormatter
+
         df = self.input["trip_results"].read()
         shares = df["mode"].value_counts(normalize=True, sort=True)
         fig, ax = plt.subplots()

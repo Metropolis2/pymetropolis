@@ -1,6 +1,5 @@
 import zipfile
 
-import geopandas as gpd
 from loguru import logger
 
 from pymetropolis.metro_common.errors import MetropyError, error_context
@@ -18,6 +17,8 @@ AAV_URL = "https://www.insee.fr/fr/statistiques/fichier/4803954/fonds_aav2020_20
 
 @error_context(msg=f"Cannot download AAV database from url `{AAV_URL}`")
 def get_aav_from_url():
+    import geopandas as gpd
+
     with tmp_download(AAV_URL) as fn:
         with zipfile.ZipFile(fn) as z:
             valid_files = [

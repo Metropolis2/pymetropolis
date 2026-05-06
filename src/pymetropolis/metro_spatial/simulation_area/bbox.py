@@ -1,6 +1,3 @@
-import geopandas as gpd
-import shapely
-
 from pymetropolis.metro_pipeline.parameters import BoolParameter, ListParameter
 from pymetropolis.metro_pipeline.types import Float
 from pymetropolis.metro_spatial import GeoStep
@@ -56,6 +53,9 @@ class SimulationAreaFromBboxStep(GeoStep):
         return self.crs is not None and self.bbox is not None
 
     def run(self):
+        import geopandas as gpd
+        import shapely
+
         box = shapely.box(*self.bbox)
         if self.bbox_wgs:
             # Convert the box to the simulation's CRS.

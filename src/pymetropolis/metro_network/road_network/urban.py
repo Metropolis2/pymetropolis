@@ -1,6 +1,6 @@
-import geopandas as gpd
-import polars as pl
-from shapely.prepared import prep
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from pymetropolis.metro_network.road_network.files import RoadEdgesRawFile
 from pymetropolis.metro_pipeline import Step
@@ -8,9 +8,15 @@ from pymetropolis.metro_spatial.urban_areas.file import UrbanAreasFile
 
 from .files import RoadEdgesUrbanFlagFile
 
+if TYPE_CHECKING:
+    import geopandas as gpd
+
 
 def add_urban_tag(edges: gpd.GeoDataFrame, urban_areas: gpd.GeoDataFrame):
     """Creates a DataFrame classifying the edges within urban areas."""
+    import polars as pl
+    from shapely.prepared import prep
+
     geom = prep(urban_areas.unary_union)
     urban_flag = [geom.contains(g) for g in edges.geometry]
     df = pl.DataFrame({"edge_id": edges["edge_id"], "urban": urban_flag})

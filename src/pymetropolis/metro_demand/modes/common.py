@@ -1,6 +1,8 @@
-import inspect
+from __future__ import annotations
 
-import polars as pl
+import inspect
+from typing import TYPE_CHECKING
+
 from loguru import logger
 
 from pymetropolis.metro_common import MetropyError
@@ -8,6 +10,9 @@ from pymetropolis.metro_demand.population.files import PersonsFile
 from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import PathParameter
 from pymetropolis.random import FloatDistributionParameter, RandomStep, generate_values
+
+if TYPE_CHECKING:
+    import polars as pl
 
 
 def pref_constant_parameter(mode: str):
@@ -151,7 +156,7 @@ class ModePreferencesFromPopulationStep(Step):
         for col in characs_columns:
             dtype = persons.schema[col]
             try:
-                pref = pref.with_columns(pl.col(col).cast(dtype))
+                pref = pref.cast({col: dtype})
             except Exception:
                 raise MetropyError(
                     f"Cannot cast column {col} to {dtype} in file `{self.pref_file}`"

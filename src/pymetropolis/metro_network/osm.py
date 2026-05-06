@@ -1,18 +1,19 @@
-from pathlib import Path
-from typing import Any
+from __future__ import annotations
 
-import geopandas as gpd
-import osmium
-import polars as pl
-import pyproj
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
+
 from loguru import logger
-from osmium import IdTracker
-from osmium.filter import EntityFilter, TagFilter
-from osmium.geom import WKBFactory
-from osmium.osm import NODE, WAY, Node, Way
-from shapely.geometry import LineString, Polygon
 
 from pymetropolis.metro_common import MetropyError
+
+if TYPE_CHECKING:
+    import geopandas as gpd
+    import polars as pl
+    import pyproj
+    from osmium import IdTracker
+    from osmium.osm import Node, Way
+    from shapely.geometry import Polygon
 
 
 class OpenStreetMapNetworkImport:
@@ -58,6 +59,13 @@ class OpenStreetMapNetworkImport:
         - It intersects with the filtering polygon (if any).
         - It is valid according to the `extra_way_filter` method.
         """
+        import geopandas as gpd
+        import osmium
+        from osmium import IdTracker
+        from osmium.filter import EntityFilter, TagFilter
+        from osmium.geom import WKBFactory
+        from osmium.osm import WAY
+
         logger.info("Filtering highway ways")
         ids = list()
         linestrings = list()
@@ -114,6 +122,8 @@ class OpenStreetMapNetworkImport:
     def way_data_schema(self) -> dict[str, pl.DataType | type[pl.DataType]]:
         """Returns a dictionary representing the Polars schema for the DataFrame constructed from
         `way_data`."""
+        import polars as pl
+
         return {
             "osm_id": pl.UInt64,
             "nodes": pl.List(pl.UInt64),
@@ -123,6 +133,8 @@ class OpenStreetMapNetworkImport:
 
     def split_intersected_ways(self, df: pl.DataFrame) -> pl.DataFrame:
         """Split ways at the node where they are intersected by another way."""
+        import polars as pl
+
         # The intersection nodes are the nodes which are source or target of a way (first or last
         # node) or which appears twice in the data (thus representing an intersection between two
         # ways).
@@ -163,6 +175,8 @@ class OpenStreetMapNetworkImport:
 
     def clean_way_data(self, df: pl.DataFrame) -> pl.DataFrame:
         """Returns a cleaned version of data collected from `way_data`."""
+        import polars as pl
+
         # Drop rows with source == target.
         df = df.filter(pl.col("source") != pl.col("target"))
         df: pl.DataFrame = df.select("osm_id", "source", "target", "edge_type", "name", "nodes")
@@ -172,6 +186,11 @@ class OpenStreetMapNetworkImport:
         """Reads all the ways in the OSM file with a valid id and returns a DataFrame with their
         characteristics and an IdTracker with their node ids.
         """
+        import osmium
+        import polars as pl
+        from osmium import IdTracker
+        from osmium.osm import WAY
+
         logger.info("Reading highway ways")
         data = list()
         logger.debug("Reading ways from OSM file")
@@ -200,12 +219,18 @@ class OpenStreetMapNetworkImport:
         """Returns a dictionary representing the Polars schema for the DataFrame constructed from
         `node_data`.
         """
+        import polars as pl
+
         return {"osm_id": pl.UInt64, "lat": pl.Float64, "lon": pl.Float64}
 
     def read_highway_nodes(self, node_id_tracker: IdTracker) -> pl.DataFrame:
         """Reads all the nodes in the OSM file with a valid id and returns a DataFrame with their
         characteristics (including coordinates).
         """
+        import osmium
+        import polars as pl
+        from osmium.osm import NODE
+
         logger.info("Reading highway nodes")
         data = list()
         logger.debug("Reading nodes from OSM file")
@@ -233,6 +258,8 @@ class OpenStreetMapNetworkImport:
         By default, all edges are duplicated (appropriate for pedestrian networks), but this method
         can be override to only duplicate edges which can be taken in both directions.
         """
+        import polars as pl
+
         forward_edges = edges.lazy().with_columns(backward=False)
         backward_edges = edges.lazy().with_columns(
             target="source", source="target", nodes=pl.col("nodes").list.reverse(), backward=True
@@ -245,6 +272,10 @@ class OpenStreetMapNetworkImport:
 
     def create_edges(self, edges: pl.DataFrame, nodes: pl.DataFrame) -> gpd.GeoDataFrame:
         """Creates edge geometries from node coordinates and duplicate the two-way edges."""
+        import geopandas as gpd
+        import polars as pl
+        from shapely.geometry import LineString
+
         edges = self.add_node_features_to_edges(edges, nodes)
         logger.debug("Duplicating two-way edges")
         edges = self.duplicate_edges(edges)

@@ -1,4 +1,6 @@
-import polars as pl
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from pymetropolis.metro_common.errors import error_context
 from pymetropolis.metro_common.utils import time_to_seconds_since_midnight_pl
@@ -28,6 +30,9 @@ from pymetropolis.metro_simulation.common import StepWithModes, StepWithRideshar
 
 from .files import MetroTripsFile
 
+if TYPE_CHECKING:
+    import polars as pl
+
 
 @error_context(msg="Cannot generate car trips")
 def generate_car_trips(
@@ -41,6 +46,8 @@ def generate_car_trips(
     fuel_file: CarFuelFile,
     fuel_share: float,
 ):
+    import polars as pl
+
     df = df.with_columns(
         pl.lit(mode).alias("alt_id"),
         pl.lit("Road").alias("class.type"),
@@ -104,6 +111,8 @@ def generate_public_transit_trips(
     tstars_file: TstarsFile,
     schedule_pref_file: LinearScheduleFile,
 ):
+    import polars as pl
+
     df = df.with_columns(
         pl.lit("public_transit").alias("alt_id"), pl.lit("Virtual").alias("class.type")
     )
@@ -160,6 +169,8 @@ def generate_walking_trips(
     tstars_file: TstarsFile,
     schedule_pref_file: LinearScheduleFile,
 ):
+    import polars as pl
+
     df = df.with_columns(pl.lit("walking").alias("alt_id"), pl.lit("Virtual").alias("class.type"))
     tts: pl.DataFrame = tts_file.read()
     df = (
@@ -213,6 +224,8 @@ def generate_bicycle_trips(
     tstars_file: TstarsFile,
     schedule_pref_file: LinearScheduleFile,
 ):
+    import polars as pl
+
     df = df.with_columns(pl.lit("bicycle").alias("alt_id"), pl.lit("Virtual").alias("class.type"))
     tts: pl.DataFrame = tts_file.read()
     df = (
@@ -343,6 +356,8 @@ class WriteMetroTripsStep(StepWithModes, StepWithRidesharingCount):
         return self.has_trip_mode()
 
     def run(self):
+        import polars as pl
+
         trips: pl.DataFrame = self.input["trips"].read()
         df = trips.select("trip_id", "person_id", agent_id="tour_id").sort("agent_id", "trip_id")
         metro_trips = pl.DataFrame()

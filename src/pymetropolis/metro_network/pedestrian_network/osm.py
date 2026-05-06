@@ -1,5 +1,6 @@
-from osmium.osm import Way
-from shapely.geometry import Polygon
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from pymetropolis.metro_network.osm import OpenStreetMapNetworkImport
 from pymetropolis.metro_network.pedestrian_network.files import PedestrianEdgesRawFile
@@ -8,6 +9,10 @@ from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_pipeline.types import String
 from pymetropolis.metro_spatial import GeoStep, OSMStep
 from pymetropolis.metro_spatial.simulation_area.file import SimulationAreaFile
+
+if TYPE_CHECKING:
+    from osmium.osm import Way
+    from shapely.geometry import Polygon
 
 
 class OSMPedestrianNetworkImport(OpenStreetMapNetworkImport):

@@ -1,10 +1,7 @@
-from math import cos, pi, sin
-from typing import Any
+from __future__ import annotations
 
-import geopandas as gpd
-import numpy as np
-from shapely.geometry import LineString
-from typeguard import TypeCheckError, check_type
+from math import cos, pi, sin
+from typing import TYPE_CHECKING, Any
 
 from pymetropolis.metro_common.errors import MetropyError
 from pymetropolis.metro_pipeline import Step
@@ -16,6 +13,9 @@ from pymetropolis.metro_pipeline.parameters import (
 )
 
 from .files import RoadEdgesRawFile
+
+if TYPE_CHECKING:
+    import geopandas as gpd
 
 
 def generate_circular_network(
@@ -29,6 +29,10 @@ def generate_circular_network(
     ring_inter_ramp_length: float,
     radial_inter_ramp_length: float,
 ) -> gpd.GeoDataFrame:
+    import geopandas as gpd
+    import numpy as np
+    from shapely.geometry import LineString
+
     if isinstance(radius, list):
         if len(radius) != nb_rings:
             raise MetropyError("The number of `radius` values must be equal to the number of rings")
@@ -294,6 +298,8 @@ def generate_circular_network(
 
 
 def validate_radius(value: Any) -> float | list[float]:
+    from typeguard import TypeCheckError, check_type
+
     try:
         return check_type(value, float | list[float])
     except TypeCheckError:

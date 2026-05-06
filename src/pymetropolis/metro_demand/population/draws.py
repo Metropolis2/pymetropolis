@@ -1,5 +1,3 @@
-import polars as pl
-
 from pymetropolis.random import RandomStep
 
 from .files import TripsFile, UniformDrawsFile
@@ -16,6 +14,8 @@ class UniformDrawsStep(RandomStep):
     output_files = {"uniform_draws": UniformDrawsFile}
 
     def run(self):
+        import polars as pl
+
         trips: pl.DataFrame = self.input["trips"].read()
         rng = self.get_rng()
         tour_ids = trips["tour_id"].unique().sort()

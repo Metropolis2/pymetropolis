@@ -1,5 +1,7 @@
-import duckdb
-import polars as pl
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from loguru import logger
 
 from pymetropolis.metro_common import MetropyError
@@ -17,6 +19,9 @@ from pymetropolis.metro_pipeline.parameters import BoolParameter, ListParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_pipeline.types import String
 
+if TYPE_CHECKING:
+    import polars as pl
+
 
 def find_first_last_primary(routes: pl.DataFrame, primary_edges: set) -> pl.DataFrame:
     """From a DataFrame with columns `trip_id` and `route` (lists of edge ids), returns a DataFrame
@@ -32,6 +37,8 @@ def find_first_last_primary(routes: pl.DataFrame, primary_edges: set) -> pl.Data
     """
     # We use duckdb instead of polars to limit RAM use (the DataFrame can be very large with many
     # trips and long routes).
+    import duckdb
+
     con = duckdb.connect()
     con.register("routes", routes)
     return con.execute(
@@ -57,6 +64,8 @@ def find_first_last_primary(routes: pl.DataFrame, primary_edges: set) -> pl.Data
 def find_primary_edges(routes: pl.DataFrame, primary_edges: set, i=0) -> set:
     """Recursively adds edges to the primary network when they are "in the middle" of the primary
     parts."""
+    import polars as pl
+
     logger.debug(f"Iteration {i}")
     # Compute the set of secondary edges taken in-between the primary part.
     primary_idx = find_first_last_primary(routes, primary_edges)
@@ -85,6 +94,8 @@ def find_primary_edges(routes: pl.DataFrame, primary_edges: set, i=0) -> set:
 def find_connections(routes: pl.DataFrame, edges: pl.DataFrame, primary_edges: set):
     """Creates `access_*` and `egress_*` columns from the free-flow routes and the set of primary
     edges."""
+    import polars as pl
+
     primary_idx = find_first_last_primary(routes, primary_edges)
     df: pl.DataFrame = (
         routes.lazy()
@@ -186,6 +197,8 @@ class RoadNetworkPrimaryEdgesStep(Step):
     output_files = {"edges_primary": RoadEdgesPrimaryFlagFile}
 
     def run(self):
+        import polars as pl
+
         edges_gdf = self.input["edges"].read()
         edges = pl.from_pandas(edges_gdf.loc[:, ["edge_id", "edge_type"]])
         if self.secondary_types:
@@ -238,6 +251,8 @@ class CarAccessEgressStep(Step):
     output_files = {"access_egress": TripsCarAccessEgressFile}
 
     def run(self):
+        import polars as pl
+
         edges_gdf = self.input["edges"].read()
         edges = pl.from_pandas(edges_gdf.loc[:, ["edge_id", "source", "target"]])
         edges_fftt = self.input["edges_fftt"].read()

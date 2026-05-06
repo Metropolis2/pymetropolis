@@ -3,8 +3,6 @@ from datetime import time, timedelta
 from pathlib import Path
 from typing import Any, override
 
-from isodate import ISO8601Error, parse_duration
-
 from pymetropolis.metro_common.errors import MetropyError
 
 
@@ -191,6 +189,8 @@ class Duration(Type):
         if isinstance(value, float | int) and value >= 0:
             return timedelta(seconds=value)
         if isinstance(value, str):
+            from isodate import ISO8601Error, parse_duration
+
             try:
                 return parse_duration(value)
             except ISO8601Error:

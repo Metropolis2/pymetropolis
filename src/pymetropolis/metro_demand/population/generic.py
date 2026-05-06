@@ -1,5 +1,3 @@
-import polars as pl
-
 from pymetropolis.metro_demand.routing.files import TripsRoadNodesFile
 from pymetropolis.metro_pipeline.steps import Step
 
@@ -18,6 +16,8 @@ class GenericPopulationStep(Step):
     priority = 0
 
     def run(self):
+        import polars as pl
+
         df: pl.DataFrame = self.input["road_ods"].read()
         trips = df.select(
             "trip_id",

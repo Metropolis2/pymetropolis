@@ -1,7 +1,8 @@
-import geopandas as gpd
-import polars as pl
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from loguru import logger
-from shapely.geometry import Point
 
 from pymetropolis.metro_demand.population.files import TripsDestinationsFile, TripsOriginsFile
 from pymetropolis.metro_demand.routing.files import TripsPedestrianNodesFile, TripsRoadNodesFile
@@ -11,11 +12,18 @@ from pymetropolis.metro_pipeline.parameters import ListParameter
 from pymetropolis.metro_pipeline.types import String
 from pymetropolis.metro_spatial import GeoStep
 
+if TYPE_CHECKING:
+    import geopandas as gpd
+    import polars as pl
+
 
 def identify_od_pairs(
     edges: gpd.GeoDataFrame, origins_gdf: gpd.GeoDataFrame, destinations_gdf: gpd.GeoDataFrame
 ) -> pl.DataFrame:
     """Identify the origin and destination network node from origin / destination coordinates."""
+    import polars as pl
+    from shapely.geometry import Point
+
     assert len(origins_gdf) == len(destinations_gdf)
     # Create source / target point of the edges.
     logger.debug("Creating source / target points")
@@ -37,6 +45,8 @@ def identify_od_pairs(
 
 def identify_nodes(edges: gpd.GeoDataFrame, nodes_gdf: gpd.GeoDataFrame) -> pl.DataFrame:
     """Identify the closest edge for each node in a list."""
+    import polars as pl
+
     assert edges.crs == nodes_gdf.crs, "Mis-matched CRS between edges and nodes"
     # Match to the nearest edge.
     nodes_gdf = nodes_gdf.sjoin_nearest(
@@ -99,6 +109,8 @@ class PedestrianODNodesFromCoordinatesStep(GeoStep):
     output_files = {"ods": TripsPedestrianNodesFile}
 
     def run(self):
+        import polars as pl
+
         edges = self.input["edges"].read()
         edges = edges.loc[
             ~edges["edge_type"].isin(self.forbidden_types),
@@ -143,6 +155,8 @@ class RoadODNodesFromCoordinatesStep(GeoStep):
     output_files = {"ods": TripsRoadNodesFile}
 
     def run(self):
+        import polars as pl
+
         edges = self.input["edges"].read()
         edges = edges.loc[
             ~edges["edge_type"].isin(self.forbidden_types),

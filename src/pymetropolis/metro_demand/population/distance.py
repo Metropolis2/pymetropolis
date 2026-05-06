@@ -1,5 +1,3 @@
-import polars as pl
-
 from pymetropolis.metro_demand.population.files import (
     TripsDestinationsFile,
     TripsDistancesFile,
@@ -15,6 +13,8 @@ class TripDistancesStep(Step):
     output_files = {"distances": TripsDistancesFile}
 
     def run(self):
+        import polars as pl
+
         origins = self.input["origins"].read().sort_values("trip_id")
         destinations = self.input["destinations"].read().sort_values("trip_id")
         origins = origins.sort_values("trip_id")

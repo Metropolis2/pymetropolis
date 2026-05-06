@@ -1,11 +1,9 @@
-from pathlib import Path
-from typing import Any
+from __future__ import annotations
 
-import polars as pl
-import pyproj
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
+
 from loguru import logger
-from osmium.osm import Node, Way
-from shapely.geometry import Polygon
 
 from pymetropolis.metro_network.osm import OpenStreetMapNetworkImport
 from pymetropolis.metro_pipeline.parameters import BoolParameter, FloatParameter, ListParameter
@@ -15,6 +13,12 @@ from pymetropolis.metro_spatial import GeoStep, OSMStep
 from pymetropolis.metro_spatial.simulation_area.file import SimulationAreaFile
 
 from .files import RoadEdgesRawFile
+
+if TYPE_CHECKING:
+    import polars as pl
+    import pyproj
+    from osmium.osm import Node, Way
+    from shapely.geometry import Polygon
 
 # Dictionary for special `maxspeed` values.
 SPEED_DICT = {"walk": 8, "FR:walk": 20, "FR:urban": 50, "FR:rural": 80}
@@ -65,6 +69,8 @@ class OSMRoadNetworkImport(OpenStreetMapNetworkImport):
     def way_data_schema(self) -> dict[str, pl.DataType | type[pl.DataType]]:
         """Returns a dictionary representing the Polars schema for the DataFrame constructed from
         `way_data`."""
+        import polars as pl
+
         schema = super().way_data_schema()
         schema.update(
             {
@@ -89,6 +95,8 @@ class OSMRoadNetworkImport(OpenStreetMapNetworkImport):
         - Clean number of lanes from lanes tag.
         - Drop self ways.
         """
+        import polars as pl
+
         # Roundabouts are oneway.
         df = df.with_columns(oneway=pl.col("oneway").or_(pl.col("roundabout")))
         # Find maximum speed if available.
@@ -160,6 +168,8 @@ class OSMRoadNetworkImport(OpenStreetMapNetworkImport):
         """Returns a dictionary representing the Polars schema for the DataFrame constructed from
         `node_data`.
         """
+        import polars as pl
+
         schema = super().node_data_schema()
         schema.update({"highway": pl.String, "direction": pl.String})
         return schema
@@ -168,6 +178,8 @@ class OSMRoadNetworkImport(OpenStreetMapNetworkImport):
         """Returns edges with informations on give-way signs, stop signs and traffic signals, read
         from node data.
         """
+        import polars as pl
+
         nodes = nodes.with_columns(
             pl.when(pl.col("direction").is_in(("both", "forward", "backward")))
             .then("direction")
@@ -193,6 +205,8 @@ class OSMRoadNetworkImport(OpenStreetMapNetworkImport):
         - One of the edge's nodes is marked as having the feature in backward direction.
         - The source node of the edge is marked as having the feature (with no direction specified).
         """
+        import polars as pl
+
         logger.debug(f"Identifying edges with {feature} nodes")
         featured_nodes = nodes.filter(pl.col("highway") == feature)
         fwd_node_ids = featured_nodes.filter(pl.col("direction").is_in(("both", "forward")))[
@@ -224,6 +238,8 @@ class OSMRoadNetworkImport(OpenStreetMapNetworkImport):
 
         Features (speedlimit, lanes, etc.) are read for the correct direction.
         """
+        import polars as pl
+
         # Duplicate two-way ways.
         lf = edges.lazy()
         forward_edges = lf.with_columns(

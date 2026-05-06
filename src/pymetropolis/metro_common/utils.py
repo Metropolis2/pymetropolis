@@ -1,15 +1,19 @@
+from __future__ import annotations
+
 import datetime
 import os
 import shutil
 import tempfile
 from contextlib import contextmanager
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-import polars as pl
-import requests
 from loguru import logger
 
 from .errors import MetropyError
+
+if TYPE_CHECKING:
+    import polars as pl
 
 
 def time_to_seconds_since_midnight(t: datetime.time) -> int:
@@ -17,6 +21,8 @@ def time_to_seconds_since_midnight(t: datetime.time) -> int:
 
 
 def get_pl_expr(x: str | pl.Expr) -> pl.Expr:
+    import polars as pl
+
     if isinstance(x, str):
         return pl.col(x)
     else:
@@ -25,6 +31,8 @@ def get_pl_expr(x: str | pl.Expr) -> pl.Expr:
 
 
 def time_to_seconds_since_midnight_pl(x: str | pl.Expr) -> pl.Expr:
+    import polars as pl
+
     expr = get_pl_expr(x)
     return (
         expr.dt.hour().cast(pl.UInt32) * 3600
@@ -34,6 +42,8 @@ def time_to_seconds_since_midnight_pl(x: str | pl.Expr) -> pl.Expr:
 
 
 def seconds_since_midnight_to_datetime_pl(x: str | pl.Expr) -> pl.Expr:
+    import polars as pl
+
     expr = get_pl_expr(x)
     return pl.datetime(
         year=1900,
@@ -47,6 +57,8 @@ def seconds_since_midnight_to_datetime_pl(x: str | pl.Expr) -> pl.Expr:
 
 
 def seconds_since_midnight_to_time_pl(x: str | pl.Expr) -> pl.Expr:
+    import polars as pl
+
     expr = get_pl_expr(x)
     return pl.time(
         hour=expr // 3600,
@@ -102,6 +114,8 @@ def seconds_to_duration_string(v: float) -> str:
 @contextmanager
 def tmp_download(url):
     """Download a file temporarily and remove it after use."""
+    import requests
+
     with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
         logger.debug(f"Downloading file from url `{url}`")
         response = requests.get(url, stream=True)

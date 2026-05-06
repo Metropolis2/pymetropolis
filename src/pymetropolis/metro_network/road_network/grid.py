@@ -1,11 +1,15 @@
-import geopandas as gpd
-from shapely.geometry import LineString
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from pymetropolis.metro_common.errors import MetropyError
 from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import BoolParameter, FloatParameter, IntParameter
 
 from .files import RoadEdgesRawFile
+
+if TYPE_CHECKING:
+    import geopandas as gpd
 
 
 def generate_grid_network(
@@ -17,6 +21,9 @@ def generate_grid_network(
     bottom_to_top: bool = False,
     top_to_bottom: bool = False,
 ) -> gpd.GeoDataFrame:
+    import geopandas as gpd
+    from shapely.geometry import LineString
+
     if nb_rows <= 0:
         raise MetropyError("Grid network must have at least 1 row.")
     if nb_columns <= 0:

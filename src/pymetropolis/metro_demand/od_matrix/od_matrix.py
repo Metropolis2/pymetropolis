@@ -1,7 +1,3 @@
-import geopandas as gpd
-import polars as pl
-from shapely.geometry import LineString, Point
-
 from pymetropolis.metro_demand.od_matrix.file import RoadODMatrixFile
 from pymetropolis.metro_demand.routing.files import TripsRoadNodesFile
 from pymetropolis.metro_network.road_network.files import RoadEdgesCleanFile
@@ -18,6 +14,10 @@ class RoadODMatrixStep(Step):
     priority = 0
 
     def run(self):
+        import geopandas as gpd
+        import polars as pl
+        from shapely.geometry import LineString, Point
+
         ods = self.input["road_ods"].read()
         od_matrix = ods.group_by("origin_road_node", "destination_road_node").len()
         edges_gdf = self.input["edges"].read()

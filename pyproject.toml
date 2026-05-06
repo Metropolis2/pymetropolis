@@ -32,7 +32,6 @@ dependencies = [
     "typer>=0.20.0",
     "toml>=0.10.2",
     "typeguard>=4.4.4",
-    "treelib>=1.8.0",
     "humanize>=4.15.0",
     "duckdb>=1.5.1",
 ]
@@ -51,6 +50,7 @@ dev = [
     "ipython>=8.37.0",
     "pytest>=8.4.2",
     "ruff>=0.14.3",
+    "treelib>=1.8.0",
     "ty>=0.0.28",
 ]
 

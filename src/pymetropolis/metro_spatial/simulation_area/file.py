@@ -1,6 +1,11 @@
-from shapely.geometry import Polygon
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from pymetropolis.metro_pipeline.file import MetroGeoDataFrameFile
+
+if TYPE_CHECKING:
+    from shapely.geometry import Polygon
 
 
 class SimulationAreaFile(MetroGeoDataFrameFile):
@@ -12,6 +17,8 @@ class SimulationAreaFile(MetroGeoDataFrameFile):
         """Returns the simulation area as a Polygon.
 
         If the file does not exist, raises an error."""
+        from shapely.geometry import Polygon
+
         gdf = self.read()
         area = gdf["geometry"].iloc[0]
         assert isinstance(area, Polygon)

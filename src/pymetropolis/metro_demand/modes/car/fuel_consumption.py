@@ -1,5 +1,3 @@
-import polars as pl
-
 from pymetropolis.metro_demand.routing.files import TripsCarFreeFlowTravelTimesFile
 from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import FloatParameter
@@ -23,6 +21,8 @@ class CarFuelStep(Step):
         return self.fuel_factor is not None
 
     def run(self):
+        import polars as pl
+
         df: pl.DataFrame = self.input["ff_distances"].read()
         df = df.select(
             "trip_id", fuel_consumption=self.fuel_factor * pl.col("free_flow_distance") / 1000.0

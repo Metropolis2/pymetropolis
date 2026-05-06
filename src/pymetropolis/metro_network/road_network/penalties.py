@@ -1,7 +1,4 @@
-import geopandas as gpd
-import numpy as np
-import polars as pl
-from typeguard import TypeCheckError, check_type
+from typing import TYPE_CHECKING
 
 from pymetropolis.metro_common.errors import MetropyError
 from pymetropolis.metro_pipeline import Step
@@ -15,6 +12,9 @@ from .files import (
     RoadEdgesPenaltiesFile,
     RoadEdgesUrbanFlagFile,
 )
+
+if TYPE_CHECKING:
+    import geopandas as gpd
 
 
 class ExogenousEdgePenaltiesStep(Step):
@@ -65,6 +65,9 @@ road = 2
         return isinstance(self.penalties, dict) and "urban" in self.penalties
 
     def run(self):
+        import numpy as np
+        import polars as pl
+
         penalties = self.penalties
         edges: gpd.GeoDataFrame = self.input["clean_edges"].read()
         if isinstance(penalties, float | int):
@@ -72,6 +75,8 @@ road = 2
             edges["constant"] = penalties
         else:
             # Case 2. Value is dict edge_type -> penalty.
+            from typeguard import TypeCheckError, check_type
+
             try:
                 check_type(penalties, dict[str, float])
                 edges["constant"] = edges["edge_type"].map(penalties)
@@ -115,6 +120,8 @@ class EdgesFreeFlowTravelTimesStep(Step):
     output_files = {"edges_fftt": RoadEdgesFreeFlowTravelTimeFile}
 
     def run(self):
+        import polars as pl
+
         edges: gpd.GeoDataFrame = self.input["clean_edges"].read()
         df = pl.from_pandas(edges.loc[:, ["edge_id", "length", "speed_limit"]])
         df = df.select(

@@ -1,5 +1,4 @@
-import geopandas as gpd
-import polars as pl
+from typing import TYPE_CHECKING
 
 from pymetropolis.metro_common.errors import MetropyError
 from pymetropolis.metro_network.road_network import RoadEdgesCleanFile
@@ -8,6 +7,9 @@ from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_simulation.common import StepWithModes, StepWithRidesharingCount
 
 from .files import MetroVehicleTypesFile
+
+if TYPE_CHECKING:
+    import geopandas as gpd
 
 
 class WriteMetroVehicleTypesStep(StepWithModes, StepWithRidesharingCount):
@@ -37,6 +39,8 @@ class WriteMetroVehicleTypesStep(StepWithModes, StepWithRidesharingCount):
         return self.has_car_mode()
 
     def run(self):
+        import polars as pl
+
         vehicles = list()
         if self.has_mode("car_driver"):
             v = {"vehicle_id": "car_driver_alone", "headway": self.car_headway, "pce": self.car_pce}

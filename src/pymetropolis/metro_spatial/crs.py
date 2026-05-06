@@ -1,14 +1,19 @@
-from typing import Any
+from __future__ import annotations
 
-import pyproj
-from pyproj.exceptions import CRSError
+from typing import TYPE_CHECKING, Any
 
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_pipeline.parameters import CustomParameter
 from pymetropolis.metro_pipeline.steps import Step
 
+if TYPE_CHECKING:
+    import pyproj
+
 
 def validate_crs(value: Any) -> pyproj.CRS:
+    import pyproj
+    from pyproj.exceptions import CRSError
+
     try:
         crs = pyproj.CRS.from_user_input(value)
     except CRSError:

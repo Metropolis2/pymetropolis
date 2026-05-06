@@ -1,5 +1,3 @@
-import polars as pl
-
 from pymetropolis.metro_common.utils import seconds_since_midnight_to_time_pl
 from pymetropolis.metro_pipeline.steps import Step
 from pymetropolis.metro_simulation.run import MetroAgentResultsFile, MetroTripResultsFile
@@ -19,6 +17,8 @@ class TripResultsStep(Step):
     output_files = {"trip_results": TripResultsFile}
 
     def run(self):
+        import polars as pl
+
         trip_results: pl.DataFrame = self.input["metro_trip_results"].read()
         agent_results: pl.DataFrame = self.input["metro_agent_results"].read()
         df = trip_results.join(

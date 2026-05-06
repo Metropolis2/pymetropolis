@@ -1,8 +1,7 @@
-from datetime import time, timedelta
-from typing import Any
+from __future__ import annotations
 
-import numpy as np
-import polars as pl
+from datetime import time, timedelta
+from typing import TYPE_CHECKING, Any
 
 from pymetropolis.metro_common.errors import MetropyError, error_context
 from pymetropolis.metro_common.utils import (
@@ -12,6 +11,10 @@ from pymetropolis.metro_common.utils import (
 from pymetropolis.metro_pipeline.parameters import IntParameter, Parameter
 from pymetropolis.metro_pipeline.steps import Step
 from pymetropolis.metro_pipeline.types import CustomValidator, Duration, Float, Int, Time, Type
+
+if TYPE_CHECKING:
+    import numpy as np
+    import polars as pl
 
 
 class RandomStep(Step):
@@ -27,6 +30,8 @@ class RandomStep(Step):
     )
 
     def get_rng(self) -> np.random.Generator:
+        import numpy as np
+
         return np.random.default_rng(self.random_seed)
 
 
@@ -136,6 +141,8 @@ class DurationDistributionParameter(DistributionParameter):
 
 @error_context("Failed to generate values from the given distribution")
 def generate_values(param: Any, n: int, rng: np.random.Generator) -> pl.Series:
+    import polars as pl
+
     if isinstance(param, dict):
         distr = param["distribution"].lower()
         mean = float(param["mean"])
@@ -155,11 +162,15 @@ def generate_values(param: Any, n: int, rng: np.random.Generator) -> pl.Series:
 
 
 def generate_int_values(param: Any, n: int, rng: np.random.Generator) -> pl.Series:
+    import polars as pl
+
     values = generate_values(param, n, rng)
     return values.round().cast(pl.Int64)
 
 
 def generate_datetime_values(param: Any, n: int, rng: np.random.Generator) -> pl.Series:
+    import polars as pl
+
     if isinstance(param, dict):
         float_param = param.copy()
         float_param["mean"] = float(time_to_seconds_since_midnight(param["mean"]))
@@ -175,6 +186,8 @@ def generate_datetime_values(param: Any, n: int, rng: np.random.Generator) -> pl
 
 
 def generate_duration_values(param: Any, n: int, rng: np.random.Generator) -> pl.Series:
+    import polars as pl
+
     if isinstance(param, dict):
         float_param = param.copy()
         float_param["mean"] = float(param["mean"].total_seconds())

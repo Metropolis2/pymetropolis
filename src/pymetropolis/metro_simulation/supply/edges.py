@@ -1,5 +1,4 @@
-import geopandas as gpd
-import polars as pl
+from typing import TYPE_CHECKING
 
 from pymetropolis.metro_common.utils import time_to_seconds_since_midnight_pl
 from pymetropolis.metro_network.road_network import (
@@ -10,6 +9,9 @@ from pymetropolis.metro_network.road_network import (
 from pymetropolis.metro_pipeline.steps import InputFile, Step
 
 from .files import MetroEdgesFile
+
+if TYPE_CHECKING:
+    import geopandas as gpd
 
 
 class WriteMetroEdgesStep(Step):
@@ -23,6 +25,8 @@ class WriteMetroEdgesStep(Step):
     output_files = {"metro_edges": MetroEdgesFile}
 
     def run(self):
+        import polars as pl
+
         edges: gpd.GeoDataFrame = self.input["clean_edges"].read()
         columns = ["edge_id", "source", "target", "length", "speed_limit", "lanes", "hov_lanes"]
         df = pl.from_pandas(edges.loc[:, columns])

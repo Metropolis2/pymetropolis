@@ -1,11 +1,6 @@
 from typing import Any
 
-import geopandas as gpd
-import osmium
 from loguru import logger
-from osmium.filter import TagFilter
-from osmium.geom import WKBFactory
-from osmium.osm import Area
 
 from pymetropolis.metro_common.errors import MetropyError
 from pymetropolis.metro_pipeline.parameters import CustomParameter, FloatParameter, IntParameter
@@ -110,6 +105,12 @@ class SimulationAreaFromOSMStep(GeoStep, OSMStep):
         )
 
     def run(self):
+        import geopandas as gpd
+        import osmium
+        from osmium.filter import TagFilter
+        from osmium.geom import WKBFactory
+        from osmium.osm import Area
+
         names = self.osm_name
         if len(names) == 0:
             raise MetropyError("You must provide at least one name to be selected")

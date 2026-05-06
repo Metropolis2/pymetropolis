@@ -1,4 +1,6 @@
-import polars as pl
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from pymetropolis.metro_common.io import read_dataframe
 from pymetropolis.metro_demand.modes.common import (
@@ -12,6 +14,9 @@ from pymetropolis.metro_demand.modes.common import (
 )
 
 from .files import CarRidesharingPreferencesFile
+
+if TYPE_CHECKING:
+    import polars as pl
 
 MODE = "car_ridesharing"
 

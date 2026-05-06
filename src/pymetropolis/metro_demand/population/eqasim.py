@@ -1,11 +1,9 @@
-from pathlib import Path
+from __future__ import annotations
 
-import duckdb
-import geopandas as gpd
-import polars as pl
+from pathlib import Path
+from typing import TYPE_CHECKING
+
 from loguru import logger
-from shapely import wkb
-from shapely.geometry import Polygon
 
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_common.utils import find_file, seconds_since_midnight_to_datetime_pl
@@ -24,10 +22,17 @@ from .files import (
     TripsOriginsFile,
 )
 
+if TYPE_CHECKING:
+    import geopandas as gpd
+    import polars as pl
+    from shapely.geometry import Polygon
+
 
 def read_households(
     parquet_file: Path | None = None, csv_file: Path | None = None, household_ids: set | None = None
 ) -> pl.DataFrame:
+    import polars as pl
+
     if parquet_file:
         logger.info(f"Reading households from `{parquet_file}`")
         df = pl.scan_parquet(parquet_file)
@@ -52,6 +57,8 @@ def read_households(
 def read_persons(
     parquet_file: Path | None = None, csv_file: Path | None = None, household_ids: set | None = None
 ) -> pl.DataFrame:
+    import polars as pl
+
     if parquet_file:
         logger.info(f"Reading persons from `{parquet_file}`")
         df = pl.scan_parquet(parquet_file)
@@ -84,6 +91,10 @@ def read_trips(
     gpkg_file: Path | None = None,
     person_ids: set | None = None,
 ) -> tuple[pl.DataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]:
+    import duckdb
+    import geopandas as gpd
+    import polars as pl
+
     con = duckdb.connect()
     con.install_extension("spatial")
     con.load_extension("spatial")
@@ -164,6 +175,10 @@ def read_homes(
     fraction: float = 1.0,
     random_seed: int | None = None,
 ) -> gpd.GeoDataFrame:
+    import duckdb
+    import geopandas as gpd
+    from shapely import wkb
+
     con = duckdb.connect()
     con.install_extension("spatial")
     con.load_extension("spatial")
@@ -204,6 +219,8 @@ def read_homes(
 def clean(
     households: pl.DataFrame, persons: pl.DataFrame, trips: pl.DataFrame
 ) -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
+    import polars as pl
+
     households = households.join(
         persons.group_by("household_id").agg(
             nb_persons=pl.len(),

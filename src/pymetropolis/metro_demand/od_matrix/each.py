@@ -1,12 +1,13 @@
-import geopandas as gpd
-import numpy as np
-import polars as pl
+from typing import TYPE_CHECKING
 
 from pymetropolis.metro_demand.routing.files import TripsRoadNodesFile
 from pymetropolis.metro_network.road_network import RoadEdgesCleanFile
 from pymetropolis.random import IntDistributionParameter, RandomStep, generate_int_values
 
 from .common import generate_trips_from_od_matrix
+
+if TYPE_CHECKING:
+    import geopandas as gpd
 
 
 class ODMatrixEachStep(RandomStep):
@@ -32,6 +33,9 @@ class ODMatrixEachStep(RandomStep):
         return self.each is not None
 
     def run(self):
+        import numpy as np
+        import polars as pl
+
         edges: gpd.GeoDataFrame = self.input["clean_edges"].read()
         sources = pl.Series(edges["source"]).unique().sort()
         targets = pl.Series(edges["target"]).unique().sort()

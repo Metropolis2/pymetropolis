@@ -1,5 +1,3 @@
-import polars as pl
-
 from pymetropolis.metro_common.utils import seconds_since_midnight_to_time_pl
 from pymetropolis.metro_pipeline.steps import Step
 from pymetropolis.metro_simulation.run import MetroIterationResultsFile
@@ -12,12 +10,12 @@ class IterationResultsStep(Step):
     file for the results.
     """
 
-    input_files = {
-        "metro_iteration_results": MetroIterationResultsFile,
-    }
+    input_files = {"metro_iteration_results": MetroIterationResultsFile}
     output_files = {"iteration_results": IterationResultsFile}
 
     def run(self):
+        import polars as pl
+
         raw_results: pl.DataFrame = self.input["metro_iteration_results"].read()
         df = raw_results.with_columns(
             trip_count=pl.col("road_trip_count") + pl.col("virtual_trip_count")

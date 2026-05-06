@@ -1,13 +1,15 @@
-from datetime import timedelta
+from __future__ import annotations
 
-import polars as pl
+from datetime import timedelta
+from typing import TYPE_CHECKING
+
 from loguru import logger
 
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_common.io import read_dataframe
 from pymetropolis.metro_demand.population.files import TripsFile
 from pymetropolis.metro_pipeline import Step
-from pymetropolis.metro_pipeline.parameters import PathParameter
+from pymetropolis.metro_pipeline.parameters import EnumParameter, PathParameter
 from pymetropolis.random import (
     DurationDistributionParameter,
     FloatDistributionParameter,
@@ -19,6 +21,9 @@ from pymetropolis.random import (
 )
 
 from .files import LinearScheduleFile, TstarsFile
+
+if TYPE_CHECKING:
+    import polars as pl
 
 
 class LinearScheduleStep(RandomStep):
@@ -114,6 +119,8 @@ class LinearScheduleFromPurposeStep(Step):
         return self.pref_file is not None
 
     def run(self):
+        import polars as pl
+
         trips: pl.DataFrame = self.input["trips"].read()
         pref = read_dataframe(self.pref_file)
         # Check that the "purpose" column exists.
@@ -188,10 +195,22 @@ class TstarFromArrivalTimeStep(Step):
 
     This Step is useful to generate activity desired start times for the synthetic population
     imported from `EqasimImportStep`.
+
+    To enable this Step, you must set the
+    [`departure_time.linear_schedule.tstar_type`](parameters.md#departure_timelinear_scheduletstar_type)
+    parameter to `"arrival_time"`.
     """
 
+    tstar_type = EnumParameter(
+        "departure_time.linear_schedule.tstar_type",
+        values=["arrival_time"],
+        description="How tstar values are computed.",
+    )
     input_files = {"trips": TripsFile}
     output_files = {"tstars": TstarsFile}
+
+    def is_defined(self):
+        return self.tstar_type is not None
 
     def run(self):
         trips = self.input["trips"].read()

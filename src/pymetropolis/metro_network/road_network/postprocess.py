@@ -1,7 +1,7 @@
-import geopandas as gpd
-import networkx as nx
-import numpy as np
-import polars as pl
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from loguru import logger
 
 from pymetropolis.metro_common import MetropyError
@@ -13,7 +13,11 @@ from pymetropolis.metro_pipeline.steps import InputFile
 from .common import default_edge_values_validator
 from .files import RoadEdgesCleanFile, RoadEdgesRawFile, RoadEdgesUrbanFlagFile
 
-EPSILON = np.finfo(float).eps
+if TYPE_CHECKING:
+    import geopandas as gpd
+    import polars as pl
+
+EPSILON = 1e-8
 
 
 class PostprocessRoadNetworkStep(Step):
@@ -47,7 +51,7 @@ class PostprocessRoadNetworkStep(Step):
     )
     min_speed_limit = FloatParameter(
         "road_network.min_speed_limit",
-        default=EPSILON,
+        default=1e-8,
         description="Minimum speed limit allowed on edges (in km/h).",
     )
     min_length = FloatParameter(
@@ -223,6 +227,8 @@ def set_default_values(
     hov_lanes: float | dict,
     urban_flags: pl.DataFrame | None,
 ):
+    import numpy as np
+
     # Set default for bool columns (default is always False).
     for col in ("toll", "roundabout", "give_way", "stop", "traffic_signals"):
         if col not in gdf.columns:
@@ -328,6 +334,8 @@ def remove_duplicates(gdf):
 
 
 def select_connected(gdf):
+    import networkx as nx
+
     logger.info("Identifying strongly connected components")
     G = nx.DiGraph()
     G.add_edges_from((v[0], v[1]) for v in gdf[["source", "target"]].values)
@@ -349,11 +357,15 @@ def select_connected(gdf):
 
 
 def reindex(gdf):
+    import numpy as np
+
     gdf["edge_id"] = np.arange(1, len(gdf) + 1, dtype=np.uint64)
     return gdf
 
 
 def check(gdf, min_lanes: float, min_speed_limit: float, min_length: float):
+    import numpy as np
+
     gdf["lanes"] = gdf["lanes"].clip(min_lanes)
     gdf["speed_limit"] = gdf["speed_limit"].clip(min_speed_limit)
     gdf["length"] = gdf["length"].clip(min_length)

@@ -1,5 +1,3 @@
-import polars as pl
-
 from pymetropolis.metro_demand.routing.files import TripsRoadNodesFile
 from pymetropolis.metro_network.road_network import AllRoadFreeFlowTravelTimesFile
 from pymetropolis.metro_pipeline.parameters import FloatParameter, StringParameter
@@ -50,6 +48,8 @@ class GravityODMatrixStep(RandomStep):
         return self.exponential_decay is not None and self.trips_per_node is not None
 
     def run(self):
+        import polars as pl
+
         df = self.input["all_free_flow_travel_times"].read()
         df = df.filter(pl.col("origin_id") != pl.col("destination_id"))
         if self.nodes_regex is not None:

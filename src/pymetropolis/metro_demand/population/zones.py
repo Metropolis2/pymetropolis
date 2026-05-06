@@ -1,5 +1,6 @@
-import geopandas as gpd
-import polars as pl
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from pymetropolis.metro_spatial.ign import AdminExpressStep, IRISStep
 
@@ -11,10 +12,17 @@ from .files import (
     TripsZonesFile,
 )
 
+if TYPE_CHECKING:
+    import geopandas as gpd
+    import polars as pl
+
 # TODO: Add EPCI zone3.
 
 
 def identify_iris(points: gpd.GeoDataFrame, iris: gpd.GeoDataFrame, id_col: str) -> pl.DataFrame:
+    import geopandas as gpd
+    import polars as pl
+
     gdf = gpd.sjoin(points, iris.to_crs(points.crs), predicate="intersects", how="left")
     df = pl.from_pandas(gdf.loc[:, [id_col, "iris_id"]])
     df = df.sort(id_col, "iris_id")
@@ -26,6 +34,9 @@ def identify_iris(points: gpd.GeoDataFrame, iris: gpd.GeoDataFrame, id_col: str)
 def identify_insee(
     points: gpd.GeoDataFrame, communes: gpd.GeoDataFrame, id_col: str
 ) -> pl.DataFrame:
+    import geopandas as gpd
+    import polars as pl
+
     gdf = gpd.sjoin(points, communes.to_crs(points.crs), predicate="intersects", how="left")
     df = pl.from_pandas(gdf.loc[:, [id_col, "insee_id", "departement_id", "region_id"]])
     df = df.sort(id_col, "insee_id")

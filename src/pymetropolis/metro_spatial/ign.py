@@ -1,14 +1,17 @@
-import time
+from __future__ import annotations
 
-import geopandas as gpd
-import requests
+import time
+from typing import TYPE_CHECKING
+
 from loguru import logger
-from shapely.geometry import box
 
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_common.utils import find_file
 from pymetropolis.metro_pipeline.parameters import PathParameter, StringParameter
 from pymetropolis.metro_pipeline.steps import Step
+
+if TYPE_CHECKING:
+    import geopandas as gpd
 
 # Maximum number of retries when the API request fails.
 MAX_RETRIES = 3
@@ -42,6 +45,9 @@ class IGNStep(Step):
         - `bbox`: optional bbox (in WGS84, min_lng, min_lat, max_lng, max_lat) from which to
           restrict the geometries.
         """
+        import geopandas as gpd
+        import requests
+
         params = self.default_api_params()
         params["typeNames"] = name
         if bbox is not None:
@@ -113,6 +119,9 @@ class AdminExpressStep(IGNStep):
 
         When the `bbox` parameter is specified, only returns Communes that intersect that bbox.
         """
+        import geopandas as gpd
+        from shapely.geometry import box
+
         if self.admin_express_directory is not None:
             global_file = find_file("ADE*.gpkg", self.admin_express_directory, recursive=True)
             # Order versions have a commune-specific file.
@@ -221,6 +230,9 @@ class IRISStep(IGNStep):
 
         When the `bbox` parameter is specified, only returns IRIS that intersect that bbox.
         """
+        import geopandas as gpd
+        from shapely.geometry import box
+
         if self.contours_iris_directory is not None:
             gpkg_file = find_file("iris.gpkg", self.contours_iris_directory, recursive=True)
             shp_file = find_file("CONTOURS-IRIS.shp", self.contours_iris_directory, recursive=True)

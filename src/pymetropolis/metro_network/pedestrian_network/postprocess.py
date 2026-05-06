@@ -1,5 +1,3 @@
-import networkx as nx
-import numpy as np
 from loguru import logger
 
 from pymetropolis.metro_pipeline import Step
@@ -88,6 +86,8 @@ def remove_duplicates(gdf):
 
 
 def select_connected(gdf):
+    import networkx as nx
+
     logger.info("Identifying strongly connected components")
     G = nx.DiGraph()
     G.add_edges_from((v[0], v[1]) for v in gdf[["source", "target"]].values)
@@ -109,5 +109,7 @@ def select_connected(gdf):
 
 
 def reindex(gdf):
+    import numpy as np
+
     gdf["edge_id"] = np.arange(1, len(gdf) + 1, dtype=np.uint64)
     return gdf

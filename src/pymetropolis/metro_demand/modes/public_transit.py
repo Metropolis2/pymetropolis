@@ -1,4 +1,6 @@
-import polars as pl
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from pymetropolis.metro_common.io import read_dataframe
 from pymetropolis.metro_demand.modes.common import (
@@ -15,6 +17,9 @@ from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import FloatParameter
 
 from .files import PublicTransitPreferencesFile, PublicTransitTravelTimesFile
+
+if TYPE_CHECKING:
+    import polars as pl
 
 MODE = "public_transit"
 
@@ -61,6 +66,8 @@ class PublicTransitTravelTimesFromRoadDistancesStep(Step):
         return self.speed is not None
 
     def run(self):
+        import polars as pl
+
         df: pl.DataFrame = self.input["car_driver_distances"].read()
         df = df.select(
             "trip_id",

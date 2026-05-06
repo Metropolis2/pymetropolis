@@ -1,5 +1,3 @@
-import polars as pl
-
 from pymetropolis.metro_common.io import read_dataframe
 from pymetropolis.metro_demand.routing.files import TripsRoadNodesFile
 from pymetropolis.metro_network.road_network.files import RoadEdgesCleanFile
@@ -39,6 +37,8 @@ class CustomODMatrixStep(RandomStep):
         return self.file is not None
 
     def run(self):
+        import polars as pl
+
         df = read_dataframe(self.file, columns=["origin", "destination", "size"])
         df = df.filter(pl.col("origin") != pl.col("destination"))
         trips = generate_trips_from_od_matrix(df, self.get_rng())

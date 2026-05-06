@@ -1,8 +1,6 @@
 from datetime import time
 from typing import Any
 
-import polars as pl
-
 from pymetropolis.metro_common.errors import MetropyError
 from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import CustomParameter
@@ -105,6 +103,8 @@ road = 1500
         return isinstance(self.capacities, dict) and "urban" in self.capacities
 
     def run(self):
+        import polars as pl
+
         capacities = self.capacities
         edges = self.input["clean_edges"].read()
         df = pl.from_pandas(edges.loc[:, edges.columns.isin(["edge_id", "edge_type"])])

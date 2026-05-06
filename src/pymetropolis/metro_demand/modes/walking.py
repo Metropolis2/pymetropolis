@@ -1,4 +1,6 @@
-import polars as pl
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from pymetropolis.metro_common.io import read_dataframe
 from pymetropolis.metro_demand.modes.common import (
@@ -15,6 +17,9 @@ from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import FloatParameter
 
 from .files import WalkingPreferencesFile, WalkingTravelTimesFile
+
+if TYPE_CHECKING:
+    import polars as pl
 
 MODE = "walking"
 
@@ -60,6 +65,8 @@ class WalkingTravelTimesStep(Step):
         return self.speed is not None
 
     def run(self):
+        import polars as pl
+
         distances = self.input["distances"].read()
         df = distances.select(
             "trip_id",

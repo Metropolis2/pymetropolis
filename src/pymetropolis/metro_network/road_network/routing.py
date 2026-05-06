@@ -1,5 +1,6 @@
-import networkx as nx
-import polars as pl
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from pymetropolis.metro_pipeline import Step
 
@@ -10,8 +11,14 @@ from .files import (
     RoadEdgesFreeFlowTravelTimeFile,
 )
 
+if TYPE_CHECKING:
+    import polars as pl
+
 
 def compute_all_pairs_dijkstra(edges: pl.DataFrame) -> pl.DataFrame:
+    import networkx as nx
+    import polars as pl
+
     dtype = edges["source"].dtype
     G = nx.DiGraph()
     G.add_weighted_edges_from(edges.iter_rows(), weight="weight")
@@ -37,6 +44,8 @@ class AllFreeFlowTravelTimesStep(Step):
     priority = 0
 
     def run(self):
+        import polars as pl
+
         edges_gdf = self.input["edges"].read()
         edges = pl.from_pandas(edges_gdf.loc[:, ["edge_id", "source", "target"]])
         edges_fftt = self.input["edges_fftt"].read()
@@ -56,6 +65,8 @@ class AllRoadDistancesStep(Step):
     priority = 0
 
     def run(self):
+        import polars as pl
+
         edges = self.input["clean_edges"].read()
         edges = pl.from_pandas(edges.loc[:, ["edge_id", "source", "target", "length"]])
         edges = edges.select("source", "target", weight="length")

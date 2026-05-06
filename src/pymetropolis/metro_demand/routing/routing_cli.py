@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import json
 import os
 import subprocess
 import tempfile
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-import polars as pl
 from loguru import logger
 
 from pymetropolis.metro_common import MetropyError
@@ -21,6 +23,9 @@ from pymetropolis.metro_network.road_network.files import (
 )
 from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import BoolParameter, ExecPathParameter
+
+if TYPE_CHECKING:
+    import polars as pl
 
 
 class RoutingCLIStep(Step):
@@ -56,6 +61,8 @@ class TripsPedestrianDistancesStep(RoutingCLIStep):
     output_files = {"distances": TripsPedestrianDistancesFile}
 
     def run(self):
+        import polars as pl
+
         edges_gdf = self.input["edges"].read()
         edges = pl.from_pandas(edges_gdf.loc[:, ["edge_id", "source", "target", "length"]]).rename(
             {"length": "weight"}
@@ -89,6 +96,8 @@ class TripsCarFreeFlowTravelTimesStep(RoutingCLIStep):
     output_files = {"fftt": TripsCarFreeFlowTravelTimesFile}
 
     def run(self):
+        import polars as pl
+
         edges_gdf = self.input["edges"].read()
         edges_fftt = self.input["edges_fftt"].read()
         edges = (
@@ -121,6 +130,8 @@ class TripsCarFreeFlowTravelTimesStep(RoutingCLIStep):
 def trip_routing(
     trips: pl.DataFrame, edges: pl.DataFrame, routing_exec: Path, with_routes: bool = False
 ):
+    import polars as pl
+
     queries = trips.select(query_id="trip_id", origin="origin_node", destination="destination_node")
     with tempfile.TemporaryDirectory() as tmp_directory:
         prepare_routing(queries, edges, tmp_directory, with_routes)
@@ -136,6 +147,8 @@ def trip_routing(
 def prepare_routing(
     queries: pl.DataFrame, edges: pl.DataFrame, tmp_directory: str, with_routes: bool = False
 ):
+    import polars as pl
+
     queries = queries.select("query_id", "origin", "destination", departure_time=pl.lit(0.0))
     queries.write_parquet(os.path.join(tmp_directory, "queries.parquet"))
     edges = edges.select("edge_id", "source", "target", "weight")

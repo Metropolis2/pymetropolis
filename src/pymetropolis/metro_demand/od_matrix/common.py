@@ -1,8 +1,16 @@
-import numpy as np
-import polars as pl
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import numpy as np
+    import polars as pl
 
 
 def generate_trips_from_od_matrix(df: pl.DataFrame, rng: np.random.Generator):
+    import numpy as np
+    import polars as pl
+
     if df["size"].dtype.is_float():
         decimals = df["size"] % 1.0
         if (decimals.is_close(0.0, abs_tol=1e-9)).any():

@@ -1,11 +1,9 @@
-from pathlib import Path
+from __future__ import annotations
 
-import geopandas as gpd
-import osmium
-import pyproj
+from pathlib import Path
+from typing import TYPE_CHECKING
+
 from loguru import logger
-from osmium.filter import TagFilter
-from osmium.geom import WKBFactory
 
 from pymetropolis.metro_pipeline.parameters import FloatParameter, ListParameter
 from pymetropolis.metro_pipeline.steps import InputFile
@@ -14,6 +12,9 @@ from pymetropolis.metro_spatial import GeoStep, OSMStep
 from pymetropolis.metro_spatial.simulation_area.file import SimulationAreaFile
 
 from .file import UrbanAreasFile
+
+if TYPE_CHECKING:
+    import pyproj
 
 
 def read_osm_urban_areas(
@@ -26,6 +27,11 @@ def read_osm_urban_areas(
     """Reads the areas with a urban landuse in the OSM file and returns a MultiPolygon representing
     all these urban areas.
     """
+    import geopandas as gpd
+    import osmium
+    from osmium.filter import TagFilter
+    from osmium.geom import WKBFactory
+
     filter_polygon = simulation_area_file.get_area_opt()
     logger.info("Reading urban areas")
     ids = list()

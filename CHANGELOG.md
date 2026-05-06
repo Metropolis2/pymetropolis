@@ -59,6 +59,7 @@ Removed files:
 Other changes:
 
 - Completely rewrote the pipeline to handle Steps' conflicts
+- Lazily import most packages to speed up CLI startup time
 
 ## [0.7.0] – 2026-04-21
 

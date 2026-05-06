@@ -1,5 +1,3 @@
-import polars as pl
-
 from pymetropolis.metro_common.errors import MetropyError
 from pymetropolis.metro_demand.population import TripsFile, UniformDrawsFile
 from pymetropolis.metro_pipeline.parameters import EnumParameter, FloatParameter
@@ -45,6 +43,8 @@ class WriteMetroAgentsStep(StepWithModes):
         )
 
     def run(self):
+        import polars as pl
+
         trips = self.input["trips"].read()
         agents = trips.select(agent_id="tour_id").unique().sort("agent_id")
         if self.has_mode_choice():
@@ -61,9 +61,7 @@ class WriteMetroAgentsStep(StepWithModes):
             elif model == "DrawnNestedLogit":
                 raise MetropyError("TODO")
             elif model == "Deterministic":
-                agents = agents.with_columns(
-                    pl.lit("Deterministic").alias("alt_choice.type"),
-                )
+                agents = agents.with_columns(pl.lit("Deterministic").alias("alt_choice.type"))
             draws = self.input["uniform_draws"].read()
             agents = agents.join(
                 draws.select(pl.col("mode_u").alias("alt_choice.u"), agent_id="tour_id"),

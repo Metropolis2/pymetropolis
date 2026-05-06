@@ -1,4 +1,6 @@
-import polars as pl
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from pymetropolis.metro_common.errors import MetropyError, error_context
 from pymetropolis.metro_demand.modes import OutsideOptionPreferencesFile
@@ -9,6 +11,9 @@ from pymetropolis.metro_simulation.common import StepWithModes
 
 from .files import MetroAlternativesFile
 
+if TYPE_CHECKING:
+    import polars as pl
+
 
 @error_context(msg="Cannot generate departure-time columns of alternatives")
 def generate_departure_time_columns(
@@ -17,6 +22,8 @@ def generate_departure_time_columns(
     departure_time_choice_mu: float | None,
     draw_file: UniformDrawsFile,
 ):
+    import polars as pl
+
     df = pl.DataFrame({"agent_id": tour_ids})
     if departure_time_choice_model == "ContinuousLogit":
         df = df.with_columns(
@@ -37,6 +44,8 @@ def generate_departure_time_columns(
 
 @error_context(msg="Cannot generate outside-option alternatives")
 def generate_outside_option_alts(tour_ids: pl.Series, pref_file: OutsideOptionPreferencesFile):
+    import polars as pl
+
     df = pl.DataFrame({"agent_id": tour_ids, "alt_id": "outside_option"})
     # TODO. Manage outside option constant at the person vs tour level.
     constants: pl.DataFrame = pref_file.read()
@@ -94,6 +103,8 @@ class WriteMetroAlternativesStep(StepWithModes):
         return not self.has_trip_mode() or self.departure_time_choice_model is not None
 
     def run(self):
+        import polars as pl
+
         trips: pl.DataFrame = self.input["trips"].read()
         tour_ids = trips["tour_id"].unique().sort()
         if self.has_trip_mode():
