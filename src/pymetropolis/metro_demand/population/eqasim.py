@@ -46,9 +46,9 @@ def read_households(
     df = df.select(
         pl.col("household_id").cast(pl.UInt64),
         pl.col("income").cast(pl.Float64),
-        # nb_cars="number_of_cars",
-        # nb_motorcycles="number_of_motorcycles",
-        nb_bicycles="number_of_bikes",
+        # nb_cars=pl.col("number_of_cars").cast(pl.UInt64),
+        # nb_motorcycles=pl.col("number_of_motorcycles").cast(pl.UInt64),
+        nb_bicycles=pl.col("number_of_bikes").cast(pl.UInt64),
     )
     # "household_type",
     return df.collect()  # ty: ignore[invalid-return-type]
@@ -100,30 +100,29 @@ def read_trips(
     con.load_extension("spatial")
     if geoparquet_file:
         logger.info(f"Reading trips from `{geoparquet_file}`")
-        lf = pl.scan_parquet(geoparquet_file)
         source = f"read_parquet('{geoparquet_file}')"
         geom = "geometry"
     else:
         assert gpkg_file is not None
         logger.info(f"Reading trips from `{gpkg_file}`")
-        query = f"""
-            SELECT
-                person_id,
-                trip_index,
-                departure_time,
-                arrival_time,
-                preceding_purpose,
-                following_purpose
-            FROM ST_Read('{gpkg_file}')
-        """
-        lf = con.execute(query).pl().lazy()
         source = f"ST_Read('{gpkg_file}')"
         geom = "geom"
     # Clean trips.
+    query = f"""
+        SELECT
+            person_id,
+            trip_index,
+            departure_time,
+            arrival_time,
+            preceding_purpose,
+            following_purpose
+        FROM {source}
+    """
+    trips = con.execute(query).pl()
     if person_ids:
-        lf = lf.filter(pl.col("person_id").is_in(person_ids))
-    lf = lf.sort("person_id", "trip_index")
-    lf = lf.select(
+        trips = trips.filter(pl.col("person_id").is_in(person_ids))
+    trips = trips.sort("person_id", "trip_index")
+    trips = trips.select(
         trip_id=pl.format("{}-{}", "person_id", "trip_index"),
         person_id="person_id",
         trip_index=pl.col("trip_index").cast(pl.UInt8) + 1,
@@ -144,7 +143,6 @@ def read_trips(
         destination_activity_duration=pl.col("departure_time").shift(-1).over("person_id")
         - pl.col("arrival_time"),
     )
-    trips: pl.DataFrame = lf.collect()  # ty: ignore[invalid-assignment]
     # Load origins / destinations.
     query = f"""
         SELECT

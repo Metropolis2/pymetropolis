@@ -9,9 +9,10 @@ def scan_dataframe(filename: Path, **kwargs):
     """Scan a DataFrame from a Parquet or CSV file."""
     import polars as pl
 
-    # Register the "geoarrow.wkb" extension so that polars does not send a warning when
-    # importing geoparquet files.
-    pl.register_extension_type("geoarrow.wkb", ext_class=pl.Extension)
+    if pl.get_extension_type("geoarrow.wkb") is None:
+        # Register the "geoarrow.wkb" extension so that polars does not send a warning when
+        # importing geoparquet files.
+        pl.register_extension_type("geoarrow.wkb", ext_class=pl.Extension)
 
     if not filename.exists():
         raise MetropyError(f"File not found: `{filename}`")

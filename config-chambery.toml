@@ -193,3 +193,19 @@ mu = 1.0
 [modes]
 [modes.bicycle]
 preferences_file = "chambery/data/mode_preferences.csv"
+speed = 12.0
+
+[departure_time]
+[departure_time.linear_schedule]
+preferences_file = "chambery/data/linear_schedule_preferences.csv"
+tstar_type = "arrival_time"
+
+[departure_time_choice]
+model = "ContinuousLogit"
+mu = 1
+
+[simulation]
+period = ["03:00:00", "27:00:00"]
+recording_interval = 900
+learning_factor = 0.01
+nb_iterations = 100
