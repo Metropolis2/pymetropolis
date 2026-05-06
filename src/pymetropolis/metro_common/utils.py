@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import datetime
 import os
 import shutil
 import tempfile
@@ -16,10 +15,6 @@ if TYPE_CHECKING:
     import polars as pl
 
 
-def time_to_seconds_since_midnight(t: datetime.time) -> int:
-    return t.hour * 3600 + t.minute * 60 + t.second
-
-
 def get_pl_expr(x: str | pl.Expr) -> pl.Expr:
     import polars as pl
 
@@ -30,42 +25,9 @@ def get_pl_expr(x: str | pl.Expr) -> pl.Expr:
         return x
 
 
-def time_to_seconds_since_midnight_pl(x: str | pl.Expr) -> pl.Expr:
-    import polars as pl
-
+def pl_duration_to_seconds(x: str | pl.Expr) -> pl.Expr:
     expr = get_pl_expr(x)
-    return (
-        expr.dt.hour().cast(pl.UInt32) * 3600
-        + expr.dt.minute().cast(pl.UInt32) * 60
-        + expr.dt.second().cast(pl.UInt32)
-    ).cast(pl.Float64)
-
-
-def seconds_since_midnight_to_datetime_pl(x: str | pl.Expr) -> pl.Expr:
-    import polars as pl
-
-    expr = get_pl_expr(x)
-    return pl.datetime(
-        year=1900,
-        month=1,
-        day=1 + expr // (60 * 60 * 24),
-        hour=(expr // (60 * 60)) % 24,
-        minute=(expr // 60) % 60,
-        second=expr % 60,
-        microsecond=expr % 1 * 1_000_000,
-    )
-
-
-def seconds_since_midnight_to_time_pl(x: str | pl.Expr) -> pl.Expr:
-    import polars as pl
-
-    expr = get_pl_expr(x)
-    return pl.time(
-        hour=expr // 3600,
-        minute=expr % 3600 // 60,
-        second=expr % 60,
-        microsecond=expr % 1 * 1_000_000,
-    )
+    return expr.dt.total_microseconds() / 1e6
 
 
 def seconds_since_midnight_to_time_string(v: float) -> str:

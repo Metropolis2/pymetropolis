@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from loguru import logger
 
 from pymetropolis.metro_common import MetropyError
-from pymetropolis.metro_common.utils import find_file, seconds_since_midnight_to_datetime_pl
+from pymetropolis.metro_common.utils import find_file
 from pymetropolis.metro_pipeline.parameters import FractionParameter, PathParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_spatial import GeoStep
@@ -129,8 +129,8 @@ def read_trips(
         trip_index=pl.col("trip_index").cast(pl.UInt8) + 1,
         origin_purpose_group="preceding_purpose",
         destination_purpose_group="following_purpose",
-        departure_time=seconds_since_midnight_to_datetime_pl("departure_time"),
-        arrival_time=seconds_since_midnight_to_datetime_pl("departure_time"),
+        departure_time=pl.duration(seconds="departure_time"),
+        arrival_time=pl.duration(seconds="arrival_time"),
     ).with_columns(
         # `tour_id` is `{person_id}-{home_sequence_idx}`, where `home_sequence_idx` is the number of
         # times the "home" purpose occured so far for this person.

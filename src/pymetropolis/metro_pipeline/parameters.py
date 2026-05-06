@@ -1,10 +1,11 @@
-from datetime import time, timedelta
+from datetime import timedelta
 from pathlib import Path
 from typing import Any, Generic, overload
 
 from typing_extensions import TypeVar
 
 from pymetropolis.metro_common.errors import error_context
+from pymetropolis.metro_common.time import MetroTime
 
 from .config import Config
 from .types import (
@@ -128,7 +129,7 @@ class StringParameter(Parameter[str]):
         super().__init__(*args, **kwargs)
 
 
-class TimeParameter(Parameter[time]):
+class TimeParameter(Parameter[MetroTime]):
     def __init__(self, *args, **kwargs):
         kwargs["validator"] = Time()
         super().__init__(*args, **kwargs)

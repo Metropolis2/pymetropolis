@@ -1,9 +1,10 @@
 from collections.abc import Callable
-from datetime import time, timedelta
+from datetime import timedelta
 from pathlib import Path
 from typing import Any, override
 
 from pymetropolis.metro_common.errors import MetropyError
+from pymetropolis.metro_common.time import MetroTime
 
 
 class Type:
@@ -204,15 +205,8 @@ class Duration(Type):
 
 class Time(Type):
     @override
-    def validate(self, value: Any) -> time:
-        if isinstance(value, time):
-            return value
-        if isinstance(value, str):
-            try:
-                return time.fromisoformat(value)
-            except ValueError:
-                pass
-        raise MetropyError(f"Invalid time: {value}")
+    def validate(self, value: Any) -> MetroTime:
+        return MetroTime.parse(value)
 
     @override
     def _describe(self) -> str:

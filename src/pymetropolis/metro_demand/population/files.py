@@ -73,7 +73,7 @@ class TripsFile(MetroDataFrameFile):
         ),
         Column(
             "departure_time",
-            MetroDataType.DATETIME,
+            MetroDataType.DURATION,
             description=(
                 "Ex-ante departure time from origin. "
                 "This can differ from the simulated departure time."
@@ -83,7 +83,7 @@ class TripsFile(MetroDataFrameFile):
         ),
         Column(
             "arrival_time",
-            MetroDataType.DATETIME,
+            MetroDataType.DURATION,
             description=(
                 "Ex-ante arrival time at destination. "
                 "This can differ from the simulated arrival time."

@@ -1,13 +1,10 @@
 from __future__ import annotations
 
-from datetime import time, timedelta
+from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 
 from pymetropolis.metro_common.errors import MetropyError, error_context
-from pymetropolis.metro_common.utils import (
-    seconds_since_midnight_to_datetime_pl,
-    time_to_seconds_since_midnight,
-)
+from pymetropolis.metro_common.time import MetroTime
 from pymetropolis.metro_pipeline.parameters import IntParameter, Parameter
 from pymetropolis.metro_pipeline.steps import Step
 from pymetropolis.metro_pipeline.types import CustomValidator, Duration, Float, Int, Time, Type
@@ -168,21 +165,21 @@ def generate_int_values(param: Any, n: int, rng: np.random.Generator) -> pl.Seri
     return values.round().cast(pl.Int64)
 
 
-def generate_datetime_values(param: Any, n: int, rng: np.random.Generator) -> pl.Series:
+def generate_time_values(param: Any, n: int, rng: np.random.Generator) -> pl.Series:
     import polars as pl
 
     if isinstance(param, dict):
         float_param = param.copy()
-        float_param["mean"] = float(time_to_seconds_since_midnight(param["mean"]))
+        float_param["mean"] = param["mean"].seconds()
         float_param["std"] = float(param["std"].total_seconds())
     else:
         # Constant value.
-        assert isinstance(param, time)
-        float_param = float(time_to_seconds_since_midnight(param))
+        assert isinstance(param, MetroTime)
+        float_param = param.seconds()
     values = generate_values(float_param, n, rng)
-    # Convert back to DateTime, through a DataFrame.
+    # Convert back to Time, through a DataFrame.
     df = pl.DataFrame({"value": values})
-    return df.select(seconds_since_midnight_to_datetime_pl("value")).to_series()
+    return df.select(pl.duration(seconds="value")).to_series()
 
 
 def generate_duration_values(param: Any, n: int, rng: np.random.Generator) -> pl.Series:

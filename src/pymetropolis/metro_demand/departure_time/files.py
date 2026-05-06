@@ -46,7 +46,7 @@ class TstarsFile(MetroDataFrameFile):
         ),
         Column(
             "tstar",
-            MetroDataType.DATETIME,
+            MetroDataType.DURATION,
             description="Desired start time of the following activity.",
             nullable=True,
         ),

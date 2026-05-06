@@ -1,7 +1,7 @@
 import json
 from math import inf, isfinite
 
-from pymetropolis.metro_common.utils import time_to_seconds_since_midnight
+from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_pipeline.parameters import (
     BoolParameter,
     DurationParameter,
@@ -30,7 +30,8 @@ class WriteMetroParametersStep(Step):
         inner=Time(),
         length=2,
         description="Time window to be simulated.",
-        example="`[00:00:00, 24:00:00]`",
+        example="`[06:00:00, 10:00:00]`",
+        note="The window can span multiple days.",
     )
     departure_time_interval = DurationParameter(
         "simulation.departure_time_interval",
@@ -108,7 +109,11 @@ class WriteMetroParametersStep(Step):
 
     def run(self):
         t0, t1 = self.period
-        period = [time_to_seconds_since_midnight(t0), time_to_seconds_since_midnight(t1)]
+        if t1 <= t0:
+            raise MetropyError(
+                "Invalid simulation period: end time must be larger than start time."
+            )
+        period = [t0.seconds(), t1.seconds()]
         recording_interval = self.recording_interval.total_seconds()
         # `wdir` is the working directory from which Metropolis-Core is run.
         # Input file paths can be defined relative to the working directory.

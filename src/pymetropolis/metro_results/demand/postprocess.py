@@ -1,4 +1,3 @@
-from pymetropolis.metro_common.utils import seconds_since_midnight_to_time_pl
 from pymetropolis.metro_pipeline.steps import Step
 from pymetropolis.metro_simulation.run import MetroAgentResultsFile, MetroTripResultsFile
 
@@ -28,8 +27,8 @@ class TripResultsStep(Step):
             "trip_id",
             mode="selected_alt_id",
             is_road=pl.col("length").is_not_null(),
-            departure_time=seconds_since_midnight_to_time_pl("departure_time"),
-            arrival_time=seconds_since_midnight_to_time_pl("arrival_time"),
+            departure_time=pl.duration(seconds="departure_time"),
+            arrival_time=pl.duration(seconds="arrival_time"),
             route_free_flow_travel_time=pl.duration(seconds="route_free_flow_travel_time"),
             global_free_flow_travel_time=pl.duration(seconds="global_free_flow_travel_time"),
             utility=pl.col("travel_utility") + pl.col("schedule_utility"),

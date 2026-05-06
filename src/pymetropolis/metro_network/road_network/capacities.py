@@ -2,6 +2,7 @@ from datetime import time
 from typing import Any
 
 from pymetropolis.metro_common.errors import MetropyError
+from pymetropolis.metro_common.time import MetroTime
 from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import CustomParameter
 from pymetropolis.metro_pipeline.steps import InputFile
@@ -9,48 +10,64 @@ from pymetropolis.metro_pipeline.steps import InputFile
 from .files import RoadEdgesCapacitiesFile, RoadEdgesCleanFile, RoadEdgesUrbanFlagFile
 
 
-def is_valid_capacity(value: Any) -> bool:
-    """Returns True if the given value is a valid capacity (constant or time-dependent)."""
-    if isinstance(value, int | float):
-        return True
+def validate_capacity(value: Any) -> float | dict | None:
+    """Returns the validated capacity if the given value is a valid input capacity (constant or
+    time-dependent).
+
+    The returned value is a float with the constant capacity or a dictionary with "times" (list of
+    MetroTime) and "values" (list of float).
+    """
     if isinstance(value, dict) and set(value.keys()) == {"times", "values"}:
-        return all(isinstance(t, time) for t in value["times"]) and all(
-            isinstance(c, int | float) for c in value["values"]
-        )
-    return False
+        try:
+            value["values"] = [float(v) for v in value["values"]]
+        except ValueError:
+            return None
+        try:
+            value["times"] = [MetroTime.parse(t) for t in value["times"]]
+        except MetropyError:
+            return None
+        return value
+    if isinstance(value, int | float):
+        return value
+    return None
 
 
-def is_valid_capacity_map(value: dict) -> bool:
+def validate_capacity_map(value: dict) -> dict | None:
     """Returns True if the given value is a valid map str->capacity."""
     for k in value.keys():
-        if not is_valid_capacity(value[k]):
-            return False
-    return True
+        validated = validate_capacity(value[k])
+        if validated is None:
+            return None
+        value[k] = validated
+    return value
 
 
 def capacities_validator(value: Any) -> int | float | dict:
     """Returns the value if it is a valid capacity input, otherwise raises an error."""
-    if is_valid_capacity(value):
-        # Case 1. constant capacity
-        return value
-    elif isinstance(value, dict):
+    validated = validate_capacity(value)
+    if validated is not None:
+        # Case 1. constant or time-depedent capacities
+        return validated
+    if isinstance(value, dict):
         keys = set(value.keys())
         if keys == {"urban", "rural"}:
             # Case 2. nested map urban/rural -> edge_type -> capacity
             for k in keys:
-                if not is_valid_capacity_map(value[k]):
+                validated = validate_capacity_map(value[k])
+                if validated is None:
                     raise MetropyError(
                         f"Invalid {k} capacities (map edge_type->capacity expected): `{value[k]}`"
                     )
+                value[k] = validated
             return value
         else:
             # Case 3. map edge_type -> capacity
-            if is_valid_capacity_map(value):
-                return value
-            else:
+            validated = validate_capacity_map(value)
+            if validated is None:
                 raise MetropyError(
                     f"Invalid capacities (map edge_type->capacity expected): `{value}`"
                 )
+            return validated
     else:
         raise MetropyError(f"Invalid capacities (number or dictionary expected): `{value}`")
 

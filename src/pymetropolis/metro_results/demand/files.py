@@ -5,18 +5,8 @@ class TripResultsFile(MetroDataFrameFile):
     path = "results/trip_results.parquet"
     description = "Clean results for each trip."
     schema = [
-        Column(
-            "trip_id",
-            MetroDataType.ID,
-            description="Identifier of the trip.",
-            nullable=False,
-        ),
-        Column(
-            "mode",
-            MetroDataType.STRING,
-            description="Mode used for the trip.",
-            nullable=False,
-        ),
+        Column("trip_id", MetroDataType.ID, description="Identifier of the trip.", nullable=False),
+        Column("mode", MetroDataType.STRING, description="Mode used for the trip.", nullable=False),
         Column(
             "is_road",
             MetroDataType.BOOL,
@@ -25,13 +15,13 @@ class TripResultsFile(MetroDataFrameFile):
         ),
         Column(
             "departure_time",
-            MetroDataType.TIME,
+            MetroDataType.DURATION,
             description="Departure time of the trip.",
             nullable=False,
         ),
         Column(
             "arrival_time",
-            MetroDataType.TIME,
+            MetroDataType.DURATION,
             description="Arrival time of the trip.",
             nullable=False,
         ),
@@ -53,12 +43,7 @@ class TripResultsFile(MetroDataFrameFile):
             description="Free flow travel time of the trip, over any route.",
             nullable=True,
         ),
-        Column(
-            "utility",
-            MetroDataType.FLOAT,
-            description="Utility of the trip.",
-            nullable=True,
-        ),
+        Column("utility", MetroDataType.FLOAT, description="Utility of the trip.", nullable=True),
         Column(
             "travel_utility",
             MetroDataType.FLOAT,
@@ -78,9 +63,6 @@ class TripResultsFile(MetroDataFrameFile):
             nullable=True,
         ),
         Column(
-            "nb_edges",
-            MetroDataType.UINT,
-            description="Number of road edges taken.",
-            nullable=True,
+            "nb_edges", MetroDataType.UINT, description="Number of road edges taken.", nullable=True
         ),
     ]

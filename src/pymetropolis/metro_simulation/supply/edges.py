@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from pymetropolis.metro_common.utils import time_to_seconds_since_midnight_pl
+from pymetropolis.metro_common.utils import pl_duration_to_seconds
 from pymetropolis.metro_network.road_network import (
     RoadEdgesCapacitiesFile,
     RoadEdgesCleanFile,
@@ -77,7 +77,7 @@ class WriteMetroEdgesStep(Step):
                     bottleneck_flow=pl.col("capacity") / 3600.0,
                     bottleneck_flows=pl.col("capacities").list.eval(pl.element() / 3600.0),
                     bottleneck_times=pl.col("times").list.eval(
-                        time_to_seconds_since_midnight_pl(pl.element())
+                        pl_duration_to_seconds(pl.element())
                     ),
                 )
                 .drop("capacity", "capacities", "times")

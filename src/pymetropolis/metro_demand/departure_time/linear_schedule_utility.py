@@ -15,8 +15,8 @@ from pymetropolis.random import (
     FloatDistributionParameter,
     RandomStep,
     TimeDistributionParameter,
-    generate_datetime_values,
     generate_duration_values,
+    generate_time_values,
     generate_values,
 )
 
@@ -184,7 +184,7 @@ class HomogeneousTstarStep(RandomStep):
 
     def run(self):
         trips = self.input["trips"].read().select("trip_id")
-        tstars = generate_datetime_values(self.tstar, len(trips), self.get_rng())
+        tstars = generate_time_values(self.tstar, len(trips), self.get_rng())
         df = trips.with_columns(tstar=tstars)
         self.output["tstars"].write(df)
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pymetropolis.metro_common.errors import error_context
-from pymetropolis.metro_common.utils import time_to_seconds_since_midnight_pl
+from pymetropolis.metro_common.utils import pl_duration_to_seconds
 from pymetropolis.metro_demand.departure_time import LinearScheduleFile, TstarsFile
 from pymetropolis.metro_demand.modes import (
     PublicTransitPreferencesFile,
@@ -68,9 +68,7 @@ def generate_car_trips(
         tstars: pl.DataFrame = tstars_file.read()
         df = (
             df.join(tstars, on="trip_id", how="left")
-            .with_columns(
-                time_to_seconds_since_midnight_pl(pl.col("tstar")).alias("schedule_utility.tstar")
-            )
+            .with_columns(pl_duration_to_seconds("tstar").alias("schedule_utility.tstar"))
             .drop("tstar")
         )
     if schedule_pref_file.exists():
@@ -141,9 +139,7 @@ def generate_public_transit_trips(
         tstars: pl.DataFrame = tstars_file.read()
         df = (
             df.join(tstars, on="trip_id", how="left")
-            .with_columns(
-                time_to_seconds_since_midnight_pl(pl.col("tstar")).alias("schedule_utility.tstar")
-            )
+            .with_columns(pl_duration_to_seconds("tstar").alias("schedule_utility.tstar"))
             .drop("tstar")
         )
     if schedule_pref_file.exists():
@@ -196,9 +192,7 @@ def generate_walking_trips(
         tstars: pl.DataFrame = tstars_file.read()
         df = (
             df.join(tstars, on="trip_id", how="left")
-            .with_columns(
-                time_to_seconds_since_midnight_pl(pl.col("tstar")).alias("schedule_utility.tstar")
-            )
+            .with_columns(pl_duration_to_seconds("tstar").alias("schedule_utility.tstar"))
             .drop("tstar")
         )
     if schedule_pref_file.exists():
@@ -251,9 +245,7 @@ def generate_bicycle_trips(
         tstars: pl.DataFrame = tstars_file.read()
         df = (
             df.join(tstars, on="trip_id", how="left")
-            .with_columns(
-                time_to_seconds_since_midnight_pl(pl.col("tstar")).alias("schedule_utility.tstar")
-            )
+            .with_columns(pl_duration_to_seconds("tstar").alias("schedule_utility.tstar"))
             .drop("tstar")
         )
     if schedule_pref_file.exists():

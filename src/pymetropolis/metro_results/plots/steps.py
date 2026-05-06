@@ -1,7 +1,7 @@
 from pymetropolis.metro_common.utils import (
+    pl_duration_to_seconds,
     seconds_since_midnight_to_time_string,
     seconds_to_duration_string,
-    time_to_seconds_since_midnight_pl,
 )
 from pymetropolis.metro_network.road_network import RoadEdgesFreeFlowTravelTimeFile
 from pymetropolis.metro_pipeline import Step
@@ -130,13 +130,12 @@ class TripDepartureTimeDistributionStep(Step):
 
     def run(self):
         import matplotlib.pyplot as plt
-        import polars as pl
         from matplotlib.ticker import FuncFormatter
 
         # TODO. Add configuration for number of bins (and maybe axis labels?)
         df = self.input["trip_results"].read()
         fig, ax = plt.subplots()
-        values = df.select(time_to_seconds_since_midnight_pl(pl.col("departure_time"))).to_series()
+        values = df.select(pl_duration_to_seconds("departure_time")).to_series()
         ax.hist(values, bins=60, density=True, alpha=0.9, histtype="step")
         ax.set_xlabel("Departure time")
         ax.set_ylabel("Density")

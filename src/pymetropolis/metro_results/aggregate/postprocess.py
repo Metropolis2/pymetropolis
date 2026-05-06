@@ -1,4 +1,3 @@
-from pymetropolis.metro_common.utils import seconds_since_midnight_to_time_pl
 from pymetropolis.metro_pipeline.steps import Step
 from pymetropolis.metro_simulation.run import MetroIterationResultsFile
 
@@ -24,8 +23,8 @@ class IterationResultsStep(Step):
             iteration="iteration_counter",
             mean_surplus="surplus_mean",
             std_surplus="surplus_std",
-            mean_tour_departure_time=seconds_since_midnight_to_time_pl("alt_departure_time_mean"),
-            mean_tour_arrival_time=seconds_since_midnight_to_time_pl("alt_arrival_time_mean"),
+            mean_tour_departure_time=pl.duration(seconds="alt_departure_time_mean"),
+            mean_tour_arrival_time=pl.duration(seconds="alt_arrival_time_mean"),
             mean_tour_travel_time=pl.duration(seconds="alt_travel_time_mean"),
             mean_tour_simulated_utility="alt_utility_mean",
             mean_tour_expected_utility="alt_expected_utility_mean",
@@ -34,15 +33,15 @@ class IterationResultsStep(Step):
             nb_road_trips=pl.col("road_trip_count").fill_null(0),
             nb_non_road_trips=pl.col("virtual_trip_count").fill_null(0),
             nb_outside_options=pl.col("no_trip_alt_count").fill_null(0),
-            mean_trip_departure_time=seconds_since_midnight_to_time_pl(
-                (
+            mean_trip_departure_time=pl.duration(
+                seconds=(
                     pl.col("road_trip_departure_time_mean") * pl.col("road_trip_count")
                     + pl.col("virtual_trip_departure_time_mean") * pl.col("virtual_trip_count")
                 )
                 / pl.col("trip_count")
             ),
-            mean_trip_arrival_time=seconds_since_midnight_to_time_pl(
-                (
+            mean_trip_arrival_time=pl.duration(
+                seconds=(
                     pl.col("road_trip_arrival_time_mean") * pl.col("road_trip_count")
                     + pl.col("virtual_trip_arrival_time_mean") * pl.col("virtual_trip_count")
                 )
@@ -60,12 +59,8 @@ class IterationResultsStep(Step):
                 + pl.col("virtual_trip_utility_mean") * pl.col("virtual_trip_count")
             )
             / pl.col("trip_count"),
-            mean_road_trip_departure_time=seconds_since_midnight_to_time_pl(
-                "road_trip_departure_time_mean"
-            ),
-            mean_road_trip_arrival_time=seconds_since_midnight_to_time_pl(
-                "road_trip_arrival_time_mean"
-            ),
+            mean_road_trip_departure_time=pl.duration(seconds="road_trip_departure_time_mean"),
+            mean_road_trip_arrival_time=pl.duration(seconds="road_trip_arrival_time_mean"),
             mean_road_trip_travel_time=pl.duration(seconds="road_trip_travel_time_mean"),
             mean_road_trip_route_free_flow_travel_time_mean=pl.duration(
                 seconds="road_trip_route_free_flow_travel_time_mean"

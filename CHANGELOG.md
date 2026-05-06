@@ -40,10 +40,12 @@ New files:
 New features:
 
 - `--step` command line argument to force a Step to be run
+- Time parameters (e.g., `simulation.period`) can be specified as string
 
 Breaking changes:
 
 - Renamed `road_type` to `edge_type`
+- All Time columns have switched to Duration (allows time after midnight)
 
 Removed steps:
 

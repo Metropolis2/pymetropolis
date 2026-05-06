@@ -29,12 +29,12 @@ class IterationResultsFile(MetroDataFrameFile):
         ),
         Column(
             "mean_tour_departure_time",
-            MetroDataType.TIME,
+            MetroDataType.DURATION,
             description="Mean tour-level departure time.",
         ),
         Column(
             "mean_tour_arrival_time",
-            MetroDataType.TIME,
+            MetroDataType.DURATION,
             description="Mean tour-level arrival time.",
         ),
         Column(
@@ -85,12 +85,12 @@ class IterationResultsFile(MetroDataFrameFile):
         ),
         Column(
             "mean_trip_departure_time",
-            MetroDataType.TIME,
+            MetroDataType.DURATION,
             description="Mean departure time from origin of all trips.",
         ),
         Column(
             "mean_trip_arrival_time",
-            MetroDataType.TIME,
+            MetroDataType.DURATION,
             description="Mean arrival time at destination of all trips.",
         ),
         Column(
@@ -105,12 +105,12 @@ class IterationResultsFile(MetroDataFrameFile):
         ),
         Column(
             "mean_road_trip_departure_time",
-            MetroDataType.TIME,
+            MetroDataType.DURATION,
             description="Mean departure time from origin of road trips.",
         ),
         Column(
             "mean_road_trip_arrival_time",
-            MetroDataType.TIME,
+            MetroDataType.DURATION,
             description="Mean arrival time at destination of road trips.",
         ),
         Column(
