@@ -21,8 +21,8 @@ New steps:
 - `CarPassengerPreferencesFromPopulationStep`
 - `CarRidesharingPreferencesFromPopulationStep`
 - `LinearScheduleFromPurposeStep`
-- `BicycleTravelTimesStep`
-- `WalkingTravelTimesStep`
+- `BicycleTravelTimesFromDistanceStep`
+- `WalkingTravelTimesFromDistanceStep`
 - `TstarFromArrivalTimeStep`
 
 New files:

@@ -1,7 +1,7 @@
 from .bicycle import (
     BicyclePreferencesFromPopulationStep,
     BicyclePreferencesStep,
-    BicycleTravelTimesStep,
+    BicycleTravelTimesFromDistanceStep,
 )
 from .car import CAR_FILES, CAR_STEPS
 from .files import (
@@ -26,7 +26,7 @@ from .public_transit import (
 from .walking import (
     WalkingPreferencesFromPopulationStep,
     WalkingPreferencesStep,
-    WalkingTravelTimesStep,
+    WalkingTravelTimesFromDistanceStep,
 )
 
 PT_FILES = [PublicTransitPreferencesFile, PublicTransitTravelTimesFile]
@@ -45,12 +45,12 @@ OUTSIDE_STEPS = [OutsideOptionPreferencesStep, OutsideOptionTravelTimesFromRoadD
 WALKING_STEPS = [
     WalkingPreferencesStep,
     WalkingPreferencesFromPopulationStep,
-    WalkingTravelTimesStep,
+    WalkingTravelTimesFromDistanceStep,
 ]
 BICYCLE_STEPS = [
     BicyclePreferencesStep,
     BicyclePreferencesFromPopulationStep,
-    BicycleTravelTimesStep,
+    BicycleTravelTimesFromDistanceStep,
 ]
 
 MODES_STEPS = CAR_STEPS + PT_STEPS + WALKING_STEPS + OUTSIDE_STEPS + BICYCLE_STEPS
