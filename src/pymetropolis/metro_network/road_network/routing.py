@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from pymetropolis.metro_common.utils import pl_duration_to_seconds
 from pymetropolis.metro_pipeline import Step
 
 from .files import (
@@ -50,7 +51,7 @@ class AllFreeFlowTravelTimesStep(Step):
         edges = pl.from_pandas(edges_gdf.loc[:, ["edge_id", "source", "target"]])
         edges_fftt = self.input["edges_fftt"].read()
         edges = edges.join(edges_fftt, on="edge_id").select(
-            "source", "target", weight=pl.col("free_flow_travel_time").dt.total_seconds()
+            "source", "target", weight=pl_duration_to_seconds("free_flow_travel_time")
         )
         df = compute_all_pairs_dijkstra(edges)
         df = df.with_columns(free_flow_travel_time=pl.duration(seconds="weight")).drop("weight")

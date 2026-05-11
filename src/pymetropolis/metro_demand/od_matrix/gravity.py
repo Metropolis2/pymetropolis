@@ -1,3 +1,4 @@
+from pymetropolis.metro_common.utils import pl_duration_to_seconds
 from pymetropolis.metro_demand.routing.files import TripsRoadNodesFile
 from pymetropolis.metro_network.road_network import AllRoadFreeFlowTravelTimesFile
 from pymetropolis.metro_pipeline.parameters import FloatParameter, StringParameter
@@ -59,7 +60,9 @@ class GravityODMatrixStep(RandomStep):
             )
         decay = self.exponential_decay
         df = df.with_columns(
-            rate=(-pl.lit(decay) * pl.col("free_flow_travel_time").dt.total_seconds() / 60).exp()
+            rate=(
+                -pl.lit(decay) * pl_duration_to_seconds("free_flow_travel_time").fill_null(0.0) / 60
+            ).exp()
         )
         df = df.with_columns(
             normalized_rate=pl.col("rate") / pl.col("rate").sum().over("origin_id")

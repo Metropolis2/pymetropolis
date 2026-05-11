@@ -1,5 +1,6 @@
 from loguru import logger
 
+from pymetropolis.metro_common.utils import pl_duration_to_seconds
 from pymetropolis.metro_demand.population import TripsFile
 from pymetropolis.metro_demand.routing.files import TripsCarFreeFlowTravelTimesFile
 from pymetropolis.metro_pipeline import Step
@@ -64,7 +65,7 @@ class OutsideOptionPreferencesStep(RandomStep):
                     .with_columns(
                         outside_option_cst=pl.col("outside_option_cst")
                         - pl.col("alpha")
-                        * pl.col("outside_option_travel_time").dt.total_seconds()
+                        * pl_duration_to_seconds("outside_option_travel_time").fill_null(0.0)
                         / 3600.0
                     )
                     .drop("outside_option_travel_time", "alpha")
