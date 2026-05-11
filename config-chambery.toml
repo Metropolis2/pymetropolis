@@ -173,7 +173,7 @@ forbidden_types = ["trunk", "trunk_link"]
 output_path = true
 
 [synthetic_population]
-eqasim_output = "../ile-de-france/chambery_output/"
+eqasim_output = "chambery/data/output_eqasim/"
 fraction = 1.0
 
 [fuel]
@@ -186,14 +186,31 @@ headway = 8.0
 
 [mode_choice]
 # modes = ["car_driver", "car_ridesharing", "public_transit", "walking", "bicycle"]
-modes = ["bicycle"]
+modes = ["car_driver", "walking", "bicycle"]
 model = "Logit"
 mu = 1.0
 
 [modes]
+[modes.car_driver]
+preferences_file = "chambery/data/mode_preferences.csv"
+
+[modes.walking]
+preferences_file = "chambery/data/mode_preferences.csv"
+speed = 4.0
+snap_speed = 4.0
+
+[modes.walking.distance]
+type = "pedestrian"
+with_snap = true
+
 [modes.bicycle]
 preferences_file = "chambery/data/mode_preferences.csv"
 speed = 12.0
+snap_speed = 4.0
+
+[modes.bicycle.distance]
+type = "pedestrian"
+with_snap = true
 
 [departure_time]
 [departure_time.linear_schedule]
