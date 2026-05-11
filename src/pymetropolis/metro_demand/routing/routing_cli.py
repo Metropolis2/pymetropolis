@@ -11,10 +11,16 @@ from loguru import logger
 
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_demand.routing.files import (
+    TripsBicycleCostsFile,
+    TripsBicycleNodesFile,
     TripsCarFreeFlowTravelTimesFile,
     TripsPedestrianDistancesFile,
     TripsPedestrianNodesFile,
     TripsRoadNodesFile,
+)
+from pymetropolis.metro_network.bicycle_network.files import (
+    BicycleEdgesCleanFile,
+    BicycleEdgesCostsFile,
 )
 from pymetropolis.metro_network.pedestrian_network.files import PedestrianEdgesCleanFile
 from pymetropolis.metro_network.road_network.files import (
@@ -79,6 +85,47 @@ class TripsPedestrianDistancesStep(RoutingCLIStep):
         else:
             df = df.select("trip_id", pedestrian_distance="value")
         self.output["distances"].write(df)
+
+
+class TripsBicycleCostStep(RoutingCLIStep):
+    """Computes the trips' minimum cost on the bicycle network.
+
+    If the [`output_path`](parameters.md#bicycle_routingoutput_path) is set to `true`, the list
+    of bicycle edges along the minimum-cost path is stored in the `bicycle_path` column of the
+    [`TripsBicycleCostsFile`](files.md#tripsbicyclecostsfile) file.
+    """
+
+    output_path = BoolParameter(
+        "bicycle_routing.output_path",
+        default=False,
+        description="Whether the minimum-cost paths are stored.",
+    )
+    input_files = {
+        "od_pairs": TripsBicycleNodesFile,
+        "edges": BicycleEdgesCleanFile,
+        "edge_costs": BicycleEdgesCostsFile,
+    }
+    output_files = {"costs": TripsBicycleCostsFile}
+
+    def run(self):
+        import polars as pl
+
+        edges_gdf = self.input["edges"].read()
+        edges = pl.from_pandas(edges_gdf.loc[:, ["edge_id", "source", "target"]])
+        costs = self.input["edge_costs"].read()
+        edges = edges.join(costs, on="edge_id").rename({"cost": "weight"})
+        od_pairs = self.input["od_pairs"].read()
+        trips = od_pairs.select(
+            "trip_id",
+            origin_node="origin_bicycle_node",
+            destination_node="destination_bicycle_node",
+        )
+        df = trip_routing(trips, edges, self.exec_path, self.output_path)
+        if self.output_path:
+            df = df.select("trip_id", bicycle_cost="value", bicycle_path="route")
+        else:
+            df = df.select("trip_id", bicycle_cost="value")
+        self.output["costs"].write(df)
 
 
 class TripsCarFreeFlowTravelTimesStep(RoutingCLIStep):

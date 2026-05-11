@@ -140,7 +140,10 @@ class BicycleTravelTimesFromDistanceStep(Step):
                 / 1000,
             )
             snap_distances = snap_distances.select(
-                "trip_id", snap_travel_time=3600 * pl.col("snap_distance_km") / snap_speed
+                "trip_id",
+                snap_travel_time=pl.duration(
+                    seconds=3600 * pl.col("snap_distance_km") / snap_speed
+                ),
             )
             df = df.join(snap_distances, on="trip_id", how="left").select(
                 "trip_id",

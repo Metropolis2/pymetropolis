@@ -126,6 +126,129 @@ class TripsPedestrianDistancesFile(MetroDataFrameFile):
     ]
 
 
+class TripsBicycleNodesFile(MetroDataFrameFile):
+    path = "demand/population/trips_bicycle_nodes.parquet"
+    description = "Origin and destination nodes on the bicycle network for each trip."
+    schema = [
+        Column(
+            "trip_id",
+            MetroDataType.ID,
+            description="Identifier of the trip.",
+            unique=True,
+            nullable=False,
+        ),
+        Column(
+            "origin_bicycle_node",
+            MetroDataType.ID,
+            description="Identifier of the origin node on the bicycle network.",
+            nullable=True,
+        ),
+        Column(
+            "origin_bicycle_node_dist",
+            MetroDataType.FLOAT,
+            description=(
+                "Distance between the trip's origin and the corresponding bicycle node, in meters."
+            ),
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "origin_bicycle_node_dist_on_edge",
+            MetroDataType.FLOAT,
+            description=(
+                "Distance between the trip's origin and the corresponding bicycle node, "
+                "projected on the closest edge, in meters."
+            ),
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "origin_bicycle_edge",
+            MetroDataType.ID,
+            description="Identifier of the bicycle edge closest to the trip's origin.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "origin_bicycle_edge_dist",
+            MetroDataType.FLOAT,
+            description=(
+                "Distance between the trip's origin and the closest bicycle edge, in meters."
+            ),
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "destination_bicycle_node",
+            MetroDataType.ID,
+            description="Identifier of the destination node on the bicycle network.",
+            nullable=True,
+        ),
+        Column(
+            "destination_bicycle_node_dist",
+            MetroDataType.FLOAT,
+            description=(
+                "Distance between the trip's destination and the corresponding bicycle node, "
+                "in meters."
+            ),
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "destination_bicycle_node_dist_on_edge",
+            MetroDataType.FLOAT,
+            description=(
+                "Distance between the trip's destination and the corresponding bicycle node, "
+                "projected on the closest edge, in meters."
+            ),
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "destination_bicycle_edge",
+            MetroDataType.ID,
+            description="Identifier of the bicycle edge closest to the trip's destination.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "destination_bicycle_edge_dist",
+            MetroDataType.FLOAT,
+            description=(
+                "Distance between the trip's destination and the closest bicycle edge, in meters."
+            ),
+            nullable=True,
+            optional=True,
+        ),
+    ]
+
+
+class TripsBicycleCostsFile(MetroDataFrameFile):
+    path = "demand/population/trips_bicycle_costs.parquet"
+    description = "Minimum cost on the bicycle network for each trip."
+    schema = [
+        Column(
+            "trip_id",
+            MetroDataType.ID,
+            description="Identifier of the trip.",
+            unique=True,
+            nullable=False,
+        ),
+        Column(
+            "bicycle_cost",
+            MetroDataType.FLOAT,
+            description="Minimum cost of the trip on the bicycle network, in meters.",
+            nullable=True,
+        ),
+        Column(
+            "bicycle_path",
+            MetroDataType.LIST_OF_IDS,
+            description="Minimum-cost path of the trip on the bicycle network, as a list of ids.",
+            nullable=True,
+        ),
+    ]
+
+
 class TripsRoadNodesFile(MetroDataFrameFile):
     path = "demand/population/trips_road_nodes.parquet"
     description = "Origin and destination nodes on the road network for each trip."
