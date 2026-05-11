@@ -41,6 +41,8 @@ New files:
 New features:
 
 - `--step` command line argument to force a Step to be run
+- `--step-by-step` command line argument to ask for confirmation before running next step
+- Print how long the execution took after each Step
 - Time parameters (e.g., `simulation.period`) can be specified as string
 
 Breaking changes:

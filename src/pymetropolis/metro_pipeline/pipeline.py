@@ -1,8 +1,10 @@
 import sys
+import time
 from collections import defaultdict
 from enum import Enum
 
 import click
+import humanize
 from loguru import logger
 from termcolor import colored
 
@@ -25,12 +27,12 @@ class StepStatus(Enum):
 
 class MetroPipeline:
     # List of defined steps, with their required input files, optional input files and output files.
-    steps: dict[Step, dict[str, set[MetroFile]]]
+    steps: dict[Step, dict[str, set[type[MetroFile]]]]
     # List of files that can be generated, with the Step(s) that generate them.
-    generated_files: dict[MetroFile, set[Step]]
+    generated_files: dict[type[MetroFile], set[Step]]
     # List of files which are required or optional input for primary steps.
     # A step is "primary" if its priority is > 0.
-    primary_input_files: set[MetroFile]
+    primary_input_files: set[type[MetroFile]]
     config: Config
     target_step: Step | None = None
 
@@ -153,9 +155,7 @@ class MetroPipeline:
         for ofile, steps in self.generated_files.items():
             if len(steps) >= 2:
                 steps_str = ", ".join(map(str, steps))
-                logger.debug(
-                    f"Multiple steps are generating file {ofile.__class__.__name__}: {steps_str}"
-                )
+                logger.debug(f"Multiple steps are generating file {ofile.__name__}: {steps_str}")
                 return steps
 
     def solve_conflicts(self):
@@ -238,12 +238,15 @@ class MetroPipeline:
         ordered_steps = list(sorted(conflict))
         return set(ordered_steps[:-1])
 
-    def run(self, dry_run: bool = False):
+    def run(self, dry_run: bool = False, step_by_step: bool = False):
         sequence = self.find_sequence()
+        if not sequence:
+            logger.error("No Step to run.")
+            return
         if dry_run:
             self.print_sequence(sequence)
         else:
-            self.run_sequence(sequence)
+            self.run_sequence(sequence, step_by_step=step_by_step)
 
     def print_sequence(self, sequence: list[tuple[Step, StepStatus]]):
         s = ""
@@ -263,12 +266,21 @@ class MetroPipeline:
         print(s)
         # TODO: Plot a graph of the pipeline.
 
-    def run_sequence(self, sequence: list[tuple[Step, StepStatus]]):
+    def run_sequence(self, sequence: list[tuple[Step, StepStatus]], step_by_step: bool = False):
         to_run_steps = list(filter(lambda x: x[1] != StepStatus.UP_TO_DATE, sequence))
         if to_run_steps:
             n = len(to_run_steps)
             for i, (step, _) in enumerate(to_run_steps):
                 logger.info(f"=== Step {i + 1} / {n}: {step} ===")
+                start = time.time()
                 step.execute(self.config)
+                end = time.time()
+                logger.info(f"Done in {humanize.precisedelta(end - start)}")
+                if step_by_step:
+                    if click.confirm("Continue to next step?"):
+                        continue
+                    else:
+                        logger.success("Stopped!")
+                        return
         else:
             logger.success("Nothing to do. All steps are still up-to-date!")
