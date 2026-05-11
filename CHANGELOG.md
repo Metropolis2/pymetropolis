@@ -24,6 +24,7 @@ New steps:
 - `BicycleTravelTimesFromDistanceStep`
 - `WalkingTravelTimesFromDistanceStep`
 - `TstarFromArrivalTimeStep`
+- `PopulationFromTripCoordinatesStep`
 
 New files:
 
