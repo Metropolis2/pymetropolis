@@ -16,7 +16,6 @@ from .files import (
     ExpectedRoadNetworkCongestionFunctionPlotFile,
     ExpectedRoadTravelTimesConvergencePlotFile,
     MeanSurplusConvergencePlotFile,
-    RoadTripsShareConvergencePlotFile,
     RouteLengthDiffConvergencePlotFile,
     SimulatedRoadTravelTimesConvergencePlotFile,
     SimulationRoadNetworkCongestionFunctionPlotFile,
@@ -50,12 +49,10 @@ class ConvergencePlotStep(Step):
         "expected_travel_time": ExpectedRoadTravelTimesConvergencePlotFile,
         "route_length_diff": RouteLengthDiffConvergencePlotFile,
         "surplus": MeanSurplusConvergencePlotFile,
-        "road_trips_share": RoadTripsShareConvergencePlotFile,
     }
 
     def run(self):
         import matplotlib.pyplot as plt
-        import polars as pl
         from matplotlib.ticker import FuncFormatter, PercentFormatter
 
         # TODO. What if the values are all null? (e.g., no trip simulation).
@@ -92,10 +89,6 @@ class ConvergencePlotStep(Step):
             fig.tight_layout()
             self.output[ofile].write(fig)
         # Plot graphs for the float variables.
-        df = df.with_columns(
-            road_trips_share=pl.col("nb_road_trips")
-            / (pl.col("nb_road_trips") + pl.col("nb_non_road_trips"))
-        )
         for col, ofile, label, bottom_to_zero, percent_format in (
             (
                 "mean_road_trip_length_diff",
@@ -105,7 +98,6 @@ class ConvergencePlotStep(Step):
                 False,
             ),
             ("mean_surplus", "surplus", "Mean surplus (€)", False, False),
-            ("road_trips_share", "road_trips_share", "Share of road trips", False, True),
         ):
             fig, ax = plt.subplots()
             ys = df[col]

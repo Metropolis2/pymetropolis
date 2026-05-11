@@ -60,6 +60,7 @@ Removed files:
 - `CarODsFile` (replaced by `TripsRoadNodesFile`)
 - `CarFreeFlowDistancesFile` (superseded by `TripsCarFreeFlowTravelTimesFile`)
 - `CarShortestDistancesFile`
+- `RoadTripsShareConvergencePlotFile`
 
 Other changes:
 

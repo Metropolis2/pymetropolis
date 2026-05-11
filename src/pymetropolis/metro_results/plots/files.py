@@ -29,11 +29,6 @@ class MeanSurplusConvergencePlotFile(MetroPlotFile):
     description = "Mean surplus over iterations."
 
 
-class RoadTripsShareConvergencePlotFile(MetroPlotFile):
-    path = "results/graphs/convergence_road_trips_share.png"
-    description = "Share of road trips over iterations."
-
-
 class TripDepartureTimeDistributionPlotFile(MetroPlotFile):
     path = "results/graphs/trip_departure_time_distribution.png"
     description = "Histogram of departure time distribution, over trips."
