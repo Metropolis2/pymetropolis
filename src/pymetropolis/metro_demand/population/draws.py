@@ -13,6 +13,8 @@ class UniformDrawsStep(RandomStep):
     input_files = {"trips": TripsFile}
     output_files = {"uniform_draws": UniformDrawsFile}
 
+    priority = 0
+
     def run(self):
         import polars as pl
 
