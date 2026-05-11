@@ -6,6 +6,7 @@ from loguru import logger
 
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_common.errors import error_context
+from pymetropolis.metro_network.functions import get_largest_strongly_connected_component_nodes
 from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import BoolParameter, CustomParameter, FloatParameter
 from pymetropolis.metro_pipeline.steps import InputFile
@@ -334,25 +335,23 @@ def remove_duplicates(gdf):
 
 
 def select_connected(gdf):
-    import networkx as nx
+    import polars as pl
 
     logger.info("Identifying strongly connected components")
-    G = nx.DiGraph()
-    G.add_edges_from((v[0], v[1]) for v in gdf[["source", "target"]].values)
-    # Keep only the nodes of the largest strongly connected component.
-    nodes = max(nx.strongly_connected_components(G), key=len)
-    if len(nodes) < G.number_of_nodes():
-        logger.warning(
-            f"Discarding {G.number_of_nodes() - len(nodes)} nodes disconnected from the "
-            "largest graph component"
-        )
-        n0 = len(gdf)
-        l0 = gdf["length"].sum()
-        gdf = gdf.loc[gdf["source"].isin(nodes) & gdf["target"].isin(nodes)].copy()
-        n1 = len(gdf)
+    nodes = get_largest_strongly_connected_component_nodes(
+        pl.from_pandas(gdf[["source", "target"]])
+    )
+    n0 = len(gdf)
+    l0 = gdf["length"].sum()
+    gdf = gdf.loc[gdf["source"].isin(nodes) & gdf["target"].isin(nodes)].copy()
+    n1 = len(gdf)
+    if n1 < n0:
         l1 = gdf["length"].sum()
-        logger.debug(f"Number of edges removed: {n0 - n1} ({(n0 - n1) / n0:.2%})")
-        logger.debug(f"Edge length removed (m): {l0 - l1:.0f} ({(l0 - l1) / l0:.2%})")
+        logger.warning(
+            f"Discarding {n0 - n1} edges ({(n0 - n1) / n0:.2%}) disconnected from the largest "
+            "graph component"
+        )
+        logger.debug(f"Length removed (m): {l0 - l1:.0f} ({(l0 - l1) / l0:.2%})")
     return gdf
 
 

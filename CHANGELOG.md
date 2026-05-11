@@ -32,7 +32,8 @@ New files:
 - `TripsRoadNodesFile`
 - `TripsCarFreeFlowTravelTimesFile`
 - `RoadEdgesPrimaryFlagFile`
-- `TripsCarAccessEgressFile`
+- `PrimaryCarTripsAccessEgressFile`
+- `NonPrimaryCarTripsFile`
 - `BicyclePreferencesFile`
 - `BicycleTravelTimesFile`
 - `WalkingTravelTimesFile`

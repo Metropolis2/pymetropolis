@@ -260,8 +260,8 @@ class TripsCarFreeFlowTravelTimesFile(MetroDataFrameFile):
     ]
 
 
-class TripsCarAccessEgressFile(MetroDataFrameFile):
-    path = "demand/population/trips_car_access_egress.parquet"
+class PrimaryCarTripsAccessEgressFile(MetroDataFrameFile):
+    path = "demand/population/primary_car_trips_access_egress.parquet"
     description = "Data on the access / egress parts of the car trips."
     schema = [
         Column(
@@ -311,6 +311,26 @@ class TripsCarAccessEgressFile(MetroDataFrameFile):
                 "Time spent on the egress part of the trip when traveling by car under free-flow "
                 "conditions."
             ),
+            nullable=True,
+        ),
+    ]
+
+
+class NonPrimaryCarTrips(MetroDataFrameFile):
+    path = "demand/population/non_primary_car_trips.parquet"
+    description = "Data on car trips traveling exclusively on non-primary edges."
+    schema = [
+        Column(
+            "trip_id",
+            MetroDataType.ID,
+            description="Identifier of the trip.",
+            unique=True,
+            nullable=False,
+        ),
+        Column(
+            "free_flow_travel_time",
+            MetroDataType.DURATION,
+            description="Travel time by car under free-flow conditions.",
             nullable=True,
         ),
     ]

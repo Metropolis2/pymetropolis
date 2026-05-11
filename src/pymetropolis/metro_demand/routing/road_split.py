@@ -6,9 +6,11 @@ from loguru import logger
 
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_demand.routing.files import (
-    TripsCarAccessEgressFile,
+    NonPrimaryCarTrips,
+    PrimaryCarTripsAccessEgressFile,
     TripsCarFreeFlowTravelTimesFile,
 )
+from pymetropolis.metro_network.functions import get_largest_strongly_connected_component_nodes
 from pymetropolis.metro_network.road_network.files import (
     RoadEdgesCleanFile,
     RoadEdgesFreeFlowTravelTimeFile,
@@ -132,11 +134,16 @@ def find_connections(routes: pl.DataFrame, edges: pl.DataFrame, primary_edges: s
             "egress_node",
             "egress_path",
             "egress_time",
+            "free_flow_travel_time",
         )
         # Using the streaming engine does not seem to provide much benefit here.
         .collect()
     )  # ty: ignore[invalid-assignment]
-    return df
+    primary_trips = df.filter(pl.col("access_node").is_not_null()).drop("free_flow_travel_time")
+    secondary_trips = df.filter(pl.col("access_node").is_null()).select(
+        "trip_id", "free_flow_travel_time"
+    )
+    return primary_trips, secondary_trips
 
 
 class RoadNetworkPrimaryEdgesStep(Step):
@@ -200,7 +207,7 @@ class RoadNetworkPrimaryEdgesStep(Step):
         import polars as pl
 
         edges_gdf = self.input["edges"].read()
-        edges = pl.from_pandas(edges_gdf.loc[:, ["edge_id", "edge_type"]])
+        edges = pl.from_pandas(edges_gdf.loc[:, ["edge_id", "edge_type", "source", "target"]])
         if self.secondary_types:
             df = edges.select(
                 "edge_id", primary=pl.col("edge_type").is_in(self.secondary_types).not_()
@@ -211,7 +218,27 @@ class RoadNetworkPrimaryEdgesStep(Step):
         if not df["primary"].all() and self.ensure_primary_connected:
             routes = self.input["car_ff_routes"].read().select("trip_id", route="free_flow_route")
             primary_edges = set(df.filter("primary")["edge_id"])
-            find_primary_edges(routes, primary_edges)
+            primary_edges = find_primary_edges(routes, primary_edges)
+            edges = edges.with_columns(primary=pl.col("edge_id").is_in(primary_edges))
+            # Select the largest strongly connected component.
+            # Some patches of edges can be disconnected and are not re-connected to the main part
+            # since no trip is starting from them.
+            nodes = get_largest_strongly_connected_component_nodes(
+                edges.filter("primary").select("source", "target")
+            )
+            n0 = len(primary_edges)
+            df = edges.select(
+                "edge_id",
+                primary=pl.col("primary")
+                .and_(pl.col("source").is_in(nodes))
+                .and_(pl.col("target").is_in(nodes)),
+            )
+            n1 = df["primary"].sum()
+            if n1 < n0:
+                logger.warning(
+                    f"Discarding {n0 - n1} primary edges ({(n0 - n1) / n0:.2%}) disconnected from "
+                    "the largest graph component."
+                )
         if not df["primary"].sum():
             raise MetropyError(
                 "There is no edge in the primary network. "
@@ -248,7 +275,10 @@ class CarAccessEgressStep(Step):
         "edges_fftt": RoadEdgesFreeFlowTravelTimeFile,
         "car_ff_routes": TripsCarFreeFlowTravelTimesFile,
     }
-    output_files = {"access_egress": TripsCarAccessEgressFile}
+    output_files = {
+        "primary_trips": PrimaryCarTripsAccessEgressFile,
+        "secondary_trips": NonPrimaryCarTrips,
+    }
 
     def run(self):
         import polars as pl
@@ -259,6 +289,13 @@ class CarAccessEgressStep(Step):
         edges = edges.join(edges_fftt, on="edge_id", how="left")
         primary_flags = self.input["primary_flags"].read()
         primary_edges = set(primary_flags.filter("primary")["edge_id"])
-        routes = self.input["car_ff_routes"].read().select("trip_id", route="free_flow_route")
-        df = find_connections(routes, edges, primary_edges)
-        self.output["access_egress"].write(df)
+        routes = (
+            self.input["car_ff_routes"]
+            .read()
+            .select(
+                "trip_id", route="free_flow_route", free_flow_travel_time="free_flow_travel_time"
+            )
+        )
+        primary_trips, secondary_trips = find_connections(routes, edges, primary_edges)
+        self.output["primary_trips"].write(primary_trips)
+        self.output["secondary_trips"].write(secondary_trips)
