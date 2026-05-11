@@ -120,9 +120,13 @@ class WriteMetroEdgesStep(Step):
             # are attached the correct capacity.
             df = (
                 df.join(
-                    capacities,
-                    left_on="original_id",
-                    right_on=pl.col("edge_id").cast(pl.String),
+                    capacities.select(
+                        "capacity",
+                        "capacities",
+                        "times",
+                        original_id=pl.col("edge_id").cast(pl.String),
+                    ),
+                    on="original_id",
                     how="left",
                 )
                 .with_columns(
@@ -139,7 +143,7 @@ class WriteMetroEdgesStep(Step):
         if self.input["penalties"].exists():
             penalties: pl.DataFrame = self.input["penalties"].read()
             df = df.join(
-                penalties,
+                penalties.select("constant", original_id=pl.col("edge_id").cast(pl.String)),
                 left_on="original_id",
                 right_on=pl.col("edge_id").cast(pl.String),
                 how="left",

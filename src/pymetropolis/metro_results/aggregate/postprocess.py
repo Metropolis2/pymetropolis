@@ -17,7 +17,8 @@ class IterationResultsStep(Step):
 
         raw_results: pl.DataFrame = self.input["metro_iteration_results"].read()
         df = raw_results.with_columns(
-            trip_count=pl.col("road_trip_count") + pl.col("virtual_trip_count")
+            trip_count=pl.col("road_trip_count").fill_null(0)
+            + pl.col("virtual_trip_count").fill_null(0)
         )
         df = df.select(
             iteration="iteration_counter",

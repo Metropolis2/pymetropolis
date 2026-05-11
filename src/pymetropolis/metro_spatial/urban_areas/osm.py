@@ -61,7 +61,7 @@ def read_osm_urban_areas(
     urban_area = gdf.union_all()
     logger.debug("Buffering and simplifying geometry")
     urban_area = urban_area.buffer(buffer).simplify(0, preserve_topology=False)
-    gdf = gpd.GeoDataFrame(geometry=[urban_area])
+    gdf = gpd.GeoDataFrame(geometry=[urban_area], crs=crs)
     return gdf
 
 

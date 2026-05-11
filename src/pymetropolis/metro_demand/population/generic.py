@@ -63,6 +63,9 @@ class PopulationFromTripCoordinatesStep(GeoStep):
         "destinations": TripsDestinationsFile,
     }
 
+    def is_defined(self):
+        return self.trip_coordinates_file is not None
+
     def run(self):
         import geopandas as gpd
         import polars as pl
