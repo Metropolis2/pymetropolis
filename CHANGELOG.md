@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.8.0] – 2026-05-11
+
 New mode: `bicycle`
 
 New steps:
