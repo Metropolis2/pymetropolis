@@ -59,6 +59,9 @@ class LinearScheduleStep(RandomStep):
     input_files = {"trips": TripsFile}
     output_files = {"linear_schedule": LinearScheduleFile}
 
+    def is_defined(self):
+        return self.beta != 0.0 or self.gamma != 0.0 or self.delta != timedelta(0.0)
+
     def run(self):
         trips: pl.DataFrame = self.input["trips"].read()
         rng = self.get_rng()
