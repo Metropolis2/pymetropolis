@@ -46,8 +46,8 @@ def read_households(
     df = df.select(
         pl.col("household_id").cast(pl.UInt64),
         pl.col("income").cast(pl.Float64),
-        # nb_cars=pl.col("number_of_cars").cast(pl.UInt64),
-        # nb_motorcycles=pl.col("number_of_motorcycles").cast(pl.UInt64),
+        nb_cars=pl.col("number_of_cars").cast(pl.UInt64),
+        nb_motorcycles=pl.col("number_of_motorcycles").cast(pl.UInt64),
         nb_bicycles=pl.col("number_of_bikes").cast(pl.UInt64),
     )
     # "household_type",
@@ -77,7 +77,7 @@ def read_persons(
         age=pl.col("age").cast(pl.UInt8),
         detailed_education_level=pl.col("detailed_education_level").cast(pl.String),
         education_level=pl.col("education_level").cast(pl.String),
-        # professional_activity="professional_activity",
+        professional_activity="professional_activity",
         socioprofessional_class=pl.col("socioprofessional_class").cast(pl.UInt8),
         has_driving_license="has_driving_license",
         has_public_transit_subscription="has_pt_subscription",
