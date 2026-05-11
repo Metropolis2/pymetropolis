@@ -30,8 +30,10 @@ class IterationResultsStep(Step):
             mean_tour_expected_utility="alt_expected_utility_mean",
             mean_tour_departure_time_shift=pl.duration(seconds="alt_dep_time_shift_mean"),
             rmse_tour_departure_time=pl.duration(seconds="alt_dep_time_rmse"),
-            nb_road_trips=pl.col("road_trip_count").fill_null(0),
-            nb_non_road_trips=pl.col("virtual_trip_count").fill_null(0),
+            # Note. We could add `nb_road_trips` and `nb_virtual_trips` as variables but road trips
+            # on the secondary network only are not integrated in the road trips, which would be
+            # confusing.
+            nb_trips="trip_count",
             nb_outside_options=pl.col("no_trip_alt_count").fill_null(0),
             mean_trip_departure_time=pl.duration(
                 seconds=(

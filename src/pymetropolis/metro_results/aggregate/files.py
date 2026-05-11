@@ -66,16 +66,7 @@ class IterationResultsFile(MetroDataFrameFile):
             description="RMSE of tour-level departure-time shifts for tours with no mode shift.",
         ),
         Column(
-            "nb_road_trips",
-            MetroDataType.UINT,
-            description="Total number of road trips.",
-            nullable=False,
-        ),
-        Column(
-            "nb_non_road_trips",
-            MetroDataType.UINT,
-            description="Total number of non-road trips.",
-            nullable=False,
+            "nb_trips", MetroDataType.UINT, description="Total number of trips.", nullable=False
         ),
         Column(
             "nb_outside_options",

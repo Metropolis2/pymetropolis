@@ -45,6 +45,8 @@ New features:
 Breaking changes:
 
 - Renamed `road_type` to `edge_type`
+- Removed `nb_road_trips` and `nb_virtual_trips` from `IterationResultsFile` (they are incompatible
+  with the primary / secondary road split)
 - All Time columns have switched to Duration (allows time after midnight)
 
 Removed steps:
