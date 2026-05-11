@@ -123,6 +123,7 @@ class AdminExpressStep(IGNStep):
         from shapely.geometry import box
 
         if self.admin_express_directory is not None:
+            logger.debug(f"Reading municipality data from `{self.admin_express_directory}`")
             global_file = find_file("ADE*.gpkg", self.admin_express_directory, recursive=True)
             # Order versions have a commune-specific file.
             commune_file = find_file("COMMUNE.shp", self.admin_express_directory, recursive=True)
@@ -174,6 +175,7 @@ class AdminExpressStep(IGNStep):
                     f"`{self.admin_express_directory}`"
                 )
         else:
+            logger.debug("Reading municipality data from IGN API")
             communes = self.get_ign_data(
                 self.api_communes_service_name,
                 [
@@ -234,6 +236,7 @@ class IRISStep(IGNStep):
         from shapely.geometry import box
 
         if self.contours_iris_directory is not None:
+            logger.debug(f"Reading IRIS data from `{self.contours_iris_directory}`")
             gpkg_file = find_file("iris.gpkg", self.contours_iris_directory, recursive=True)
             shp_file = find_file("CONTOURS-IRIS.shp", self.contours_iris_directory, recursive=True)
             if bbox is None:
@@ -265,6 +268,7 @@ class IRISStep(IGNStep):
                     f"`{self.contours_iris_directory}`"
                 )
         else:
+            logger.debug("Reading IRIS data from IGN API")
             iris = self.get_ign_data(
                 self.api_iris_service_name, ["code_insee", "code_iris", "nom_iris"], bbox
             )

@@ -45,6 +45,8 @@ New features:
 - `--step-by-step` command line argument to ask for confirmation before running next step
 - Print how long the execution took after each Step
 - Time parameters (e.g., `simulation.period`) can be specified as string
+- In `WriteMetroEdgesStep`, dummy edges are automatically added when required to prevent parallel
+  edges
 
 Breaking changes:
 
