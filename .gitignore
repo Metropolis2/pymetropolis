@@ -12,4 +12,11 @@ wheels/
 # Custom
 bottleneck-sim/
 circular-city*/
+chambery/
+data/
 execs/metropolis_cli
+execs/routing_cli
+qgis/
+
+# Exclude config files which were not explicitly added.
+config*.toml
