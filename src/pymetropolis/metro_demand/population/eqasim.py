@@ -69,6 +69,9 @@ def read_persons(
     if household_ids:
         df = df.filter(pl.col("household_id").is_in(household_ids))
     df = df.sort("person_id")
+    for col in ("professional_activity", "education_level", "detailed_education_level"):
+        if col not in df.columns:
+            df = df.with_columns(pl.lit(None).alias(col))
     df = df.select(
         pl.col("person_id").cast(pl.UInt64),
         pl.col("household_id").cast(pl.UInt64),
@@ -248,23 +251,29 @@ class EqasimImportStep(GeoStep, RandomStep):
     - Set the `departements` or `regions` configuration parameter so that it englobs the simulation
       area. Pymetropolis will automatically restricts the population to the simulation area (if
       defined).
-    - Use parquet and geoparquet as output formats:
+    - Use parquet and geoparquet as output formats (optional):
       ```yaml
       output_formats:
         - "parquet"
         - "geoparquet"
       ```
-    - Use MobiSurvStd for the Household Travel Survey:
+    - Use MobiSurvStd for the Household Travel Survey (optional):
       ```yaml
       hts: mobisurvstd
       mobisurvstd:
         path: path/to/compatible/hts/
       ```
-    - Use `urban_type` and `professional_activity` as extra matching attributes:
+    - Use `urban_type` and `professional_activity` as extra matching attributes (optional):
       ```yaml
       use_urban_type: true
       matching_attributes: ["professional_activity", "urban_type", "*default*"]
       ```
+      - Add extra attributes to the generated persons (optional):
+        ```yaml
+        extra_enriched_attributes:
+          - "education_level"
+          - "detailed_education_level"
+        ```
     - Do not activate mode choice (unused):
       ```yaml
       mode_choice: false

@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+Other changes:
+
+- Make `professional_activity`, `education_level`, and `detailed_education_level` optional in the
+  Eqasim output
+
 ## [0.8.0] – 2026-05-11
 
 New mode: `bicycle`
