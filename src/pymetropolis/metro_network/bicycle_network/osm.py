@@ -17,7 +17,7 @@ from .files import BicycleEdgesRawFile
 if TYPE_CHECKING:
     import polars as pl
     from osmium.osm import Node, Way
-    from shapely.geometry import Polygon
+    from shapely.geometry import MultiPolygon, Polygon
 
 # Directed features of the ways.
 FEATURES = ("speed_limit", "lanes", "give_way", "stop", "traffic_signals", "type")
@@ -545,7 +545,7 @@ class OpenStreetMapBicycleImportStep(GeoStep, OSMStep):
 
     def run(self):
         if self.simulation_area_filter:
-            filter_polygon: Polygon = self.input["simulation_area"].get_area()  # ty: ignore[unresolved-attribute]
+            filter_polygon: Polygon | MultiPolygon = self.input["simulation_area"].get_area()  # ty: ignore[unresolved-attribute]
             filter_polygon = filter_polygon.buffer(self.simulation_area_buffer)
         else:
             filter_polygon = None

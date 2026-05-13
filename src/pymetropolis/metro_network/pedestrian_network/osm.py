@@ -12,7 +12,7 @@ from pymetropolis.metro_spatial.simulation_area.file import SimulationAreaFile
 
 if TYPE_CHECKING:
     from osmium.osm import Way
-    from shapely.geometry import Polygon
+    from shapely.geometry import MultiPolygon, Polygon
 
 
 class OSMPedestrianNetworkImport(OpenStreetMapNetworkImport):
@@ -141,7 +141,7 @@ class OpenStreetMapPedestrianImportStep(GeoStep, OSMStep):
 
     def run(self):
         if self.simulation_area_filter:
-            filter_polygon: Polygon = self.input["simulation_area"].get_area()  # ty: ignore[unresolved-attribute]
+            filter_polygon: Polygon | MultiPolygon = self.input["simulation_area"].get_area()  # ty: ignore[unresolved-attribute]
             filter_polygon = filter_polygon.buffer(self.simulation_area_buffer)
         else:
             filter_polygon = None

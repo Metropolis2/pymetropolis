@@ -6,6 +6,7 @@ Other changes:
 
 - Make `professional_activity`, `education_level`, and `detailed_education_level` optional in the
   Eqasim output
+- Allow simulation areas to be MultiPolygon
 
 ## [0.8.0] – 2026-05-11
 

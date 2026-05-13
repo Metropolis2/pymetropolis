@@ -25,7 +25,7 @@ from .files import (
 if TYPE_CHECKING:
     import geopandas as gpd
     import polars as pl
-    from shapely.geometry import Polygon
+    from shapely.geometry import MultiPolygon, Polygon
 
 
 def read_households(
@@ -172,7 +172,7 @@ def read_trips(
 def read_homes(
     geoparquet_file: Path | None = None,
     gpkg_file: Path | None = None,
-    filter_polygon: Polygon | None = None,
+    filter_polygon: Polygon | MultiPolygon | None = None,
     fraction: float = 1.0,
     random_seed: int | None = None,
 ) -> gpd.GeoDataFrame:

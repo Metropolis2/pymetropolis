@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     import pyproj
     from osmium import IdTracker
     from osmium.osm import Node, Way
-    from shapely.geometry import Polygon
+    from shapely.geometry import MultiPolygon, Polygon
 
 
 class OpenStreetMapNetworkImport:
@@ -32,7 +32,7 @@ class OpenStreetMapNetworkImport:
         osm_file: Path,
         highway_tags: list[str],
         crs: pyproj.CRS,
-        filter_polygon: Polygon | None,
+        filter_polygon: Polygon | MultiPolygon | None,
     ):
         self.osm_file = osm_file
         self.highway_tags = highway_tags

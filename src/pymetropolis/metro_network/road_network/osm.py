@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     import polars as pl
     import pyproj
     from osmium.osm import Node, Way
-    from shapely.geometry import Polygon
+    from shapely.geometry import MultiPolygon, Polygon
 
 # Dictionary for special `maxspeed` values.
 SPEED_DICT = {"walk": 8, "FR:walk": 20, "FR:urban": 50, "FR:rural": 80}
@@ -36,7 +36,7 @@ class OSMRoadNetworkImport(OpenStreetMapNetworkImport):
         osm_file: Path,
         highway_tags: list[str],
         crs: pyproj.CRS,
-        filter_polygon: Polygon | None,
+        filter_polygon: Polygon | MultiPolygon | None,
         allowed_access_tags: list[str],
     ):
         super().__init__(
@@ -399,7 +399,7 @@ class OpenStreetMapRoadImportStep(GeoStep, OSMStep):
 
     def run(self):
         if self.simulation_area_filter:
-            filter_polygon: Polygon = self.input["simulation_area"].get_area()  # ty: ignore[unresolved-attribute]
+            filter_polygon: Polygon | MultiPolygon = self.input["simulation_area"].get_area()  # ty: ignore[unresolved-attribute]
             filter_polygon = filter_polygon.buffer(self.simulation_area_buffer)
         else:
             filter_polygon = None
