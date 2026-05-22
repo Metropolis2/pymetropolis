@@ -86,7 +86,7 @@ def generate_car_trips(
     if pref_file.exists():
         params: pl.DataFrame = pref_file.read().select(
             "person_id",
-            constant_utility=pl.col(f"{mode}_cst"),
+            constant_utility=-pl.col(f"{mode}_cst"),
             alpha=pl.col(f"{mode}_vot") / 3600.0,
         )
         df = df.join(params, on="person_id", how="left")

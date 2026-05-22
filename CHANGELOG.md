@@ -8,6 +8,10 @@ Other changes:
   Eqasim output
 - Allow simulation areas to be MultiPolygon
 
+Fixes:
+
+- Set the car constant to a *negative* utility
+
 ## [0.8.0] – 2026-05-11
 
 New mode: `bicycle`
