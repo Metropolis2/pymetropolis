@@ -133,6 +133,25 @@ residential = 1
 #road = 1
 #service = 1
 
+[road_network.capacities]
+motorway = 2000.0
+trunk = 2000.0
+primary = 1800.0
+secondary = 1500.0
+tertiary = 1200.0
+motorway_link = 1800.0
+trunk_link = 1800.0
+primary_link = 1800.0
+secondary_link = 1500.0
+tertiary_link = 1200.0
+living_street = 900.0
+unclassified = 1200.0
+residential = 1200.0
+#road = 300
+#service = 300
+# traffic_signals_factor = 0.5
+# roundabout_factor = 0.75
+
 [osm_pedestrian_import]
 highways = [
   "trunk",
@@ -226,3 +245,5 @@ period = ["03:00:00", "27:00:00"]
 recording_interval = 900
 learning_factor = 0.01
 nb_iterations = 100
+spillback = true
+max_pending_duration = 60
