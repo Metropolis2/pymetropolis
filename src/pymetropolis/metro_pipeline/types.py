@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from datetime import timedelta
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any, override
 
@@ -201,6 +201,23 @@ class Duration(Type):
     @override
     def _describe(self) -> str:
         return "Duration"
+
+
+class Date(Type):
+    @override
+    def validate(self, value: Any) -> date:
+        if isinstance(value, date):
+            return value
+        if isinstance(value, str):
+            try:
+                return date.fromisoformat(value)
+            except ValueError:
+                pass
+        raise MetropyError(f"Invalid date (YYYY-MM-DD format expected): {value}")
+
+    @override
+    def _describe(self) -> str:
+        return "Date"
 
 
 class Time(Type):

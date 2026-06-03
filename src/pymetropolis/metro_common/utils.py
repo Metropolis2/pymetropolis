@@ -27,7 +27,7 @@ def get_pl_expr(x: str | pl.Expr) -> pl.Expr:
 
 def pl_duration_to_seconds(x: str | pl.Expr) -> pl.Expr:
     expr = get_pl_expr(x)
-    return expr.dt.total_microseconds() / 1e6
+    return expr.dt.total_seconds(fractional=True)
 
 
 def seconds_since_midnight_to_time_string(v: float) -> str:

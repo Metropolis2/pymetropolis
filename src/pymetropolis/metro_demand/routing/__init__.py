@@ -5,6 +5,7 @@ from .files import (
     TripsCarFreeFlowTravelTimesFile,
     TripsPedestrianDistancesFile,
     TripsPedestrianNodesFile,
+    TripsPublicTransitItinerariesFile,
     TripsRoadNodesFile,
 )
 from .od_pairs import (
@@ -12,6 +13,8 @@ from .od_pairs import (
     PedestrianODNodesFromCoordinatesStep,
     RoadODNodesFromCoordinatesStep,
 )
+from .opentripplanner import TripsOpenTripPlannerStep
+from .r5 import TripsPublicTransitTravelTimeFromR5Step
 from .road_split import CarAccessEgressStep, RoadNetworkPrimaryEdgesStep
 from .routing_cli import (
     TripsBicycleCostStep,
@@ -27,6 +30,7 @@ ROUTING_FILES = [
     TripsRoadNodesFile,
     TripsCarFreeFlowTravelTimesFile,
     PrimaryCarTripsAccessEgressFile,
+    TripsPublicTransitItinerariesFile,
 ]
 
 ROUTING_STEPS = [
@@ -38,4 +42,6 @@ ROUTING_STEPS = [
     TripsCarFreeFlowTravelTimesStep,
     RoadNetworkPrimaryEdgesStep,
     CarAccessEgressStep,
+    TripsOpenTripPlannerStep,
+    TripsPublicTransitTravelTimeFromR5Step,
 ]

@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any, Generic, overload
 
@@ -11,6 +11,7 @@ from .config import Config
 from .types import (
     Bool,
     CustomValidator,
+    Date,
     Duration,
     Enum,
     ExecPathType,
@@ -126,6 +127,12 @@ class FractionParameter(FloatParameter):
 class StringParameter(Parameter[str]):
     def __init__(self, *args, **kwargs):
         kwargs["validator"] = String()
+        super().__init__(*args, **kwargs)
+
+
+class DateParameter(Parameter[date]):
+    def __init__(self, *args, **kwargs):
+        kwargs["validator"] = Date()
         super().__init__(*args, **kwargs)
 
 

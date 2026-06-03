@@ -27,6 +27,7 @@ class MetroDataType(Enum):
     LIST_OF_IDS = 9
     LIST_OF_FLOATS = 10
     LIST_OF_TIMES = 11
+    ANY = 12  # Special datatype when we don't want any validation.
 
     def is_valid_pl(self, dtype: pl.DataType):
         import polars as pl
@@ -57,6 +58,8 @@ class MetroDataType(Enum):
             return isinstance(dtype, pl.List) and dtype.inner.is_float()
         elif self == MetroDataType.LIST_OF_TIMES:
             return isinstance(dtype, pl.List) and isinstance(dtype.inner, pl.Time)
+        elif self == MetroDataType.ANY:
+            return True
         else:
             return False
 
@@ -81,6 +84,8 @@ class MetroDataType(Enum):
             return is_float_dtype(dtype)
         elif self == MetroDataType.STRING:
             return is_string_dtype(dtype)
+        elif self == MetroDataType.ANY:
+            return True
         # TIME and DURATION dtypes are not allowed in GeoDataFrames.
         else:
             return False
@@ -199,6 +204,10 @@ class MetroFile:
 
     def read(self) -> Any:
         raise MetropyError("Unimplemented")
+
+    def read_if_exists(self) -> Any:
+        if self.exists():
+            return self.read()
 
     def write(self, value: Any):
         raise MetropyError("Unimplemented")

@@ -457,3 +457,44 @@ class NonPrimaryCarTrips(MetroDataFrameFile):
             nullable=True,
         ),
     ]
+
+
+class TripsPublicTransitItinerariesFile(MetroDataFrameFile):
+    path = "demand/population/trips_public_transit_itineraries.parquet"
+    description = "Minimum-cost public-transit itinerary for each trip."
+    schema = [
+        Column(
+            "trip_id",
+            MetroDataType.ID,
+            description="Identifier of the trip.",
+            unique=True,
+            nullable=False,
+        ),
+        Column(
+            "travel_time",
+            MetroDataType.DURATION,
+            description="Travel time of the trip.",
+            nullable=True,
+        ),
+        Column(
+            "generalized_cost",
+            MetroDataType.FLOAT,
+            description="Generalized cost of the trip.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "waiting_time",
+            MetroDataType.DURATION,
+            description="Waiting time on the trip.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "legs",
+            MetroDataType.ANY,
+            description="Sequence of legs that define the itinerary of the trip.",
+            nullable=True,
+            optional=True,
+        ),
+    ]

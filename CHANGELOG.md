@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+New steps:
+
+- `GTFSStep`
+- `TripsOpenTripPlannerStep`
+- `TripsPublicTransitTravelTimeFromR5Step`
+
+New files:
+
+- `TripsPublicTransitItinerariesFile`
+
+New features:
+
+- New parameter type `DateParameter`
+
 Other changes:
 
 - Make `professional_activity`, `education_level`, and `detailed_education_level` optional in the

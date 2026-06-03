@@ -34,6 +34,8 @@ dependencies = [
     "typeguard>=4.4.4",
     "humanize>=4.15.0",
     "duckdb>=1.5.1",
+    "tqdm>=4.67.3",
+    "r5py>=1.1.6",
 ]
 
 [project.urls]

@@ -4,6 +4,12 @@ crs = "epsg:2154"
 
 osm_file = "chambery/data/rhone-alpes-250101.osm.pbf"
 
+gtfs_files = [
+    "chambery/data/gtfs/ondea-gtfs.zip",
+    "chambery/data/gtfs/PT_TH_OFFER_SAVOIE_gtfs_20260518_707_OPENDATA.zip",
+    "chambery/data/gtfs/synchro-gtfs.zip",
+]
+
 [metropolis_core]
 exec_path = "execs/metropolis_cli"
 routing_exec_path = "execs/routing_cli"
@@ -230,6 +236,16 @@ snap_speed = 4.0
 [modes.bicycle.distance]
 type = "pedestrian"
 with_snap = true
+
+# [opentripplanner]
+# url = "http://0.0.0.0:8080/otp/gtfs/v1"
+# # batch_size = 50_000
+# date = 2026-05-28
+# time_type = "tstar"
+
+[r5]
+date = 2026-05-28
+time_type = "departure"
 
 [departure_time]
 [departure_time.linear_schedule]
