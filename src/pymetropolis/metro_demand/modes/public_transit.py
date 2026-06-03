@@ -12,11 +12,14 @@ from pymetropolis.metro_demand.modes.common import (
     pref_value_of_time_parameter,
     preferences_step_docstring,
 )
-from pymetropolis.metro_demand.routing.files import TripsCarFreeFlowTravelTimesFile
+from pymetropolis.metro_demand.routing.files import (
+    TripsCarFreeFlowTravelTimesFile,
+    TripsPublicTransitItinerariesFile,
+)
 from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import FloatParameter
 
-from .files import PublicTransitPreferencesFile, PublicTransitTravelTimesFile
+from .files import PublicTransitPreferencesFile
 
 if TYPE_CHECKING:
     import polars as pl
@@ -60,7 +63,7 @@ class PublicTransitTravelTimesFromRoadDistancesStep(Step):
         description="Speed of public-transit vehicles on the road network (km/h).",
     )
     input_files = {"car_driver_distances": TripsCarFreeFlowTravelTimesFile}
-    output_files = {"public_transit_travel_times": PublicTransitTravelTimesFile}
+    output_files = {"public_transit_travel_times": TripsPublicTransitItinerariesFile}
 
     def is_defined(self) -> bool:
         return self.speed is not None
@@ -71,8 +74,6 @@ class PublicTransitTravelTimesFromRoadDistancesStep(Step):
         df: pl.DataFrame = self.input["car_driver_distances"].read()
         df = df.select(
             "trip_id",
-            public_transit_travel_time=pl.duration(
-                seconds=pl.col("free_flow_distance") / self.speed * 3.6
-            ),
+            travel_time=pl.duration(seconds=pl.col("free_flow_distance") / self.speed * 3.6),
         )
         self.output["public_transit_travel_times"].write(df)

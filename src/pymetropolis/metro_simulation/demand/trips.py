@@ -5,10 +5,7 @@ from typing import TYPE_CHECKING
 from pymetropolis.metro_common.errors import error_context
 from pymetropolis.metro_common.utils import pl_duration_to_seconds
 from pymetropolis.metro_demand.departure_time import LinearScheduleFile, TstarsFile
-from pymetropolis.metro_demand.modes import (
-    PublicTransitPreferencesFile,
-    PublicTransitTravelTimesFile,
-)
+from pymetropolis.metro_demand.modes import PublicTransitPreferencesFile
 from pymetropolis.metro_demand.modes.car import (
     CarDriverPreferencesFile,
     CarDriverWithPassengersPreferencesFile,
@@ -26,6 +23,7 @@ from pymetropolis.metro_demand.population import TripsFile
 from pymetropolis.metro_demand.routing.files import (
     NonPrimaryCarTrips,
     PrimaryCarTripsAccessEgressFile,
+    TripsPublicTransitItinerariesFile,
 )
 from pymetropolis.metro_pipeline.file import MetroDataFrameFile
 from pymetropolis.metro_pipeline.steps import InputFile
@@ -136,7 +134,7 @@ def generate_car_trips(
 @error_context(msg="Cannot generate public-transit trips")
 def generate_public_transit_trips(
     df: pl.DataFrame,
-    tts_file: PublicTransitTravelTimesFile,
+    itineraries_file: TripsPublicTransitItinerariesFile,
     pref_file: PublicTransitPreferencesFile,
     tstars_file: TstarsFile,
     schedule_pref_file: LinearScheduleFile,
@@ -146,23 +144,32 @@ def generate_public_transit_trips(
     df = df.with_columns(
         pl.lit("public_transit").alias("alt_id"), pl.lit("Virtual").alias("class.type")
     ).rename({"activity_time": "stopping_time"})
-    tts: pl.DataFrame = tts_file.read()
-    df = (
-        df.join(tts, on="trip_id", how="left")
-        .with_columns(
-            pl_duration_to_seconds("public_transit_travel_time").alias("class.travel_time")
-        )
-        .drop("public_transit_travel_time")
+    itineraries: pl.DataFrame = itineraries_file.read()
+    df = df.join(
+        itineraries.select(
+            "trip_id", pl_duration_to_seconds("travel_time").alias("class.travel_time")
+        ),
+        on="trip_id",
+        how="inner",
     )
     if pref_file.exists():
         params: pl.DataFrame = pref_file.read()
+        if "generalized_time" not in itineraries.columns:
+            itineraries = itineraries.with_columns(generalized_time="travel_time")
+        itineraries = itineraries.with_columns(
+            generalized_time=pl.col("generalized_time").fill_null("travel_time")
+        )
+        # Set the utility equal to the -constant - value of time * generalized time.
+        # This allows to consider different values of time for different modes (walking, waiting,
+        # bus, subway, etc.).
         df = (
             df.join(params, on="person_id", how="left")
+            .join(itineraries.select("trip_id", "generalized_cost"), on="trip_id", how="left")
             .with_columns(
-                constant_utility=-pl.col("public_transit_cst"),
-                alpha=pl.col("public_transit_vot") / 3600.0,
+                constant_utility=-pl.col("public_transit_cst")
+                - pl.col("public_transit_vot") * pl_duration_to_seconds("generalized_cost") / 3600
             )
-            .drop("public_transit_cst", "public_transit_vot")
+            .drop("public_transit_cst", "public_transit_vot", "generalized_cost")
         )
     if tstars_file.exists():
         tstars: pl.DataFrame = tstars_file.read()
@@ -302,7 +309,7 @@ class WriteMetroTripsStep(StepWithModes, StepWithRidesharingCount):
             when_doc='if any "car_*" mode is defined',
         ),
         "public_transit_travel_times": InputFile(
-            PublicTransitTravelTimesFile,
+            TripsPublicTransitItinerariesFile,
             when=lambda inst: inst.has_mode("public_transit"),
             when_doc='if the "public_transit" mode is defined',
         ),

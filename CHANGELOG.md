@@ -15,6 +15,11 @@ New files:
 New features:
 
 - New parameter type `DateParameter`
+- Utility of public-transit trips is computed from the generalized time (mode-weighted travel time)
+
+Removed files:
+
+- `PublicTransitTravelTimesFile`
 
 Other changes:
 

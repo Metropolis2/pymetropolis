@@ -10,7 +10,6 @@ from .files import (
     OutsideOptionPreferencesFile,
     OutsideOptionTravelTimesFile,
     PublicTransitPreferencesFile,
-    PublicTransitTravelTimesFile,
     WalkingPreferencesFile,
     WalkingTravelTimesFile,
 )
@@ -29,7 +28,7 @@ from .walking import (
     WalkingTravelTimesFromDistanceStep,
 )
 
-PT_FILES = [PublicTransitPreferencesFile, PublicTransitTravelTimesFile]
+PT_FILES = [PublicTransitPreferencesFile]
 OUTSIDE_FILES = [OutsideOptionPreferencesFile, OutsideOptionTravelTimesFile]
 WALKING_FILES = [WalkingPreferencesFile, WalkingTravelTimesFile]
 BICYCLE_FILES = [BicyclePreferencesFile, BicycleTravelTimesFile]

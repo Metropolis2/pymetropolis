@@ -67,26 +67,6 @@ class PublicTransitPreferencesFile(MetroDataFrameFile):
     ]
 
 
-class PublicTransitTravelTimesFile(MetroDataFrameFile):
-    path = "demand/population/modes/public_transit/travel_times.parquet"
-    description = "Travel time of each trip, when traveling by public transit."
-    schema = [
-        Column(
-            "trip_id",
-            MetroDataType.ID,
-            description="Identifier of the trip.",
-            unique=True,
-            nullable=False,
-        ),
-        Column(
-            "public_transit_travel_time",
-            MetroDataType.DURATION,
-            description="Duration of the trip by public transit.",
-            nullable=False,
-        ),
-    ]
-
-
 class WalkingPreferencesFile(MetroDataFrameFile):
     path = "demand/population/modes/walking/preferences.parquet"
     description = "Preferences to travel by walk, for each person."
