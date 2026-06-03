@@ -21,6 +21,7 @@ Other changes:
 - Make `professional_activity`, `education_level`, and `detailed_education_level` optional in the
   Eqasim output
 - Allow simulation areas to be MultiPolygon
+- Switch to official METROPOLIS2 colors
 
 Fixes:
 

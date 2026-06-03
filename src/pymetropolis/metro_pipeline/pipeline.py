@@ -255,12 +255,12 @@ class MetroPipeline:
             match status:
                 case StepStatus.UP_TO_DATE:
                     # attrs.append("strike")
-                    color = "green"
+                    color = (163, 112, 0)
                 case StepStatus.INVALIDATED:
-                    color = "yellow"
+                    color = (0, 73, 230)
                 case StepStatus.OUTDATED:
                     attrs.append("bold")
-                    color = "red"
+                    color = (0, 81, 255)
             dep_str = colored(f"{i + 1}. {step}", color, attrs=attrs)
             s += dep_str + "\n"
         print(s)
