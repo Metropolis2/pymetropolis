@@ -179,7 +179,7 @@ def run_queries_batch(
         schema=[
             ("trip_id", trips.schema["trip_id"]),
             ("travel_time", pl.Float64),
-            ("generalized_cost", pl.Float64),
+            ("generalized_time", pl.Float64),
             ("waiting_time", pl.Float64),
             (
                 "legs",
@@ -204,6 +204,7 @@ def run_queries_batch(
     logger.debug(f"Total time: {humanize.precisedelta(tot_time)}")
     df = df.with_columns(
         travel_time=pl.duration(seconds=pl.col("travel_time")),
+        generalized_time=pl.duration(seconds=pl.col("generalized_time")),
         waiting_time=pl.duration(seconds=pl.col("waiting_time")),
         legs=pl.col("legs").list.eval(
             pl.element().struct.with_fields(
@@ -282,6 +283,8 @@ def clean_trips_time(
     trips: pl.DataFrame, tstars: pl.DataFrame | None, time_type: str, time: MetroTime | None
 ):
     """Add `seconds` and `arrive_by` column to trips."""
+    import polars as pl
+
     if time_type in ("departure", "arrival"):
         col_name = f"{time_type}_time"
         if col_name not in trips.columns:
@@ -320,10 +323,11 @@ def clean_trips_time(
             )
         # Fill null values for time column with the given time parameter.
         trips = trips.with_columns(pl.col("seconds").fill_null(round(time.seconds())))
+    return trips
 
 
 class TripsOpenTripPlannerStep(Step):
-    """Computes the trips' travel time and generalized cost by public transit with OpenTripPlanner.
+    """Computes the trips' travel time and generalized time by public transit with OpenTripPlanner.
 
     This step requires having access to an OpenTripPlanner API server.
     You can run one on your machine by following the
@@ -359,7 +363,10 @@ class TripsOpenTripPlannerStep(Step):
     OpenTripPlanner: for example, a trips with departure time `08:00:00` might actually depart at
     `08:04:00` to match the schedule of a bus.
 
-    You can control how the generalized cost function of public-transit trips is defined through
+    The itinerary selected by OpenTripPlanner is the one that minimizes the "generalized time",
+    which is equal to the travel time with different weights applied to different modes.
+
+    You can control how the generalized time function is defined through
     several parameters:
 
     - [`walking_speed`](parameters.md#opentripplannerwalking_speed): walking speed on the pedestrian

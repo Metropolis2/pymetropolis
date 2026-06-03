@@ -477,9 +477,9 @@ class TripsPublicTransitItinerariesFile(MetroDataFrameFile):
             nullable=True,
         ),
         Column(
-            "generalized_cost",
-            MetroDataType.FLOAT,
-            description="Generalized cost of the trip.",
+            "generalized_time",
+            MetroDataType.DURATION,
+            description="Generalized time of the trip (travel time with mode-specific weights).",
             nullable=True,
             optional=True,
         ),
