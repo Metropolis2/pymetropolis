@@ -43,8 +43,8 @@ class ExogenousBicycleEdgeCostsStep(Step):
         #     + pl.col("type").eq("foot") * 40.0
         #     + pl.col("type").eq("link") * 30.0
         #     + pl.col("type").eq("crossing") * 60.0
-        #     # Quality penalties (each reduction of quality by 1 over 1k is equivalent to 60 seconds
-        #     # lost).
+        #     # Quality penalties (each reduction of quality by 1 over 1k is equivalent to 60
+        #     # seconds lost).
         #     + pl.col("length") * (10 - pl.col("quality")) * 60.0 / 1000.0
         #     # Type penalties.
         #     + (pl.col("length") / 1000.0)

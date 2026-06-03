@@ -19,7 +19,7 @@ class InputFile:
         self,
         file_class: type[MetroFile],
         optional: bool = False,
-        when: Callable[["Step"], bool] | None = None,
+        when: Callable[[Any], bool] | None = None,
         when_doc: str | None = None,
     ):
         self.file_class = file_class

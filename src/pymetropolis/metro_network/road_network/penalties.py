@@ -90,7 +90,7 @@ road = 2
                     if "urban" not in penalties.keys() or "rural" not in penalties.keys():
                         raise MetropyError("Missing keys `urban` or `rural`")
                     urban_edges = self.input["urban_edges"].read()
-                    edges = edges.join(urban_edges, on="edge_id", how="left")
+                    edges = gpd.GeoDataFrame(edges.join(urban_edges, on="edge_id", how="left"))
                     edges["constant"] = np.nan
                     mask = edges["urban"]
                     edges.loc[mask, "constant"] = edges.loc[mask, "edge_type"].map(
