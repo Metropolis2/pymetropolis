@@ -4,7 +4,11 @@ from pymetropolis.metro_common.errors import MetropyError
 from pymetropolis.metro_network.road_network import RoadEdgesCleanFile
 from pymetropolis.metro_pipeline.parameters import FloatParameter
 from pymetropolis.metro_pipeline.steps import InputFile
-from pymetropolis.metro_simulation.common import StepWithModes, StepWithRidesharingCount
+from pymetropolis.metro_simulation.common import (
+    StepWithModes,
+    StepWithRidesharingCount,
+    StepWithSimulationRatio,
+)
 
 from .files import MetroVehicleTypesFile
 
@@ -12,7 +16,7 @@ if TYPE_CHECKING:
     import geopandas as gpd
 
 
-class WriteMetroVehicleTypesStep(StepWithModes, StepWithRidesharingCount):
+class WriteMetroVehicleTypesStep(StepWithModes, StepWithRidesharingCount, StepWithSimulationRatio):
     """Generates the input vehicle-types file for the Metropolis-Core simulation."""
 
     car_headway = FloatParameter(
@@ -42,8 +46,10 @@ class WriteMetroVehicleTypesStep(StepWithModes, StepWithRidesharingCount):
         import polars as pl
 
         vehicles = list()
+        headway = self.car_headway / self.simulation_ratio
+        pce = self.car_pce / self.simulation_ratio
         if self.has_mode("car_driver"):
-            v = {"vehicle_id": "car_driver_alone", "headway": self.car_headway, "pce": self.car_pce}
+            v = {"vehicle_id": "car_driver_alone", "headway": headway, "pce": pce}
             edges_gdf: gpd.GeoDataFrame = self.input["edges"].read()
             edges = pl.from_pandas(edges_gdf.loc[:, ["edge_id", "hov_lanes"]])
             hov_edges = (
@@ -57,9 +63,7 @@ class WriteMetroVehicleTypesStep(StepWithModes, StepWithRidesharingCount):
                 v["restricted_edges"] = hov_edges
             vehicles.append(v)
         if self.has_mode("car_driver_with_passengers"):
-            vehicles.append(
-                {"vehicle_id": "car_driver_multi", "headway": self.car_headway, "pce": self.car_pce}
-            )
+            vehicles.append({"vehicle_id": "car_driver_multi", "headway": headway, "pce": pce})
         if self.has_mode("car_passenger"):
             vehicles.append({"vehicle_id": "car_passenger", "headway": 0.0, "pce": 0.0})
         if self.has_mode("car_ridesharing"):
@@ -72,8 +76,8 @@ class WriteMetroVehicleTypesStep(StepWithModes, StepWithRidesharingCount):
             vehicles.append(
                 {
                     "vehicle_id": "car_ridesharing",
-                    "headway": self.car_headway / (c + 1),
-                    "pce": self.car_pce / (c + 1),
+                    "headway": headway / (c + 1),
+                    "pce": pce / (c + 1),
                 }
             )
         df = pl.DataFrame(vehicles)

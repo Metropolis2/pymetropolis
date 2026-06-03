@@ -12,6 +12,10 @@ New files:
 
 - `TripsPublicTransitItinerariesFile`
 
+New parameters:
+
+- `simulation_ratio`
+
 New features:
 
 - New parameter type `DateParameter`

@@ -1,4 +1,4 @@
-from pymetropolis.metro_pipeline.parameters import FloatParameter, ListParameter
+from pymetropolis.metro_pipeline.parameters import FloatParameter, FractionParameter, ListParameter
 from pymetropolis.metro_pipeline.steps import Step
 from pymetropolis.metro_pipeline.types import Enum
 
@@ -59,5 +59,19 @@ class StepWithRidesharingCount(Step):
             "Larger values increase probability to select this mode (fuel cost is shared between "
             "more persons) and decrease congestion generated (more persons are traveling in each "
             "car)."
+        ),
+    )
+
+
+class StepWithSimulationRatio(Step):
+    simulation_ratio = FractionParameter(
+        "simulation_ratio",
+        default=1.0,
+        description="Ratio of the population that is being simulated.",
+        note=(
+            "This value controls how road capacities and aggregate results are scaled when the "
+            "simulated agents do not represent 100% of population. "
+            "It does _not_ affect the scaling of the input origin-destination matrix or synthetic "
+            "population."
         ),
     )

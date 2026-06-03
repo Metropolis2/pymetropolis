@@ -291,7 +291,12 @@ class EqasimImportStep(GeoStep, RandomStep):
         description="Fraction of the synthetic population to be selected for simulations.",
         note=(
             "If the synthetic population already represents a part of the total population (with "
-            "Eqasim's `sampling_rate` parameter), you probably want to keep this parameter to 1."
+            "Eqasim's `sampling_rate` parameter), you probably want to keep this parameter to 1. "
+            "You will also need to set the `simulation_ratio` parameter to the actual share of the "
+            "population being simulated. For example, when you generated 10% of the population "
+            "(`sampling_rate = 0.1`) and you set `fraction = 0.1`, then only 1% of the population "
+            "is actually being simulated with Pymetropolis, so `simulation_ratio` needs to be set "
+            "to 0.01."
         ),
     )
 
