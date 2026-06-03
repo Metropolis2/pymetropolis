@@ -7,10 +7,12 @@ New steps:
 - `GTFSStep`
 - `TripsOpenTripPlannerStep`
 - `TripsPublicTransitTravelTimeFromR5Step`
+- `RoadEdgesVariablesStep`
 
 New files:
 
 - `TripsPublicTransitItinerariesFile`
+- `RoadEdgesVariablesFile`
 
 New parameters:
 

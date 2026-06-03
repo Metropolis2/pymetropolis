@@ -10,6 +10,8 @@ gtfs_files = [
     "chambery/data/gtfs/synchro-gtfs.zip",
 ]
 
+simulation_ratio = 0.01
+
 [metropolis_core]
 exec_path = "execs/metropolis_cli"
 routing_exec_path = "execs/routing_cli"
@@ -158,6 +160,34 @@ residential = 1200.0
 # traffic_signals_factor = 0.5
 # roundabout_factor = 0.75
 
+[road_network.calibration_variables]
+[road_network.calibration_variables.lanes]
+type = "intervals"
+cuts = [1, 2, 3]  # 1 lane, 2 lanes, 3 lanes, 3+ lanes
+
+[road_network.calibration_variables.speed_limit]
+type = "intervals"
+cuts = [30, 50, 70, 80, 90, 110]
+
+[road_network.calibration_variables.edge_type]
+type = "categories"
+[road_network.calibration_variables.edge_type.map]
+motorway = "motorway"
+motorway_link = "motorway_link"
+trunk = "trunk"
+trunk_link = "trunk_link"
+primary = "primary"
+primary_link = "primary_link"
+secondary = "secondary"
+secondary_link = "secondary"
+tertiary = "tertiary"
+tertiary_link = "tertiary"
+living_street = "living_street"
+residential = "residential"
+unclassified = "unclassified"
+#service = "residential"
+#road = "unclassified"
+
 [osm_pedestrian_import]
 highways = [
   "trunk",
@@ -243,9 +273,9 @@ with_snap = true
 # date = 2026-05-28
 # time_type = "tstar"
 
-[r5]
-date = 2026-05-28
-time_type = "departure"
+# [r5]
+# date = 2026-05-28
+# time_type = "departure"
 
 [departure_time]
 [departure_time.linear_schedule]

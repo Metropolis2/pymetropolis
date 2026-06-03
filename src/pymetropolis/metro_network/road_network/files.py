@@ -384,3 +384,21 @@ class RoadEdgesPrimaryFlagFile(MetroDataFrameFile):
             nullable=False,
         ),
     ]
+
+
+class RoadEdgesVariablesFile(MetroDataFrameFile):
+    path = "network/road_network/edges_variables.parquet"
+    description = (
+        "Edge-level variables available for calibration. Defined columns depend on the "
+        "configuration."
+    )
+    discard_extra_columns = False
+    schema = [
+        Column(
+            "edge_id",
+            MetroDataType.ID,
+            description="Identifier of the edge.",
+            unique=True,
+            nullable=False,
+        )
+    ]

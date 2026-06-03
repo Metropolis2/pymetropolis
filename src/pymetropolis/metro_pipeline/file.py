@@ -246,6 +246,7 @@ class MetroFile:
 class MetroDataFrameFile(MetroFile):
     schema: list[Column] | None = None
     max_rows: int | None = None
+    discard_extra_columns: bool = True
 
     def validate(self, df: pl.DataFrame) -> pl.DataFrame:
         import polars as pl
@@ -258,10 +259,11 @@ class MetroDataFrameFile(MetroFile):
             return df
         if not all(col.validate_df(df) for col in self.schema):
             raise MetropyError("DataFrame is not valid")
-        for col in df.columns:
-            if not any(col == c.name for c in self.schema):
-                logger.warning(f"Discarding extra column: {col}")
-                df = df.drop(col)
+        if self.discard_extra_columns:
+            for col in df.columns:
+                if not any(col == c.name for c in self.schema):
+                    logger.warning(f"Discarding extra column: {col}")
+                    df = df.drop(col)
         return df
 
     @override
