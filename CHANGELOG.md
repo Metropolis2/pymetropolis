@@ -17,6 +17,7 @@ New files:
 New parameters:
 
 - `simulation_ratio`
+- `nb_threads`
 
 New features:
 

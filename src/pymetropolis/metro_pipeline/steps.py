@@ -42,8 +42,6 @@ class InputFile:
         return doc
 
 
-# TODO: Make some steps "optional" so they are not run if they are not needed (they are not
-# considered a endpoint node)
 class Step:
     input_files: ClassVar[dict[str, InputFile | type[MetroFile]]] = {}
     output_files: ClassVar[dict[str, type[MetroFile]]] = {}

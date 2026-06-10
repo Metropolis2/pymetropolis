@@ -1,6 +1,7 @@
 import json
 from math import inf, isfinite
 
+from pymetropolis.common import ThreadedStep
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_pipeline.parameters import (
     BoolParameter,
@@ -10,7 +11,7 @@ from pymetropolis.metro_pipeline.parameters import (
     IntParameter,
     ListParameter,
 )
-from pymetropolis.metro_pipeline.steps import InputFile, Step
+from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_pipeline.types import Time
 from pymetropolis.metro_simulation.demand.files import (
     MetroAgentsFile,
@@ -22,7 +23,7 @@ from pymetropolis.metro_simulation.supply.files import MetroEdgesFile, MetroVehi
 from .file import MetroParametersFile
 
 
-class WriteMetroParametersStep(Step):
+class WriteMetroParametersStep(ThreadedStep):
     """Generates the input parameters file for the Metropolis-Core simulation."""
 
     period = ListParameter(
@@ -129,6 +130,7 @@ class WriteMetroParametersStep(Step):
             "learning_model": {"type": "Exponential", "value": self.learning_factor},
             "max_iterations": self.nb_iterations,
             "saving_format": "Parquet",
+            "nb_threads": self.nb_threads or 0,
         }
         for name in ("edges", "vehicle_types", "trips"):
             if self.input[name].exists():

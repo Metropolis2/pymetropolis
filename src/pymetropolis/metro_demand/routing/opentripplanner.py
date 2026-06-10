@@ -14,6 +14,7 @@ import requests
 from loguru import logger
 from requests.exceptions import RequestException
 
+from pymetropolis.common import ThreadedStep
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_common.time import MetroTime
 from pymetropolis.metro_demand.departure_time.files import TstarsFile
@@ -23,7 +24,6 @@ from pymetropolis.metro_demand.population.files import (
     TripsOriginsFile,
 )
 from pymetropolis.metro_demand.routing.files import TripsPublicTransitItinerariesFile
-from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import (
     DateParameter,
     EnumParameter,
@@ -326,7 +326,7 @@ def clean_trips_time(
     return trips
 
 
-class TripsOpenTripPlannerStep(Step):
+class TripsOpenTripPlannerStep(ThreadedStep):
     """Computes the trips' travel time and generalized time by public transit with OpenTripPlanner.
 
     This step requires having access to an OpenTripPlanner API server.
@@ -565,6 +565,7 @@ class TripsOpenTripPlannerStep(Step):
             "transferCost": self.transfer_cost,
         }
 
-        # TODO: Add nb_threads parameter.
-        df = run_queries(trips, self.otp_url, parameters, self.batch_size)
+        df = run_queries(
+            trips, self.otp_url, parameters, self.batch_size, nb_threads=self.nb_threads
+        )
         self.output["costs"].write(df)
