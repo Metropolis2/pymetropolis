@@ -5,11 +5,13 @@
 New steps:
 
 - `RouteResultsStep`
+- `AggregateResultsStep`
 
 New files:
 
 - `MetroRouteResultsFile`
 - `RouteResultsFile`
+- `AggregateOutputFile`
 
 New columns:
 

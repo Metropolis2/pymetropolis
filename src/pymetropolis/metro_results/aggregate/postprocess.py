@@ -1,7 +1,88 @@
-from pymetropolis.metro_pipeline.steps import Step
-from pymetropolis.metro_simulation.run import MetroIterationResultsFile
+import json
 
-from .files import IterationResultsFile
+from pymetropolis.metro_demand.population.files import TripsDistancesFile
+from pymetropolis.metro_pipeline.steps import InputFile, Step
+from pymetropolis.metro_results.demand.files import TripResultsFile
+from pymetropolis.metro_simulation.common import StepWithSimulationRatio
+from pymetropolis.metro_simulation.run import MetroIterationResultsFile
+from pymetropolis.metro_simulation.supply.files import MetroVehicleTypesFile
+
+from .files import AggregateOutputFile, IterationResultsFile
+
+
+class AggregateResultsStep(StepWithSimulationRatio):
+    """Generates a JSON file with various aggregate results on the simulation.
+
+    NOTE: The developpement of this step is still in progress. More output will be added in the
+    future. Do not hesitate to suggest additional output.
+
+    Currently available output:
+
+    - vehicle-kilometers (total, weighted by PCE, by mode)
+    - mode shares (by trip count, by trip Euclidean distance)
+    """
+
+    input_files = {
+        "metro_input_vehicles": MetroVehicleTypesFile,
+        "trip_results": TripResultsFile,
+        "trips_distances": InputFile(TripsDistancesFile, optional=True),
+    }
+    output_files = {"output": AggregateOutputFile}
+
+    def run(self):
+        import polars as pl
+
+        results = dict()
+
+        trip_results = self.input["trip_results"].read()
+        vehicles = self.input["metro_input_vehicles"].read()
+        trips_distances = self.input["trips_distances"].read_if_exists()
+
+        # Compute vehicle-kilometers.
+        results["vehicle_kilometers"] = dict()
+        # Merge with vehicles to get PCE.
+        trip_results = trip_results.join(vehicles, on="vehicle_id", how="left")
+        results["vehicle_kilometers"]["total"] = (
+            trip_results["route_length"].sum() / self.simulation_ratio / 1e3
+        )
+        # Note. We don't divide by the simulation ratio when computing veh km weighted by PCE since
+        # the PCE already account for the simulation ratio.
+        results["vehicle_kilometers"]["total_weighted_by_pce"] = trip_results.select(
+            (pl.col("route_length") * pl.col("pce")).sum() / 1e3
+        ).item()
+        veh_km_by_mode = (
+            trip_results.group_by("mode")
+            .agg(veh_km=pl.col("route_length").sum() / self.simulation_ratio / 1e3)
+            .filter(pl.col("veh_km") > 0.0)
+            .sort("mode")
+        )
+        results["vehicle_kilometers"]["by_mode"] = {
+            mode: veh_km for mode, veh_km in zip(veh_km_by_mode["mode"], veh_km_by_mode["veh_km"])
+        }
+
+        # Compute mode shares.
+        results["mode_shares"] = dict()
+        trip_count_shares = trip_results["mode"].value_counts(normalize=True).sort("mode")
+        results["mode_shares"]["trip_count"] = {
+            mode: share
+            for mode, share in zip(trip_count_shares["mode"], trip_count_shares["proportion"])
+        }
+        if trips_distances is not None:
+            trip_results = trip_results.join(trips_distances, on="trip_id")
+            trip_length_shares = (
+                trip_results.group_by("mode")
+                .agg(pl.col("od_distance").sum())
+                .with_columns(proportion=pl.col("od_distance") / pl.col("od_distance").sum())
+                .sort("mode")
+            )
+            results["mode_shares"]["trip_euclidean_distance"] = {
+                mode: share
+                for mode, share in zip(trip_length_shares["mode"], trip_length_shares["proportion"])
+            }
+
+        # Save as JSON.
+        results_str = json.dumps(results, indent=2, sort_keys=True)
+        self.output["output"].write(results_str)
 
 
 class IterationResultsStep(Step):

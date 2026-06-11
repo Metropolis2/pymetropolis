@@ -1,5 +1,5 @@
-from .files import IterationResultsFile
-from .postprocess import IterationResultsStep
+from .files import AggregateOutputFile, IterationResultsFile
+from .postprocess import AggregateResultsStep, IterationResultsStep
 
-AGGREGATE_RESULTS_FILES = [IterationResultsFile]
-AGGREGATE_RESULTS_STEPS = [IterationResultsStep]
+AGGREGATE_RESULTS_FILES = [IterationResultsFile, AggregateOutputFile]
+AGGREGATE_RESULTS_STEPS = [IterationResultsStep, AggregateResultsStep]

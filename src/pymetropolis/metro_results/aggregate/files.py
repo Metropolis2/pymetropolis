@@ -1,4 +1,9 @@
-from pymetropolis.metro_pipeline.file import Column, MetroDataFrameFile, MetroDataType
+from pymetropolis.metro_pipeline.file import Column, MetroDataFrameFile, MetroDataType, MetroTxtFile
+
+
+class AggregateOutputFile(MetroTxtFile):
+    path = "results/aggregate_results.json"
+    description = "JSON file with various aggregate results."
 
 
 class IterationResultsFile(MetroDataFrameFile):
