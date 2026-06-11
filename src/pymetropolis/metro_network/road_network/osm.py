@@ -389,7 +389,7 @@ class OpenStreetMapRoadImportStep(GeoStep, OSMStep):
         "simulation_area": InputFile(
             SimulationAreaFile,
             when=lambda inst: inst.simulation_area_filter,
-            when_doc="`simulation_area_filter` is set to `true`",
+            when_doc="if `simulation_area_filter` is set to `true`",
         )
     }
     output_files = {"raw_edges": RoadEdgesRawFile}

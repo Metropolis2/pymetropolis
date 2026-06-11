@@ -101,12 +101,12 @@ class WalkingTravelTimesFromDistanceStep(Step):
         "distances": InputFile(
             TripsPedestrianDistancesFile,
             when=lambda inst: inst.distance_type == "pedestrian",
-            when_doc='`modes.walking.distance.type` is `"pedestrian"`',
+            when_doc='if `modes.walking.distance.type` is `"pedestrian"`',
         ),
         "snap_distances": InputFile(
             TripsPedestrianNodesFile,
             when=lambda inst: inst.with_snap,
-            when_doc="`modes.walking.distance.with_snap` is `true`",
+            when_doc="if `modes.walking.distance.with_snap` is `true`",
         ),
     }
     output_files = {"tts": WalkingTravelTimesFile}

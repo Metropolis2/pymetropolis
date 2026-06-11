@@ -129,6 +129,7 @@ class TripsPublicTransitTravelTimeFromR5Step(OSMStep, GTFSStep):
     time_type = "departure"
     coord_rounding = 1000
     time_rounding = 1800
+    ```
     """
 
     date = DateParameter(

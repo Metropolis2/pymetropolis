@@ -108,7 +108,7 @@ road = 1500
         "urban_edges": InputFile(
             RoadEdgesUrbanFlagFile,
             when=lambda inst: inst.urban_flag_required(),
-            when_doc="default capacities rely on the urban flag",
+            when_doc="if default capacities rely on the urban flag",
         ),
     }
     output_files = {"edges_capacities": RoadEdgesCapacitiesFile}

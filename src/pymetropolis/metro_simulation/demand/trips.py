@@ -303,12 +303,12 @@ class WriteMetroTripsStep(StepWithModes, StepWithRidesharingCount):
         "primary_car_trips": InputFile(
             PrimaryCarTripsAccessEgressFile,
             when=lambda inst: inst.has_car_mode(),
-            when_doc='if any "car_*" mode is defined',
+            when_doc='if any "car\_\*" mode is defined',
         ),
         "secondary_car_trips": InputFile(
             NonPrimaryCarTrips,
             when=lambda inst: inst.has_car_mode(),
-            when_doc='if any "car_*" mode is defined',
+            when_doc='if any "car\_\*" mode is defined',
         ),
         "public_transit_travel_times": InputFile(
             TripsPublicTransitItinerariesFile,
@@ -355,7 +355,7 @@ class WriteMetroTripsStep(StepWithModes, StepWithRidesharingCount):
             CarFuelFile,
             optional=True,
             when=lambda inst: inst.has_car_mode(),
-            when_doc='if any "car_*" mode is defined',
+            when_doc='if any "car\_\*" mode is defined',
         ),
         "public_transit_preferences": InputFile(
             PublicTransitPreferencesFile,

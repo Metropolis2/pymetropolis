@@ -505,7 +505,7 @@ class TripsOpenTripPlannerStep(ThreadedStep):
         "tstars": InputFile(
             TstarsFile,
             when=lambda inst: inst.time_type == "tstar",
-            when_doc='`time_type` is `"tstar"`',
+            when_doc='if `time_type` is `"tstar"`',
         ),
     }
     output_files = {"costs": TripsPublicTransitItinerariesFile}

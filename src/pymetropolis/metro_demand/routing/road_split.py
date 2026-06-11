@@ -198,7 +198,7 @@ class RoadNetworkPrimaryEdgesStep(Step):
         "car_ff_routes": InputFile(
             TripsCarFreeFlowTravelTimesFile,
             when=lambda inst: inst.secondary_types and inst.ensure_primary_connected,
-            when_doc="`secondary_types` is not empty and `ensure_primary_connected` is `true`",
+            when_doc="if `secondary_types` is not empty and `ensure_primary_connected` is `true`",
         ),
     }
     output_files = {"edges_primary": RoadEdgesPrimaryFlagFile}

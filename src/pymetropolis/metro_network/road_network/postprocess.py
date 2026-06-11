@@ -173,7 +173,7 @@ road = 1
         "urban_edges": InputFile(
             RoadEdgesUrbanFlagFile,
             when=lambda inst: inst.urban_flag_required(),
-            when_doc="default values rely on the urban flag",
+            when_doc="if default values rely on the urban flag",
         ),
     }
     output_files = {"clean_edges": RoadEdgesCleanFile}

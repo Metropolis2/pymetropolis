@@ -53,7 +53,7 @@ road = 2
         "urban_edges": InputFile(
             RoadEdgesUrbanFlagFile,
             when=lambda inst: inst.urban_flag_required(),
-            when_doc="default penalties rely on the urban flag",
+            when_doc="if default penalties rely on the urban flag",
         ),
     }
     output_files = {"edges_penalties": RoadEdgesPenaltiesFile}
