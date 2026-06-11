@@ -6,6 +6,10 @@ New columns:
 
 - `access_length` and `egress_length` in `PrimaryCarTripsAccessEgressFile`
 
+Other changes:
+
+- Add `.scan()` method for `MetroDataFrameFile`
+
 ## [0.9.0] – 2026-06-11
 
 New steps:

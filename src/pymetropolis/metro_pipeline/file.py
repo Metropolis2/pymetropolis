@@ -209,6 +209,9 @@ class MetroFile:
         if self.exists():
             return self.read()
 
+    def scan(self) -> Any:
+        raise MetropyError("Unimplemented")
+
     def write(self, value: Any):
         raise MetropyError("Unimplemented")
 
@@ -280,6 +283,11 @@ class MetroDataFrameFile(MetroFile):
     def read_if_exists(self) -> pl.DataFrame | None:
         if self.exists():
             return self.read()
+
+    def scan(self) -> pl.LazyFrame:
+        import polars as pl
+
+        return pl.scan_parquet(self.complete_path)
 
     @override
     @classmethod
