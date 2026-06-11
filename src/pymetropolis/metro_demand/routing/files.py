@@ -403,7 +403,7 @@ class PrimaryCarTripsAccessEgressFile(MetroDataFrameFile):
         Column(
             "access_path",
             MetroDataType.LIST_OF_IDS,
-            description="List of node ids that consists the access part of the trip.",
+            description="List of edge ids that consists the access part of the trip.",
             nullable=True,
         ),
         Column(
@@ -416,6 +416,12 @@ class PrimaryCarTripsAccessEgressFile(MetroDataFrameFile):
             nullable=True,
         ),
         Column(
+            "access_length",
+            MetroDataType.FLOAT,
+            description="Length of the access part of the trip, in meters.",
+            nullable=True,
+        ),
+        Column(
             "egress_node",
             MetroDataType.ID,
             description="Identifier of the road-network node where the primary part ends.",
@@ -424,7 +430,7 @@ class PrimaryCarTripsAccessEgressFile(MetroDataFrameFile):
         Column(
             "egress_path",
             MetroDataType.LIST_OF_IDS,
-            description="List of node ids that consists the egress part of the trip.",
+            description="List of edge ids that consists the egress part of the trip.",
             nullable=True,
         ),
         Column(
@@ -434,6 +440,12 @@ class PrimaryCarTripsAccessEgressFile(MetroDataFrameFile):
                 "Time spent on the egress part of the trip when traveling by car under free-flow "
                 "conditions."
             ),
+            nullable=True,
+        ),
+        Column(
+            "egress_length",
+            MetroDataType.FLOAT,
+            description="Length of the egress part of the trip, in meters.",
             nullable=True,
         ),
     ]

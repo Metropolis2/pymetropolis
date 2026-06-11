@@ -119,6 +119,12 @@ def find_connections(routes: pl.DataFrame, edges: pl.DataFrame, primary_edges: s
                 pl.element().replace_strict(edges["edge_id"], edges["free_flow_travel_time"])
             )
             .list.sum(),
+            access_length=pl.col("access_path")
+            .list.eval(pl.element().replace_strict(edges["edge_id"], edges["length"]))
+            .list.sum(),
+            egress_length=pl.col("egress_path")
+            .list.eval(pl.element().replace_strict(edges["edge_id"], edges["length"]))
+            .list.sum(),
             access_node=pl.col("first_primary_edge").replace_strict(
                 edges["edge_id"], edges["source"]
             ),
@@ -131,9 +137,11 @@ def find_connections(routes: pl.DataFrame, edges: pl.DataFrame, primary_edges: s
             "access_node",
             "access_path",
             "access_time",
+            "access_length",
             "egress_node",
             "egress_path",
             "egress_time",
+            "egress_length",
             "free_flow_travel_time",
         )
         # Using the streaming engine does not seem to provide much benefit here.
@@ -264,9 +272,11 @@ class CarAccessEgressStep(Step):
     - `access_node`: The node where the primary part of the trip begins.
     - `access_path`: The list of edges in the access part.
     - `access_time`: The total free-flow travel time for the access part.
+    - `access_length`: Length of the access part (meters).
     - `egress_node`: The node where the primary part of the trip ends.
     - `egress_path`: The list of edges in the egress part.
     - `egress_time`: The total free-flow travel time for the egress part.
+    - `egress_length`: Length of the egress part (meters).
     """
 
     input_files = {
@@ -284,7 +294,7 @@ class CarAccessEgressStep(Step):
         import polars as pl
 
         edges_gdf = self.input["edges"].read()
-        edges = pl.from_pandas(edges_gdf.loc[:, ["edge_id", "source", "target"]])
+        edges = pl.from_pandas(edges_gdf.loc[:, ["edge_id", "source", "target", "length"]])
         edges_fftt = self.input["edges_fftt"].read()
         edges = edges.join(edges_fftt, on="edge_id", how="left")
         primary_flags = self.input["primary_flags"].read()

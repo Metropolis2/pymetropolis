@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+New columns:
+
+- `access_length` and `egress_length` in `PrimaryCarTripsAccessEgressFile`
+
 ## [0.9.0] – 2026-06-11
 
 New steps:
