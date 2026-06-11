@@ -38,6 +38,7 @@ Other changes:
 Fixes:
 
 - Set the car constant to a *negative* utility
+- Add `click` dependency
 
 ## [0.8.0] – 2026-05-11
 

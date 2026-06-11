@@ -36,6 +36,7 @@ dependencies = [
     "duckdb>=1.5.1",
     "tqdm>=4.67.3",
     "r5py>=1.1.6",
+    "click>=8.4.1",
 ]
 
 [project.urls]
