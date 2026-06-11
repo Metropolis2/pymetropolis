@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+New files:
+
+- `MetroRouteResultsFile`
+
 New columns:
 
 - `access_length` and `egress_length` in `PrimaryCarTripsAccessEgressFile`

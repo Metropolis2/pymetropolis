@@ -1198,6 +1198,44 @@ class MetroAgentResultsFile(MetroDataFrameFile):
     ]
 
 
+class MetroRouteResultsFile(MetroDataFrameFile):
+    path = "run/output/route_results.parquet"
+    description = "Edge-level results for road trips from the Metropolis-Core Simulation."
+    schema = [
+        Column(
+            "agent_id", MetroDataType.ID, description="Identifier of the agent.", nullable=False
+        ),
+        Column("trip_id", MetroDataType.ID, description="Identifier of the trip.", nullable=False),
+        Column(
+            "trip_index",
+            MetroDataType.INT,
+            description=(
+                "Index of the trip in the selected alternative' trip sequence (starting at 0)."
+            ),
+            nullable=False,
+        ),
+        Column("edge_id", MetroDataType.ID, description="Identifier of the edge.", nullable=False),
+        Column(
+            "entry_time",
+            MetroDataType.FLOAT,
+            description=(
+                "Time at which the agent entered the edge, for the specified trip, "
+                "in number of seconds since midnight."
+            ),
+            nullable=False,
+        ),
+        Column(
+            "exit_time",
+            MetroDataType.FLOAT,
+            description=(
+                "Time at which the agent left the edge, for the specified trip, "
+                "in number of seconds since midnight."
+            ),
+            nullable=False,
+        ),
+    ]
+
+
 class MetroSimulatedTravelTimeFunctionsFile(MetroDataFrameFile):
     path = "run/output/net_cond_sim_edge_ttfs.parquet"
     description = (

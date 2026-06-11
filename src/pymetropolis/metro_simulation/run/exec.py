@@ -10,6 +10,7 @@ from .files import (
     MetroExpectedTravelTimeFunctionsFile,
     MetroIterationResultsFile,
     MetroNextExpectedTravelTimeFunctionsFile,
+    MetroRouteResultsFile,
     MetroSimulatedTravelTimeFunctionsFile,
     MetroTripResultsFile,
 )
@@ -32,6 +33,7 @@ class RunSimulationStep(Step):
         "metro_iteration_results": MetroIterationResultsFile,
         "metro_agent_results": MetroAgentResultsFile,
         "metro_trip_results": MetroTripResultsFile,
+        "metro_route_results": MetroRouteResultsFile,
         "metro_sim_ttfs": MetroSimulatedTravelTimeFunctionsFile,
         "metro_exp_ttfs": MetroExpectedTravelTimeFunctionsFile,
         "metro_next_exp_ttfs": MetroNextExpectedTravelTimeFunctionsFile,
