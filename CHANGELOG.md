@@ -16,7 +16,7 @@ New files:
 New columns:
 
 - `access_length` and `egress_length` in `PrimaryCarTripsAccessEgressFile`
-- `vehicle id` in `TripResultsFile`
+- `vehicle_id` in `TripResultsFile`
 
 Other changes:
 
