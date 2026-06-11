@@ -403,13 +403,14 @@ class TripsOpenTripPlannerStep(ThreadedStep):
     time_type = "tstar"
     walking_speed = 4.0
     transfer_cost = 300
-    [multipliers]
+    [opentripplanner.multipliers]
     walk = 2
     wait = 1.1
     bus = 1.2
     tram = 1
     subway = 1
     rail = 1
+    ```
     """
 
     otp_url = StringParameter(
