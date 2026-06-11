@@ -157,19 +157,21 @@ def generate_public_transit_trips(
         if "generalized_time" not in itineraries.columns:
             itineraries = itineraries.with_columns(generalized_time="travel_time")
         itineraries = itineraries.with_columns(
-            generalized_time=pl.col("generalized_time").fill_null("travel_time")
+            generalized_time=pl_duration_to_seconds("generalized_time").fill_null(
+                pl_duration_to_seconds("travel_time")
+            )
         )
         # Set the utility equal to the -constant - value of time * generalized time.
         # This allows to consider different values of time for different modes (walking, waiting,
         # bus, subway, etc.).
         df = (
             df.join(params, on="person_id", how="left")
-            .join(itineraries.select("trip_id", "generalized_cost"), on="trip_id", how="left")
+            .join(itineraries.select("trip_id", "generalized_time"), on="trip_id", how="left")
             .with_columns(
                 constant_utility=-pl.col("public_transit_cst")
-                - pl.col("public_transit_vot") * pl_duration_to_seconds("generalized_cost") / 3600
+                - pl.col("public_transit_vot") * pl.col("generalized_time") / 3600
             )
-            .drop("public_transit_cst", "public_transit_vot", "generalized_cost")
+            .drop("public_transit_cst", "public_transit_vot", "generalized_time")
         )
     if tstars_file.exists():
         tstars: pl.DataFrame = tstars_file.read()
