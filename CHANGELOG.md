@@ -2,17 +2,25 @@
 
 ## [Unreleased]
 
+New steps:
+
+- `RouteResultsStep`
+
 New files:
 
 - `MetroRouteResultsFile`
+- `RouteResultsFile`
 
 New columns:
 
 - `access_length` and `egress_length` in `PrimaryCarTripsAccessEgressFile`
+- `vehicle id` in `TripResultsFile`
 
 Other changes:
 
 - Add `.scan()` method for `MetroDataFrameFile`
+- Rename column `length` to `route_length` in `TripResultsFile`
+- `TripResultsStep` now properly account for access / egress parts of road trips
 
 ## [0.9.0] – 2026-06-11
 

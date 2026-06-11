@@ -8,6 +8,12 @@ class TripResultsFile(MetroDataFrameFile):
         Column("trip_id", MetroDataType.ID, description="Identifier of the trip.", nullable=False),
         Column("mode", MetroDataType.STRING, description="Mode used for the trip.", nullable=False),
         Column(
+            "vehicle_id",
+            MetroDataType.ID,
+            description="Vehicle type used for the trip.",
+            nullable=True,
+        ),
+        Column(
             "is_road",
             MetroDataType.BOOL,
             description="Whether the trip is done on the road network.",
@@ -57,12 +63,41 @@ class TripResultsFile(MetroDataFrameFile):
             nullable=True,
         ),
         Column(
-            "length",
+            "route_length",
             MetroDataType.FLOAT,
             description="Length of the route taken, in meters.",
             nullable=True,
         ),
         Column(
             "nb_edges", MetroDataType.UINT, description="Number of road edges taken.", nullable=True
+        ),
+    ]
+
+
+class RouteResultsFile(MetroDataFrameFile):
+    path = "results/route_results.parquet"
+    description = "Clean route results for each road trip."
+    schema = [
+        Column("trip_id", MetroDataType.ID, description="Identifier of the trip.", nullable=False),
+        Column(
+            "edge_id", MetroDataType.ID, description="Identifier of the edge taken.", nullable=False
+        ),
+        Column(
+            "entry_time",
+            MetroDataType.DURATION,
+            description="Entry time on the edge.",
+            nullable=False,
+        ),
+        Column(
+            "exit_time",
+            MetroDataType.DURATION,
+            description="Exit time on the edge.",
+            nullable=False,
+        ),
+        Column(
+            "travel_time",
+            MetroDataType.DURATION,
+            description="Time spent on the edge.",
+            nullable=False,
         ),
     ]
