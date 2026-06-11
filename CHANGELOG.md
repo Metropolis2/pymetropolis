@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.9.0] – 2026-06-11
+
 New steps:
 
 - `GTFSStep`
@@ -146,5 +148,7 @@ Breaking changes:
 - Renamed `nb_lanes` to `lanes`
 - Updated path for some demand files
 
-[unreleased]: https://github.com/Metropolis2/pymetropolis/compare/0.7.0...HEAD
+[unreleased]: https://github.com/Metropolis2/pymetropolis/compare/0.9.0...HEAD
+[0.9.0]: https://github.com/Metropolis2/pymetropolis/releases/tag/0.9.0
+[0.8.0]: https://github.com/Metropolis2/pymetropolis/releases/tag/0.8.0
 [0.7.0]: https://github.com/Metropolis2/pymetropolis/releases/tag/0.7.0
