@@ -179,6 +179,7 @@ map = {"motorway": "motorway", "motorway_link": "motorway", ...}
         "urban": InputFile(RoadEdgesUrbanFlagFile, optional=True),
     }
     output_files = {"variables": RoadEdgesVariablesFile}
+    priority = 0
 
     def run(self):
         import polars as pl
