@@ -23,6 +23,7 @@ Other changes:
 - Add `.scan()` method for `MetroDataFrameFile`
 - Rename column `length` to `route_length` in `TripResultsFile`
 - `TripResultsStep` now properly account for access / egress parts of road trips
+- The hash of executable files is no longer compared when checking if a step needs to re-run
 
 ## [0.9.0] – 2026-06-11
 

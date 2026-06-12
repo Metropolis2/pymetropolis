@@ -9,7 +9,7 @@ from pymetropolis.metro_common.errors import MetropyError, error_context
 
 from .config import Config
 from .file import MetroFile
-from .parameters import Parameter
+from .parameters import Parameter, PathParameter
 
 # TODO: Add something to measure running time for each step.
 
@@ -50,13 +50,24 @@ class Step:
     _output_files: dict[str, MetroFile]
     _update_file_path: Path
     _config_dict: dict[str, Any]
+    _data_files: dict[str, Path]
 
     def __init__(self, config: Config):
         self._config_dict = dict()
+        self._data_files = dict()
         for param_name, param_obj in self.__class__._iter_params():
             value = param_obj.from_config(config)
             self._config_dict[param_name] = value
             setattr(self, param_name, value)
+            if isinstance(param_obj, PathParameter):
+                # Store path parameters so we can check whether they are tempered with.
+                # Note. Executable files (metropolis_cli and routing_cli) are excluded from this
+                # check since they use the ExecPathParameter class.
+                # This means that switching to a new Metropolis-Core version will not trigger the
+                # re-execution of the steps.
+                # This also allows to switch Operating System without having to re-run steps (the
+                # executables have different hashes over different OSs).
+                self._data_files[param_name] = value
         self._input_files = {
             k: f.from_dir(config.main_directory) for k, f in self._iter_input_files()
         }
@@ -158,8 +169,8 @@ class Step:
             # Step has never been executed or the update file has been removed.
             return True
         # Check that the input data files have not been modified.
-        for k, v in self._config_dict.items():
-            if not isinstance(v, Path):
+        for k, v in self._data_files.items():
+            if v is None:
                 continue
             if not v.exists() and update_dict.get(f"data_file_{k}_mtime") is not None:
                 # A file that was previously read no longer exists.
@@ -206,9 +217,7 @@ class Step:
     def save_update_dict(self, config: Config):
         """Saves a dictionary representing the update file of this step."""
         update_dict = dict()
-        for k, v in self._config_dict.items():
-            if not isinstance(v, Path):
-                continue
+        for k, v in self._data_files.items():
             if not v.exists():
                 # Input file is not specified.
                 continue
