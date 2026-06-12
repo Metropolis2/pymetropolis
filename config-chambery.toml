@@ -10,7 +10,7 @@ gtfs_files = [
     "chambery/data/gtfs/synchro-gtfs.zip",
 ]
 
-simulation_ratio = 0.01
+simulation_ratio = 1.0
 
 [metropolis_core]
 exec_path = "execs/metropolis_cli"
@@ -267,11 +267,11 @@ snap_speed = 4.0
 type = "pedestrian"
 with_snap = true
 
-# [opentripplanner]
-# url = "http://0.0.0.0:8080/otp/gtfs/v1"
-# # batch_size = 50_000
-# date = 2026-05-28
-# time_type = "tstar"
+[opentripplanner]
+url = "http://0.0.0.0:8080/otp/gtfs/v1"
+# batch_size = 50_000
+date = 2026-05-28
+time_type = "tstar"
 
 # [r5]
 # date = 2026-05-28
