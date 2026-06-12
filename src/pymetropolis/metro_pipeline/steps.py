@@ -218,7 +218,7 @@ class Step:
         """Saves a dictionary representing the update file of this step."""
         update_dict = dict()
         for k, v in self._data_files.items():
-            if not v.exists():
+            if v is None or not v.exists():
                 # Input file is not specified.
                 continue
             update_dict[f"data_file_{k}_mtime"] = v.stat().st_mtime
