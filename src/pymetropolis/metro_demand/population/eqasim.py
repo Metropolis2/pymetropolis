@@ -251,6 +251,10 @@ class EqasimImportStep(GeoStep, RandomStep):
     - Set the `departements` or `regions` configuration parameter so that it englobs the simulation
       area. Pymetropolis will automatically restricts the population to the simulation area (if
       defined).
+    - Add `"escort"` and `"task"` as activity purpose:
+      ```yaml
+      activity_purposes: ["leisure", "shop", "escort", "task"]
+      ```
     - Use parquet and geoparquet as output formats (optional):
       ```yaml
       output_formats:
@@ -268,12 +272,12 @@ class EqasimImportStep(GeoStep, RandomStep):
       use_urban_type: true
       matching_attributes: ["professional_activity", "urban_type", "*default*"]
       ```
-      - Add extra attributes to the generated persons (optional):
-        ```yaml
-        extra_enriched_attributes:
+    - Add extra attributes to the generated persons (optional):
+      ```yaml
+      extra_enriched_attributes:
           - "education_level"
           - "detailed_education_level"
-        ```
+      ```
     - Do not activate mode choice (unused):
       ```yaml
       mode_choice: false
