@@ -4,12 +4,12 @@ from typing import TYPE_CHECKING
 
 from pymetropolis.metro_common.errors import MetropyError, error_context
 from pymetropolis.metro_demand.modes import OutsideOptionPreferencesFile
-from pymetropolis.metro_demand.population import TripsFile, UniformDrawsFile
+from pymetropolis.metro_demand.population import UniformDrawsFile
 from pymetropolis.metro_pipeline.parameters import EnumParameter, FloatParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_simulation.common import StepWithModes
 
-from .files import MetroAlternativesFile
+from .files import MetroAlternativesFile, MetroTripsFile
 
 if TYPE_CHECKING:
     import polars as pl
@@ -43,15 +43,14 @@ def generate_departure_time_columns(
 
 
 @error_context(msg="Cannot generate outside-option alternatives")
-def generate_outside_option_alts(tour_ids: pl.Series, pref_file: OutsideOptionPreferencesFile):
+def generate_outside_option_alts(pref_file: OutsideOptionPreferencesFile):
     import polars as pl
 
-    df = pl.DataFrame({"agent_id": tour_ids, "alt_id": "outside_option"})
     # TODO. Manage outside option constant at the person vs tour level.
-    constants: pl.DataFrame = pref_file.read()
+    df: pl.DataFrame = pref_file.read()
     df = (
-        df.join(constants.rename({"tour_id": "agent_id"}), on="agent_id", how="left")
-        .with_columns(constant_utility=-pl.col("outside_option_cst"))
+        df.rename({"tour_id": "agent_id"})
+        .with_columns(alt_id="outside_option", constant_utility=-pl.col("outside_option_cst"))
         .drop("outside_option_cst")
     )
     return df
@@ -72,8 +71,8 @@ class WriteMetroAlternativesStep(StepWithModes):
         note="Only required when departure-time choice model is ContinuousLogit",
     )
     input_files = {
-        "trips": InputFile(
-            TripsFile,
+        "input_trips": InputFile(
+            MetroTripsFile,
             when=lambda inst: inst.has_trip_mode(),
             when_doc='if at least one "trip-based" mode is defined',
         ),
@@ -96,7 +95,7 @@ class WriteMetroAlternativesStep(StepWithModes):
     output_files = {"metro_alternatives": MetroAlternativesFile}
 
     def is_defined(self) -> bool:
-        if self.modes is None:
+        if self.modes is None or len(self.modes) == 0:
             return False
         # Step is NOT defined if there is a trip mode but the departure-time choice model is not
         # defined.
@@ -105,26 +104,22 @@ class WriteMetroAlternativesStep(StepWithModes):
     def run(self):
         import polars as pl
 
-        trips: pl.DataFrame = self.input["trips"].read()
-        tour_ids = trips["tour_id"].unique().sort()
-        if self.has_trip_mode():
+        input_trips: pl.DataFrame | None = self.input["input_trips"].read_if_exists()
+        alts = pl.DataFrame()
+        if input_trips is not None:
+            alts = input_trips.select("agent_id", "alt_id").unique()
             dep_time_df = generate_departure_time_columns(
-                tour_ids,
+                alts["agent_id"].unique(),
                 self.departure_time_choice_model,
                 self.departure_time_choice_mu,
                 self.input["uniform_draws"],
             )
-        alts = pl.DataFrame()
-        for mode in self.modes:
-            if mode == "outside_option":
-                outside_option_alts = generate_outside_option_alts(
-                    tour_ids, self.input["outside_option_preferences"]
-                )
-                # There is no departure-time choice for the outside option alternative.
-                alts = pl.concat((alts, outside_option_alts), how="diagonal")
-            else:
-                mode_alts = pl.DataFrame({"agent_id": tour_ids, "alt_id": mode})
-                mode_alts = mode_alts.join(dep_time_df, on="agent_id", how="left")
-                alts = pl.concat((alts, mode_alts), how="diagonal")
-                # TODO. Add alternative-level constant utility
+            alts = alts.join(dep_time_df, on="agent_id", how="left")
+        if self.has_mode("outside_option"):
+            outside_option_alts = generate_outside_option_alts(
+                self.input["outside_option_preferences"]
+            )
+            # There is no departure-time choice for the outside option alternative.
+            alts = pl.concat((alts, outside_option_alts), how="diagonal")
+        alts = alts.sort("agent_id", "alt_id")
         self.output["metro_alternatives"].write(alts)

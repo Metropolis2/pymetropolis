@@ -66,7 +66,7 @@ query plan(
         }
         dateTime: { __DATETIME_FIELD__: $datetime }
         modes: {
-          transitOnly: true
+          transitOnly: false
           transit: {
             transit: [
             { mode: BUS,        cost: { reluctance: $busReluctance } },

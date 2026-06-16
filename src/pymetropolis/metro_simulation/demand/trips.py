@@ -152,6 +152,7 @@ def generate_public_transit_trips(
         on="trip_id",
         how="inner",
     )
+    df = df.filter(pl.col("class.travel_time").is_not_null().all().over("agent_id"))
     if pref_file.exists():
         params: pl.DataFrame = pref_file.read()
         if "generalized_time" not in itineraries.columns:
@@ -454,6 +455,7 @@ class WriteMetroTripsStep(StepWithModes, StepWithRidesharingCount):
             )
             metro_trips = pl.concat((metro_trips, bicycle_trips), how="diagonal")
         metro_trips = metro_trips.drop("person_id")
+        metro_trips = metro_trips.sort("agent_id", "alt_id", "trip_id")
         self.output["metro_trips"].write(metro_trips)
 
     def get_fuel_share(self, mode: str) -> float:

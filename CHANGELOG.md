@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+Fixes:
+
+- Discard public-transit trips when no itineraries were found
+
 ## [0.10.0] – 2026-06-15
 
 New steps:
