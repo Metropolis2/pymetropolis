@@ -240,13 +240,18 @@ price = 1.9
 headway = 8.0
 
 [mode_choice]
-# modes = ["car_driver", "car_ridesharing", "public_transit", "walking", "bicycle"]
-modes = ["car_driver", "walking", "bicycle"]
+modes = ["car_driver", "car_passenger", "public_transit", "walking", "bicycle"]
 model = "Logit"
 mu = 1.0
 
 [modes]
 [modes.car_driver]
+preferences_file = "chambery/data/mode_preferences.csv"
+
+[modes.car_passenger]
+preferences_file = "chambery/data/mode_preferences.csv"
+
+[modes.public_transit]
 preferences_file = "chambery/data/mode_preferences.csv"
 
 [modes.walking]
