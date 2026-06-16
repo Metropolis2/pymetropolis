@@ -183,6 +183,7 @@ map = {"motorway": "motorway", "motorway_link": "motorway", ...}
 
     def run(self):
         import polars as pl
+        import polars.selectors as cs
 
         # Overwrite default definitions with custom definitions.
         definitions = DEFAULT_DEFINITIONS
@@ -210,4 +211,8 @@ map = {"motorway": "motorway", "motorway_link": "motorway", ...}
                 )
 
         df = df.select("edge_id", *variables)
+        # Convert boolean variables to Float64 (1/0).
+        df = df.with_columns(cs.boolean().cast(pl.Float64))
+        # Replace categorical variables with dummy columns.
+        df = df.to_dummies(cs.categorical(), drop_nulls=True)
         self.output["variables"].write(df)
