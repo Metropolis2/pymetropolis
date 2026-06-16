@@ -1,3 +1,4 @@
+from pymetropolis.metro_demand.population.files import TripsFile
 from pymetropolis.metro_demand.routing.files import PrimaryCarTripsAccessEgressFile
 from pymetropolis.metro_network.road_network.files import RoadEdgesFreeFlowTravelTimeFile
 from pymetropolis.metro_pipeline.steps import InputFile, Step
@@ -5,7 +6,7 @@ from pymetropolis.metro_simulation.demand.files import MetroTripsFile
 from pymetropolis.metro_simulation.run import MetroAgentResultsFile, MetroTripResultsFile
 from pymetropolis.metro_simulation.run.files import MetroRouteResultsFile
 
-from .files import RouteResultsFile, TripResultsFile
+from .files import ActivityResultsFile, RouteResultsFile, TripResultsFile
 
 
 class TripResultsStep(Step):
@@ -156,3 +157,57 @@ class RouteResultsStep(Step):
             lf = pl.concat((lf, access_edges, egress_edges), how="vertical")
         df = lf.sort("trip_id", "entry_time").collect()  # ty: ignore[invalid-assignment]
         self.output["route_results"].write(df)
+
+
+class ActivityResultsStep(Step):
+    """Reads the results from the Metropolis-Core simulation and produces a clean file for activity
+    results.
+    """
+
+    input_files = {"trips": TripsFile, "trip_results": TripResultsFile}
+    output_files = {"activity_results": ActivityResultsFile}
+
+    def run(self):
+        import polars as pl
+
+        trips: pl.DataFrame = (
+            self.input["trips"]
+            .scan()
+            .select("person_id", "trip_id", "origin_purpose_group", "destination_purpose_group")
+            .collect()
+        )
+        first_activities = trips.group_by("person_id").agg(
+            preceding_trip_id=pl.lit(None, dtype=trips.schema["trip_id"]),
+            following_trip_id=pl.col("trip_id").first(),
+            purpose=pl.col("origin_purpose_group").first(),
+        )
+        other_activities = trips.select(
+            "person_id",
+            preceding_trip_id="trip_id",
+            following_trip_id=pl.col("trip_id").shift(-1).over("person_id"),
+            purpose="destination_purpose_group",
+        )
+        activities = pl.concat((first_activities, other_activities), how="vertical")
+        trip_results = (
+            self.input["trip_results"]
+            .scan()
+            .select("trip_id", "departure_time", "arrival_time")
+            .collect()
+        )
+        # Add activity end time from departure time of following trip.
+        activities = activities.join(
+            trip_results.select(following_trip_id="trip_id", end_time="departure_time"),
+            on="following_trip_id",
+            how="left",
+        )
+        # Add activity start time from arrival time of preceding trip.
+        activities = activities.join(
+            trip_results.select(preceding_trip_id="trip_id", start_time="arrival_time"),
+            on="preceding_trip_id",
+            how="left",
+        )
+        activities = activities.with_columns(
+            activity_duration=pl.col("end_time") - pl.col("start_time")
+        )
+        activities = activities.sort("person_id", "start_time")
+        self.output["activity_results"].write(activities)

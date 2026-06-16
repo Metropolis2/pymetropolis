@@ -101,3 +101,46 @@ class RouteResultsFile(MetroDataFrameFile):
             nullable=False,
         ),
     ]
+
+
+class ActivityResultsFile(MetroDataFrameFile):
+    path = "results/activity_results.parquet"
+    description = "Clean results for each activity."
+    schema = [
+        Column(
+            "person_id", MetroDataType.ID, description="Identifier of the person.", nullable=False
+        ),
+        Column(
+            "preceding_trip_id",
+            MetroDataType.ID,
+            description="Identifier of the trip before the activity.",
+            nullable=True,
+        ),
+        Column(
+            "following_trip_id",
+            MetroDataType.ID,
+            description="Identifier of the trip after the activity.",
+            nullable=True,
+        ),
+        Column(
+            "purpose", MetroDataType.STRING, description="Purpose of the activity.", nullable=True
+        ),
+        Column(
+            "start_time",
+            MetroDataType.DURATION,
+            description="Start time of the activity.",
+            nullable=True,
+        ),
+        Column(
+            "end_time",
+            MetroDataType.DURATION,
+            description="End time of the activity.",
+            nullable=True,
+        ),
+        Column(
+            "activity_duration",
+            MetroDataType.DURATION,
+            description="Duration of the activity.",
+            nullable=True,
+        ),
+    ]

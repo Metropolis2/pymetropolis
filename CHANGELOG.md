@@ -5,10 +5,12 @@
 New steps:
 
 - `ActivitiesLocationsFromTripsLocationsStep`
+- `ActivityResultsStep`
 
 New files:
 
 - `ActivitiesLocationsFile`
+- `ActivityResultsFile`
 
 Fixes:
 
