@@ -273,6 +273,12 @@ class RoadEdgesPenaltiesFile(MetroDataFrameFile):
             description="Constant time penalty of the edge, in seconds.",
             nullable=True,
         ),
+        Column(
+            "speed_multiplier",
+            MetroDataType.FLOAT,
+            description="By how much edge speed limit is multiplied to get edge free-flow speed.",
+            nullable=True,
+        ),
     ]
 
 

@@ -14,7 +14,11 @@ from .files import (
 )
 from .grid import GridNetworkStep
 from .osm import OpenStreetMapRoadImportStep
-from .penalties import EdgesFreeFlowTravelTimesStep, ExogenousEdgePenaltiesStep
+from .penalties import (
+    EdgePenaltiesFromCoefficientsStep,
+    EdgesFreeFlowTravelTimesStep,
+    ExogenousEdgePenaltiesStep,
+)
 from .postprocess import PostprocessRoadNetworkStep
 from .routing import AllFreeFlowTravelTimesStep, AllRoadDistancesStep
 from .urban import UrbanEdgesStep
@@ -42,6 +46,7 @@ ROAD_NETWORK_STEPS = [
     AllFreeFlowTravelTimesStep,
     AllRoadDistancesStep,
     ExogenousEdgePenaltiesStep,
+    EdgePenaltiesFromCoefficientsStep,
     EdgesFreeFlowTravelTimesStep,
     UrbanEdgesStep,
     RoadEdgesVariablesStep,

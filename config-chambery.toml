@@ -86,6 +86,7 @@ secondary_types = [
 # If true, add secondary edges to the primary road network to ensure that
 # free-flow routes are primary-connected.
 ensure_primary_connected = true
+penalty_coefficients_file = "chambery/data/edges_penalty_coefficients.csv"
 
 # Default speed limit per roadtype, in km/h, in rural areas.
 [road_network.default_speed_limit.rural]

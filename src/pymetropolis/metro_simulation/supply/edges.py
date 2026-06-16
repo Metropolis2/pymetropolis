@@ -142,11 +142,19 @@ class WriteMetroEdgesStep(Step):
                 df = df.drop("bottleneck_flows", "bottleneck_times")
         if self.input["penalties"].exists():
             penalties: pl.DataFrame = self.input["penalties"].read()
-            df = df.join(
-                penalties.select("constant", original_id=pl.col("edge_id").cast(pl.String)),
-                left_on="original_id",
-                right_on=pl.col("edge_id").cast(pl.String),
-                how="left",
-            ).rename({"constant": "constant_travel_time"})
+            df = (
+                df.join(
+                    penalties.select(
+                        "constant",
+                        "speed_multiplier",
+                        original_id=pl.col("edge_id").cast(pl.String),
+                    ),
+                    on="original_id",
+                    how="left",
+                )
+                .rename({"constant": "constant_travel_time"})
+                .with_columns(speed=pl.col("speed") * pl.col("speed_multiplier").fill_null(1.0))
+                .drop("speed_multiplier")
+            )
         df = df.drop("original_id").sort("source", "target")
         self.output["metro_edges"].write(df)

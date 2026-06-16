@@ -6,15 +6,25 @@ New steps:
 
 - `ActivitiesLocationsFromTripsLocationsStep`
 - `ActivityResultsStep`
+- `EdgePenaltiesFromCoefficientsStep`
 
 New files:
 
 - `ActivitiesLocationsFile`
 - `ActivityResultsFile`
 
+New columns:
+
+- `speed_multiplier` in `RoadEdgesPenaltiesFile`
+
+New parameters:
+
+- `road_network.speed_multiplier`
+
 Other changes:
 
 - Guess the separator when reading a CSV datafile
+- Use dummy variables for categorical columns in `RoadEdgesVariablesFile`
 
 Fixes:
 
