@@ -192,10 +192,11 @@ class MetroPipeline:
                 .intersection(self.generated_files)
                 .issubset(available_files)
                 # Condition 3: step is primary or one of its output file is needed for a primary
-                # step.
+                # step, or it is the target step.
                 and (
                     s.is_primary()
                     or any(f in self.primary_input_files for f in self.steps[s]["outputs"])
+                    or s == self.target_step
                 )
             ]
             if not steps_to_add:

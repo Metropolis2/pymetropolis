@@ -19,6 +19,7 @@ Other changes:
 Fixes:
 
 - Discard public-transit trips when no itineraries were found
+- Fix pipeline sequence when using `--step` on a non-primary step that would not be run otherwise
 
 ## [0.10.0] – 2026-06-15
 
