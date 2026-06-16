@@ -12,6 +12,10 @@ New files:
 - `ActivitiesLocationsFile`
 - `ActivityResultsFile`
 
+Other changes:
+
+- Guess the separator when reading a CSV datafile
+
 Fixes:
 
 - Discard public-transit trips when no itineraries were found

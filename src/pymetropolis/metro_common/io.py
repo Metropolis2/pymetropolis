@@ -1,8 +1,17 @@
+import csv
 from pathlib import Path
 
 from loguru import logger
 
 from .errors import MetropyError, error_context
+
+
+def detect_csv_delimiter(filename: Path) -> str:
+    """Guess the delimiter used for a CSV file."""
+    with open(filename) as f:
+        first_line = f.readline()
+    sniffer = csv.Sniffer()
+    return sniffer.sniff(first_line).delimiter
 
 
 def scan_dataframe(filename: Path, **kwargs):
@@ -19,7 +28,8 @@ def scan_dataframe(filename: Path, **kwargs):
     if filename.suffix == ".parquet" or filename.suffix == ".geoparquet":
         lf = pl.read_parquet(filename, use_pyarrow=True, **kwargs).lazy()
     elif filename.suffix == ".csv":
-        lf = pl.scan_csv(filename, **kwargs)
+        sep = detect_csv_delimiter(filename)
+        lf = pl.scan_csv(filename, separator=sep, **kwargs)
     else:
         raise MetropyError(f"Unsupported format for input file: `{filename}`")
     return lf
