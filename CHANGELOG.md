@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+New steps:
+
+- `ActivitiesLocationsFromTripsLocationsStep`
+
+New files:
+
+- `ActivitiesLocationsFile`
+
 Fixes:
 
 - Discard public-transit trips when no itineraries were found

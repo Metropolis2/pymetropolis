@@ -2,6 +2,7 @@ from .distance import TripDistancesStep
 from .draws import UniformDrawsStep
 from .eqasim import EqasimImportStep
 from .files import (
+    ActivitiesLocationsFile,
     CarsFile,
     HouseholdsFile,
     HouseholdsHomesFile,
@@ -14,7 +15,11 @@ from .files import (
     TripsZonesFile,
     UniformDrawsFile,
 )
-from .generic import GenericPopulationStep, PopulationFromTripCoordinatesStep
+from .generic import (
+    ActivitiesLocationsFromTripsLocationsStep,
+    GenericPopulationStep,
+    PopulationFromTripCoordinatesStep,
+)
 from .zones import FrenchHouseholdsHomesZonesStep, FrenchTripsZonesStep
 
 POPULATION_FILES = [
@@ -29,6 +34,7 @@ POPULATION_FILES = [
     TripsDistancesFile,
     TripsZonesFile,
     UniformDrawsFile,
+    ActivitiesLocationsFile,
 ]
 POPULATION_STEPS = [
     GenericPopulationStep,
@@ -38,4 +44,5 @@ POPULATION_STEPS = [
     TripDistancesStep,
     FrenchHouseholdsHomesZonesStep,
     FrenchTripsZonesStep,
+    ActivitiesLocationsFromTripsLocationsStep,
 ]

@@ -108,6 +108,45 @@ class TripsOriginsFile(MetroGeoDataFrameFile):
     ]
 
 
+class TripsDestinationsFile(MetroGeoDataFrameFile):
+    path = "demand/population/trip_destinations.geo.parquet"
+    description = "Destination coordinates of each trip."
+    schema = [
+        Column(
+            "trip_id",
+            MetroDataType.ID,
+            description="Identifier of the trip.",
+            unique=True,
+            nullable=False,
+        )
+    ]
+
+
+class ActivitiesLocationsFile(MetroGeoDataFrameFile):
+    path = "demand/population/activity_locations.geo.parquet"
+    description = "Coordinates of each activity."
+    schema = [
+        Column(
+            "person_id", MetroDataType.ID, description="Identifier of the person.", nullable=False
+        ),
+        Column(
+            "purpose", MetroDataType.STRING, description="Purpose of the activity.", nullable=True
+        ),
+        Column(
+            "preceding_trip_id",
+            MetroDataType.ID,
+            description="Identifier of the trip before the activity.",
+            nullable=True,
+        ),
+        Column(
+            "following_trip_id",
+            MetroDataType.ID,
+            description="Identifier of the trip after the activity.",
+            nullable=True,
+        ),
+    ]
+
+
 class TripsZonesFile(MetroDataFrameFile):
     path = "demand/population/trips_zones.parquet"
     description = "Zones of the trips' origins and destinations."
@@ -189,20 +228,6 @@ class TripsZonesFile(MetroDataFrameFile):
             nullable=True,
             optional=True,
         ),
-    ]
-
-
-class TripsDestinationsFile(MetroGeoDataFrameFile):
-    path = "demand/population/trip_destinations.geo.parquet"
-    description = "Destination coordinates of each trip."
-    schema = [
-        Column(
-            "trip_id",
-            MetroDataType.ID,
-            description="Identifier of the trip.",
-            unique=True,
-            nullable=False,
-        )
     ]
 
 
