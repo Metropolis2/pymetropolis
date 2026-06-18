@@ -96,6 +96,7 @@ class RouteResultsStep(Step):
     """
 
     input_files = {
+        "trip_results": TripResultsFile,
         "metro_route_results": MetroRouteResultsFile,
         "access_egress_parts": InputFile(PrimaryCarTripsAccessEgressFile, optional=True),
         "edges_fftt": RoadEdgesFreeFlowTravelTimeFile,
@@ -154,7 +155,32 @@ class RouteResultsStep(Step):
                 .with_columns(entry_time=pl.col("exit_time") - pl.col("travel_time"))
                 .select("trip_id", "edge_id", "entry_time", "exit_time", "travel_time")
             )
-            lf = pl.concat((lf, access_edges, egress_edges), how="vertical")
+            lf = pl.concat((lf, access_edges, egress_edges), how="vertical").collect().lazy()  # ty: ignore[unresolved-attribute]
+            # Read trip results to get road trips not taking the primary network, and their
+            # departure time.
+            trip_results: pl.LazyFrame = (
+                self.input["trip_results"]
+                .scan()
+                .filter("is_road")
+                .select("trip_id", "departure_time")
+            )
+            secondary_trips: pl.DataFrame = trip_results.join(
+                lf, on="trip_id", how="semi"
+            ).collect()  # ty: ignore[invalid-assignment]
+            if not secondary_trips.is_empty():
+                secondary_routes = (
+                    access_egress.explode("access_path", empty_as_null=False, keep_nulls=False)
+                    .join(secondary_trips.lazy(), on="trip_id", how="inner")
+                    .rename({"access_path": "edge_id"})
+                    .join(edges_fftt, on="edge_id")
+                    .with_columns(
+                        exit_time=pl.col("departure_time")
+                        + pl.col("travel_time").cum_sum().over("trip_id")
+                    )
+                    .with_columns(entry_time=pl.col("exit_time") - pl.col("travel_time"))
+                    .select("trip_id", "edge_id", "entry_time", "exit_time", "travel_time")
+                )
+                lf = pl.concat((lf, secondary_routes), how="vertical")
         df = lf.sort("trip_id", "entry_time").collect()  # ty: ignore[invalid-assignment]
         self.output["route_results"].write(df)
 
@@ -170,11 +196,13 @@ class ActivityResultsStep(Step):
     def run(self):
         import polars as pl
 
-        trips: pl.DataFrame = (
-            self.input["trips"]
-            .scan()
-            .select("person_id", "trip_id", "origin_purpose_group", "destination_purpose_group")
-            .collect()
+        trips: pl.DataFrame = self.input["trips"].read()
+        for x in ("origin", "destination"):
+            col = f"{x}_purpose_group"
+            if col not in trips.columns:
+                trips = trips.with_columns(pl.lit(None, dtype=pl.String).alias(col))
+        trips = trips.select(
+            "person_id", "trip_id", "origin_purpose_group", "destination_purpose_group"
         )
         first_activities = trips.group_by("person_id").agg(
             preceding_trip_id=pl.lit(None, dtype=trips.schema["trip_id"]),
@@ -194,16 +222,16 @@ class ActivityResultsStep(Step):
             .select("trip_id", "departure_time", "arrival_time")
             .collect()
         )
-        # Add activity end time from departure time of following trip.
-        activities = activities.join(
-            trip_results.select(following_trip_id="trip_id", end_time="departure_time"),
-            on="following_trip_id",
-            how="left",
-        )
         # Add activity start time from arrival time of preceding trip.
         activities = activities.join(
             trip_results.select(preceding_trip_id="trip_id", start_time="arrival_time"),
             on="preceding_trip_id",
+            how="left",
+        )
+        # Add activity end time from departure time of following trip.
+        activities = activities.join(
+            trip_results.select(following_trip_id="trip_id", end_time="departure_time"),
+            on="following_trip_id",
             how="left",
         )
         activities = activities.with_columns(

@@ -25,11 +25,13 @@ Other changes:
 
 - Guess the separator when reading a CSV datafile
 - Use dummy variables for categorical columns in `RoadEdgesVariablesFile`
+- Include non-primary road trips to `RouteResultsFile`
 
 Fixes:
 
 - Discard public-transit trips when no itineraries were found
 - Fix pipeline sequence when using `--step` on a non-primary step that would not be run otherwise
+- Fix issues when `origin_purpose_group` and `destination_purpose_group` where not defined
 
 ## [0.10.0] – 2026-06-15
 
