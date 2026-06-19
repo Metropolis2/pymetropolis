@@ -2,6 +2,8 @@ from pymetropolis.metro_pipeline.parameters import FloatParameter, FractionParam
 from pymetropolis.metro_pipeline.steps import Step
 from pymetropolis.metro_pipeline.types import Enum
 
+# TODO: Create Mode class.
+
 
 class StepWithModes(Step):
     modes = ListParameter(

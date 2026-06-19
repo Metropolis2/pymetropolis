@@ -99,9 +99,10 @@ def find_connections(routes: pl.DataFrame, edges: pl.DataFrame, primary_edges: s
     import polars as pl
 
     primary_idx = find_first_last_primary(routes, primary_edges)
-    df: pl.DataFrame = (
-        routes.lazy()
-        .join(primary_idx.lazy(), on="trip_id", how="left")
+    df = routes.join(primary_idx, on="trip_id", how="left")
+    primary_trips = (
+        df.lazy()
+        .filter(pl.col("first_idx_primary").is_not_null())
         .with_columns(
             first_primary_edge=pl.col("route").list.get(pl.col("first_idx_primary") - 1),
             last_primary_edge=pl.col("route").list.get(pl.col("last_idx_primary") - 1),
@@ -142,14 +143,21 @@ def find_connections(routes: pl.DataFrame, edges: pl.DataFrame, primary_edges: s
             "egress_path",
             "egress_time",
             "egress_length",
-            "free_flow_travel_time",
         )
-        # Using the streaming engine does not seem to provide much benefit here.
         .collect()
-    )  # ty: ignore[invalid-assignment]
-    primary_trips = df.filter(pl.col("access_node").is_not_null()).drop("free_flow_travel_time")
-    secondary_trips = df.filter(pl.col("access_node").is_null()).select(
-        "trip_id", "free_flow_travel_time"
+    )
+    secondary_trips = (
+        df.lazy()
+        .filter(pl.col("first_idx_primary").is_null())
+        .select(
+            "trip_id",
+            "free_flow_travel_time",
+            path="route",
+            path_length=pl.col("route")
+            .list.eval(pl.element().replace_strict(edges["edge_id"], edges["length"]))
+            .list.sum(),
+        )
+        .collect()
     )
     return primary_trips, secondary_trips
 

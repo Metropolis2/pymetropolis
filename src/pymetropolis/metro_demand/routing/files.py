@@ -468,6 +468,18 @@ class NonPrimaryCarTrips(MetroDataFrameFile):
             description="Travel time by car under free-flow conditions.",
             nullable=True,
         ),
+        Column(
+            "path",
+            MetroDataType.LIST_OF_IDS,
+            description="List of (non-primary) edge ids that consists the trip.",
+            nullable=True,
+        ),
+        Column(
+            "path_length",
+            MetroDataType.FLOAT,
+            description="Length of the trip, in meters.",
+            nullable=True,
+        ),
     ]
 
 

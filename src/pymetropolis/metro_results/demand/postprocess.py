@@ -1,5 +1,9 @@
+from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_demand.population.files import TripsFile
-from pymetropolis.metro_demand.routing.files import PrimaryCarTripsAccessEgressFile
+from pymetropolis.metro_demand.routing.files import (
+    NonPrimaryCarTrips,
+    PrimaryCarTripsAccessEgressFile,
+)
 from pymetropolis.metro_network.road_network.files import RoadEdgesFreeFlowTravelTimeFile
 from pymetropolis.metro_pipeline.steps import InputFile, Step
 from pymetropolis.metro_simulation.demand.files import MetroTripsFile
@@ -19,6 +23,7 @@ class TripResultsStep(Step):
         "metro_trip_results": MetroTripResultsFile,
         "metro_agent_results": MetroAgentResultsFile,
         "access_egress_parts": InputFile(PrimaryCarTripsAccessEgressFile, optional=True),
+        "secondary_trips": InputFile(NonPrimaryCarTrips, optional=True),
     }
     output_files = {"trip_results": TripResultsFile}
 
@@ -33,7 +38,8 @@ class TripResultsStep(Step):
         df = df.select(
             "trip_id",
             mode="selected_alt_id",
-            is_road=pl.col("length").is_not_null(),
+            # TODO. Replace this with something more robust when the Mode class is created.
+            is_road=pl.col("selected_alt_id").str.starts_with("car_"),
             departure_time=pl.duration(seconds="departure_time"),
             arrival_time=pl.duration(seconds="arrival_time"),
             route_free_flow_travel_time=pl.duration(seconds="route_free_flow_travel_time"),
@@ -45,14 +51,18 @@ class TripResultsStep(Step):
             nb_edges="nb_edges",
         )
         if self.input["access_egress_parts"].exists():
-            access_egress = self.input["access_egress_parts"].read()
-            # Restrict access / egress to road trips.
-            access_egress = access_egress.join(df.filter("is_road"), on="trip_id", how="semi")
+            access_egress: pl.LazyFrame = self.input["access_egress_parts"].scan()
+            access_egress_columns = access_egress.collect_schema().names()
+            # Restrict access / egress to primary road trips.
+            access_egress = access_egress.join(
+                df.filter(pl.col("nb_edges").is_not_null()).lazy(), on="trip_id", how="semi"
+            )
             # Add access / egress values.
             # Note that the constant is already included in the travel utility so it should already
             # account for the access / egress part.
-            df = (
-                df.join(access_egress, on="trip_id", how="left")
+            df: pl.DataFrame = (
+                df.lazy()
+                .join(access_egress, on="trip_id", how="left")
                 .with_columns(
                     pl.col("access_time").fill_null(pl.duration(seconds=0)),
                     pl.col("egress_time").fill_null(pl.duration(seconds=0)),
@@ -77,8 +87,26 @@ class TripResultsStep(Step):
                     + pl.col("access_path").list.len()
                     + pl.col("egress_path").list.len(),
                 )
-                .drop(set(access_egress.columns) - {"trip_id"})
+                .drop(set(access_egress_columns) - {"trip_id"})
+                .collect()
+            )  # ty: ignore[invalid-assignment]
+        if self.input["secondary_trips"].exists():
+            secondary_trips = self.input["secondary_trips"].scan()
+            secondary_trips = secondary_trips.join(
+                df.filter("is_road", pl.col("nb_edges").is_null()).lazy(), on="trip_id", how="semi"
             )
+            df: pl.DataFrame = (
+                df.lazy()
+                .join(secondary_trips, on="trip_id", how="left")
+                .with_columns(
+                    route_free_flow_travel_time="free_flow_travel_time",
+                    global_free_flow_travel_time="free_flow_travel_time",
+                    route_length="path_length",
+                    nb_edges=pl.col("path").list.len(),
+                )
+                .drop("free_flow_travel_time", "path", "path_length")
+                .collect()
+            )  # ty: ignore[invalid-assignment]
         # Add vehicle_id.
         input_trips = self.input["metro_input_trips"].read()
         df = df.join(
@@ -99,6 +127,7 @@ class RouteResultsStep(Step):
         "trip_results": TripResultsFile,
         "metro_route_results": MetroRouteResultsFile,
         "access_egress_parts": InputFile(PrimaryCarTripsAccessEgressFile, optional=True),
+        "secondary_trips": InputFile(NonPrimaryCarTrips, optional=True),
         "edges_fftt": RoadEdgesFreeFlowTravelTimeFile,
     }
     output_files = {"route_results": RouteResultsFile}
@@ -156,31 +185,34 @@ class RouteResultsStep(Step):
                 .select("trip_id", "edge_id", "entry_time", "exit_time", "travel_time")
             )
             lf = pl.concat((lf, access_edges, egress_edges), how="vertical").collect().lazy()  # ty: ignore[unresolved-attribute]
-            # Read trip results to get road trips not taking the primary network, and their
-            # departure time.
-            trip_results: pl.LazyFrame = (
-                self.input["trip_results"]
-                .scan()
-                .filter("is_road")
-                .select("trip_id", "departure_time")
-            )
-            secondary_trips: pl.DataFrame = trip_results.join(
-                lf, on="trip_id", how="semi"
-            ).collect()  # ty: ignore[invalid-assignment]
-            if not secondary_trips.is_empty():
-                secondary_routes = (
-                    access_egress.explode("access_path", empty_as_null=False, keep_nulls=False)
-                    .join(secondary_trips.lazy(), on="trip_id", how="inner")
-                    .rename({"access_path": "edge_id"})
-                    .join(edges_fftt, on="edge_id")
-                    .with_columns(
-                        exit_time=pl.col("departure_time")
-                        + pl.col("travel_time").cum_sum().over("trip_id")
-                    )
-                    .with_columns(entry_time=pl.col("exit_time") - pl.col("travel_time"))
-                    .select("trip_id", "edge_id", "entry_time", "exit_time", "travel_time")
+        # Read trip results to get road trips not taking the primary network, and their
+        # departure time.
+        trip_results: pl.LazyFrame = (
+            self.input["trip_results"].scan().filter("is_road").select("trip_id", "departure_time")
+        )
+        secondary_trips: pl.DataFrame = trip_results.join(lf, on="trip_id", how="anti").collect()  # ty: ignore[invalid-assignment]
+        if not secondary_trips.is_empty():
+            if not self.input["secondary_trips"].exists():
+                raise MetropyError(
+                    "There are some non-primary car trips in the results, "
+                    "but the NonPrimaryCarTrips file does not exist."
                 )
-                lf = pl.concat((lf, secondary_routes), how="vertical")
+            # Add secondary trips.
+            secondary_routes = (
+                self.input["secondary_trips"]
+                .scan()
+                .explode("path", empty_as_null=False, keep_nulls=False)
+                .rename({"path": "edge_id"})
+                .join(secondary_trips.lazy(), on="trip_id")
+                .join(edges_fftt, on="edge_id")
+                .with_columns(
+                    exit_time=pl.col("departure_time")
+                    + pl.col("travel_time").cum_sum().over("trip_id")
+                )
+                .with_columns(entry_time=pl.col("exit_time") - pl.col("travel_time"))
+                .select("trip_id", "edge_id", "entry_time", "exit_time", "travel_time")
+            )
+            lf = pl.concat((lf, secondary_routes), how="vertical")
         df = lf.sort("trip_id", "entry_time").collect()  # ty: ignore[invalid-assignment]
         self.output["route_results"].write(df)
 

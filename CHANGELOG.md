@@ -16,6 +16,7 @@ New files:
 New columns:
 
 - `speed_multiplier` in `RoadEdgesPenaltiesFile`
+- `path` and `path_length` in `NonPrimaryCarTripsFile`
 
 New parameters:
 
@@ -31,7 +32,7 @@ Fixes:
 
 - Discard public-transit trips when no itineraries were found
 - Fix pipeline sequence when using `--step` on a non-primary step that would not be run otherwise
-- Fix issues when `origin_purpose_group` and `destination_purpose_group` where not defined
+- Properly handle non-primary road trips in `TripResultsFile`
 
 ## [0.10.0] – 2026-06-15
 
