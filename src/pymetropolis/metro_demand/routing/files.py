@@ -122,6 +122,7 @@ class TripsPedestrianDistancesFile(MetroDataFrameFile):
             MetroDataType.LIST_OF_IDS,
             description="Shortest path of the trip on the pedestrian network, as a list of ids.",
             nullable=True,
+            optional=True,
         ),
     ]
 

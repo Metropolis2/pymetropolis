@@ -33,6 +33,7 @@ Fixes:
 - Discard public-transit trips when no itineraries were found
 - Fix pipeline sequence when using `--step` on a non-primary step that would not be run otherwise
 - Properly handle non-primary road trips in `TripResultsFile`
+- Fix an error when running `TripsPedestrianDistancesStep` with `output_path` set to `false`
 
 ## [0.10.0] – 2026-06-15
 
