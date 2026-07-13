@@ -167,13 +167,15 @@ class RoadNetworkCongestionFunctionPlotsStep(Step):
             df = self.input[f"{x}_ttfs"].read()
             fig, ax = plt.subplots()
             # TODO. Which vehicle type to select?
-            # For now, we take the fastest.
+            # For now, we take car driver alone.
             df = (
-                df.group_by("departure_time", "edge_id")
-                .agg(tt=pl.col("travel_time").min())
+                df.filter(vehicle_id="car_driver_alone")
+                .join(edges_fftt, on="edge_id", how="right")
+                .with_columns(
+                    travel_time=pl.col("travel_time").fill_null(pl.col("free_flow_travel_time"))
+                )
                 .group_by("departure_time")
-                .agg(pl.col("tt").sum())
-                .with_columns(cong=pl.col("tt") / tot_fftt - 1)
+                .agg(cong=pl.col("travel_time").sum() / tot_fftt - 1)
                 .sort("departure_time")
             )
             ax.plot(df["departure_time"], df["cong"], alpha=0.9)
