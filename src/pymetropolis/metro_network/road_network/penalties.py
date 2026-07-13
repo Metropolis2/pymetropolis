@@ -240,15 +240,15 @@ class EdgesFreeFlowTravelTimesStep(Step):
 
         edges: gpd.GeoDataFrame = self.input["clean_edges"].read()
         df = pl.from_pandas(edges.loc[:, ["edge_id", "length", "speed_limit"]])
-        df = df.select(
-            "edge_id", free_flow_travel_time=pl.col("length") / (pl.col("speed_limit") / 3.6)
-        )
         if self.input["penalties"].exists():
             penalties = self.input["penalties"].read()
             df = df.join(penalties, on="edge_id", how="left")
-            df = df.select(
-                "edge_id",
-                free_flow_travel_time=pl.col("free_flow_travel_time") + pl.col("constant"),
-            )
+            df = df.with_columns(speed=pl.col("speed_limit") * pl.col("speed_multiplier"))
+        else:
+            df = df.with_columns(speed="speed_limit", constant=0.0)
+        df = df.select(
+            "edge_id",
+            free_flow_travel_time=pl.col("constant") + pl.col("length") / (pl.col("speed") / 3.6),
+        )
         df = df.with_columns(free_flow_travel_time=pl.duration(seconds="free_flow_travel_time"))
         self.output["edges_fftt"].write(df)
