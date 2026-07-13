@@ -162,19 +162,20 @@ class RoadNetworkCongestionFunctionPlotsStep(Step):
         from matplotlib.ticker import FuncFormatter, PercentFormatter
 
         edges_fftt = self.input["edges_fftt"].read()
-        tot_fftt = edges_fftt["free_flow_travel_time"].sum().total_seconds()
         for x, label in (("sim", "Simulated"), ("exp", "Expected")):
             df = self.input[f"{x}_ttfs"].read()
             fig, ax = plt.subplots()
             # TODO. Which vehicle type to select?
             # For now, we take car driver alone.
+            df = df.filter(vehicle_id="car_driver_alone")
+            # Compute total free-flow travel time ON THE PRIMARY EDGES ONLY.
+            tot_fftt = (
+                edges_fftt.join(df, on="edge_id", how="semi")["free_flow_travel_time"]
+                .sum()
+                .total_seconds()
+            )
             df = (
-                df.filter(vehicle_id="car_driver_alone")
-                .join(edges_fftt, on="edge_id", how="right")
-                .with_columns(
-                    travel_time=pl.col("travel_time").fill_null(pl.col("free_flow_travel_time"))
-                )
-                .group_by("departure_time")
+                df.group_by("departure_time")
                 .agg(cong=pl.col("travel_time").sum() / tot_fftt - 1)
                 .sort("departure_time")
             )
