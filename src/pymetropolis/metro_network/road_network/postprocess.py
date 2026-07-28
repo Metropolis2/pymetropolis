@@ -33,8 +33,6 @@ class PostprocessRoadNetworkStep(Step):
     - Keep only the largest strongly connected component of the road-network graph. This ensures
       that all origin-destination pairs are feasible. This is only done if `ensure_connected` is
       `true`.
-    - Set edge ids to `1,...,n`, where `n` is the number of edges. This is only done if `reindex` is
-      `true`.
     - Set a minimum value for the number of lanes, speed limit, and length of edges.
     - Compute in- and out-degrees of nodes.
 
@@ -78,14 +76,6 @@ class PostprocessRoadNetworkStep(Step):
         note=(
             "If `False`, it is the user's responsibility to ensure that all origin-destination "
             "pairs are feasible."
-        ),
-    )
-    reindex = BoolParameter(
-        "road_network.reindex",
-        default=False,
-        description=(
-            "If `true`, the edges are re-index after the postprocessing so that they are indexed "
-            "from 0 to n-1."
         ),
     )
     default_speed_limit = CustomParameter(
@@ -199,8 +189,6 @@ road = 1
             gdf = remove_duplicates(gdf)
         if self.ensure_connected:
             gdf = select_connected(gdf)
-        if self.reindex:
-            gdf = reindex(gdf)
         gdf = check(
             gdf,
             min_lanes=self.min_lanes,
@@ -352,13 +340,6 @@ def select_connected(gdf):
             "graph component"
         )
         logger.debug(f"Length removed (m): {l0 - l1:.0f} ({(l0 - l1) / l0:.2%})")
-    return gdf
-
-
-def reindex(gdf):
-    import numpy as np
-
-    gdf["edge_id"] = np.arange(1, len(gdf) + 1, dtype=np.uint64)
     return gdf
 
 

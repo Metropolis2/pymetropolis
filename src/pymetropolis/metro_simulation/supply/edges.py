@@ -45,7 +45,9 @@ class WriteMetroEdgesStep(Step):
         )
         if self.input["primary_flags"].exists():
             primary_flags = self.input["primary_flags"].read()
-            df = df.join(primary_flags.filter("primary"), on="edge_id", how="semi")
+            df = df.join(
+                primary_flags.filter("primary"), on=pl.col("edge_id").cast(pl.String), how="semi"
+            )
         df = df.with_columns(original_id=pl.col("edge_id"))
         st_counts = df.group_by("source", "target").len()
         if st_counts["len"].max() > 1:

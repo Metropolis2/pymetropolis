@@ -170,7 +170,9 @@ class RoadNetworkCongestionFunctionPlotsStep(Step):
             df = df.filter(vehicle_id="car_driver_alone")
             # Compute total free-flow travel time ON THE PRIMARY EDGES ONLY.
             tot_fftt = (
-                edges_fftt.join(df, on="edge_id", how="semi")["free_flow_travel_time"]
+                edges_fftt.join(df, on=pl.col("edge_id").cast(pl.String), how="semi")[
+                    "free_flow_travel_time"
+                ]
                 .sum()
                 .total_seconds()
             )

@@ -57,6 +57,8 @@ highways = [
 ]
 simulation_area_filter = true
 simulation_area_buffer = 8000
+# If `true`, the edges are re-index after the postprocessing so that they are indexed from 1 to n.
+reindex = false
 
 [road_network]
 # Minimum number of lanes allowed on edges.
@@ -72,8 +74,6 @@ remove_duplicates = false
 # underlying graph.
 # Warning. If `false`, some origin-destination pairs might not be feasible.
 ensure_connected = true
-# If `true`, the edges are re-index after the postprocessing so that they are indexed from 0 to n-1.
-reindex = false
 # Edges' types that cannot be used as origin / destination nodes.
 forbidden_types = ["motorway", "motorway_link", "trunk", "trunk_link"]
 # Edges' types that are part of the "secondary" road network.
@@ -211,6 +211,8 @@ highways = [
 ]
 simulation_area_filter = true
 simulation_area_buffer = 1000
+# If `true`, the edges are re-index after the postprocessing so that they are indexed from 1 to n.
+reindex = false
 
 [pedestrian_network]
 # Whether the duplicate edges (edges with same source and target) should be removed.
@@ -220,8 +222,6 @@ remove_duplicates = true
 # underlying graph.
 # Warning. If `false`, some origin-destination pairs might not be feasible.
 ensure_connected = true
-# If `true`, the edges are re-index after the postprocessing so that they are indexed from 0 to n-1.
-reindex = false
 # Edges' types that cannot be used as origin / destination nodes.
 forbidden_types = ["trunk", "trunk_link"]
 

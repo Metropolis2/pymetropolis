@@ -184,7 +184,14 @@ class RouteResultsStep(Step):
                 .with_columns(entry_time=pl.col("exit_time") - pl.col("travel_time"))
                 .select("trip_id", "edge_id", "entry_time", "exit_time", "travel_time")
             )
-            lf = pl.concat((lf, access_edges, egress_edges), how="vertical").collect().lazy()  # ty: ignore[unresolved-attribute]
+            # Note. `how="vertical_relaxed"` is required when edge ids have been converted to String
+            # in the simulation (e.g., in case of HOV edges), while original edge ids are of integer
+            # type.
+            lf = (
+                pl.concat((lf, access_edges, egress_edges), how="vertical_relaxed", rechunk=True)
+                .collect()
+                .lazy()  # ty: ignore[unresolved-attribute]
+            )
         # Read trip results to get road trips not taking the primary network, and their
         # departure time.
         trip_results: pl.LazyFrame = (
@@ -212,7 +219,10 @@ class RouteResultsStep(Step):
                 .with_columns(entry_time=pl.col("exit_time") - pl.col("travel_time"))
                 .select("trip_id", "edge_id", "entry_time", "exit_time", "travel_time")
             )
-            lf = pl.concat((lf, secondary_routes), how="vertical")
+            # Note. `how="vertical_relaxed"` is required when edge ids have been converted to String
+            # in the simulation (e.g., in case of HOV edges), while original edge ids are of integer
+            # type.
+            lf = pl.concat((lf, secondary_routes), how="vertical_relaxed", rechunk=True)
         df = lf.sort("trip_id", "entry_time").collect()  # ty: ignore[invalid-assignment]
         self.output["route_results"].write(df)
 

@@ -91,6 +91,9 @@ class OpenStreetMapPedestrianImportStep(GeoStep, OSMStep):
     - `edge_type`: `highway` tag value.
     - `name`: `name` tag value if any, otherwise `addr:street` tag value if any, otherwise `ref` tag
       value if any.
+
+    If the [`reindex`](parameters.md#osm_pedestrian_importreindex) parameter is set to `true`, the
+    `edge_id` values are instead numerical values running from 1 to the number of edges.
     """
 
     highways = ListParameter(
@@ -104,6 +107,14 @@ class OpenStreetMapPedestrianImportStep(GeoStep, OSMStep):
         note=(
             "A list of highway tags with description is available on the "
             "[OpenStreetMap wiki](https://wiki.openstreetmap.org/wiki/Key:highway)."
+        ),
+    )
+    reindex = BoolParameter(
+        "osm_pedestrian_import.reindex",
+        default=False,
+        description=(
+            "If `true`, the edges are re-index from 1 to n. If `false`, edge ids match the "
+            "OpenStreetMap way ids."
         ),
     )
     simulation_area_filter = BoolParameter(
@@ -150,6 +161,7 @@ class OpenStreetMapPedestrianImportStep(GeoStep, OSMStep):
             highway_tags=self.highways,
             crs=self.crs,
             filter_polygon=filter_polygon,
+            reindex=self.reindex,
         )
         edges = importer.run()
         self.output["raw_edges"].write(edges)

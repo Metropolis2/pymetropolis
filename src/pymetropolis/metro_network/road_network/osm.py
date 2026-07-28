@@ -38,9 +38,14 @@ class OSMRoadNetworkImport(OpenStreetMapNetworkImport):
         crs: pyproj.CRS,
         filter_polygon: Polygon | MultiPolygon | None,
         allowed_access_tags: list[str],
+        reindex: bool = False,
     ):
         super().__init__(
-            osm_file=osm_file, highway_tags=highway_tags, crs=crs, filter_polygon=filter_polygon
+            osm_file=osm_file,
+            highway_tags=highway_tags,
+            crs=crs,
+            filter_polygon=filter_polygon,
+            reindex=reindex,
         )
         self.allowed_access_tags = allowed_access_tags
 
@@ -338,6 +343,9 @@ class OpenStreetMapRoadImportStep(GeoStep, OSMStep):
     - `give_way`: way has a node with `highway=give_way`, in the correct direction.
     - `stop`: way has a node with `highway=stop`, in the correct direction.
     - `traffic_signals`: way has a node with `highway=traffic_signals`, in the correct direction.
+
+    If the [`reindex`](parameters.md#osm_road_importreindex) parameter is set to `true`, the
+    `edge_id` values are instead numerical values running from 1 to the number of edges.
     """
 
     highways = ListParameter(
@@ -363,6 +371,14 @@ class OpenStreetMapRoadImportStep(GeoStep, OSMStep):
             "not accessible to road vehicles and thus will not be imported. "
             "A list of access tags with description is available on the "
             "[OpenStreetMap wiki](https://wiki.openstreetmap.org/wiki/Key:access)."
+        ),
+    )
+    reindex = BoolParameter(
+        "osm_road_import.reindex",
+        default=False,
+        description=(
+            "If `true`, the edges are re-index from 1 to n. If `false`, edge ids match the "
+            "OpenStreetMap way ids."
         ),
     )
     simulation_area_filter = BoolParameter(
@@ -409,6 +425,7 @@ class OpenStreetMapRoadImportStep(GeoStep, OSMStep):
             crs=self.crs,
             filter_polygon=filter_polygon,
             allowed_access_tags=self.allowed_access,
+            reindex=self.reindex,
         )
         edges = importer.run()
         self.output["raw_edges"].write(edges)

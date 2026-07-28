@@ -25,6 +25,8 @@ class OpenStreetMapNetworkImport:
     - highway_tags: list of `highway=*` values that define valid ways for the network.
     - crs: projected CRS to be used for geometric operations, must be a valid pyproj CRS.
     - filter_polygon: optional polygon to filter ways, must be in the same CRS.
+    - reindex: if True, set edge ids to `1,...,n`, where `n` is the number of edges (default is
+      False).
     """
 
     def __init__(
@@ -33,11 +35,13 @@ class OpenStreetMapNetworkImport:
         highway_tags: list[str],
         crs: pyproj.CRS,
         filter_polygon: Polygon | MultiPolygon | None,
+        reindex: bool = False,
     ):
         self.osm_file = osm_file
         self.highway_tags = highway_tags
         self.crs = crs
         self.filter_polygon = filter_polygon
+        self.reindex = reindex
 
     def run(self):
         """Runs all operations required to import the network and returns a GeoDataFrame of edges
@@ -279,29 +283,34 @@ class OpenStreetMapNetworkImport:
         edges = self.add_node_features_to_edges(edges, nodes)
         logger.debug("Duplicating two-way edges")
         edges = self.duplicate_edges(edges)
-        # Create `edge_id` column.
-        # For forward edges: `{osm_id}`
-        # For backward edges: `{osm_id}r`
-        # For split edges (forward): `{osm_id}-{i}` (with i the split index)
-        # For split edges (backward): `{osm_id}r-{i}` (with i the split index)
-        edges = (
-            edges.with_columns(
-                # Edge has been split if there are at least two "forward" edges with the same
-                # osm_id.
-                split=pl.col("backward").not_().sum().over("osm_id") > 1,
-                bwd_symbol=pl.when("backward").then(pl.lit("r")).otherwise(pl.lit("")),
-            )
-            .with_columns(edge_id=pl.format("{}{}", "osm_id", "bwd_symbol"))
-            .with_columns(
-                edge_id=pl.when("split")
-                .then(
-                    pl.format("{}-{}", "edge_id", pl.int_range(pl.len()).over("osm_id", "backward"))
-                )
-                .otherwise("edge_id"),
-                original_id="osm_id",
-            )
-        )
         edges = edges.sort("osm_id", "backward", "source")
+        if self.reindex:
+            edges = edges.with_columns(edge_id=pl.int_range(1, pl.len() + 1))
+        else:
+            # Create `edge_id` column.
+            # For forward edges: `{osm_id}`
+            # For backward edges: `{osm_id}r`
+            # For split edges (forward): `{osm_id}-{i}` (with i the split index)
+            # For split edges (backward): `{osm_id}r-{i}` (with i the split index)
+            edges = (
+                edges.with_columns(
+                    # Edge has been split if there are at least two "forward" edges with the same
+                    # osm_id.
+                    split=pl.col("backward").not_().sum().over("osm_id") > 1,
+                    bwd_symbol=pl.when("backward").then(pl.lit("r")).otherwise(pl.lit("")),
+                )
+                .with_columns(edge_id=pl.format("{}{}", "osm_id", "bwd_symbol"))
+                .with_columns(
+                    edge_id=pl.when("split")
+                    .then(
+                        pl.format(
+                            "{}-{}", "edge_id", pl.int_range(pl.len()).over("osm_id", "backward")
+                        )
+                    )
+                    .otherwise("edge_id")
+                )
+            )
+        edges = edges.rename({"osm_id": "original_id"})
         edges = edges.select(self.edge_columns())
         logger.debug("Creating edge geometries")
         edge_coords = edges["nodes"].list.eval(

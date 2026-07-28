@@ -20,7 +20,14 @@ New columns:
 
 New parameters:
 
+- `osm_bicycle_import.reindex`
+- `osm_pedestrian_import.reindex`
+- `osm_road_import.reindex`
 - `road_network.speed_multiplier`
+
+Removed parameters:
+
+- `road_network.reindex`
 
 Other changes:
 
@@ -36,6 +43,7 @@ Fixes:
 - Fix an error when running `TripsPedestrianDistancesStep` with `output_path` set to `false`
 - Fix `RoadNetworkCongestionFunctionPlotStep` with non-primary edges
 - Fix a crash when reading simulation area from OSM tags
+- Fix multiple crashes when edge ids are automatically converted to string type
 
 ## [0.10.0] – 2026-06-15
 
