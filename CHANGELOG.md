@@ -35,6 +35,7 @@ Fixes:
 - Properly handle non-primary road trips in `TripResultsFile`
 - Fix an error when running `TripsPedestrianDistancesStep` with `output_path` set to `false`
 - Fix `RoadNetworkCongestionFunctionPlotStep` with non-primary edges
+- Fix a crash when reading simulation area from OSM tags
 
 ## [0.10.0] – 2026-06-15
 

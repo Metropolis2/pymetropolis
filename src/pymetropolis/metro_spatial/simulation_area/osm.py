@@ -129,8 +129,8 @@ class SimulationAreaFromOSMStep(GeoStep, OSMStep):
             .with_filter(TagFilter(*name_pairs))
             .with_areas()
         ):
-            assert isinstance(area, Area)
-            if area.is_area():
+            if area.is_area():  # ty: ignore[unresolved-attribute]
+                assert isinstance(area, Area)
                 found_names.append(area.tags["name"])
                 polygons.append(fab.create_multipolygon(area))
         if not found_names:
