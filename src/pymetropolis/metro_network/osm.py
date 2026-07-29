@@ -175,7 +175,7 @@ class OpenStreetMapNetworkImport:
             )
             .drop_nulls("source")
         )
-        return lf.collect()  # ty: ignore[invalid-return-type]
+        return lf.collect()
 
     def clean_way_data(self, df: pl.DataFrame) -> pl.DataFrame:
         """Returns a cleaned version of data collected from `way_data`."""
@@ -268,7 +268,7 @@ class OpenStreetMapNetworkImport:
         backward_edges = edges.lazy().with_columns(
             target="source", source="target", nodes=pl.col("nodes").list.reverse(), backward=True
         )
-        return pl.concat((forward_edges, backward_edges), how="vertical").collect()  # ty: ignore[invalid-return-type]
+        return pl.concat((forward_edges, backward_edges), how="vertical").collect()
 
     def edge_columns(self) -> list[str]:
         """Returns a list of columns to be kept in the final edge DataFrame."""

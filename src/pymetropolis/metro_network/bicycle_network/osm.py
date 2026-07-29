@@ -416,7 +416,7 @@ class OSMBicycleNetworkImport(OpenStreetMapNetworkImport):
             *(pl.col(f"backward_{feat}").alias(feat) for feat in FEATURES),
             backward=True,
         )
-        return pl.concat((forward_edges, backward_edges), how="vertical").collect()  # ty: ignore[invalid-return-type]
+        return pl.concat((forward_edges, backward_edges), how="vertical").collect()
 
     def edge_columns(self) -> list[str]:
         """Returns a list of columns to be kept in the final edge DataFrame."""
@@ -555,6 +555,11 @@ class OpenStreetMapBicycleImportStep(GeoStep, OSMStep):
         return self.crs is not None and self.osm_file is not None and self.highways is not None
 
     def run(self):
+        assert self.crs is not None
+        assert self.osm_file is not None
+        assert self.highways is not None
+        assert self.reindex is not None
+
         if self.simulation_area_filter:
             filter_polygon: Polygon | MultiPolygon = self.input["simulation_area"].get_area()  # ty: ignore[unresolved-attribute]
             filter_polygon = filter_polygon.buffer(self.simulation_area_buffer)

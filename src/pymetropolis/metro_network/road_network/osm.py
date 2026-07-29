@@ -257,7 +257,7 @@ class OSMRoadNetworkImport(OpenStreetMapNetworkImport):
             *(pl.col(f"backward_{feat}").alias(feat) for feat in FEATURES),
             backward=True,
         )
-        return pl.concat((forward_edges, backward_edges), how="vertical").collect()  # ty: ignore[invalid-return-type]
+        return pl.concat((forward_edges, backward_edges), how="vertical").collect()
 
     def edge_columns(self) -> list[str]:
         """Returns a list of columns to be kept in the final edge DataFrame."""

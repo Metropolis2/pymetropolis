@@ -152,7 +152,7 @@ def run_queries(
             ),
             how="vertical",
         ).collect()
-    return df  # ty: ignore[invalid-return-type]
+    return df
 
 
 def run_queries_batch(

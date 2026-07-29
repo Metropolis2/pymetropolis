@@ -89,7 +89,7 @@ class TripResultsStep(Step):
                 )
                 .drop(set(access_egress_columns) - {"trip_id"})
                 .collect()
-            )  # ty: ignore[invalid-assignment]
+            )
         if self.input["secondary_trips"].exists():
             secondary_trips = self.input["secondary_trips"].scan()
             secondary_trips = secondary_trips.join(
@@ -106,7 +106,7 @@ class TripResultsStep(Step):
                 )
                 .drop("free_flow_travel_time", "path", "path_length")
                 .collect()
-            )  # ty: ignore[invalid-assignment]
+            )
         # Add vehicle_id.
         input_trips = self.input["metro_input_trips"].read()
         df = df.join(
@@ -155,7 +155,7 @@ class RouteResultsStep(Step):
                     primary_end=pl.col("exit_time").last(),
                 )
                 .collect()
-            )  # ty: ignore[invalid-assignment]
+            )
             access_egress: pl.LazyFrame = self.input["access_egress_parts"].scan()
             edges_fftt: pl.LazyFrame = (
                 self.input["edges_fftt"].scan().rename({"free_flow_travel_time": "travel_time"})
@@ -190,14 +190,14 @@ class RouteResultsStep(Step):
             lf = (
                 pl.concat((lf, access_edges, egress_edges), how="vertical_relaxed", rechunk=True)
                 .collect()
-                .lazy()  # ty: ignore[unresolved-attribute]
+                .lazy()
             )
         # Read trip results to get road trips not taking the primary network, and their
         # departure time.
         trip_results: pl.LazyFrame = (
             self.input["trip_results"].scan().filter("is_road").select("trip_id", "departure_time")
         )
-        secondary_trips: pl.DataFrame = trip_results.join(lf, on="trip_id", how="anti").collect()  # ty: ignore[invalid-assignment]
+        secondary_trips: pl.DataFrame = trip_results.join(lf, on="trip_id", how="anti").collect()
         if not secondary_trips.is_empty():
             if not self.input["secondary_trips"].exists():
                 raise MetropyError(
@@ -223,7 +223,7 @@ class RouteResultsStep(Step):
             # in the simulation (e.g., in case of HOV edges), while original edge ids are of integer
             # type.
             lf = pl.concat((lf, secondary_routes), how="vertical_relaxed", rechunk=True)
-        df = lf.sort("trip_id", "entry_time").collect()  # ty: ignore[invalid-assignment]
+        df = lf.sort("trip_id", "entry_time").collect()
         self.output["route_results"].write(df)
 
 

@@ -83,7 +83,7 @@ def find_primary_edges(routes: pl.DataFrame, primary_edges: set, i=0) -> set:
         .explode("edge_id")
         .filter(pl.col("edge_id").is_in(primary_edges).not_())
         .collect(engine="streaming")
-        .to_series()  # ty: ignore[unresolved-attribute]
+        .to_series()
     )
     if secondary_edges_in_middle:
         logger.debug(f"Adding {len(secondary_edges_in_middle):,} secondary edges to primary graph")

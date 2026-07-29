@@ -74,7 +74,7 @@ class MetroPipeline:
             for k in sorted(unused_keys):
                 logger.warning(f"- {k}")
 
-    def check_files_to_delete(self, all_output_files: set[MetroFile]):
+    def check_files_to_delete(self, all_output_files: set[type[MetroFile]]):
         to_delete_files = list()
         for ofile in all_output_files:
             f = ofile.from_dir(self.config.main_directory)
