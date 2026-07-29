@@ -99,19 +99,21 @@ class CustomParameter(Parameter):
         super().__init__(*args, **kwargs)
 
 
-class BoolParameter(Parameter[bool]):
+class BoolParameter(Parameter[bool | None]):
     def __init__(self, *args, **kwargs):
         kwargs["validator"] = Bool()
         super().__init__(*args, **kwargs)
 
 
-class IntParameter(Parameter[int]):
-    def __init__(self, *args, **kwargs):
-        kwargs["validator"] = Int()
+class IntParameter(Parameter[int | None]):
+    def __init__(
+        self, *args, lower_bound: int | None = None, upper_bound: int | None = None, **kwargs
+    ):
+        kwargs["validator"] = Int(lb=lower_bound, ub=upper_bound)
         super().__init__(*args, **kwargs)
 
 
-class FloatParameter(Parameter[float]):
+class FloatParameter(Parameter[float | None]):
     def __init__(
         self, *args, lower_bound: float | None = None, upper_bound: float | None = None, **kwargs
     ):
@@ -124,37 +126,37 @@ class FractionParameter(FloatParameter):
         super().__init__(*args, lower_bound=0.0, upper_bound=1.0, **kwargs)
 
 
-class StringParameter(Parameter[str]):
+class StringParameter(Parameter[str | None]):
     def __init__(self, *args, **kwargs):
         kwargs["validator"] = String()
         super().__init__(*args, **kwargs)
 
 
-class DateParameter(Parameter[date]):
+class DateParameter(Parameter[date | None]):
     def __init__(self, *args, **kwargs):
         kwargs["validator"] = Date()
         super().__init__(*args, **kwargs)
 
 
-class TimeParameter(Parameter[MetroTime]):
+class TimeParameter(Parameter[MetroTime | None]):
     def __init__(self, *args, **kwargs):
         kwargs["validator"] = Time()
         super().__init__(*args, **kwargs)
 
 
-class DurationParameter(Parameter[timedelta]):
+class DurationParameter(Parameter[timedelta | None]):
     def __init__(self, *args, **kwargs):
         kwargs["validator"] = Duration()
         super().__init__(*args, **kwargs)
 
 
-class EnumParameter(Parameter[Any]):
+class EnumParameter(Parameter[Any | None]):
     def __init__(self, *args, values: list[Any], **kwargs):
         kwargs["validator"] = Enum(values=values)
         super().__init__(*args, **kwargs)
 
 
-class PathParameter(Parameter[Path]):
+class PathParameter(Parameter[Path | None]):
     def __init__(
         self,
         *args,
@@ -171,13 +173,13 @@ class PathParameter(Parameter[Path]):
         super().__init__(*args, **kwargs)
 
 
-class ExecPathParameter(Parameter[Path]):
+class ExecPathParameter(Parameter[Path | None]):
     def __init__(self, *args, **kwargs):
         kwargs["validator"] = ExecPathType()
         super().__init__(*args, **kwargs)
 
 
-class ListParameter(Parameter[list[Any]]):
+class ListParameter(Parameter[list[Any] | None]):
     def __init__(
         self,
         *args,

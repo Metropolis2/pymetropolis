@@ -170,6 +170,14 @@ class GridNetworkStep(Step):
         return self.nb_rows is not None and self.nb_columns is not None and self.length is not None
 
     def run(self):
+        assert self.nb_rows is not None
+        assert self.nb_columns is not None
+        assert self.length is not None
+        assert self.left_to_right is not None
+        assert self.right_to_left is not None
+        assert self.bottom_to_top is not None
+        assert self.top_to_bottom is not None
+
         gdf = generate_grid_network(
             nb_rows=self.nb_rows,
             nb_columns=self.nb_columns,

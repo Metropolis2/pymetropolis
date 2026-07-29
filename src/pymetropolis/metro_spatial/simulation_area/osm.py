@@ -111,6 +111,8 @@ class SimulationAreaFromOSMStep(GeoStep, OSMStep):
         from osmium.geom import WKBFactory
         from osmium.osm import Area
 
+        assert self.osm_file is not None
+
         names = self.osm_name
         if len(names) == 0:
             raise MetropyError("You must provide at least one name to be selected")
@@ -148,7 +150,7 @@ class SimulationAreaFromOSMStep(GeoStep, OSMStep):
         logger.debug("Converting to required CRS")
         gdf.to_crs(self.crs, inplace=True)
         geom = gdf.union_all()
-        if self.buffer != 0.0:
+        if self.buffer is not None and self.buffer != 0.0:
             geom = buffer_area(geom, self.buffer)
         gdf = geom_as_gdf(geom, self.crs)
         self.output["simulation_area"].write(gdf)

@@ -414,6 +414,12 @@ class OpenStreetMapRoadImportStep(GeoStep, OSMStep):
         return self.crs is not None and self.osm_file is not None and self.highways is not None
 
     def run(self):
+        assert self.crs is not None
+        assert self.osm_file is not None
+        assert self.highways is not None
+        assert self.allowed_access is not None
+        assert self.reindex is not None
+
         if self.simulation_area_filter:
             filter_polygon: Polygon | MultiPolygon = self.input["simulation_area"].get_area()  # ty: ignore[unresolved-attribute]
             filter_polygon = filter_polygon.buffer(self.simulation_area_buffer)

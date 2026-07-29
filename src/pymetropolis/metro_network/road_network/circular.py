@@ -408,6 +408,16 @@ class CircularNetworkStep(Step):
         return self.nb_radials is not None and self.nb_rings is not None and self.radius is not None
 
     def run(self):
+        assert self.nb_radials is not None
+        assert self.nb_rings is not None
+        assert self.radius is not None
+        assert self.resolution is not None
+        assert self.with_ramps is not None
+        assert self.entry_ramps_length is not None
+        assert self.exit_ramps_length is not None
+        assert self.ring_inter_ramp_length is not None
+        assert self.radial_inter_ramp_length is not None
+
         gdf = generate_circular_network(
             nb_radials=self.nb_radials,
             nb_rings=self.nb_rings,

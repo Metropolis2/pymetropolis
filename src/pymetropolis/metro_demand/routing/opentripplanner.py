@@ -516,6 +516,10 @@ class TripsOpenTripPlannerStep(ThreadedStep):
     def run(self):
         import polars as pl
 
+        assert self.time_type is not None
+        assert self.otp_url is not None
+        assert self.walking_speed is not None
+
         trips = self.input["trips"].read()
         # Note that tstars are read even when not required. This could be optimized although the
         # impact is probably very small.

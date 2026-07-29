@@ -463,6 +463,7 @@ class WriteMetroTripsStep(StepWithModes, StepWithRidesharingCount):
         if mode == "car_driver":
             return 1.0
         elif mode == "car_ridesharing":
+            assert self.ridesharing_passenger_count is not None
             return 1 / (1 + self.ridesharing_passenger_count)
         elif mode == "car_driver_with_passengers":
             # TODO. Make this configurable.

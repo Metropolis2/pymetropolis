@@ -140,7 +140,7 @@ class SimulationAreaFromAAVStep(GeoStep):
                 f"No exact match for the AAV name `{name}`, using AAV `{aav0[lib_col]}` instead"
             )
         geom = aav0.geometry
-        if self.buffer != 0.0:
+        if self.buffer is not None and self.buffer != 0.0:
             geom = buffer_area(geom, self.buffer)
         gdf = geom_as_gdf(geom, self.crs)
         self.output["simulation_area"].write(gdf)

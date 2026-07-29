@@ -181,11 +181,22 @@ class TripsPublicTransitTravelTimeFromR5Step(OSMStep, GTFSStep):
     output_files = {"costs": TripsPublicTransitItinerariesFile}
 
     def is_defined(self):
-        return self.gtfs_files is not None and self.time_type is not None
+        return (
+            self.osm_file is not None
+            and self.gtfs_files is not None
+            and self.time_type is not None
+            and self.date is not None
+        )
 
     def run(self):
         import geopandas as gpd
         import polars as pl
+
+        assert self.osm_file is not None
+        assert self.gtfs_files is not None
+        assert self.time_type is not None
+        assert self.date is not None
+        assert self.time_rounding is not None
 
         trips = self.input["trips"].read()
         if self.time_type == "departure":

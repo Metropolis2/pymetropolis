@@ -43,6 +43,7 @@ class RunSimulationStep(Step):
         return self.exec_path is not None
 
     def run(self):
+        assert self.exec_path is not None
         # TODO. Check that metropolis_cli is a sufficiently recent version.
         params_path = self.input["metro_parameters"].get_path()
         res = subprocess.run([self.exec_path, params_path], check=False)

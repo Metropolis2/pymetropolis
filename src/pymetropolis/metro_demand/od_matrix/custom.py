@@ -39,6 +39,8 @@ class CustomODMatrixStep(RandomStep):
     def run(self):
         import polars as pl
 
+        assert self.file is not None
+
         df = read_dataframe(self.file, columns=["origin", "destination", "size"])
         df = df.filter(pl.col("origin") != pl.col("destination"))
         trips = generate_trips_from_od_matrix(df, self.get_rng())

@@ -76,6 +76,8 @@ class PopulationFromTripCoordinatesStep(GeoStep):
         import geopandas as gpd
         import polars as pl
 
+        assert self.trip_coordinates_file is not None
+
         df = read_dataframe(self.trip_coordinates_file)
         for col in ("trip_id", "origin_lng", "origin_lat", "destination_lng", "destination_lat"):
             if col not in df.columns:

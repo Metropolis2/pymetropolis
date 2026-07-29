@@ -124,6 +124,8 @@ class LinearScheduleFromPurposeStep(Step):
     def run(self):
         import polars as pl
 
+        assert self.pref_file is not None
+
         trips: pl.DataFrame = self.input["trips"].read()
         pref = read_dataframe(self.pref_file)
         # Check that the "purpose" column exists.

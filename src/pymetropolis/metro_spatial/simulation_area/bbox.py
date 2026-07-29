@@ -56,6 +56,9 @@ class SimulationAreaFromBboxStep(GeoStep):
         import geopandas as gpd
         import shapely
 
+        assert self.crs is not None
+        assert self.bbox is not None
+
         box = shapely.box(*self.bbox)
         if self.bbox_wgs:
             # Convert the box to the simulation's CRS.

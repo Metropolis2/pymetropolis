@@ -69,6 +69,9 @@ class TripsPedestrianDistancesStep(RoutingCLIStep):
     def run(self):
         import polars as pl
 
+        assert self.exec_path is not None
+        assert self.output_path is not None
+
         edges_gdf = self.input["edges"].read()
         edges = pl.from_pandas(edges_gdf.loc[:, ["edge_id", "source", "target", "length"]]).rename(
             {"length": "weight"}
@@ -110,6 +113,9 @@ class TripsBicycleCostStep(RoutingCLIStep):
     def run(self):
         import polars as pl
 
+        assert self.exec_path is not None
+        assert self.output_path is not None
+
         edges_gdf = self.input["edges"].read()
         edges = pl.from_pandas(edges_gdf.loc[:, ["edge_id", "source", "target"]])
         costs = self.input["edge_costs"].read()
@@ -144,6 +150,8 @@ class TripsCarFreeFlowTravelTimesStep(RoutingCLIStep):
 
     def run(self):
         import polars as pl
+
+        assert self.exec_path is not None
 
         edges_gdf = self.input["edges"].read()
         edges_fftt = self.input["edges_fftt"].read()

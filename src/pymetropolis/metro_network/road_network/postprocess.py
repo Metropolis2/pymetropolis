@@ -173,6 +173,10 @@ road = 1
         use with METROPOLIS2.
         Saves the results to the given output file.
         """
+        assert self.min_lanes is not None
+        assert self.min_speed_limit is not None
+        assert self.min_length is not None
+
         gdf = self.input["raw_edges"].read()
         if self.urban_flag_required():
             urban_flags = self.input["urban_edges"].read()

@@ -48,6 +48,8 @@ class IGNStep(Step):
         import geopandas as gpd
         import requests
 
+        assert self.api_wfs_url is not None
+
         params = self.default_api_params()
         params["typeNames"] = name
         if bbox is not None:
@@ -121,6 +123,8 @@ class AdminExpressStep(IGNStep):
         """
         import geopandas as gpd
         from shapely.geometry import box
+
+        assert self.api_communes_service_name is not None
 
         if self.admin_express_directory is not None:
             logger.debug(f"Reading municipality data from `{self.admin_express_directory}`")
@@ -234,6 +238,8 @@ class IRISStep(IGNStep):
         """
         import geopandas as gpd
         from shapely.geometry import box
+
+        assert self.api_iris_service_name is not None
 
         if self.contours_iris_directory is not None:
             logger.debug(f"Reading IRIS data from `{self.contours_iris_directory}`")

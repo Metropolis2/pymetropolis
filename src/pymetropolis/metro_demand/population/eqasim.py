@@ -51,7 +51,7 @@ def read_households(
         nb_bicycles=pl.col("number_of_bikes").cast(pl.UInt64),
     )
     # "household_type",
-    return df.collect()  # ty: ignore[invalid-return-type]
+    return df.collect()
 
 
 def read_persons(
@@ -86,7 +86,7 @@ def read_persons(
         has_public_transit_subscription="has_pt_subscription",
     )
     # "reference_person_link",
-    return df.collect()  # ty: ignore[invalid-return-type]
+    return df.collect()
 
 
 def read_trips(
@@ -318,6 +318,8 @@ class EqasimImportStep(GeoStep, RandomStep):
         return self.eqasim_output is not None
 
     def run(self):
+        assert self.eqasim_output is not None
+        assert self.fraction is not None
         path = self.eqasim_output
         households_parquet = find_file("*_households.parquet", path)
         households_csv = find_file("*_households.csv", path)

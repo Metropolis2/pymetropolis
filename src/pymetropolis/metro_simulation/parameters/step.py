@@ -109,6 +109,12 @@ class WriteMetroParametersStep(ThreadedStep):
         )
 
     def run(self):
+        assert self.period is not None
+        assert self.recording_interval is not None
+        assert not self.spillback or self.max_pending_duration is not None
+        assert self.departure_time_interval is not None
+        assert self.backward_wave_speed is not None
+
         t0, t1 = self.period
         if t1 <= t0:
             raise MetropyError(

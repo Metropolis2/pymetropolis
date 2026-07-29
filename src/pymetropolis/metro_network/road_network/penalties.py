@@ -171,6 +171,8 @@ class EdgePenaltiesFromCoefficientsStep(Step):
 
         import polars as pl
 
+        assert self.coef_file is not None
+
         df: pl.DataFrame = self.input["edges_variables"].read()
         df = df.with_columns(base=pl.lit(1.0, dtype=pl.Float64))
         coefs: pl.DataFrame = read_dataframe(self.coef_file)

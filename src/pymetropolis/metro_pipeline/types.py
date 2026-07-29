@@ -35,14 +35,32 @@ class CustomValidator(Type):
 
 
 class Int(Type):
+    lb: float | None
+    ub: float | None
+
+    def __init__(self, lb: int | None = None, ub: int | None = None):
+        self.lb = lb
+        self.ub = ub
+
     @override
     def validate(self, value: Any) -> int:
         if not isinstance(value, int):
             raise MetropyError(f"Invalid integer: {value}")
+        # Bounds validation.
+        if self.lb is not None and value < self.lb:
+            raise MetropyError(f"Value must not be smaller than {self.lb} (got: {value})")
+        if self.ub is not None and value > self.ub:
+            raise MetropyError(f"Value must not be larger than {self.ub} (got: {value})")
         return value
 
     @override
     def _describe(self) -> str:
+        if self.lb is not None and self.ub is not None:
+            return f"Integer between {self.lb} and {self.ub}"
+        if self.lb is not None:
+            return f"Integer not smaller than {self.lb}"
+        if self.ub is not None:
+            return f"Integer not larger than {self.ub}"
         return "Integer"
 
 

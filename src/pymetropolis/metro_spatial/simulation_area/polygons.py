@@ -54,7 +54,7 @@ class SimulationAreaFromPolygonsStep(GeoStep):
         gdf = read_geodataframe(filename, columns=["geometry"])
         gdf.to_crs(self.crs, inplace=True)
         geom = gdf.union_all()
-        if self.buffer != 0.0:
+        if self.buffer is not None and self.buffer != 0.0:
             geom = buffer_area(geom, self.buffer)
         gdf = geom_as_gdf(geom, self.crs)
         self.output["simulation_area"].write(gdf)

@@ -130,6 +130,11 @@ class OpenStreetMapUrbanAreasStep(GeoStep, OSMStep):
         )
 
     def run(self):
+        assert self.crs is not None
+        assert self.osm_file is not None
+        assert self.urban_landuse_tags is not None
+        assert self.buffer is not None
+
         gdf = read_osm_urban_areas(
             osm_file=self.osm_file,
             landuse_tags=self.urban_landuse_tags,

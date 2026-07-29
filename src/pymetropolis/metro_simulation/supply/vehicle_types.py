@@ -45,6 +45,11 @@ class WriteMetroVehicleTypesStep(StepWithModes, StepWithRidesharingCount, StepWi
     def run(self):
         import polars as pl
 
+        assert self.car_headway is not None
+        assert self.car_pce is not None
+        assert self.simulation_ratio is not None
+        assert self.ridesharing_passenger_count is not None
+
         vehicles = list()
         headway = self.car_headway / self.simulation_ratio
         pce = self.car_pce / self.simulation_ratio
