@@ -3,15 +3,19 @@ import tomllib
 from pathlib import Path
 from typing import Any
 
+from loguru import logger
+
 from pymetropolis.metro_common import MetropyError
 
 
 class Config:
     main_directory: Path
+    secrets: dict
 
     def __init__(self, d: dict):
         self.dict = d
         self.check_main_directory()
+        self.read_secrets()
 
     @classmethod
     def from_toml(cls, path: Path):
@@ -42,6 +46,59 @@ class Config:
         # Also create the update_files/ directory if needed.
         update_files_path = path / "update_files"
         update_files_path.mkdir(exist_ok=True)
+
+    def read_secrets(self):
+        """Reads the secrets file if it exists.
+
+        If the `secrets_file` config is not defined, the default path is `secrets.toml`.
+        """
+        secrets_file_def = self.dict.get("secrets_file")
+        if secrets_file_def is not None:
+            if not isinstance(secrets_file_def, str):
+                raise MetropyError(
+                    f"Invalid `secrets_file` parameter: Not a path: `{secrets_file_def}`"
+                )
+            if not Path(secrets_file_def).exists():
+                raise MetropyError(
+                    f"Invalid `secrets_file` parameter: Path `{secrets_file_def}` does not exist"
+                )
+        # When not specified, default path is `secrets.toml`.
+        secrets_file = secrets_file_def or "secrets.toml"
+        path = Path(secrets_file)
+        if path.exists():
+            with open(path, "rb") as f:
+                self.secrets = tomllib.load(f)
+        else:
+            # Do not raise an error when the default file path does not exist.
+            logger.debug(f"Secrets file path does not exist: `{path}`")
+            self.secrets = dict()
+
+    def resolve_parameter(self, key: list[str]):
+        """Returns the value associated to the given key in the config.
+
+        If the value if of the form `"secret:skey"`, returns the value associated to `skey` in the
+        secrets instead.
+
+        If the value if of the form `"env:var"`, returns the value associated to the environnement
+        variable `var` instead.
+
+        Returns None if the value is not defined.
+        """
+        value = self.dict
+        for k in key:
+            if k in value:
+                value = value[k]
+            else:
+                # The key is not defined in the config.
+                return None
+        # At this point, the key was found and `value` is equal to its value.
+        if isinstance(value, str) and value.startswith("secret:"):
+            key = value.removeprefix("secret:")
+            value = self.secrets.get(key)
+        elif isinstance(value, str) and value.startswith("env:"):
+            var = value.removeprefix("env:")
+            value = os.environ.get(var)
+        return value
 
     def get_unused_keys(self, used_keys: set[str]) -> set[str]:
         """Returns a set of all keys (flatten) in the configuration that are not in `used_keys`."""

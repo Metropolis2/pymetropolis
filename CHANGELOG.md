@@ -20,10 +20,16 @@ New columns:
 
 New parameters:
 
+- `secrets_file`
 - `osm_bicycle_import.reindex`
 - `osm_pedestrian_import.reindex`
 - `osm_road_import.reindex`
 - `road_network.speed_multiplier`
+
+New features:
+
+- Configuration parameters can be set to `"secret:key"` to read them from the secrets file
+- Configuration parameters can be set to `"env:VAR"` to read them from environment variables
 
 Removed parameters:
 

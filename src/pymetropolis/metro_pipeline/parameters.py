@@ -78,16 +78,10 @@ class Parameter(Generic[T]):
 
     @error_context("Cannot validate parameter `{}`", fmt_args=[0])
     def from_config(self, config: Config) -> T | None:
-        x = config.dict
-        for k in self.key:
-            if k in x:
-                x = x[k]
-            else:
-                # The key is not defined in the config.
-                break
-        else:
-            # At this point, the key was found and `x` is equal to its value.
-            self._value = self.validator.validate(x)
+        # Read parameter value from the config, or keep the default if no value is specified.
+        value = config.resolve_parameter(self.key)
+        if value is not None:
+            self._value = self.validator.validate(value)
         return self._value
 
 
