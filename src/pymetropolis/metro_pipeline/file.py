@@ -66,9 +66,11 @@ class MetroDataType(Enum):
     def is_valid_gdf(self, dtype: Any):
         from pandas.api.types import (
             is_bool_dtype,
+            is_datetime64_any_dtype,
             is_float_dtype,
             is_integer_dtype,
             is_string_dtype,
+            is_timedelta64_dtype,
             is_unsigned_integer_dtype,
         )
 
@@ -84,6 +86,10 @@ class MetroDataType(Enum):
             return is_float_dtype(dtype)
         elif self == MetroDataType.STRING:
             return is_string_dtype(dtype)
+        elif self == MetroDataType.DATETIME:
+            return is_datetime64_any_dtype(dtype)
+        elif self == MetroDataType.DURATION:
+            return is_timedelta64_dtype(dtype)
         elif self == MetroDataType.ANY:
             return True
         # TIME and DURATION dtypes are not allowed in GeoDataFrames.

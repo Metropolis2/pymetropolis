@@ -17,6 +17,7 @@ data/
 execs/metropolis_cli
 execs/routing_cli
 qgis/
+secrets.toml
 
 # Exclude config files which were not explicitly added.
 config*.toml

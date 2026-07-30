@@ -7,11 +7,13 @@ New steps:
 - `ActivitiesLocationsFromTripsLocationsStep`
 - `ActivityResultsStep`
 - `EdgePenaltiesFromCoefficientsStep`
+- `TomTomRequestsStep`
 
 New files:
 
 - `ActivitiesLocationsFile`
 - `ActivityResultsFile`
+- `TomTomRoutesFile`
 
 New columns:
 

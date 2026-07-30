@@ -299,3 +299,12 @@ learning_factor = 0.01
 nb_iterations = 100
 spillback = true
 max_pending_duration = 60
+
+[tomtom_requests]
+date = 2027-03-15
+departure_time = 03:00:00
+nb_routes = 400
+nb_waypoints = 148
+nb_batches = 5
+excluded_edge_types = ["motorway", "motorway_link", "trunk", "trunk_link", "primary", "primary_link"]
+api_key = "secret:tomtom_api_key"
