@@ -10,9 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import humanize
-import requests
 from loguru import logger
-from requests.exceptions import RequestException
 
 from pymetropolis.common import ThreadedStep
 from pymetropolis.metro_common import MetropyError
@@ -36,6 +34,7 @@ from pymetropolis.metro_pipeline.steps import InputFile
 
 if TYPE_CHECKING:
     import polars as pl
+    import requests
 
 MAX_TRIES = 3
 
@@ -117,6 +116,8 @@ _thread_local = threading.local()
 
 
 def get_session() -> requests.Session:
+    import requests
+
     if not hasattr(_thread_local, "session"):
         session = requests.Session()
         session.headers.update(HEADERS)
@@ -216,6 +217,8 @@ def run_queries_batch(
 
 
 def get_least_cost_itinerary(row: dict, api_url: str, parameters: dict, nb_tries: int = 0):
+    from requests.exceptions import RequestException
+
     variables = {
         **parameters,
         "datetime": f"{row['date']}T{row['time']}+00:00",
