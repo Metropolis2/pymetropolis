@@ -11,7 +11,6 @@ from .files import (
     RoadEdgesRawFile,
     RoadEdgesUrbanFlagFile,
     RoadEdgesVariablesFile,
-    TomTomRoutesFile,
 )
 from .grid import GridNetworkStep
 from .osm import OpenStreetMapRoadImportStep
@@ -22,7 +21,6 @@ from .penalties import (
 )
 from .postprocess import PostprocessRoadNetworkStep
 from .routing import AllFreeFlowTravelTimesStep, AllRoadDistancesStep
-from .tomtom import TomTomRequestsStep
 from .urban import UrbanEdgesStep
 from .variables import RoadEdgesVariablesStep
 
@@ -36,7 +34,6 @@ ROAD_NETWORK_FILES = [
     AllRoadDistancesFile,
     RoadEdgesUrbanFlagFile,
     RoadEdgesVariablesFile,
-    TomTomRoutesFile,
 ]
 
 ROAD_NETWORK_STEPS = [
@@ -53,5 +50,4 @@ ROAD_NETWORK_STEPS = [
     EdgesFreeFlowTravelTimesStep,
     UrbanEdgesStep,
     RoadEdgesVariablesStep,
-    TomTomRequestsStep,
 ]

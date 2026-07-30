@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from loguru import logger
 
 from pymetropolis.metro_common import MetropyError
+from pymetropolis.metro_network.road_network.files import RoadEdgesCleanFile
 from pymetropolis.metro_pipeline.parameters import (
     DateParameter,
     IntParameter,
@@ -19,7 +20,7 @@ from pymetropolis.metro_pipeline.parameters import (
 from pymetropolis.metro_pipeline.types import String
 from pymetropolis.random import RandomStep
 
-from .files import RoadEdgesCleanFile, TomTomRoutesFile
+from .files import TomTomRoutesFile
 
 if TYPE_CHECKING:
     import aiohttp

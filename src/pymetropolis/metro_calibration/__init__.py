@@ -1,0 +1,4 @@
+from .road import ROAD_FILES, ROAD_STEPS
+
+FILES = ROAD_FILES
+STEPS = ROAD_STEPS
