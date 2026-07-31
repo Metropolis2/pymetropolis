@@ -2,6 +2,7 @@ from .capacities import ExogenousCapacitiesStep
 from .circular import CircularNetworkStep
 from .custom import CustomRoadImportStep
 from .files import (
+    AllRoadDistancesFile,
     RoadEdgesCapacitiesFile,
     RoadEdgesCleanFile,
     RoadEdgesRawFile,
@@ -10,6 +11,7 @@ from .files import (
 from .grid import GridNetworkStep
 from .osm import OpenStreetMapRoadImportStep
 from .postprocess import PostprocessRoadNetworkStep
+from .routing import AllRoadDistancesStep
 from .urban import UrbanEdgesStep
 
 ROAD_NETWORK_FILES = [
@@ -17,6 +19,7 @@ ROAD_NETWORK_FILES = [
     RoadEdgesCapacitiesFile,
     RoadEdgesRawFile,
     RoadEdgesUrbanFlagFile,
+    AllRoadDistancesFile,
 ]
 
 ROAD_NETWORK_STEPS = [
@@ -27,4 +30,5 @@ ROAD_NETWORK_STEPS = [
     CircularNetworkStep,
     GridNetworkStep,
     UrbanEdgesStep,
+    AllRoadDistancesStep,
 ]

@@ -294,3 +294,28 @@ class RoadEdgesPrimaryFlagFile(MetroDataFrameFile):
             nullable=False,
         ),
     ]
+
+
+class AllRoadDistancesFile(MetroDataFrameFile):
+    path = "network/road_network/all_distances.parquet"
+    description = "Shortest path distance for each pair of nodes on the road network."
+    schema = [
+        Column(
+            "origin_id",
+            MetroDataType.ID,
+            description="Identifier of the origine node.",
+            nullable=False,
+        ),
+        Column(
+            "destination_id",
+            MetroDataType.ID,
+            description="Identifier of the destination node.",
+            nullable=False,
+        ),
+        Column(
+            "distance",
+            MetroDataType.FLOAT,
+            description="Distance of the shortest path, in meters.",
+            nullable=True,
+        ),
+    ]

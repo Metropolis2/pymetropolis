@@ -1,5 +1,4 @@
 from .files import (
-    AllRoadDistancesFile,
     AllRoadFreeFlowTravelTimesFile,
     RoadEdgesFreeFlowTravelTimeFile,
     RoadEdgesPenaltiesFile,
@@ -15,7 +14,7 @@ from .penalties import (
     EdgesFreeFlowTravelTimesStep,
     ExogenousEdgePenaltiesStep,
 )
-from .routing import AllFreeFlowTravelTimesStep, AllRoadDistancesStep
+from .routing import AllFreeFlowTravelTimesStep
 from .tomtom import TomTomRequestsStep
 from .variables import RoadEdgesVariablesStep
 
@@ -25,7 +24,6 @@ ROAD_FILES = [
     RoadEdgesPenaltiesFile,
     RoadEdgesFreeFlowTravelTimeFile,
     AllRoadFreeFlowTravelTimesFile,
-    AllRoadDistancesFile,
     TomTomRoutesFile,
     TomTomRoutesMatchedFile,
 ]
@@ -36,7 +34,6 @@ ROAD_STEPS = [
     EdgesFreeFlowTravelTimesStep,
     EdgePenaltiesFromCoefficientsStep,
     AllFreeFlowTravelTimesStep,
-    AllRoadDistancesStep,
     TomTomRequestsStep,
     MapMatchingStep,
     FreeFlowLassoStep,

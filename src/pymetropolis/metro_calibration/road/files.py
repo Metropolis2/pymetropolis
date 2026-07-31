@@ -129,31 +129,6 @@ class AllRoadFreeFlowTravelTimesFile(MetroDataFrameFile):
     ]
 
 
-class AllRoadDistancesFile(MetroDataFrameFile):
-    path = "calibration/road/all_distances.parquet"
-    description = "Shortest path distance for each pair of nodes on the road network."
-    schema = [
-        Column(
-            "origin_id",
-            MetroDataType.ID,
-            description="Identifier of the origine node.",
-            nullable=False,
-        ),
-        Column(
-            "destination_id",
-            MetroDataType.ID,
-            description="Identifier of the destination node.",
-            nullable=False,
-        ),
-        Column(
-            "distance",
-            MetroDataType.FLOAT,
-            description="Distance of the shortest path, in meters.",
-            nullable=True,
-        ),
-    ]
-
-
 class TomTomRoutesFile(MetroGeoDataFrameFile):
     path = "calibration/road/tomtom_routes.geo.parquet"
     description = "Results of the routing requests from TomTom API."
