@@ -61,18 +61,19 @@ def read_persons(
 
     if parquet_file:
         logger.info(f"Reading persons from `{parquet_file}`")
-        df = pl.scan_parquet(parquet_file)
+        lf = pl.scan_parquet(parquet_file)
     else:
         assert csv_file is not None
         logger.info(f"Reading persons from `{csv_file}`")
-        df = pl.scan_csv(csv_file, separator=";")
+        lf = pl.scan_csv(csv_file, separator=";")
     if household_ids:
-        df = df.filter(pl.col("household_id").is_in(household_ids))
-    df = df.sort("person_id")
+        lf = lf.filter(pl.col("household_id").is_in(household_ids))
+    lf = lf.sort("person_id")
+    columns = lf.collect_schema().names()
     for col in ("professional_activity", "education_level", "detailed_education_level"):
-        if col not in df.columns:
-            df = df.with_columns(pl.lit(None).alias(col))
-    df = df.select(
+        if col not in columns:
+            lf = lf.with_columns(pl.lit(None).alias(col))
+    lf = lf.select(
         pl.col("person_id").cast(pl.UInt64),
         pl.col("household_id").cast(pl.UInt64),
         person_index=pl.int_range(1, pl.len() + 1, dtype=pl.UInt8).over("household_id"),
@@ -86,7 +87,7 @@ def read_persons(
         has_public_transit_subscription="has_pt_subscription",
     )
     # "reference_person_link",
-    return df.collect()
+    return lf.collect()
 
 
 def read_trips(
