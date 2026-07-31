@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+**Deleting your main directory to start from scratch is strongly recommended when updating.**
+
 New steps:
 
 - `ActivitiesLocationsFromTripsLocationsStep`
@@ -51,6 +53,7 @@ Other changes:
 - Use dummy variables for categorical columns in `RoadEdgesVariablesFile`
 - Include non-primary road trips to `RouteResultsFile`
 - Move some MetroFiles from `network/road_network/` to `calibration/road`
+- Renamed / moved many MetroFiles
 
 Fixes:
 

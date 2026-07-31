@@ -2,22 +2,22 @@ from pymetropolis.metro_pipeline.file import MetroPlotFile
 
 
 class TourDepartureTimeConvergencePlotFile(MetroPlotFile):
-    path = "results/graphs/convergence_tour_departure_time.png"
+    path = "results/graphs/convergence/tour_departure_time.png"
     description = "RMSE of departure-time shift from one iteration to another."
 
 
 class SimulatedRoadTravelTimesConvergencePlotFile(MetroPlotFile):
-    path = "results/graphs/convergence_simulated_road_travel_times.png"
+    path = "results/graphs/convergence/simulated_road_travel_times.png"
     description = "RMSE of simulated edge-level travel times from one iteration to another."
 
 
 class ExpectedRoadTravelTimesConvergencePlotFile(MetroPlotFile):
-    path = "results/graphs/convergence_expected_road_travel_times.png"
+    path = "results/graphs/convergence/expected_road_travel_times.png"
     description = "RMSE of expected edge-level travel times from one iteration to another."
 
 
 class RouteLengthDiffConvergencePlotFile(MetroPlotFile):
-    path = "results/graphs/convergence_route_length_diff.png"
+    path = "results/graphs/convergence/route_length_diff.png"
     description = (
         "Mean length of the selected route not selected during the previous iteration, over "
         "iterations."
@@ -25,17 +25,17 @@ class RouteLengthDiffConvergencePlotFile(MetroPlotFile):
 
 
 class MeanSurplusConvergencePlotFile(MetroPlotFile):
-    path = "results/graphs/convergence_mean_surplus.png"
+    path = "results/graphs/convergence/mean_surplus.png"
     description = "Mean surplus over iterations."
 
 
 class TripDepartureTimeDistributionPlotFile(MetroPlotFile):
-    path = "results/graphs/trip_departure_time_distribution.png"
+    path = "results/graphs/trips/departure_time_distribution.png"
     description = "Histogram of departure time distribution, over trips."
 
 
 class ExpectedRoadNetworkCongestionFunctionPlotFile(MetroPlotFile):
-    path = "results/graphs/network_congestion_function_expected.png"
+    path = "results/graphs/road_network/congestion_function_expected.png"
     description = (
         "Expected congestion function over all edges of the road network. "
         "Values are computed as `Σ exp travel time / Σ free-flow travel time - 1`, "
@@ -44,7 +44,7 @@ class ExpectedRoadNetworkCongestionFunctionPlotFile(MetroPlotFile):
 
 
 class SimulationRoadNetworkCongestionFunctionPlotFile(MetroPlotFile):
-    path = "results/graphs/network_congestion_function_simulated.png"
+    path = "results/graphs/road_network/congestion_function_simulated.png"
     description = (
         "Simulated congestion function over all edges of the road network. "
         "Values are computed as `Σ sim travel time / Σ free-flow travel time - 1`, "
@@ -53,5 +53,5 @@ class SimulationRoadNetworkCongestionFunctionPlotFile(MetroPlotFile):
 
 
 class TripModeSharesPlotFile(MetroPlotFile):
-    path = "results/graphs/trip_mode_shares.png"
+    path = "results/graphs/trips/mode_shares.png"
     description = "Mode shares at the trip-level (in number of trips)."

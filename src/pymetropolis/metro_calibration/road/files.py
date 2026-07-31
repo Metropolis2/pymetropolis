@@ -30,7 +30,7 @@ class RoadEdgesVariablesFile(MetroDataFrameFile):
 
 
 class RoadEdgesPenaltyCoefficientsFile(MetroDataFrameFile):
-    path = "calibration/road/edges_penalty_coefficients.parquet"
+    path = "calibration/road/free_flow/penalty_coefficients.parquet"
     description = "Coefficients for free-flow time penalties of road-network edges."
     schema = [
         Column(
@@ -59,7 +59,7 @@ class RoadEdgesPenaltyCoefficientsFile(MetroDataFrameFile):
 
 
 class RoadEdgesPenaltiesFile(MetroDataFrameFile):
-    path = "calibration/road/edges_penalties.parquet"
+    path = "calibration/road/free_flow/edges_penalties.parquet"
     description = "Free-flow time penalties of each road-network edge."
     schema = [
         Column(
@@ -85,7 +85,7 @@ class RoadEdgesPenaltiesFile(MetroDataFrameFile):
 
 
 class RoadEdgesFreeFlowTravelTimeFile(MetroDataFrameFile):
-    path = "calibration/road/edges_free_flow_travel_time.parquet"
+    path = "calibration/road/free_flow/edges_free_flow_travel_time.parquet"
     description = "Free-flow travel time of each road-network edge."
     schema = [
         Column(
@@ -105,7 +105,7 @@ class RoadEdgesFreeFlowTravelTimeFile(MetroDataFrameFile):
 
 
 class AllRoadFreeFlowTravelTimesFile(MetroDataFrameFile):
-    path = "calibration/road/all_free_flow_travel_times.parquet"
+    path = "calibration/road/free_flow/all_free_flow_travel_times.parquet"
     description = "Free-flow travel time for each pair of nodes on the road network."
     schema = [
         Column(

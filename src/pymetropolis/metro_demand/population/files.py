@@ -7,7 +7,7 @@ from pymetropolis.metro_pipeline.file import (
 
 
 class TripsFile(MetroDataFrameFile):
-    path = "demand/population/trips.parquet"
+    path = "demand/population/trips/trips.parquet"
     description = "Identifiers and order of the trips for each person."
     schema = [
         Column(
@@ -95,7 +95,7 @@ class TripsFile(MetroDataFrameFile):
 
 
 class TripsOriginsFile(MetroGeoDataFrameFile):
-    path = "demand/population/trip_origins.geo.parquet"
+    path = "demand/population/trips/origins.geo.parquet"
     description = "Origin coordinates of each trip."
     schema = [
         Column(
@@ -109,7 +109,7 @@ class TripsOriginsFile(MetroGeoDataFrameFile):
 
 
 class TripsDestinationsFile(MetroGeoDataFrameFile):
-    path = "demand/population/trip_destinations.geo.parquet"
+    path = "demand/population/trips/destinations.geo.parquet"
     description = "Destination coordinates of each trip."
     schema = [
         Column(
@@ -123,7 +123,7 @@ class TripsDestinationsFile(MetroGeoDataFrameFile):
 
 
 class ActivitiesLocationsFile(MetroGeoDataFrameFile):
-    path = "demand/population/activity_locations.geo.parquet"
+    path = "demand/population/schedule/activity_locations.geo.parquet"
     description = "Coordinates of each activity."
     schema = [
         Column(
@@ -148,7 +148,7 @@ class ActivitiesLocationsFile(MetroGeoDataFrameFile):
 
 
 class TripsZonesFile(MetroDataFrameFile):
-    path = "demand/population/trips_zones.parquet"
+    path = "demand/population/trips/zones.parquet"
     description = "Zones of the trips' origins and destinations."
     schema = [
         Column(
@@ -232,7 +232,7 @@ class TripsZonesFile(MetroDataFrameFile):
 
 
 class TripsDistancesFile(MetroDataFrameFile):
-    path = "demand/population/trips_distances.parquet"
+    path = "demand/population/trips/distances.parquet"
     description = "Euclidean distance of each trip."
     schema = [
         Column(
@@ -252,7 +252,7 @@ class TripsDistancesFile(MetroDataFrameFile):
 
 
 class PersonsFile(MetroDataFrameFile):
-    path = "demand/population/persons.parquet"
+    path = "demand/population/persons/persons.parquet"
     description = "Identifiers and characteristics of the simulated persons."
     schema = [
         Column(
@@ -400,7 +400,7 @@ class CarsFile(MetroDataFrameFile):
 
 
 class HouseholdsFile(MetroDataFrameFile):
-    path = "demand/population/households.parquet"
+    path = "demand/population/households/households.parquet"
     description = (
         "Identifiers and characteristics of the simulated households. "
         "The geometry is a Point representing the household's home."
@@ -487,7 +487,7 @@ class HouseholdsFile(MetroDataFrameFile):
 
 
 class HouseholdsHomesFile(MetroGeoDataFrameFile):
-    path = "demand/population/household_homes.geo.parquet"
+    path = "demand/population/households/homes.geo.parquet"
     description = "Coordinates of the household homes."
     schema = [
         Column(
@@ -501,7 +501,7 @@ class HouseholdsHomesFile(MetroGeoDataFrameFile):
 
 
 class HouseholdsZonesFile(MetroDataFrameFile):
-    path = "demand/population/households_zones.parquet"
+    path = "demand/population/households/zones.parquet"
     description = "Zones of the households' home."
     schema = [
         Column(

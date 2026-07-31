@@ -10,8 +10,14 @@ from pymetropolis.schema import FILES, STEPS
 
 
 def expand_dir(children: list[dict], root: bool = False):
+    def sort_key(d):
+        """Special sort function to put directories before files."""
+        name, value = next(iter(d.items()))
+        is_dict = isinstance(value, dict) and "children" in value
+        return (not is_dict, name)
+
     s = ""
-    for node in children:
+    for node in sorted(children, key=sort_key):
         assert isinstance(node, dict)
         assert len(node) == 1
         name, value = next(iter(node.items()))
