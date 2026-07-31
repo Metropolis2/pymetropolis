@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.11.0] – 2026-07-31
+
 **Deleting your main directory to start from scratch is strongly recommended when updating.**
 
 New steps:
@@ -236,7 +238,8 @@ Breaking changes:
 - Renamed `nb_lanes` to `lanes`
 - Updated path for some demand files
 
-[unreleased]: https://github.com/Metropolis2/pymetropolis/compare/0.10.0...HEAD
+[unreleased]: https://github.com/Metropolis2/pymetropolis/compare/0.11.0...HEAD
+[0.11.0]: https://github.com/Metropolis2/pymetropolis/releases/tag/0.11.0
 [0.10.0]: https://github.com/Metropolis2/pymetropolis/releases/tag/0.10.0
 [0.9.0]: https://github.com/Metropolis2/pymetropolis/releases/tag/0.9.0
 [0.8.0]: https://github.com/Metropolis2/pymetropolis/releases/tag/0.8.0
