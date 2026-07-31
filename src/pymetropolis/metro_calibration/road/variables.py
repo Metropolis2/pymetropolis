@@ -198,6 +198,8 @@ map = {"motorway": "motorway", "motorway_link": "motorway", ...}
             urban_flags = self.input["urban"].read()
             df = df.join(urban_flags, on="edge_id")
 
+        df = df.with_columns(base_free_flow_tt=3.6 * pl.col("length") / pl.col("speed_limit"))
+
         variables = []
         for variable, definition in definitions.items():
             if variable in df.columns:
@@ -208,7 +210,7 @@ map = {"motorway": "motorway", "motorway_link": "motorway", ...}
                     f"Cannot define variable for `{variable}`: column does not exist in edges"
                 )
 
-        df = df.select("edge_id", *variables)
+        df = df.select("edge_id", "base_free_flow_tt", *variables)
         # Convert boolean variables to Float64 (1/0).
         df = df.with_columns(cs.boolean().cast(pl.Float64))
         # Replace categorical variables with dummy columns.

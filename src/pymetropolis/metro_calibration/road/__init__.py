@@ -3,10 +3,12 @@ from .files import (
     AllRoadFreeFlowTravelTimesFile,
     RoadEdgesFreeFlowTravelTimeFile,
     RoadEdgesPenaltiesFile,
+    RoadEdgesPenaltyCoefficientsFile,
     RoadEdgesVariablesFile,
     TomTomRoutesFile,
     TomTomRoutesMatchedFile,
 )
+from .free_flow_lasso import FreeFlowLassoStep
 from .map_matching import MapMatchingStep
 from .penalties import (
     EdgePenaltiesFromCoefficientsStep,
@@ -19,6 +21,7 @@ from .variables import RoadEdgesVariablesStep
 
 ROAD_FILES = [
     RoadEdgesVariablesFile,
+    RoadEdgesPenaltyCoefficientsFile,
     RoadEdgesPenaltiesFile,
     RoadEdgesFreeFlowTravelTimeFile,
     AllRoadFreeFlowTravelTimesFile,
@@ -36,4 +39,5 @@ ROAD_STEPS = [
     AllRoadDistancesStep,
     TomTomRequestsStep,
     MapMatchingStep,
+    FreeFlowLassoStep,
 ]

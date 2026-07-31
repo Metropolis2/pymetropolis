@@ -20,7 +20,41 @@ class RoadEdgesVariablesFile(MetroDataFrameFile):
             description="Identifier of the edge.",
             unique=True,
             nullable=False,
-        )
+        ),
+        Column(
+            "base_free_flow_tt",
+            MetroDataType.FLOAT,
+            description="Free-flow travel time on the edge, based on speed limit, in seconds.",
+        ),
+    ]
+
+
+class RoadEdgesPenaltyCoefficientsFile(MetroDataFrameFile):
+    path = "calibration/road/edges_penalty_coefficients.parquet"
+    description = "Coefficients for free-flow time penalties of road-network edges."
+    schema = [
+        Column(
+            "type",
+            MetroDataType.STRING,
+            description='Penalty type: `"additive"` or `"multiplicative"`.',
+            nullable=False,
+        ),
+        Column(
+            "variable1",
+            MetroDataType.STRING,
+            description="Name of the variable to which the coefficient applies.",
+            nullable=False,
+        ),
+        Column(
+            "variable2",
+            MetroDataType.STRING,
+            description=(
+                "Name of the second variable to which the coefficient applies, "
+                "for interactions only."
+            ),
+            nullable=True,
+        ),
+        Column("penalty", MetroDataType.FLOAT, description="Value of the penalty.", nullable=False),
     ]
 
 

@@ -9,6 +9,8 @@ New steps:
 - `EdgePenaltiesFromCoefficientsStep`
 - `TomTomRequestsStep`
 - `MapMatchingStep`
+- `FreeFlowLassoStep`
+- `FreeFlowPenaltyCoefficientsFromFileStep`
 
 New files:
 
@@ -16,11 +18,13 @@ New files:
 - `ActivityResultsFile`
 - `TomTomRoutesFile`
 - `TomTomRoutesMatchedFile`
+- `RoadEdgesPenaltyCoefficientsFile`
 
 New columns:
 
 - `speed_multiplier` in `RoadEdgesPenaltiesFile`
 - `path` and `path_length` in `NonPrimaryCarTripsFile`
+- `base_free_flow_tt` in `RoadEdgesVariablesFile`
 
 New parameters:
 
@@ -29,6 +33,8 @@ New parameters:
 - `osm_pedestrian_import.reindex`
 - `osm_road_import.reindex`
 - `road_network.speed_multiplier`
+- `road_network.min_effective_speed`
+- `road_network.max_effective_speed`
 
 New features:
 

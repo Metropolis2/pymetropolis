@@ -38,6 +38,7 @@ dependencies = [
     "r5py>=1.1.6",
     "click>=8.4.1",
     "aiohttp>=3.14.3",
+    "scikit-learn>=1.9.0",
 ]
 
 [project.urls]

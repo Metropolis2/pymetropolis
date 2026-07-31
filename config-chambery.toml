@@ -86,7 +86,9 @@ secondary_types = [
 # If true, add secondary edges to the primary road network to ensure that
 # free-flow routes are primary-connected.
 ensure_primary_connected = true
-penalty_coefficients_file = "chambery/data/edges_penalty_coefficients.csv"
+# penalty_coefficients_file = "chambery/data/edges_penalty_coefficients.csv"
+min_effective_speed = 5.0
+max_effective_speed = 135.0
 
 # Default speed limit per roadtype, in km/h, in rural areas.
 [road_network.default_speed_limit.rural]
@@ -308,3 +310,31 @@ nb_waypoints = 148
 nb_batches = 5
 excluded_edge_types = ["motorway", "motorway_link", "trunk", "trunk_link", "primary", "primary_link"]
 api_key = "secret:tomtom_api_key"
+
+[calibration]
+[calibration.free_flow_travel_time]
+additive_variables = ["traffic_signals"]
+additive_interaction_variables = [["urban", "traffic_signals"]]
+multiplicative_variables = ["edge_type", "speed_limit"]
+multiplicative_interaction_variables = [
+  [
+    "edge_type",
+    "speed_limit",
+  ],
+  [
+    "urban",
+    "speed_limit",
+  ],
+  [
+    "speed_limit",
+    "target_in_degree",
+  ],
+  [
+    "speed_limit",
+    "target_out_degree",
+  ],
+  [
+    "target_in_degree",
+    "target_out_degree",
+  ],
+]

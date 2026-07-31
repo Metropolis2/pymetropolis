@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+from math import inf
 from typing import TYPE_CHECKING
 
 from loguru import logger
@@ -7,13 +10,46 @@ from pymetropolis.metro_common.io import read_dataframe
 from pymetropolis.metro_network.road_network.common import default_edge_values_validator
 from pymetropolis.metro_network.road_network.files import RoadEdgesCleanFile, RoadEdgesUrbanFlagFile
 from pymetropolis.metro_pipeline import Step
-from pymetropolis.metro_pipeline.parameters import CustomParameter, PathParameter
+from pymetropolis.metro_pipeline.parameters import CustomParameter, FloatParameter, PathParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 
-from .files import RoadEdgesFreeFlowTravelTimeFile, RoadEdgesPenaltiesFile, RoadEdgesVariablesFile
+from .files import (
+    RoadEdgesFreeFlowTravelTimeFile,
+    RoadEdgesPenaltiesFile,
+    RoadEdgesPenaltyCoefficientsFile,
+    RoadEdgesVariablesFile,
+)
 
 if TYPE_CHECKING:
     import geopandas as gpd
+    import polars as pl
+
+
+EPSILON = 1e-8
+
+
+def check_bounds(df: pl.DataFrame, col: str, lb: float | None, ub: float | None) -> pl.DataFrame:
+    import polars as pl
+
+    # Check bounds.
+    if lb is not None:
+        n = (df[col] < lb).sum()
+        if n:
+            share = n / len(df)
+            logger.warning(
+                f"Value {col} is smaller than {lb} for {n} edges ({share:.2%}). "
+                f"Values are forced to {lb}."
+            )
+    if ub is not None:
+        n = (df[col] > ub).sum()
+        if n:
+            share = n / len(df)
+            logger.warning(
+                f"Value {col} is larger than {ub} for {n} edges ({share:.2%}). "
+                f"Values are set to {ub}."
+            )
+    df = df.with_columns(pl.col(col).clip(lower_bound=lb, upper_bound=ub))
+    return df
 
 
 class ExogenousEdgePenaltiesStep(Step):
@@ -132,9 +168,8 @@ road = 0.9
         self.output["edges_penalties"].write(df)
 
 
-class EdgePenaltiesFromCoefficientsStep(Step):
-    """Generates travel time penalties for the road network edges, from a file with variable-level
-    coefficients.
+class FreeFlowPenaltyCoefficientsFromFileStep(Step):
+    """Defines free-flow penalty coefficients at the variable-level from a data file.
 
     The
     [`road_network.penalty_coefficients_file`](parameters.md#road_networkpenalty_coefficients_file)
@@ -142,13 +177,13 @@ class EdgePenaltiesFromCoefficientsStep(Step):
 
     Columns are:
 
-    - `type`: whether the penalty is additive or a multiplier of speed limit (`"constant"` or
-      `"speed_multiplier"`)
-    - `coefficient1`: variable to which the coefficient applies
-    - `coefficient2`: for interaction variables, second variable to which the coefficient applies
+    - `type`: whether the penalty is additive or a multiplier of speed limit (`"additive"` or
+      `"multiplicative"`)
+    - `variable1`: variable to which the coefficient applies
+    - `variable2`: for interaction variables, second variable to which the coefficient applies
     - `penalty`: value of the penalty
 
-    For penalties that apply to all edges, use `"base"` as variable.
+    For penalties that apply to all edges, use `"cst"` as variable.
     For categorical variables, you can use the syntax `"{variable}_{modality}"` to apply a different
     coefficient for each modality.
 
@@ -160,12 +195,12 @@ class EdgePenaltiesFromCoefficientsStep(Step):
       residential edges
 
     ```csv
-    type,coefficient1,coefficient2,penalty
-    constant,base,,3.0
-    constant,traffic_signals,,5.0
-    constant,traffic_signals,urban,4.0
-    speed_multiplier,base,,0.9
-    speed_multiplier,edge_type_residential,,0.9
+    type,variable1,variable2,penalty
+    additive,cst,,3.0
+    additive,traffic_signals,,5.0
+    additive,traffic_signals,urban,4.0
+    multiplicative,cst,,0.9
+    multiplicative,edge_type_residential,,0.9
     ```
     """
 
@@ -178,7 +213,7 @@ class EdgePenaltiesFromCoefficientsStep(Step):
         ),
     )
     input_files = {"edges_variables": RoadEdgesVariablesFile}
-    output_files = {"edges_penalties": RoadEdgesPenaltiesFile}
+    output_files = {"coefs": RoadEdgesPenaltyCoefficientsFile}
 
     def is_defined(self) -> bool:
         return self.coef_file is not None
@@ -190,53 +225,101 @@ class EdgePenaltiesFromCoefficientsStep(Step):
 
         assert self.coef_file is not None
 
-        df: pl.DataFrame = self.input["edges_variables"].read()
-        df = df.with_columns(base=pl.lit(1.0, dtype=pl.Float64))
+        var_schema = pl.read_parquet_schema(self.input["edges_variables"].complete_path)
+        existing_variables = set(var_schema.keys()) - {"edge_id"}
+
         coefs: pl.DataFrame = read_dataframe(self.coef_file)
 
         # Check columns.
         has_error = False
-        for col in ("type", "coefficient1", "coefficient2", "penalty"):
+        for col in ("type", "variable1", "variable2", "penalty"):
             if col not in coefs.columns:
                 logger.error(f"Missing column in coefficients file: `{col}`")
                 has_error = True
         if has_error:
             sys.exit()
-        if not coefs["type"].is_in(("constant", "speed_multiplier")).all():
-            logger.error('Column `type` can only take values `"constant"` and `"speed_multiplier"`')
+        if not coefs["type"].is_in(("additive", "multiplicative")).all():
+            logger.error('Column `type` can only take values `"additive"` and `"multiplicative"`')
             sys.exit()
-        if coefs["coefficient1"].null_count() > 0:
-            logger.error("There must not be any NULL value for column `coefficient1`")
+        if coefs["variable1"].null_count() > 0:
+            logger.error("There must not be any NULL value for column `variable1`")
             sys.exit()
 
-        # Check that all defined coefficients are available in the variables.
-        defined_coefs = set(coefs["coefficient1"]) | set(coefs["coefficient2"]) - {None}
-        existing_coefs = set(df.columns) - {"edge_id"}
-        missing_coefs = defined_coefs - existing_coefs
-        if missing_coefs:
+        # Check that all defined variables are available in the variables.
+        defined_variables = set(coefs["variable1"]) | set(coefs["variable2"]) - {None}
+        missing_variables = defined_variables - existing_variables
+        if missing_variables:
             logger.error(
-                "The following coeficients are defined in the coefficients file but they are not "
-                f"available in the edges'variables: {missing_coefs}"
+                "The following variables are defined in the coefficients file but they are not "
+                f"available in the edges' variables: {missing_variables}"
             )
             sys.exit()
 
+        self.output["coefs"].write(coefs)
+
+
+class EdgePenaltiesFromCoefficientsStep(Step):
+    """Generates free-flow travel time penalties for each road network edge from variable-level
+    coefficients.
+    """
+
+    additive_lb = FloatParameter(
+        "road_network.free_flow_penalties.additive_lower_bound",
+        description="Lower bound (inclusive) to the additive penalty for each edge.",
+        default=0.0,
+        lower_bound=0.0,
+    )
+    additive_ub = FloatParameter(
+        "road_network.free_flow_penalties.additive_upper_bound",
+        description="Upper bound (inclusive) to the additive penalty for each edge.",
+        default=inf,
+        lower_bound=0.0,
+    )
+    multiplicative_lb = FloatParameter(
+        "road_network.free_flow_penalties.multiplicative_lower_bound",
+        description="Lower bound (inclusive) to the multiplicative penalty for each edge.",
+        default=0.0,
+        lower_bound=0.0,
+    )
+    multiplicative_ub = FloatParameter(
+        "road_network.free_flow_penalties.multiplicative_upper_bound",
+        description="Upper bound (inclusive) to the multiplicative penalty for each edge.",
+        default=inf,
+        lower_bound=0.0,
+    )
+    input_files = {
+        "edges_variables": RoadEdgesVariablesFile,
+        "coefs": RoadEdgesPenaltyCoefficientsFile,
+    }
+    output_files = {"edges_penalties": RoadEdgesPenaltiesFile}
+
+    def run(self):
+        import polars as pl
+
+        df: pl.DataFrame = self.input["edges_variables"].read()
+        df = df.with_columns(cst=pl.lit(1.0, dtype=pl.Float64))
+        coefs: pl.DataFrame = self.input["coefs"].read()
+
         df = df.with_columns(
-            constant=pl.lit(0.0, dtype=pl.Float64), speed_multiplier=pl.lit(0.0, dtype=pl.Float64)
+            additive=pl.lit(0.0, dtype=pl.Float64), multiplicative=pl.lit(0.0, dtype=pl.Float64)
         )
         for row in coefs.iter_rows(named=True):
-            if row["coefficient2"] is None:
+            if row["variable2"] is None:
                 # Non-interaction variables.
                 df = df.with_columns(
-                    pl.col(row["type"]) + pl.col(row["coefficient1"]) * row["penalty"]
+                    pl.col(row["type"]) + pl.col(row["variable1"]) * row["penalty"]
                 )
             else:
                 # Interaction variables.
                 df = df.with_columns(
                     pl.col(row["type"])
-                    + row["penalty"] * pl.col(row["coefficient1"]) * pl.col(row["coefficient2"])
+                    + row["penalty"] * pl.col(row["variable1"]) * pl.col(row["variable2"])
                 )
 
-        df = df.select("edge_id", "constant", "speed_multiplier")
+        df = check_bounds(df, "additive", self.additive_lb, self.additive_ub)
+        df = check_bounds(df, "multiplicative", self.multiplicative_lb, self.multiplicative_ub)
+
+        df = df.select("edge_id", constant="additive", speed_multiplier="multiplicative")
         self.output["edges_penalties"].write(df)
 
 
@@ -248,6 +331,24 @@ class EdgesFreeFlowTravelTimesStep(Step):
     `constant_penalty + length / speed`
     """
 
+    speed_lb = FloatParameter(
+        "road_network.min_effective_speed",
+        description=(
+            "Lower bound to the effective speed (in km/h) of edges, after application of "
+            "multiplicative penalties."
+        ),
+        default=1.0,
+        lower_bound=EPSILON,
+    )
+    speed_ub = FloatParameter(
+        "road_network.max_effective_speed",
+        description=(
+            "Upper bound to the effective speed (in km/h) of edges, after application of "
+            "multiplicative penalties."
+        ),
+        default=inf,
+        lower_bound=EPSILON,
+    )
     input_files = {
         "clean_edges": RoadEdgesCleanFile,
         "penalties": InputFile(RoadEdgesPenaltiesFile, optional=True),
@@ -265,6 +366,10 @@ class EdgesFreeFlowTravelTimesStep(Step):
             df = df.with_columns(speed=pl.col("speed_limit") * pl.col("speed_multiplier"))
         else:
             df = df.with_columns(speed="speed_limit", constant=0.0)
+
+        # Check bounds.
+        df = check_bounds(df, "speed", self.speed_lb, self.speed_ub)
+
         df = df.select(
             "edge_id",
             free_flow_travel_time=pl.col("constant") + pl.col("length") / (pl.col("speed") / 3.6),
