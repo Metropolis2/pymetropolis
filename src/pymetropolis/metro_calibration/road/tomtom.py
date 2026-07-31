@@ -18,6 +18,7 @@ from pymetropolis.metro_pipeline.parameters import (
     TimeParameter,
 )
 from pymetropolis.metro_pipeline.types import String
+from pymetropolis.metro_spatial import GeoStep
 from pymetropolis.random import RandomStep
 
 from .files import TomTomRoutesFile
@@ -203,7 +204,7 @@ async def get_tomtom_data(
     return gdf
 
 
-class TomTomRequestsStep(RandomStep):
+class TomTomRequestsStep(RandomStep, GeoStep):
     """Retrieves historical travel time for some origin-destination pairs from TomTom API."""
 
     date = DateParameter(
@@ -315,5 +316,7 @@ class TomTomRequestsStep(RandomStep):
                 nb_batches=self.nb_batches,
             )
         )
+
+        gdf = gdf.to_crs(self.crs)
 
         self.output["results"].write(gdf)

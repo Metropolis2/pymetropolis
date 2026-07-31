@@ -33,6 +33,8 @@ class MetroPipeline:
     # List of files which are required or optional input for primary steps.
     # A step is "primary" if its priority is > 0.
     primary_input_files: set[type[MetroFile]]
+    # List of files which are required or optional input for the target step.
+    target_input_files: set[type[MetroFile]] = set()
     config: Config
     target_step: Step | None = None
 
@@ -111,6 +113,12 @@ class MetroPipeline:
                 f"Step {target_step} is not properly defined (missing configuration parameter?)"
             )
             sys.exit()
+        # Read the target input files (needed for later).
+        for f in (
+            self.steps[self.target_step]["required_inputs"]
+            | self.steps[self.target_step]["optional_inputs"]
+        ):
+            self.target_input_files.add(f)
 
     def set_feasible(self):
         self.generated_files = defaultdict(set)
@@ -192,10 +200,11 @@ class MetroPipeline:
                 .intersection(self.generated_files)
                 .issubset(available_files)
                 # Condition 3: step is primary or one of its output file is needed for a primary
-                # step, or it is the target step.
+                # step (or the target step), or it is the target step.
                 and (
                     s.is_primary()
                     or any(f in self.primary_input_files for f in self.steps[s]["outputs"])
+                    or any(f in self.target_input_files for f in self.steps[s]["outputs"])
                     or s == self.target_step
                 )
             ]

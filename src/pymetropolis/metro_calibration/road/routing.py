@@ -3,12 +3,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pymetropolis.metro_common.utils import pl_duration_to_seconds
+from pymetropolis.metro_network.road_network.files import RoadEdgesCleanFile
 from pymetropolis.metro_pipeline import Step
 
 from .files import (
     AllRoadDistancesFile,
     AllRoadFreeFlowTravelTimesFile,
-    RoadEdgesCleanFile,
     RoadEdgesFreeFlowTravelTimeFile,
 )
 

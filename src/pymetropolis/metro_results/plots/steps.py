@@ -1,9 +1,9 @@
+from pymetropolis.metro_calibration.road import RoadEdgesFreeFlowTravelTimeFile
 from pymetropolis.metro_common.utils import (
     pl_duration_to_seconds,
     seconds_since_midnight_to_time_string,
     seconds_to_duration_string,
 )
-from pymetropolis.metro_network.road_network import RoadEdgesFreeFlowTravelTimeFile
 from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_results.aggregate import IterationResultsFile
 from pymetropolis.metro_results.demand import TripResultsFile

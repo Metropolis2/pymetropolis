@@ -8,12 +8,14 @@ New steps:
 - `ActivityResultsStep`
 - `EdgePenaltiesFromCoefficientsStep`
 - `TomTomRequestsStep`
+- `MapMatchingStep`
 
 New files:
 
 - `ActivitiesLocationsFile`
 - `ActivityResultsFile`
 - `TomTomRoutesFile`
+- `TomTomRoutesMatchedFile`
 
 New columns:
 
@@ -42,6 +44,7 @@ Other changes:
 - Guess the separator when reading a CSV datafile
 - Use dummy variables for categorical columns in `RoadEdgesVariablesFile`
 - Include non-primary road trips to `RouteResultsFile`
+- Move some MetroFiles from `network/road_network/` to `calibration/road`
 
 Fixes:
 

@@ -1,6 +1,6 @@
+from pymetropolis.metro_calibration.road import AllRoadFreeFlowTravelTimesFile
 from pymetropolis.metro_common.utils import pl_duration_to_seconds
 from pymetropolis.metro_demand.routing.files import TripsRoadNodesFile
-from pymetropolis.metro_network.road_network import AllRoadFreeFlowTravelTimesFile
 from pymetropolis.metro_pipeline.parameters import FloatParameter, StringParameter
 from pymetropolis.random import IntDistributionParameter, RandomStep, generate_int_values
 

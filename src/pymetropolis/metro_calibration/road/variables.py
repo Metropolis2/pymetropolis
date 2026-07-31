@@ -3,14 +3,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from pymetropolis.metro_common import MetropyError
-from pymetropolis.metro_network.road_network.files import (
-    RoadEdgesCleanFile,
-    RoadEdgesUrbanFlagFile,
-    RoadEdgesVariablesFile,
-)
+from pymetropolis.metro_network.road_network.files import RoadEdgesCleanFile, RoadEdgesUrbanFlagFile
 from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import CustomParameter
 from pymetropolis.metro_pipeline.steps import InputFile
+
+from .files import RoadEdgesVariablesFile
 
 if TYPE_CHECKING:
     import polars as pl

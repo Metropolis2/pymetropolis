@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 
+from pymetropolis.metro_calibration.road.files import RoadEdgesFreeFlowTravelTimeFile
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_demand.routing.files import (
     NonPrimaryCarTrips,
@@ -13,7 +14,6 @@ from pymetropolis.metro_demand.routing.files import (
 from pymetropolis.metro_network.functions import get_largest_strongly_connected_component_nodes
 from pymetropolis.metro_network.road_network.files import (
     RoadEdgesCleanFile,
-    RoadEdgesFreeFlowTravelTimeFile,
     RoadEdgesPrimaryFlagFile,
 )
 from pymetropolis.metro_pipeline import Step
