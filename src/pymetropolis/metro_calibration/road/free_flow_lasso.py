@@ -223,5 +223,4 @@ class FreeFlowLassoStep(Step):
         (_Y_hat, _residuals, _rmse, coefs) = compute_lasso(endog_variable, exog_variables)
 
         df = coefs_to_df(coefs)
-        breakpoint()
         self.output["coefs"].write(df)
