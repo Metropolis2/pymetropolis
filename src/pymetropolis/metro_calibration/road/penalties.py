@@ -133,16 +133,38 @@ road = 0.9
 
 
 class EdgePenaltiesFromCoefficientsStep(Step):
-    """TODO
+    """Generates travel time penalties for the road network edges, from a file with variable-level
+    coefficients.
 
-    columns:
+    The
+    [`road_network.penalty_coefficients_file`](parameters.md#road_networkpenalty_coefficients_file)
+    parameter is a path to a CSV or Parquet file with the coefficients to apply on edges' variables.
+
+    Columns are:
+
+    - `type`: whether the penalty is additive or a multiplier of speed limit (`"constant"` or
+      `"speed_multiplier"`)
+    - `coefficient1`: variable to which the coefficient applies
+    - `coefficient2`: for interaction variables, second variable to which the coefficient applies
+    - `penalty`: value of the penalty
+
+    For penalties that apply to all edges, use `"base"` as variable.
+    For categorical variables, you can use the syntax `"{variable}_{modality}"` to apply a different
+    coefficient for each modality.
+
+    For example, the following CSV file set:
+
+    - an additive penalty of 3 seconds for all edges + 5 seconds for edges with traffic signals + 4
+      seconds for urban edges with traffic signals
+    - a multiplicative penalty of 0.9 for all non-residential edges and 0.9 * 0.9 for all
+      residential edges
 
     ```csv
     type,coefficient1,coefficient2,penalty
     constant,base,,3.0
-    speed_multiplier,base,,0.9
     constant,traffic_signals,,5.0
     constant,traffic_signals,urban,4.0
+    speed_multiplier,base,,0.9
     speed_multiplier,edge_type_residential,,0.9
     ```
     """
