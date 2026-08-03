@@ -16,12 +16,16 @@ from pymetropolis.common import ThreadedStep
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_common.time import MetroTime
 from pymetropolis.metro_demand.departure_time.files import TstarsFile
+from pymetropolis.metro_demand.modes.park_and_ride.files import ParkAndRideStopsFile
 from pymetropolis.metro_demand.population.files import (
     TripsDestinationsFile,
     TripsFile,
     TripsOriginsFile,
 )
-from pymetropolis.metro_demand.routing.files import TripsPublicTransitItinerariesFile
+from pymetropolis.metro_demand.routing.files import (
+    ParkAndRideTripsPublicTransitItinerariesFile,
+    TripsPublicTransitItinerariesFile,
+)
 from pymetropolis.metro_network.public_transit import GTFSStep
 from pymetropolis.metro_pipeline.parameters import (
     EnumParameter,
@@ -33,6 +37,7 @@ from pymetropolis.metro_pipeline.parameters import (
 from pymetropolis.metro_pipeline.steps import InputFile
 
 if TYPE_CHECKING:
+    import geopandas as gpd
     import polars as pl
     import requests
 
@@ -285,7 +290,7 @@ def clean_leg(leg: dict):
 def clean_trips_time(
     trips: pl.DataFrame, tstars: pl.DataFrame | None, time_type: str, time: MetroTime | None
 ):
-    """Add `seconds` and `arrive_by` column to trips."""
+    """Add `time` and `arrive_by` column to trips."""
     import polars as pl
 
     if time_type in ("departure", "arrival"):
@@ -326,10 +331,112 @@ def clean_trips_time(
             )
         # Fill null values for time column with the given time parameter.
         trips = trips.with_columns(pl.col("seconds").fill_null(round(time.seconds())))
+    # Convert seconds column to a HH:MM:SS string.
+    trips = trips.with_columns(
+        time=pl.time(
+            hour=pl.col("seconds") // 3600 % 24,
+            minute=pl.col("seconds") // 60 % 60,
+            second=pl.col("seconds") % 60,
+        ).dt.strftime("%H:%M:%S")
+    ).drop("seconds")
     return trips
 
 
-class TripsOpenTripPlannerStep(ThreadedStep, GTFSStep):
+def read_lng_lat(gdf: gpd.GeoDataFrame, prefix: str = "") -> pl.DataFrame:
+    import polars as pl
+
+    gdf.to_crs("EPSG:4326", inplace=True)
+    return pl.DataFrame(
+        {"trip_id": gdf["trip_id"], f"{prefix}lng": gdf.geometry.x, f"{prefix}lat": gdf.geometry.y}
+    )
+
+
+class GenericOpenTripPlannerStep(ThreadedStep, GTFSStep):
+    """Generic Step for OpenTripPlanner computation."""
+
+    otp_url = StringParameter(
+        "opentripplanner.url",
+        default="http://0.0.0.0:8080",
+        description="URL from which the OpenTripPlanner API can be accessed.",
+    )
+    batch_size = IntParameter(
+        "opentripplanner.batch_size",
+        description="How many trips should be processed in each batch.",
+        note=(
+            "Default is to process all trips in a single batch. "
+            "Use a lower value if you are running out of memory."
+        ),
+    )
+    time_type = EnumParameter(
+        "opentripplanner.time_type",
+        values=["departure", "arrival", "tstar", "custom_departure", "custom_arrival"],
+        description="How the departure / arrival time of the requests is defined.",
+        note=(
+            "If `\"departure\"`, trips' departure times are read from the trips' ex-ante departure "
+            "times. "
+            "If `\"arrival\"`, trips' arrival times are read from the trips' ex-ante arrival "
+            "times. "
+            "If `\"tstar\"`, trips' arrival times are read from the trips' desired arrival times. "
+            'If `"custom_departure"`, the departure times are equal to the value of '
+            "`opentripplanner.time` for all trips. "
+            'If `"custom_arrival"`, the arrival times are equal to the value of '
+            "`opentripplanner.time` for all trips. "
+        ),
+    )
+    time = TimeParameter(
+        "opentripplanner.time",
+        description="Departure / arrival time of the requests.",
+        note=(
+            'If `time_type` is `"custom_departure"`, this is the departure time used for all '
+            "requests. "
+            'If `time_type` is `"custom_arrival"`, this is the arrival time used for all '
+            "requests. "
+            "Otherwise, the value is only used as a default for missing departure / arrival time."
+        ),
+    )
+    walking_speed = FloatParameter(
+        "opentripplanner.walking_speed",
+        default=4.0,
+        description="Walking speed for public-transit trips, in km/h.",
+    )
+    walking_reluctance = FloatParameter(
+        "opentripplanner.multipliers.walk",
+        default=2.0,
+        description="Multiplier for the value of time walking.",
+    )
+    waiting_reluctance = FloatParameter(
+        "opentripplanner.multipliers.wait",
+        default=1.1,
+        description="Multiplier for the value of time waiting.",
+    )
+    bus_reluctance = FloatParameter(
+        "opentripplanner.multipliers.bus",
+        default=1.2,
+        description="Multiplier for the value of time in a bus.",
+    )
+    tram_reluctance = FloatParameter(
+        "opentripplanner.multipliers.tram",
+        default=1.0,
+        description="Multiplier for the value of time in a tramway.",
+    )
+    subway_reluctance = FloatParameter(
+        "opentripplanner.multipliers.subway",
+        default=1.0,
+        description="Multiplier for the value of time in a subway.",
+    )
+    rail_reluctance = FloatParameter(
+        "opentripplanner.multipliers.rail",
+        default=1.0,
+        description="Multiplier for the value of time for rail transport.",
+    )
+    transfer_cost = IntParameter(
+        "opentripplanner.transfer_cost",
+        default=300,
+        description="Penalty for transfers, in seconds equivalent.",
+    )
+
+
+class TripsOpenTripPlannerStep(GenericOpenTripPlannerStep):
     """Computes the trips' travel time and generalized time by public transit with OpenTripPlanner.
 
     This step requires having access to an OpenTripPlanner API server.
@@ -418,86 +525,6 @@ class TripsOpenTripPlannerStep(ThreadedStep, GTFSStep):
     ```
     """
 
-    otp_url = StringParameter(
-        "opentripplanner.url",
-        default="http://0.0.0.0:8080",
-        description="URL from which the OpenTripPlanner API can be accessed.",
-    )
-    batch_size = IntParameter(
-        "opentripplanner.batch_size",
-        description="How many trips should be processed in each batch.",
-        note=(
-            "Default is to process all trips in a single batch. "
-            "Use a lower value if you are running out of memory."
-        ),
-    )
-    time_type = EnumParameter(
-        "opentripplanner.time_type",
-        values=["departure", "arrival", "tstar", "custom_departure", "custom_arrival"],
-        description="How the departure / arrival time of the requests is defined.",
-        note=(
-            "If `\"departure\"`, trips' departure times are read from the trips' ex-ante departure "
-            "times. "
-            "If `\"arrival\"`, trips' arrival times are read from the trips' ex-ante arrival "
-            "times. "
-            "If `\"tstar\"`, trips' arrival times are read from the trips' desired arrival times. "
-            'If `"custom_departure"`, the departure times are equal to the value of '
-            "`opentripplanner.time` for all trips. "
-            'If `"custom_arrival"`, the arrival times are equal to the value of '
-            "`opentripplanner.time` for all trips. "
-        ),
-    )
-    time = TimeParameter(
-        "opentripplanner.time",
-        description="Departure / arrival time of the requests.",
-        note=(
-            'If `time_type` is `"custom_departure"`, this is the departure time used for all '
-            "requests. "
-            'If `time_type` is `"custom_arrival"`, this is the arrival time used for all '
-            "requests. "
-            "Otherwise, the value is only used as a default for missing departure / arrival time."
-        ),
-    )
-    walking_speed = FloatParameter(
-        "opentripplanner.walking_speed",
-        default=4.0,
-        description="Walking speed for public-transit trips, in km/h.",
-    )
-    walking_reluctance = FloatParameter(
-        "opentripplanner.multipliers.walk",
-        default=2.0,
-        description="Multiplier for the value of time walking.",
-    )
-    waiting_reluctance = FloatParameter(
-        "opentripplanner.multipliers.wait",
-        default=1.1,
-        description="Multiplier for the value of time waiting.",
-    )
-    bus_reluctance = FloatParameter(
-        "opentripplanner.multipliers.bus",
-        default=1.2,
-        description="Multiplier for the value of time in a bus.",
-    )
-    tram_reluctance = FloatParameter(
-        "opentripplanner.multipliers.tram",
-        default=1.0,
-        description="Multiplier for the value of time in a tramway.",
-    )
-    subway_reluctance = FloatParameter(
-        "opentripplanner.multipliers.subway",
-        default=1.0,
-        description="Multiplier for the value of time in a subway.",
-    )
-    rail_reluctance = FloatParameter(
-        "opentripplanner.multipliers.rail",
-        default=1.0,
-        description="Multiplier for the value of time for rail transport.",
-    )
-    transfer_cost = IntParameter(
-        "opentripplanner.transfer_cost",
-        default=300,
-        description="Penalty for transfers, in seconds equivalent.",
-    )
     input_files = {
         "trips": TripsFile,
         "origins": TripsOriginsFile,
@@ -514,7 +541,6 @@ class TripsOpenTripPlannerStep(ThreadedStep, GTFSStep):
         return self.gtfs_date is not None and self.time_type is not None
 
     def run(self):
-        import polars as pl
 
         assert self.time_type is not None
         assert self.otp_url is not None
@@ -526,37 +552,82 @@ class TripsOpenTripPlannerStep(ThreadedStep, GTFSStep):
         trips = clean_trips_time(
             trips, self.input["tstars"].read_if_exists(), self.time_type, self.time
         )
-        # Convert time column to a HH:MM:SS string.
-        trips = trips.with_columns(
-            time=pl.time(
-                hour=pl.col("seconds") // 3600 % 24,
-                minute=pl.col("seconds") // 60 % 60,
-                second=pl.col("seconds") % 60,
-            ).dt.strftime("%H:%M:%S")
-        ).drop("seconds")
         # Add date.
         trips = trips.with_columns(date=self.gtfs_date)
 
         # Read origin / destination longitude and latitude.
         origins = self.input["origins"].read()
-        origins.to_crs("EPSG:4326", inplace=True)
-        origins_df = pl.DataFrame(
-            {
-                "trip_id": origins["trip_id"],
-                "origin_lng": origins.geometry.x,
-                "origin_lat": origins.geometry.y,
-            }
-        )
+        origins_df = read_lng_lat(origins, "origin_")
         trips = trips.join(origins_df, on="trip_id")
         destinations = self.input["destinations"].read()
-        destinations.to_crs("EPSG:4326", inplace=True)
-        destinations_df = pl.DataFrame(
-            {
-                "trip_id": destinations["trip_id"],
-                "destination_lng": destinations.geometry.x,
-                "destination_lat": destinations.geometry.y,
-            }
+        destinations_df = read_lng_lat(destinations, "destination_")
+        trips = trips.join(destinations_df, on="trip_id")
+
+        parameters = {
+            "walkSpeed": self.walking_speed / 3.6,
+            "walkReluctance": self.walking_reluctance,
+            "waitReluctance": self.waiting_reluctance,
+            "busReluctance": self.bus_reluctance,
+            "tramReluctance": self.tram_reluctance,
+            "subwayReluctance": self.subway_reluctance,
+            "railReluctance": self.rail_reluctance,
+            "transferCost": self.transfer_cost,
+        }
+
+        df = run_queries(
+            trips, self.otp_url, parameters, self.batch_size, nb_threads=self.nb_threads
         )
+        self.output["costs"].write(df)
+
+
+class ParkAndRideTripsOpenTripPlannerStep(GenericOpenTripPlannerStep):
+    """Computes the travel time and generalized time for the public-transit parts of P+R trips with
+    OpenTripPlanner.
+
+    Check [`TripsOpenTripPlannerStep`](steps.md#tripsopentripplannerstep) for additional details.
+    """
+
+    input_files = {
+        "trips": TripsFile,
+        "origins": TripsOriginsFile,
+        "destinations": TripsDestinationsFile,
+        "pr_stops": ParkAndRideStopsFile,
+        "tstars": InputFile(
+            TstarsFile,
+            when=lambda inst: inst.time_type == "tstar",
+            when_doc='if `time_type` is `"tstar"`',
+        ),
+    }
+    output_files = {"costs": ParkAndRideTripsPublicTransitItinerariesFile}
+
+    def is_defined(self):
+        return self.gtfs_date is not None and self.time_type is not None
+
+    def run(self):
+
+        assert self.time_type is not None
+        assert self.otp_url is not None
+        assert self.walking_speed is not None
+
+        # PFR. I think that the tstar option cannot work for P+R trips (for the trip back, we don't
+        # know the car travel time so we don't know the actual arrival time at destination). So
+        # probably, we should disable the option in this case (and clarify that in the Step's
+        # docstring). If you want to implement another solution (e.g., use free-flow car travel time
+        # in this case), we cannot discuss it! How did you do in metropy?
+        trips = self.input["trips"].read()
+        trips = clean_trips_time(
+            trips, self.input["tstars"].read_if_exists(), self.time_type, self.time
+        )
+        trips = trips.with_columns(date=self.gtfs_date)
+
+        # PFR. Adapt this code to get the actual origin / destination that we want (with P+R
+        # facility and only for first / last trip of tour).
+        # The rest should work as is (to be checked).
+        origins = self.input["origins"].read()
+        origins_df = read_lng_lat(origins, "origin_")
+        trips = trips.join(origins_df, on="trip_id")
+        destinations = self.input["destinations"].read()
+        destinations_df = read_lng_lat(destinations, "destination_")
         trips = trips.join(destinations_df, on="trip_id")
 
         parameters = {

@@ -200,6 +200,18 @@ class String(Type):
         return "String"
 
 
+class Identifier(Type):
+    @override
+    def validate(self, value: Any) -> str | int:
+        if not isinstance(value, str) and not isinstance(value, int):
+            raise MetropyError(f"Invalid identifier: {value!r}")
+        return value
+
+    @override
+    def _describe(self) -> str:
+        return "Id (integer or string)"
+
+
 class Duration(Type):
     @override
     def validate(self, value: Any) -> timedelta:

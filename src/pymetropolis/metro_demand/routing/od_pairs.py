@@ -4,19 +4,39 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 
+from pymetropolis.metro_demand.modes.park_and_ride.files import ParkAndRideStopsFile
 from pymetropolis.metro_demand.population.files import TripsDestinationsFile, TripsOriginsFile
 from pymetropolis.metro_network.bicycle_network.files import BicycleEdgesCleanFile
 from pymetropolis.metro_network.pedestrian_network.files import PedestrianEdgesCleanFile
 from pymetropolis.metro_network.road_network.files import RoadEdgesCleanFile
+from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import ListParameter
 from pymetropolis.metro_pipeline.types import String
-from pymetropolis.metro_spatial import GeoStep
 
-from .files import TripsBicycleNodesFile, TripsPedestrianNodesFile, TripsRoadNodesFile
+from .files import (
+    ParkAndRideRoadNodesFile,
+    TripsBicycleNodesFile,
+    TripsPedestrianNodesFile,
+    TripsRoadNodesFile,
+)
 
 if TYPE_CHECKING:
     import geopandas as gpd
     import polars as pl
+
+
+def prepare_edges(edges: gpd.GeoDataFrame, forbidden_types: list[str] = []) -> gpd.GeoDataFrame:
+    from shapely.geometry import Point
+
+    edges = edges.loc[
+        ~edges["edge_type"].isin(forbidden_types), ["edge_id", "geometry", "source", "target"]
+    ]
+    # Create source / target point of the edges.
+    logger.debug("Creating source / target points")
+    # TODO: Speed-up this with duckdb
+    edges["source_point"] = edges["geometry"].apply(lambda g: Point(g.coords[0]))
+    edges["target_point"] = edges["geometry"].apply(lambda g: Point(g.coords[-1]))
+    return edges
 
 
 def identify_od_pairs(
@@ -24,14 +44,8 @@ def identify_od_pairs(
 ) -> pl.DataFrame:
     """Identify the origin and destination network node from origin / destination coordinates."""
     import polars as pl
-    from shapely.geometry import Point
 
     assert len(origins_gdf) == len(destinations_gdf)
-    # Create source / target point of the edges.
-    logger.debug("Creating source / target points")
-    # TODO: Speed-up this with duckdb
-    edges["source_point"] = edges["geometry"].apply(lambda g: Point(g.coords[0]))
-    edges["target_point"] = edges["geometry"].apply(lambda g: Point(g.coords[-1]))
     logger.debug("Identifying nearest nodes for origins")
     origins = identify_nodes(edges, origins_gdf)
     logger.debug("Identifying nearest nodes for destinations")
@@ -45,7 +59,9 @@ def identify_od_pairs(
     return df
 
 
-def identify_nodes(edges: gpd.GeoDataFrame, nodes_gdf: gpd.GeoDataFrame) -> pl.DataFrame:
+def identify_nodes(
+    edges: gpd.GeoDataFrame, nodes_gdf: gpd.GeoDataFrame, id_col: str = "trip_id"
+) -> pl.DataFrame:
     """Identify the closest edge for each node in a list."""
     import polars as pl
 
@@ -57,14 +73,14 @@ def identify_nodes(edges: gpd.GeoDataFrame, nodes_gdf: gpd.GeoDataFrame) -> pl.D
         how="left",
     )
     # Duplicate indices occur when there are two edges at the same distance.
-    nodes_gdf.drop_duplicates(subset=["trip_id"], inplace=True)
+    nodes_gdf.drop_duplicates(subset=[id_col], inplace=True)
     # Compute distance to the source / target node of nearest edge.
     nodes_gdf["source_dist"] = nodes_gdf["geometry"].distance(nodes_gdf["source_point"])
     nodes_gdf["target_dist"] = nodes_gdf["geometry"].distance(nodes_gdf["target_point"])
     # Set the nearest node.
     nodes = pl.from_pandas(
         nodes_gdf.loc[
-            :, ["trip_id", "edge_id", "edge_dist", "source", "target", "source_dist", "target_dist"]
+            :, [id_col, "edge_id", "edge_dist", "source", "target", "source_dist", "target_dist"]
         ]
     )
     mask = pl.col("source_dist") > pl.col("target_dist")
@@ -77,12 +93,12 @@ def identify_nodes(edges: gpd.GeoDataFrame, nodes_gdf: gpd.GeoDataFrame) -> pl.D
         node_dist_on_edge=(pl.col("node_dist") ** 2 - pl.col("edge_dist") ** 2).sqrt()
     )
     nodes = nodes.select(
-        "trip_id", "node", "node_dist", "node_dist_on_edge", "edge_dist", edge="edge_id"
+        id_col, "node", "node_dist", "node_dist_on_edge", "edge_dist", edge="edge_id"
     )
     return nodes
 
 
-class PedestrianODNodesFromCoordinatesStep(GeoStep):
+class PedestrianODNodesFromCoordinatesStep(Step):
     """Identifies nodes on the pedestrian network to be used as origins and destinations of the
     trips.
 
@@ -129,7 +145,7 @@ class PedestrianODNodesFromCoordinatesStep(GeoStep):
         self.output["ods"].write(ods)
 
 
-class BicycleODNodesFromCoordinatesStep(GeoStep):
+class BicycleODNodesFromCoordinatesStep(Step):
     """Identifies nodes on the bicycle network to be used as origins and destinations of the
     trips.
 
@@ -176,7 +192,19 @@ class BicycleODNodesFromCoordinatesStep(GeoStep):
         self.output["ods"].write(ods)
 
 
-class RoadODNodesFromCoordinatesStep(GeoStep):
+class GenericRoadNodesStep(Step):
+    forbidden_types = ListParameter(
+        "road_network.forbidden_types",
+        inner=String(),
+        default=[],
+        description=(
+            "List of road edges' types that *cannot* be used as origin / destination edge."
+        ),
+        example='`["motorway", "motorway_link", "trunk", "trunk_link"]`',
+    )
+
+
+class RoadODNodesFromCoordinatesStep(GenericRoadNodesStep):
     """Identifies nodes on the road network to be used as origins and destinations of the trips.
 
     First, this Step finds the nearest edge to the origin / destination coordinates.
@@ -187,15 +215,6 @@ class RoadODNodesFromCoordinatesStep(GeoStep):
     whichever is closer.
     """
 
-    forbidden_types = ListParameter(
-        "road_network.forbidden_types",
-        inner=String(),
-        default=[],
-        description=(
-            "List of road edges' types that *cannot* be used as origin / destination edge."
-        ),
-        example='`["motorway", "motorway_link", "trunk", "trunk_link"]`',
-    )
     input_files = {
         "edges": RoadEdgesCleanFile,
         "origins": TripsOriginsFile,
@@ -206,13 +225,12 @@ class RoadODNodesFromCoordinatesStep(GeoStep):
     def run(self):
         import polars as pl
 
+        assert self.forbidden_types is not None
+
         edges = self.input["edges"].read()
-        edges = edges.loc[
-            ~edges["edge_type"].isin(self.forbidden_types),
-            ["edge_id", "geometry", "source", "target"],
-        ]
         origins = self.input["origins"].read()
         destinations = self.input["destinations"].read()
+        edges = prepare_edges(edges, self.forbidden_types)
         ods = identify_od_pairs(edges, origins, destinations)
         ods = ods.select(
             pl.all()
@@ -220,3 +238,31 @@ class RoadODNodesFromCoordinatesStep(GeoStep):
             .name.replace("destination_", "destination_road_")
         )
         self.output["ods"].write(ods)
+
+
+class ParkAndRideRoadNodesFromCoordinatesStep(GenericRoadNodesStep):
+    """For each park-and-ride facility, identifies the node of the road network to be used as
+    origin / destination for the car parts of park-and-ride trips.
+
+    The nodes are identified in the same way as in the
+    [`RoadODNodesFromCoordinatesStep`](steps.md#roadodnodesfromcoordinatesstep).
+    The [`road_network.forbidden_types`](parameters.md#road_networkforbidden_types) has the same
+    meaning.
+    """
+
+    input_files = {"edges": RoadEdgesCleanFile, "stops": ParkAndRideStopsFile}
+    output_files = {"nodes": ParkAndRideRoadNodesFile}
+
+    def run(self):
+        # PFE. I coded this step myself but did not test it. Check that it works and remove this
+        # comment when done.
+        import polars as pl
+
+        assert self.forbidden_types is not None
+
+        edges = self.input["edges"].read()
+        stops = self.input["stops"].read()
+        edges = prepare_edges(edges, self.forbidden_types)
+        nodes = identify_nodes(edges, stops, id_col="tour_id")
+        nodes = nodes.select("tour_id", pl.all().exclude("tour_id").name.prefix("pr_"))
+        self.output["nodes"].write(nodes)

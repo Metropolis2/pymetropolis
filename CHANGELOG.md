@@ -4,12 +4,23 @@
 
 New steps:
 
-- `ReadPublicTransitNetworkStop`
+- `ReadPublicTransitNetworkStep`
+- `ParkAndRideFacilitiesFromNearestStopStep`
+- `ParkAndRideRoadNodesFromCoordinatesStep`
+- `ParkAndRideTripsCarFreeFlowTravelTimesStep`
+- `ParkAndRideCarAccessEgressStep`
+- `ParkAndRideTripsOpenTripPlannerStep`
 
 New files:
 
 - `PublicTransitStopsFile`
 - `PublicTransitRoutesFile`
+- `ParkAndRideStopsFile`
+- `ParkAndRideRoadNodesFile`
+- `ParkAndRideTripsCarFreeFlowTravelTimesFile`
+- `PrimaryParkAndRideCarTripsAccessEgressFile`
+- `NonPrimaryParkAndRideCarTrips`
+- `ParkAndRideTripsPublicTransitItinerariesFile`
 
 New parameters:
 

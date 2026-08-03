@@ -8,7 +8,10 @@ from pymetropolis.metro_calibration.road.files import RoadEdgesFreeFlowTravelTim
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_demand.routing.files import (
     NonPrimaryCarTrips,
+    NonPrimaryParkAndRideCarTrips,
+    ParkAndRideTripsCarFreeFlowTravelTimesFile,
     PrimaryCarTripsAccessEgressFile,
+    PrimaryParkAndRideCarTripsAccessEgressFile,
     TripsCarFreeFlowTravelTimesFile,
 )
 from pymetropolis.metro_network.functions import get_largest_strongly_connected_component_nodes
@@ -65,7 +68,8 @@ def find_first_last_primary(routes: pl.DataFrame, primary_edges: set) -> pl.Data
 
 def find_primary_edges(routes: pl.DataFrame, primary_edges: set, i=0) -> set:
     """Recursively adds edges to the primary network when they are "in the middle" of the primary
-    parts."""
+    parts.
+    """
     import polars as pl
 
     logger.debug(f"Iteration {i}")
@@ -216,6 +220,12 @@ class RoadNetworkPrimaryEdgesStep(Step):
             when=lambda inst: inst.secondary_types and inst.ensure_primary_connected,
             when_doc="if `secondary_types` is not empty and `ensure_primary_connected` is `true`",
         ),
+        "pr_ff_routes": InputFile(
+            ParkAndRideTripsCarFreeFlowTravelTimesFile,
+            optional=True,
+            when=lambda inst: inst.secondary_types and inst.ensure_primary_connected,
+            when_doc="if `secondary_types` is not empty and `ensure_primary_connected` is `true`",
+        ),
     }
     output_files = {"edges_primary": RoadEdgesPrimaryFlagFile}
 
@@ -233,6 +243,14 @@ class RoadNetworkPrimaryEdgesStep(Step):
             df = edges.select("edge_id", primary=True)
         if not df["primary"].all() and self.ensure_primary_connected:
             routes = self.input["car_ff_routes"].read().select("trip_id", route="free_flow_route")
+            # PFE. The lines below ensure that P+R car routes are also used to identify primary
+            # edges (when these P+R routes are defined, i.e., when P+R is enabled).
+            # Check that it works properly and remove this comment when done.
+            pr_routes = self.input["pr_ff_routes"].read_if_exists()
+            if pr_routes is not None:
+                routes = pl.concat(
+                    (routes, pr_routes.select("trip_id", route="free_flow_route")), how="vertical"
+                )
             primary_edges = set(df.filter("primary")["edge_id"])
             primary_edges = find_primary_edges(routes, primary_edges)
             edges = edges.with_columns(primary=pl.col("edge_id").is_in(primary_edges))
@@ -299,6 +317,50 @@ class CarAccessEgressStep(Step):
     }
 
     def run(self):
+        import polars as pl
+
+        edges_gdf = self.input["edges"].read()
+        edges = pl.from_pandas(edges_gdf.loc[:, ["edge_id", "source", "target", "length"]])
+        edges_fftt = self.input["edges_fftt"].read()
+        edges = edges.join(edges_fftt, on="edge_id", how="left")
+        primary_flags = self.input["primary_flags"].read()
+        primary_edges = set(primary_flags.filter("primary")["edge_id"])
+        routes = (
+            self.input["car_ff_routes"]
+            .read()
+            .select(
+                "trip_id", route="free_flow_route", free_flow_travel_time="free_flow_travel_time"
+            )
+        )
+        primary_trips, secondary_trips = find_connections(routes, edges, primary_edges)
+        self.output["primary_trips"].write(primary_trips)
+        self.output["secondary_trips"].write(secondary_trips)
+
+
+class ParkAndRideCarAccessEgressStep(Step):
+    """Identifies the access and egress parts of the car part of park-and-ride trips, based on the
+    primary road network.
+
+    For the first and last trip of each tour, this step determines:
+
+    - **Access part**: The sequence of edges taken *before* the first primary edge in the trip.
+    - **Egress part**: The sequence of edges taken *after* the last primary edge in the trip.
+    """
+
+    input_files = {
+        "edges": RoadEdgesCleanFile,
+        "primary_flags": RoadEdgesPrimaryFlagFile,
+        "edges_fftt": RoadEdgesFreeFlowTravelTimeFile,
+        "car_ff_routes": ParkAndRideTripsCarFreeFlowTravelTimesFile,
+    }
+    output_files = {
+        "primary_trips": PrimaryParkAndRideCarTripsAccessEgressFile,
+        "secondary_trips": NonPrimaryParkAndRideCarTrips,
+    }
+
+    def run(self):
+        # PFE. This is the same code as for the standard car trips. I think it should work as it is,
+        # but to be checked!
         import polars as pl
 
         edges_gdf = self.input["edges"].read()
