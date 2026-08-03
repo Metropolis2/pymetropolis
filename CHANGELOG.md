@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+New steps:
+
+- `ReadPublicTransitNetworkStop`
+
+New files:
+
+- `PublicTransitStopsFile`
+- `PublicTransitRoutesFile`
+
 New parameters:
 
 - `gtfs.date`
