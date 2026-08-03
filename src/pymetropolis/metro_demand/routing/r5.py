@@ -14,15 +14,14 @@ from pymetropolis.metro_demand.population.files import (
     TripsOriginsFile,
 )
 from pymetropolis.metro_demand.routing.files import TripsPublicTransitItinerariesFile
+from pymetropolis.metro_network.public_transit import GTFSStep
 from pymetropolis.metro_pipeline.parameters import (
-    DateParameter,
     DurationParameter,
     EnumParameter,
     FloatParameter,
     TimeParameter,
 )
 from pymetropolis.metro_spatial import OSMStep
-from pymetropolis.metro_spatial.gtfs import GTFSStep
 
 if TYPE_CHECKING:
     import geopandas as gpd
@@ -96,7 +95,7 @@ class TripsPublicTransitTravelTimeFromR5Step(OSMStep, GTFSStep):
     ([`osm_file`](parameters.md#osm_file)) and from GTFS file(s)
     ([`gtfs_files`](parameters.md#gtfs_files)).
 
-    The [`date`](parameters.md#r5date) parameter controls the date used in the public-transit
+    The [`gtfs.date`](parameters.md#gtfsdate) parameter controls the date used in the public-transit
     timetables, for all queries.
     You need to ensure that the GTFS file(s) have running services at this date.
 
@@ -122,21 +121,18 @@ class TripsPublicTransitTravelTimeFromR5Step(OSMStep, GTFSStep):
 
     ```toml
     osm_file = "data/ile-de-france-260101.osm.pbf"
-    gtfs_files = ["data/IDFM-gtfs.zip"]
+
+    [gtfs]
+    files = ["data/IDFM-gtfs.zip"]
+    date = 2026-05-28
 
     [r5]
-    date = 2026-05-28
     time_type = "departure"
     coord_rounding = 1000
     time_rounding = 1800
     ```
     """
 
-    date = DateParameter(
-        "r5.date",
-        description="Date to be used for the requests.",
-        note="Ensure that the GTFS file read by OpenTripPlanner has active services for this date.",
-    )
     time_type = EnumParameter(
         "r5.time_type",
         values=["departure", "custom"],
@@ -184,8 +180,8 @@ class TripsPublicTransitTravelTimeFromR5Step(OSMStep, GTFSStep):
         return (
             self.osm_file is not None
             and self.gtfs_files is not None
+            and self.gtfs_date is not None
             and self.time_type is not None
-            and self.date is not None
         )
 
     def run(self):
@@ -195,7 +191,7 @@ class TripsPublicTransitTravelTimeFromR5Step(OSMStep, GTFSStep):
         assert self.osm_file is not None
         assert self.gtfs_files is not None
         assert self.time_type is not None
-        assert self.date is not None
+        assert self.gtfs_date is not None
         assert self.time_rounding is not None
 
         trips = self.input["trips"].read()
@@ -280,6 +276,6 @@ class TripsPublicTransitTravelTimeFromR5Step(OSMStep, GTFSStep):
         trips = trips.select("trip_id", "from_id", "to_id", "seconds")
 
         df = run_r5py(
-            self.osm_file, self.gtfs_files, self.date, trips, origins_gdf, destinations_gdf
+            self.osm_file, self.gtfs_files, self.gtfs_date, trips, origins_gdf, destinations_gdf
         )
         self.output["costs"].write(df)

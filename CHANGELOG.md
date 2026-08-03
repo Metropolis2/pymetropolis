@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+New parameters:
+
+- `gtfs.date`
+
+Removed parameters:
+
+- `opentripplanner.date`
+- `r5.date`
+
 ## [0.11.0] – 2026-07-31
 
 **Deleting your main directory to start from scratch is strongly recommended when updating.**

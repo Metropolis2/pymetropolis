@@ -22,8 +22,8 @@ from pymetropolis.metro_demand.population.files import (
     TripsOriginsFile,
 )
 from pymetropolis.metro_demand.routing.files import TripsPublicTransitItinerariesFile
+from pymetropolis.metro_network.public_transit import GTFSStep
 from pymetropolis.metro_pipeline.parameters import (
-    DateParameter,
     EnumParameter,
     FloatParameter,
     IntParameter,
@@ -329,7 +329,7 @@ def clean_trips_time(
     return trips
 
 
-class TripsOpenTripPlannerStep(ThreadedStep):
+class TripsOpenTripPlannerStep(ThreadedStep, GTFSStep):
     """Computes the trips' travel time and generalized time by public transit with OpenTripPlanner.
 
     This step requires having access to an OpenTripPlanner API server.
@@ -344,8 +344,8 @@ class TripsOpenTripPlannerStep(ThreadedStep):
     URL [`opentripplanner.url`](parameters.md#opentripplannerurl) (`"http://0.0.0.0:8080"` by
     default).
 
-    The [`date`](parameters.md#opentripplannerdate) parameter controls the date used in the
-    public-transit timetables, for all queries.
+    The [`gtfs.date`](parameters.md#gtfsdate) parameter controls the date used in the public-transit
+    timetables, for all queries.
     You need to ensure that the GTFS file(s) have running services at this date.
 
     The departure / arrival time of the trips is control by the
@@ -399,10 +399,12 @@ class TripsOpenTripPlannerStep(ThreadedStep):
     Example of configuration for this step:
 
     ```toml
+    [gtfs]
+    date = 2026-05-28
+
     [opentripplanner]
     url = "http://0.0.0.0:8080"
     batch_size = 50000
-    date = 2026-05-28
     time_type = "tstar"
     walking_speed = 4.0
     transfer_cost = 300
@@ -428,11 +430,6 @@ class TripsOpenTripPlannerStep(ThreadedStep):
             "Default is to process all trips in a single batch. "
             "Use a lower value if you are running out of memory."
         ),
-    )
-    date = DateParameter(
-        "opentripplanner.date",
-        description="Date to be used for the requests.",
-        note="Ensure that the GTFS file read by OpenTripPlanner has active services for this date.",
     )
     time_type = EnumParameter(
         "opentripplanner.time_type",
@@ -514,7 +511,7 @@ class TripsOpenTripPlannerStep(ThreadedStep):
     output_files = {"costs": TripsPublicTransitItinerariesFile}
 
     def is_defined(self):
-        return self.time_type is not None
+        return self.gtfs_date is not None and self.time_type is not None
 
     def run(self):
         import polars as pl
@@ -538,7 +535,7 @@ class TripsOpenTripPlannerStep(ThreadedStep):
             ).dt.strftime("%H:%M:%S")
         ).drop("seconds")
         # Add date.
-        trips = trips.with_columns(date=self.date)
+        trips = trips.with_columns(date=self.gtfs_date)
 
         # Read origin / destination longitude and latitude.
         origins = self.input["origins"].read()
