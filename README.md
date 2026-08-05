@@ -92,6 +92,7 @@ _Refer to [CITATION.cff](CITATION.cff) and [CITATION.bib](CITATION.bib) for deta
 
 Pymetropolis make use of some great Python libraries, including:
 
+- [duckdb](https://duckdb.org/) for efficient data processing
 - [geopandas](https://geopandas.org/) for geospatial data manipulation
 - [loguru](https://loguru.readthedocs.io/) for logging
 - [matplotlib](https://matplotlib.org/) for data visualization
