@@ -50,7 +50,7 @@ class PostprocessRoadNetworkStep(Step):
     )
     min_speed_limit = FloatParameter(
         "road_network.min_speed_limit",
-        default=1e-8,
+        default=EPSILON,
         description="Minimum speed limit allowed on edges (in km/h).",
     )
     min_length = FloatParameter(
