@@ -50,7 +50,7 @@ def generate_outside_option_alts(pref_file: OutsideOptionPreferencesFile):
     df: pl.DataFrame = pref_file.read()
     df = (
         df.rename({"tour_id": "agent_id"})
-        .with_columns(alt_id="outside_option", constant_utility=-pl.col("outside_option_cst"))
+        .with_columns(alt_id=pl.lit("outside_option"), constant_utility=-pl.col("outside_option_cst"))
         .drop("outside_option_cst")
     )
     return df

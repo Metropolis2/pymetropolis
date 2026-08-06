@@ -174,7 +174,7 @@ You are free to:
 Under the following conditions:
 
 - You retain the original copyright notice
-- You distribute you modifications under the same license (GPL-3.0 or later)
+- You distribute your modifications under the same license (GPL-3.0 or later)
 - You document any significant changes you make
 
 For the full license text and legal details, see the `LICENSE.txt` file.
