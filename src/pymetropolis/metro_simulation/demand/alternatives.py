@@ -50,7 +50,9 @@ def generate_outside_option_alts(pref_file: OutsideOptionPreferencesFile):
     df: pl.DataFrame = pref_file.read()
     df = (
         df.rename({"tour_id": "agent_id"})
-        .with_columns(alt_id=pl.lit("outside_option"), constant_utility=-pl.col("outside_option_cst"))
+        .with_columns(
+            alt_id=pl.lit("outside_option"), constant_utility=-pl.col("outside_option_cst")
+        )
         .drop("outside_option_cst")
     )
     return df
@@ -107,6 +109,8 @@ class WriteMetroAlternativesStep(StepWithModes):
         input_trips: pl.DataFrame | None = self.input["input_trips"].read_if_exists()
         alts = pl.DataFrame()
         if input_trips is not None:
+            # PFR. I think nothing need to be done here for P+R. Alternatives will be created based
+            # on the trips. Departure-time mode is the same as for the other modes, right?
             alts = input_trips.select("agent_id", "alt_id").unique()
             dep_time_df = generate_departure_time_columns(
                 alts["agent_id"].unique(),

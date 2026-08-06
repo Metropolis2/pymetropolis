@@ -44,7 +44,7 @@ class ParkAndRideFacilitiesFromNearestStopStep(Step):
     primary = 0
 
     def run(self):
-        # PFE. Compute the nearest PT stops (considering the optional route types / agency ids
+        # PFR. Compute the nearest PT stops (considering the optional route types / agency ids
         # criteria) for the first origin of each tour.
         # Origins and stops locations are already in the same projected CRS, so distance computation
         # can be done directly.

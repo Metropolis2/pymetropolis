@@ -5,26 +5,30 @@ from typing import TYPE_CHECKING
 from pymetropolis.metro_common.errors import error_context
 from pymetropolis.metro_common.utils import pl_duration_to_seconds
 from pymetropolis.metro_demand.departure_time import LinearScheduleFile, TstarsFile
-from pymetropolis.metro_demand.modes import PublicTransitPreferencesFile
+from pymetropolis.metro_demand.modes import (
+    BicyclePreferencesFile,
+    BicycleTravelTimesFile,
+    PublicTransitPreferencesFile,
+    WalkingPreferencesFile,
+    WalkingTravelTimesFile,
+)
 from pymetropolis.metro_demand.modes.car import (
     CarDriverPreferencesFile,
     CarDriverWithPassengersPreferencesFile,
     CarPassengerPreferencesFile,
     CarRidesharingPreferencesFile,
 )
-from pymetropolis.metro_demand.modes.files import (
-    BicyclePreferencesFile,
-    BicycleTravelTimesFile,
-    WalkingPreferencesFile,
-    WalkingTravelTimesFile,
-)
+from pymetropolis.metro_demand.modes.park_and_ride import ParkAndRidePreferencesFile
 from pymetropolis.metro_demand.population import TripsFile
-from pymetropolis.metro_demand.routing.files import (
+from pymetropolis.metro_demand.routing import (
     NonPrimaryCarTrips,
+    NonPrimaryParkAndRideCarTrips,
+    ParkAndRideTripsPublicTransitItinerariesFile,
     PrimaryCarTripsAccessEgressFile,
+    PrimaryParkAndRideCarTripsAccessEgressFile,
     TripsPublicTransitItinerariesFile,
 )
-from pymetropolis.metro_environment.fuel.files import CarFuelFile
+from pymetropolis.metro_environment.fuel import CarFuelFile, ParkAndRideFuelFile
 from pymetropolis.metro_pipeline.file import MetroDataFrameFile
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_simulation.common import StepWithModes, StepWithRidesharingCount
@@ -128,6 +132,25 @@ def generate_car_trips(
             .drop("fuel_cost")
         )
     df = df.drop("activity_time", "access_time_sec", "egress_time_sec")
+    return df
+
+
+@error_context(msg="Cannot generate park-and-ride trips")
+def generate_park_and_ride_trips(
+    df: pl.DataFrame,
+    primary_trips_file: PrimaryParkAndRideCarTripsAccessEgressFile,
+    secondary_trips_file: NonPrimaryParkAndRideCarTrips,
+    park_and_ride_itineraries_file: ParkAndRideTripsPublicTransitItinerariesFile,
+    pt_itineraries_file: TripsPublicTransitItinerariesFile,
+    preferences_file: ParkAndRidePreferencesFile,
+    tstars_file: TstarsFile,
+    schedule_pref_file: LinearScheduleFile,
+    fuel_file: ParkAndRideFuelFile,
+):
+    # import polars as pl
+
+    # PFR. Add here all the code logic to generate the trips. You can add some files as input to
+    # this function if I missed some.
     return df
 
 
@@ -311,7 +334,7 @@ class WriteMetroTripsStep(StepWithModes, StepWithRidesharingCount):
             when=lambda inst: inst.has_car_mode(),
             when_doc=r'if any "car\_\*" mode is defined',
         ),
-        "public_transit_travel_times": InputFile(
+        "public_transit_itineraries": InputFile(
             TripsPublicTransitItinerariesFile,
             when=lambda inst: inst.has_mode("public_transit"),
             when_doc='if the "public_transit" mode is defined',
@@ -376,6 +399,33 @@ class WriteMetroTripsStep(StepWithModes, StepWithRidesharingCount):
             when=lambda inst: inst.has_mode("bicycle"),
             when_doc='if the "bicycle" mode is defined',
         ),
+        "primary_pr_trips": InputFile(
+            PrimaryParkAndRideCarTripsAccessEgressFile,
+            when=lambda inst: inst.has_mode("park_and_ride"),
+            when_doc='if the "park_and_ride" mode is defined',
+        ),
+        "secondary_pr_trips": InputFile(
+            NonPrimaryParkAndRideCarTrips,
+            when=lambda inst: inst.has_mode("park_and_ride"),
+            when_doc='if the "park_and_ride" mode is defined',
+        ),
+        "pr_pt_itineraries": InputFile(
+            ParkAndRideTripsPublicTransitItinerariesFile,
+            when=lambda inst: inst.has_mode("park_and_ride"),
+            when_doc='if the "park_and_ride" mode is defined',
+        ),
+        "park_and_ride_preferences": InputFile(
+            ParkAndRidePreferencesFile,
+            optional=True,
+            when=lambda inst: inst.has_mode("park_and_ride"),
+            when_doc='if the "park_and_ride" mode is defined',
+        ),
+        "pr_fuel": InputFile(
+            ParkAndRideFuelFile,
+            optional=True,
+            when=lambda inst: inst.has_mode("park_and_ride"),
+            when_doc='if the "park_and_ride" mode is defined',
+        ),
     }
     output_files = {"metro_trips": MetroTripsFile}
 
@@ -427,10 +477,23 @@ class WriteMetroTripsStep(StepWithModes, StepWithRidesharingCount):
                     fuel_share=fuel_share,
                 )
                 metro_trips = pl.concat((metro_trips, car_trips), how="diagonal")
+        if self.has_mode("park_and_ride"):
+            park_and_ride_trips = generate_park_and_ride_trips(
+                df,
+                self.input["primary_pr_trips"],
+                self.input["secondary_pr_trips"],
+                self.input["pr_pt_itineraries"],
+                self.input["public_transit_itineraries"],
+                self.input["park_and_ride_preferences"],
+                self.input["tstars"],
+                self.input["linear_schedule"],
+                self.input["pr_fuel"],
+            )
+            metro_trips = pl.concat((metro_trips, park_and_ride_trips), how="diagonal")
         if self.has_mode("public_transit"):
             public_transit_trips = generate_public_transit_trips(
                 df,
-                self.input["public_transit_travel_times"],
+                self.input["public_transit_itineraries"],
                 self.input["public_transit_preferences"],
                 self.input["tstars"],
                 self.input["linear_schedule"],

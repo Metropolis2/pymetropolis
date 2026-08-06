@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+New mode: `park_and_ride`
+
 New steps:
 
 - `ReadPublicTransitNetworkStep`
@@ -10,6 +12,7 @@ New steps:
 - `ParkAndRideTripsCarFreeFlowTravelTimesStep`
 - `ParkAndRideCarAccessEgressStep`
 - `ParkAndRideTripsOpenTripPlannerStep`
+- `ParkAndRideFuelStep`
 
 New files:
 
@@ -21,6 +24,8 @@ New files:
 - `PrimaryParkAndRideCarTripsAccessEgressFile`
 - `NonPrimaryParkAndRideCarTrips`
 - `ParkAndRideTripsPublicTransitItinerariesFile`
+- `ParkAndRidePreferencesFile`
+- `ParkAndRideFuelFile`
 
 New parameters:
 

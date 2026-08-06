@@ -53,7 +53,11 @@ class WriteMetroVehicleTypesStep(StepWithModes, StepWithRidesharingCount, StepWi
         vehicles = list()
         headway = self.car_headway / self.simulation_ratio
         pce = self.car_pce / self.simulation_ratio
-        if self.has_mode("car_driver"):
+        if self.has_mode("car_driver") or self.has_mode("park_and_ride"):
+            # PFR. I realise now that there could be P+R as a driver or as a passenger.
+            # For now I assume that it's always as a driver. We can discuss how to do things
+            # differently.
+            # (Remove this comment when done.)
             v = {"vehicle_id": "car_driver_alone", "headway": headway, "pce": pce}
             edges_gdf: gpd.GeoDataFrame = self.input["edges"].read()
             edges = pl.from_pandas(edges_gdf.loc[:, ["edge_id", "hov_lanes"]])

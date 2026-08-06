@@ -243,7 +243,7 @@ class RoadNetworkPrimaryEdgesStep(Step):
             df = edges.select("edge_id", primary=True)
         if not df["primary"].all() and self.ensure_primary_connected:
             routes = self.input["car_ff_routes"].read().select("trip_id", route="free_flow_route")
-            # PFE. The lines below ensure that P+R car routes are also used to identify primary
+            # PFR. The lines below ensure that P+R car routes are also used to identify primary
             # edges (when these P+R routes are defined, i.e., when P+R is enabled).
             # Check that it works properly and remove this comment when done.
             pr_routes = self.input["pr_ff_routes"].read_if_exists()
@@ -359,7 +359,7 @@ class ParkAndRideCarAccessEgressStep(Step):
     }
 
     def run(self):
-        # PFE. This is the same code as for the standard car trips. I think it should work as it is,
+        # PFR. This is the same code as for the standard car trips. I think it should work as it is,
         # but to be checked!
         import polars as pl
 

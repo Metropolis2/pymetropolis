@@ -1,8 +1,11 @@
-from pymetropolis.metro_demand.routing.files import TripsCarFreeFlowTravelTimesFile
+from pymetropolis.metro_demand.routing.files import (
+    ParkAndRideTripsCarFreeFlowTravelTimesFile,
+    TripsCarFreeFlowTravelTimesFile,
+)
 from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import FloatParameter
 
-from .files import CarFuelFile
+from .files import CarFuelFile, ParkAndRideFuelFile
 
 
 class GenericCarFuelStep(Step):
@@ -45,8 +48,8 @@ class ParkAndRideFuelStep(GenericCarFuelStep):
     price.
     """
 
-    input_files = {"ff_distances": TripsCarFreeFlowTravelTimesFile}
-    output_files = {"fuel_consumption": CarFuelFile}
+    input_files = {"ff_distances": ParkAndRideTripsCarFreeFlowTravelTimesFile}
+    output_files = {"fuel_consumption": ParkAndRideFuelFile}
 
     def is_defined(self) -> bool:
         return self.fuel_factor is not None

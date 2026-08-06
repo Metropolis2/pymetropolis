@@ -17,6 +17,7 @@ from .outside_option import (
     OutsideOptionPreferencesStep,
     OutsideOptionTravelTimesFromRoadDistancesStep,
 )
+from .park_and_ride import PARK_AND_RIDE_FILES, PARK_AND_RIDE_STEPS
 from .public_transit import (
     PublicTransitPreferencesFromPopulationStep,
     PublicTransitPreferencesStep,
@@ -33,7 +34,9 @@ OUTSIDE_FILES = [OutsideOptionPreferencesFile, OutsideOptionTravelTimesFile]
 WALKING_FILES = [WalkingPreferencesFile, WalkingTravelTimesFile]
 BICYCLE_FILES = [BicyclePreferencesFile, BicycleTravelTimesFile]
 
-MODES_FILES = CAR_FILES + PT_FILES + WALKING_FILES + OUTSIDE_FILES + BICYCLE_FILES
+MODES_FILES = (
+    CAR_FILES + PT_FILES + WALKING_FILES + OUTSIDE_FILES + BICYCLE_FILES + PARK_AND_RIDE_FILES
+)
 
 PT_STEPS = [
     PublicTransitPreferencesStep,
@@ -52,4 +55,6 @@ BICYCLE_STEPS = [
     BicycleTravelTimesFromDistanceStep,
 ]
 
-MODES_STEPS = CAR_STEPS + PT_STEPS + WALKING_STEPS + OUTSIDE_STEPS + BICYCLE_STEPS
+MODES_STEPS = (
+    CAR_STEPS + PT_STEPS + WALKING_STEPS + OUTSIDE_STEPS + BICYCLE_STEPS + PARK_AND_RIDE_STEPS
+)

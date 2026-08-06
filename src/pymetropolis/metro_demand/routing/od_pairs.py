@@ -254,7 +254,7 @@ class ParkAndRideRoadNodesFromCoordinatesStep(GenericRoadNodesStep):
     output_files = {"nodes": ParkAndRideRoadNodesFile}
 
     def run(self):
-        # PFE. I coded this step myself but did not test it. Check that it works and remove this
+        # PFR. I coded this step myself but did not test it. Check that it works and remove this
         # comment when done.
         import polars as pl
 

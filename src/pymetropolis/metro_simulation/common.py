@@ -17,6 +17,7 @@ class StepWithModes(Step):
                 "public_transit",
                 "walking",
                 "bicycle",
+                "park_and_ride",
                 "outside_option",
             ]
         ),
@@ -47,6 +48,7 @@ class StepWithModes(Step):
             or "car_driver_with_passengers" in self.modes
             or "car_passenger" in self.modes
             or "car_ridesharing" in self.modes
+            or "park_and_ride" in self.modes
         )
 
 

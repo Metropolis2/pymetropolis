@@ -202,7 +202,7 @@ class ParkAndRideTripsCarFreeFlowTravelTimesStep(RoutingCLIStep):
         edges_fftt = self.input["edges_fftt"].read()
         edges = prepare_edges(edges_gdf, edges_fftt)
 
-        # PFE. Create trips (first and last of each tour only) with correct origin / destination
+        # PFR. Create trips (first and last of each tour only) with correct origin / destination
         # node.
         # You need to read both OD pairs (actual origin / destination of trips) and P+R nodes (road
         # node at the P+R facility).

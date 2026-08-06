@@ -35,7 +35,7 @@ class ReadPublicTransitNetworkStep(GTFSStep, GeoStep):
     def run(self):
         assert self.gtfs_files is not None
 
-        # PFE: Read GTFS file(s), extract stops and routes with their characteristics.
+        # PFR: Read GTFS file(s), extract stops and routes with their characteristics.
         # If `gtfs_date` is specified restrict to stops / routes used on the given date.
         # Create Point geometries for stop locations from lng, lat. Transform them to the
         # simulation's crs (`self.crs`).
