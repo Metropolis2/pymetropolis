@@ -1,11 +1,9 @@
-from pymetropolis.metro_network.public_transit.files import (
-    PublicTransitRoutesFile,
-    PublicTransitStopsFile,
-)
 from pymetropolis.metro_pipeline.parameters import DateParameter, ListParameter
 from pymetropolis.metro_pipeline.steps import Step
 from pymetropolis.metro_pipeline.types import PathType
 from pymetropolis.metro_spatial import GeoStep
+
+from .files import PublicTransitRoutesFile, PublicTransitStopsFile
 
 
 class GTFSStep(Step):
