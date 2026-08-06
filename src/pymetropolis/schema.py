@@ -2,6 +2,8 @@ from .metro_calibration import FILES as METRO_CALIBRATION_FILES
 from .metro_calibration import STEPS as METRO_CALIBRATION_STEPS
 from .metro_demand import FILES as METRO_DEMAND_FILES
 from .metro_demand import STEPS as METRO_DEMAND_STEPS
+from .metro_environment import FILES as METRO_ENVIRONMENT_FILES
+from .metro_environment import STEPS as METRO_ENVIRONMENT_STEPS
 from .metro_network import FILES as METRO_NETWORK_FILES
 from .metro_network import STEPS as METRO_NETWORK_STEPS
 from .metro_pipeline import MetroFile, Step
@@ -19,6 +21,7 @@ STEPS: list[type[Step]] = (
     + METRO_SIMULATION_STEPS
     + METRO_RESULTS_STEPS
     + METRO_CALIBRATION_STEPS
+    + METRO_ENVIRONMENT_STEPS
 )
 
 FILES: list[type[MetroFile]] = (
@@ -28,4 +31,5 @@ FILES: list[type[MetroFile]] = (
     + METRO_SIMULATION_FILES
     + METRO_RESULTS_FILES
     + METRO_CALIBRATION_FILES
+    + METRO_ENVIRONMENT_FILES
 )
