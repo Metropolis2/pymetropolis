@@ -11,18 +11,15 @@ from .car_ridesharing import (
 from .files import (
     CarDriverPreferencesFile,
     CarDriverWithPassengersPreferencesFile,
-    CarFuelFile,
     CarPassengerPreferencesFile,
     CarRidesharingPreferencesFile,
 )
-from .fuel_consumption import CarFuelStep
 
 CAR_FILES = [
     CarDriverPreferencesFile,
     CarDriverWithPassengersPreferencesFile,
     CarPassengerPreferencesFile,
     CarRidesharingPreferencesFile,
-    CarFuelFile,
 ]
 
 CAR_STEPS = [
@@ -34,5 +31,4 @@ CAR_STEPS = [
     CarPassengerPreferencesFromPopulationStep,
     CarRidesharingPreferencesStep,
     CarRidesharingPreferencesFromPopulationStep,
-    CarFuelStep,
 ]

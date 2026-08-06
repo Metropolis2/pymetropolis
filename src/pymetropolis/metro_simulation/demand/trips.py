@@ -9,7 +9,6 @@ from pymetropolis.metro_demand.modes import PublicTransitPreferencesFile
 from pymetropolis.metro_demand.modes.car import (
     CarDriverPreferencesFile,
     CarDriverWithPassengersPreferencesFile,
-    CarFuelFile,
     CarPassengerPreferencesFile,
     CarRidesharingPreferencesFile,
 )
@@ -25,6 +24,7 @@ from pymetropolis.metro_demand.routing.files import (
     PrimaryCarTripsAccessEgressFile,
     TripsPublicTransitItinerariesFile,
 )
+from pymetropolis.metro_environment.fuel.files import CarFuelFile
 from pymetropolis.metro_pipeline.file import MetroDataFrameFile
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_simulation.common import StepWithModes, StepWithRidesharingCount
