@@ -18,6 +18,10 @@ routing_exec_path = "execs/routing_cli"
 # Simulation area is the Chambéry Aire d'attraction.
 aav_name = "Chambéry"
 
+[survey]
+[survey.mobisurvstd]
+path = "chambery/data/emc2-2022.zip"
+
 [osm_urban_areas]
 urban_landuse_tags = [
     "commercial",

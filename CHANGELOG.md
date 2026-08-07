@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+New steps:
+
+- `MobiSurvStdImportStep`
+- `CleanSurveyToursStep`
+
+New files:
+
+- `SurveyedHouseholdsFile`
+- `SurveyedPersonsFile`
+- `SurveyedTripsFile`
+- `SurveyedLegsFile`
+- `SurveyedCarsFile`
+- `SurveyedMotorcyclesFile`
+- `SurveyedSpecialLocationsFile`
+- `SurveyedDetailedZonesFile`
+- `SurveyedDrawZonesFile`
+- `SurveyedToursFile`
+    
 New parameters:
 
 - `gtfs.date`
