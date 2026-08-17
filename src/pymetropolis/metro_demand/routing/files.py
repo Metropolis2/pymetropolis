@@ -523,3 +523,141 @@ class TripsPublicTransitItinerariesFile(MetroDataFrameFile):
             optional=True,
         ),
     ]
+
+class ZonesRoadNodeFile(MetroDataFrameFile):
+    path = "demand/routing/zones_road_node.parquet"
+    description = "Road network node representative of each zone."
+    schema = [
+        Column(
+            "zone_id",
+            MetroDataType.ID,
+            description="Identifier of the zone",
+            unique=True,
+            nullable=False
+        ),
+        Column(
+            "road_node",
+            MetroDataType.ID,
+            description="Identifier of the road node representative of the zone.",
+            nullable=True
+        ),
+        Column(
+            "road_node_dist",
+            MetroDataType.FLOAT,
+            description="Distance between the zone's point and the road node, in meters.",
+            nullable=True,
+            optional=True
+        ),
+        Column(
+            "road_node_dist_on_edge",
+            MetroDataType.FLOAT,
+            description="Distance projected on the closest edge, in meters.",
+            nullable = True,
+            optional = True
+        ),
+        Column(
+            "road_edge",
+            MetroDataType.ID,
+            description="Identifier of the road edge closest to zone's point.",
+            nullable=True,
+            optional=True
+        ),
+        Column(
+            "road_edge_dist",
+            MetroDataType.FLOAT,
+            description="Distance between the zone's point and the closest road edge.",
+            nullable=True,
+            optional=True
+        )
+    ]
+
+
+class ZoneODFreeFlowTravelTimesFile(MetroDataFrameFile):
+    path = "demand/routing/zone_od_free_flow_travel_times.parquet"
+    description = "Travel time by car under free-flow conditions between each pair of zones."
+    schema = [
+        Column(
+            "origin_zone_id",
+            MetroDataType.ID,
+            description="Identifier of the origin zone.",
+            nullable=False,
+        ),
+        Column(
+            "destination_zone_id",
+            MetroDataType.ID,
+            description="Identifier of the destination zone.",
+            nullable=False,
+        ),
+        Column(
+            "free_flow_travel_time",
+            MetroDataType.DURATION,
+            description=(
+                "Travel time by car between the two zones' road nodes, under free-flow "
+                "conditions."
+            ),
+            nullable=False,
+        ),
+    ]
+
+class ZoneODCongestedTravelTimesFile(MetroDataFrameFile):
+    path = "demand/routing/zone_od_congested_travel_times.parquet"
+    description = (
+        "Congested travel time by car between each pair of zones, aggregated"
+        "over a given time window."
+    )
+    schema = [
+        Column(
+            "origin_zone_id",
+            MetroDataType.ID,
+            description="Identifier of the origin zone.",
+            nullable=False,
+        ),
+        Column(
+            "destination_zone_id",
+            MetroDataType.ID,
+            description="Identifier of the destination zone.",
+            nullable=False,
+        ),
+        Column(
+            "congested_travel_time",
+            MetroDataType.DURATION,
+            description=(
+                "Travel time by car between the two zones' road nodes, under"
+                "congested conditions, aggregated (median) over the configured"
+                "time window. Falls back to the free-flow travel time when no"
+                "congested breakpoint falls within the time window."
+            ),
+            nullable=False,
+        ),
+        Column(
+            "congested_travel_time_min",
+            MetroDataType.DURATION,
+            description=(
+                "Minimum travel time over the congested breakpoints falling"
+                "within the time window. Equal to congested_travel_time when"
+                "falling back to the free-flow travel time."
+            ),
+            nullable=False,
+        ),
+        Column(
+            "congested_travel_time_max",
+            MetroDataType.DURATION,
+            description=(
+                "Maximum travel time over the congested breakpoints falling"
+                "within the time window. Equal to congested_travel_time when"
+                "falling back to the free-flow travel time."
+            ),
+            nullable=False,
+        ),
+        Column(
+            "congested_travel_time_std",
+            MetroDataType.DURATION,
+            description=(
+                "Standard deviation of the travel time over the congested"
+                "breakpoints falling within the time window. Zero when"
+                "falling back to the free-flow travel time."
+            ),
+            nullable=False,
+        ),
+    ]
+
