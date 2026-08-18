@@ -241,7 +241,6 @@ class EstimateJointToursClassifierStep(RandomStep, ThreadedStep):
         tours = tours.filter(pl.col("nb_persons") > 1)
 
         X = get_X(tours, self.features)
-        X.to_parquet("tmp.parquet")
         y = tours["joint_tour"].cast(pl.Int64).to_pandas()
         if self.model is None:
             model = test_models(X, y, self.random_seed, self.nb_threads or -1)
@@ -266,7 +265,6 @@ class ClassifyJointToursStep(RandomStep):
         features = estimator.feature_names_in_
 
         X = get_X(tours.filter(pl.col("nb_persons") > 1), features)
-        X.to_parquet("tmp2.parquet")
 
         joint_tour_flag = classify_joint_tours(X, estimator, self.get_rng())
 
