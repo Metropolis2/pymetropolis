@@ -77,3 +77,6 @@ ignore = [
     "RUF012",  # mutable-class-default: allow input_files / output_files syntax
 ]
 preview = false
+
+[tool.ruff.lint.isort]
+split-on-trailing-comma = false
