@@ -8,6 +8,7 @@ New steps:
 - `CleanSurveyToursStep`
 - `EstimateJointToursClassifierStep`
 - `CreateToursStep`
+- `ClassifyJointToursStep`
 
 New files:
 
