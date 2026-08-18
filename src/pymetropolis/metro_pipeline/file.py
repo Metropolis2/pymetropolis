@@ -29,7 +29,8 @@ class MetroDataType(Enum):
     LIST_OF_FLOATS = 10
     LIST_OF_DURATIONS = 11
     LIST_OF_STRINGS = 12
-    ANY = 13  # Special datatype when we don't want any validation.
+    ENUM = 13
+    ANY = 14  # Special datatype when we don't want any validation.
 
     def is_valid_pl(self, dtype: pl.DataType):
         import polars as pl
@@ -62,12 +63,15 @@ class MetroDataType(Enum):
             return isinstance(dtype, pl.List) and isinstance(dtype.inner, pl.Duration)
         elif self == MetroDataType.LIST_OF_STRINGS:
             return isinstance(dtype, pl.List) and isinstance(dtype.inner, pl.String)
+        elif self == MetroDataType.ENUM:
+            return isinstance(dtype, pl.Enum)
         elif self == MetroDataType.ANY:
             return True
         else:
             return False
 
     def is_valid_gdf(self, dtype: Any):
+        import pandas as pd
         from pandas.api.types import (
             is_bool_dtype,
             is_datetime64_any_dtype,
@@ -94,6 +98,8 @@ class MetroDataType(Enum):
             return is_datetime64_any_dtype(dtype)
         elif self == MetroDataType.DURATION:
             return is_timedelta64_dtype(dtype)
+        elif self == MetroDataType.ENUM:
+            return isinstance(dtype, pd.CategoricalDtype)
         elif self == MetroDataType.ANY:
             return True
         # TIME and DURATION dtypes are not allowed in GeoDataFrames.
@@ -127,6 +133,8 @@ class MetroDataType(Enum):
             return "list of times"
         elif self == MetroDataType.LIST_OF_STRINGS:
             return "list of strings"
+        elif self == MetroDataType.ENUM:
+            return "enum"
         else:
             return "unspecified datatype"
 

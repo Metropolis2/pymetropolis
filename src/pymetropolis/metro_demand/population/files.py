@@ -233,6 +233,76 @@ class TripsZonesFile(MetroDataFrameFile):
     ]
 
 
+class TripsUrbanTypeFile(MetroDataFrameFile):
+    path = "demand/population/trips/origin_destination_urban_type.parquet"
+    description = "Urban type attributes of trips' origin and destination."
+    schema = [
+        Column(
+            "trip_id",
+            MetroDataType.ID,
+            description="Identifier of the trip.",
+            nullable=False,
+            unique=True,
+        ),
+        Column(
+            "origin_density",
+            MetroDataType.ENUM,
+            description="Urban density category of the origin municipality.",
+            nullable=True,
+            optional=False,
+        ),
+        Column(
+            "origin_urban_type",
+            MetroDataType.ENUM,
+            description="Urban type of the origin municipality.",
+            nullable=True,
+            optional=False,
+        ),
+        Column(
+            "origin_functional_area_type",
+            MetroDataType.ENUM,
+            description="Type of the origin municipality within its functional area.",
+            nullable=True,
+            optional=False,
+        ),
+        Column(
+            "origin_functional_area_category",
+            MetroDataType.ENUM,
+            description="Category of the functional area of the origin municipality.",
+            nullable=True,
+            optional=False,
+        ),
+        Column(
+            "destination_density",
+            MetroDataType.ENUM,
+            description="Urban density category of the destination municipality.",
+            nullable=True,
+            optional=False,
+        ),
+        Column(
+            "destination_urban_type",
+            MetroDataType.ENUM,
+            description="Urban type of the destination municipality.",
+            nullable=True,
+            optional=False,
+        ),
+        Column(
+            "destination_functional_area_type",
+            MetroDataType.ENUM,
+            description="Type of the destination municipality within its functional area.",
+            nullable=True,
+            optional=False,
+        ),
+        Column(
+            "destination_functional_area_category",
+            MetroDataType.ENUM,
+            description="Category of the functional area of the destination municipality.",
+            nullable=True,
+            optional=False,
+        ),
+    ]
+
+
 class TripsDistancesFile(MetroDataFrameFile):
     path = "demand/population/trips/distances.parquet"
     description = "Euclidean distance of each trip."
@@ -551,6 +621,48 @@ class HouseholdsZonesFile(MetroDataFrameFile):
     ]
 
 
+class HouseholdsHomesUrbanTypeFile(MetroDataFrameFile):
+    path = "demand/population/households/homes_urban_type.parquet"
+    description = "Urban type attributes of households' home."
+    schema = [
+        Column(
+            "household_id",
+            MetroDataType.ID,
+            description="Identifier of the household.",
+            nullable=False,
+            unique=True,
+        ),
+        Column(
+            "home_density",
+            MetroDataType.ENUM,
+            description="Urban density category of the household municipality.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "home_urban_type",
+            MetroDataType.ENUM,
+            description="Urban type of the household municipality.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "home_functional_area_type",
+            MetroDataType.ENUM,
+            description="Type of the municipality within its functional area.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "home_functional_area_category",
+            MetroDataType.ENUM,
+            description="Category of the functional area of the home municipality.",
+            nullable=True,
+            optional=True,
+        ),
+    ]
+
+
 # TODO. Maybe we should consider having the same mode mu for all the tours of a single person?
 class UniformDrawsFile(MetroDataFrameFile):
     path = "demand/population/uniform_draws.parquet"
@@ -725,56 +837,56 @@ class ToursFile(MetroDataFrameFile):
         ],
         Column(
             "lowest_density",
-            MetroDataType.UINT,
+            MetroDataType.ENUM,
             description="Lowest urban density category over activity locations.",
             nullable=True,
             optional=True,
         ),
         Column(
             "highest_density",
-            MetroDataType.UINT,
+            MetroDataType.ENUM,
             description="Highest urban density category over activity locations.",
             nullable=True,
             optional=True,
         ),
         Column(
             "lowest_urban_type",
-            MetroDataType.STRING,
+            MetroDataType.ENUM,
             description="Lowest urban type over activity locations.",
             nullable=True,
             optional=True,
         ),
         Column(
             "highest_urban_type",
-            MetroDataType.STRING,
+            MetroDataType.ENUM,
             description="Highest urban type over activity locations.",
             nullable=True,
             optional=True,
         ),
         Column(
             "lowest_functional_area_type",
-            MetroDataType.STRING,
+            MetroDataType.ENUM,
             description="Lowest functional area type over activity locations.",
             nullable=True,
             optional=True,
         ),
         Column(
             "highest_functional_area_type",
-            MetroDataType.STRING,
+            MetroDataType.ENUM,
             description="Highest functional area type over activity locations.",
             nullable=True,
             optional=True,
         ),
         Column(
             "lowest_functional_area_category",
-            MetroDataType.STRING,
+            MetroDataType.ENUM,
             description="Lowest functional area category over activity locations.",
             nullable=True,
             optional=True,
         ),
         Column(
             "highest_functional_area_category",
-            MetroDataType.STRING,
+            MetroDataType.ENUM,
             description="Highest functional area category over activity locations.",
             nullable=True,
             optional=True,
@@ -782,28 +894,28 @@ class ToursFile(MetroDataFrameFile):
         # Household-level variables.
         Column(
             "home_density",
-            MetroDataType.UINT,
+            MetroDataType.ENUM,
             description="Urban density category of the household municipality.",
             nullable=True,
             optional=True,
         ),
         Column(
             "home_urban_type",
-            MetroDataType.STRING,
+            MetroDataType.ENUM,
             description="Urban type of the household municipality.",
             nullable=True,
             optional=True,
         ),
         Column(
             "home_functional_area_type",
-            MetroDataType.STRING,
+            MetroDataType.ENUM,
             description="Type of the municipality within its functional area.",
             nullable=True,
             optional=True,
         ),
         Column(
             "home_functional_area_category",
-            MetroDataType.STRING,
+            MetroDataType.ENUM,
             description="Category of the functional area of the home municipality.",
             nullable=True,
             optional=True,

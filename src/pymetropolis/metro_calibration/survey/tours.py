@@ -2,7 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pymetropolis.metro_demand.population.common import PURPOSES
+from pymetropolis.metro_demand.population.common import (
+    DENSITY_CATS,
+    FNC_AREA_CAT_CATS,
+    FNC_AREA_TYPE_CATS,
+    PURPOSES,
+    URBAN_TYPE_CATS,
+)
 from pymetropolis.metro_pipeline import Step
 
 from .files import (
@@ -31,10 +37,14 @@ def read_tours(
         "nb_persons",
         "nb_majors",
         "nb_minors",
-        home_density="home_insee_density",
-        home_urban_type=pl.col("home_insee_urban_type").cast(pl.String),
-        home_functional_area_type=pl.col("home_insee_aav_type").cast(pl.String),
-        home_functional_area_category=pl.col("home_aav_category").cast(pl.String),
+        home_density=pl.col("home_insee_density").cast(pl.String).cast(pl.Enum(DENSITY_CATS)),
+        home_urban_type=pl.col("home_insee_urban_type").cast(pl.Enum(URBAN_TYPE_CATS)),
+        home_functional_area_type=pl.col("home_insee_aav_type")
+        .cast(pl.String)
+        .cast(pl.Enum(FNC_AREA_TYPE_CATS)),
+        home_functional_area_category=pl.col("home_aav_category")
+        .cast(pl.String)
+        .cast(pl.Enum(FNC_AREA_CAT_CATS)),
         household_type=pl.when(household_type="couple:no_child")
         .then(pl.lit("couple"))
         .when(household_type="couple:children")
@@ -86,14 +96,14 @@ def read_tours(
         "home_sequence_index",
         pl.col("origin_purpose_group").cast(pl.String),
         pl.col("destination_purpose_group").cast(pl.String),
-        "origin_insee_density",
-        "origin_insee_urban_type",
-        "origin_insee_aav_type",
-        "origin_aav_category",
-        "destination_insee_density",
-        "destination_insee_urban_type",
-        "destination_insee_aav_type",
-        "destination_aav_category",
+        pl.col("origin_insee_density").cast(pl.String).cast(pl.Enum(DENSITY_CATS)),
+        pl.col("origin_insee_urban_type").cast(pl.Enum(URBAN_TYPE_CATS)),
+        pl.col("origin_insee_aav_type").cast(pl.String).cast(pl.Enum(FNC_AREA_TYPE_CATS)),
+        pl.col("origin_aav_category").cast(pl.String).cast(pl.Enum(FNC_AREA_CAT_CATS)),
+        pl.col("destination_insee_density").cast(pl.String).cast(pl.Enum(DENSITY_CATS)),
+        pl.col("destination_insee_urban_type").cast(pl.Enum(URBAN_TYPE_CATS)),
+        pl.col("destination_insee_aav_type").cast(pl.String).cast(pl.Enum(FNC_AREA_TYPE_CATS)),
+        pl.col("destination_aav_category").cast(pl.String).cast(pl.Enum(FNC_AREA_CAT_CATS)),
         pl.col("trip_weekday").cast(pl.String),
         "trip_euclidean_distance_km",
         "trip_perimeter",
@@ -268,6 +278,8 @@ def read_tours(
             )
         )
         .with_columns(
+            # Note. The min / max works for variables below since they are of type enum
+            # (with the enum modalities being properly ordered).
             lowest_density=pl.min_horizontal(
                 pl.col("origin_insee_density").list.min(),
                 pl.col("destination_insee_density").list.min(),
@@ -276,32 +288,30 @@ def read_tours(
                 pl.col("origin_insee_density").list.max(),
                 pl.col("destination_insee_density").list.max(),
             ),
-            # Note. The min / max works for insee_urban_type since the variable is of type enum
-            # (with the enum modalities being properly ordered).
             lowest_urban_type=pl.min_horizontal(
                 pl.col("origin_insee_urban_type").list.min(),
                 pl.col("destination_insee_urban_type").list.min(),
-            ).cast(pl.String),
+            ),
             highest_urban_type=pl.max_horizontal(
                 pl.col("origin_insee_urban_type").list.max(),
                 pl.col("destination_insee_urban_type").list.max(),
-            ).cast(pl.String),
+            ),
             lowest_functional_area_type=pl.min_horizontal(
                 pl.col("origin_insee_aav_type").list.min(),
                 pl.col("destination_insee_aav_type").list.min(),
-            ).cast(pl.String),
+            ),
             highest_functional_area_type=pl.max_horizontal(
                 pl.col("origin_insee_aav_type").list.max(),
                 pl.col("destination_insee_aav_type").list.max(),
-            ).cast(pl.String),
+            ),
             lowest_functional_area_category=pl.min_horizontal(
                 pl.col("origin_aav_category").list.min(),
                 pl.col("destination_aav_category").list.min(),
-            ).cast(pl.String),
+            ),
             highest_functional_area_category=pl.max_horizontal(
                 pl.col("origin_aav_category").list.max(),
                 pl.col("destination_aav_category").list.max(),
-            ).cast(pl.String),
+            ),
         )
         .drop(
             "origin_insee_density",

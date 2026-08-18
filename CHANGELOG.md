@@ -15,6 +15,10 @@ New steps:
 - `CustomZonesLevel3Step`
 - `CustomZonesLevel4Step`
 - `CustomZonesLevel5Step`
+- `HouseholdHomesZonesStep`
+- `TripsZonesStep`
+- `FrenchHouseholdsUrbanTypeStep`
+- `FrenchTripsUrbanTypeStep`
 
 New files:
 
@@ -36,6 +40,8 @@ New files:
 - `ZonesLevel3File`
 - `ZonesLevel4File`
 - `ZonesLevel5File`
+- `HouseholdHomesUrbanTypeFile`
+- `TripsUrbanTypeFile`
 
 New parameters:
 
@@ -53,6 +59,8 @@ Other changes:
 Removed steps:
 
 - `CustomZonesStep` (use one of the 5 `CustomZonesLevelXStep` instead)
+- `FrenchHouseholdHomesZonesStep`
+- `FrenchTripsZonesStep`
 
 Removed files:
 

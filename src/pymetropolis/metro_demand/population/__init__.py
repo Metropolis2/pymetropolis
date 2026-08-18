@@ -24,6 +24,7 @@ from .generic import (
     PopulationFromTripCoordinatesStep,
 )
 from .tours import CreateToursStep
+from .urban_types import FrenchHouseholdsUrbanTypeStep, FrenchTripsUrbanTypeStep
 from .zones import HouseholdsHomesZonesStep, TripsZonesStep
 
 POPULATION_FILES = [
@@ -52,4 +53,6 @@ POPULATION_STEPS = [
     TripsZonesStep,
     ActivitiesLocationsFromTripsLocationsStep,
     CreateToursStep,
+    FrenchHouseholdsUrbanTypeStep,
+    FrenchTripsUrbanTypeStep,
 ]

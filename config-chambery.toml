@@ -52,6 +52,10 @@ features = [
     "has_education_purpose",
     "has_escort_purpose",
     "professional_activity",
+    "home_density",
+    "home_urban_type",
+    "home_functional_area_type",
+    "home_functional_area_category",
 ]
 
 [osm_urban_areas]
