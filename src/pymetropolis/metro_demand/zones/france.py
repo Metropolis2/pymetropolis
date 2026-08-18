@@ -5,13 +5,14 @@ from pymetropolis.metro_demand.population.files import (
 )
 from pymetropolis.metro_pipeline.parameters import BoolParameter
 from pymetropolis.metro_pipeline.steps import InputFile
+from pymetropolis.metro_spatial import GeoStep
 from pymetropolis.metro_spatial.ign import AdminExpressStep, IRISStep
 from pymetropolis.metro_spatial.simulation_area.file import SimulationAreaFile
 
 from .file import ZonesLevel1File, ZonesLevel2File, ZonesLevel3File, ZonesLevel4File
 
 
-class FrenchZonesStep(IRISStep, AdminExpressStep):
+class FrenchZonesStep(IRISStep, AdminExpressStep, GeoStep):
     """Reads zones from France data.
 
     The French zoning system uses multiple levels of geographic zones:
@@ -90,5 +91,6 @@ class FrenchZonesStep(IRISStep, AdminExpressStep):
                 gdf[["geometry", id_col, "name", "within_area"]]
                 .copy()
                 .rename(columns={id_col: "zone_id"})
+                .to_crs(self.crs)
             )
             self.output[f"zones{i + 1}"].write(gdf)
