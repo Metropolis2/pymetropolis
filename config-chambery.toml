@@ -6,6 +6,8 @@ osm_file = "chambery/data/rhone-alpes-250101.osm.pbf"
 
 simulation_ratio = 1.0
 
+random_seed = 13081996
+
 [metropolis_core]
 exec_path = "execs/metropolis_cli"
 routing_exec_path = "execs/routing_cli"
@@ -21,6 +23,33 @@ aav_name = "Chambéry"
 [survey]
 [survey.mobisurvstd]
 path = "chambery/data/emc2-2022.zip"
+
+[joint_travel]
+features = [
+    "nb_activities",
+    "total_activity_duration",
+    "total_distance",
+    "first_activity_start",
+    "last_activity_end",
+    "age",
+    "nb_persons",
+    "nb_minors",
+    "nb_cars",
+    "nb_driving_licenses",
+    "minor_ratio",
+    "car_ratio",
+    "driving_license_ratio",
+    "woman",
+    "has_driving_license",
+    "has_leisure_purpose",
+    "has_shopping_purpose",
+    "has_task_purpose",
+    "has_other_purpose",
+    "has_work_purpose",
+    "has_education_purpose",
+    "has_escort_purpose",
+    "professional_activity",
+]
 
 [osm_urban_areas]
 urban_landuse_tags = [

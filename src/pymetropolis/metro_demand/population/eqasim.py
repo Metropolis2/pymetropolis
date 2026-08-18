@@ -81,7 +81,9 @@ def read_persons(
         age=pl.col("age").cast(pl.UInt8),
         detailed_education_level=pl.col("detailed_education_level").cast(pl.String),
         education_level=pl.col("education_level").cast(pl.String),
-        professional_activity="professional_activity",
+        professional_activity=pl.col("professional_activity").replace(
+            {"unemployed": "other", "homemaker": "other"}
+        ),
         socioprofessional_class=pl.col("socioprofessional_class").cast(pl.UInt8),
         has_driving_license="has_driving_license",
         has_public_transit_subscription="has_pt_subscription",
@@ -130,8 +132,8 @@ def read_trips(
         trip_id=pl.format("{}-{}", "person_id", "trip_index"),
         person_id="person_id",
         trip_index=pl.col("trip_index").cast(pl.UInt8) + 1,
-        origin_purpose_group="preceding_purpose",
-        destination_purpose_group="following_purpose",
+        origin_purpose_group=pl.col("preceding_purpose").replace("shop", "shopping"),
+        destination_purpose_group=pl.col("following_purpose").replace("shop", "shopping"),
         departure_time=pl.duration(seconds="departure_time"),
         arrival_time=pl.duration(seconds="arrival_time"),
     ).with_columns(

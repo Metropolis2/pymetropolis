@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from pymetropolis.metro_demand.population.common import PURPOSES
 from pymetropolis.metro_pipeline import Step
 
 from .files import (
@@ -24,17 +25,17 @@ def read_tours(
     # Clean household-level variables.
     households = households.select(
         "household_id",
-        "home_insee_density",
-        "home_insee_urban_type",
-        "home_insee_aav_type",
-        "home_aav_category",
         "nb_cars",
         "nb_motorcycles",
         "nb_bicycles",
         "nb_persons",
         "nb_majors",
         "nb_minors",
-        simple_household_type=pl.when(household_type="couple:no_child")
+        home_density="home_insee_density",
+        home_urban_type=pl.col("home_insee_urban_type").cast(pl.String),
+        home_functional_area_type=pl.col("home_insee_aav_type").cast(pl.String),
+        home_functional_area_category=pl.col("home_aav_category").cast(pl.String),
+        household_type=pl.when(household_type="couple:no_child")
         .then(pl.lit("couple"))
         .when(household_type="couple:children")
         .then(pl.lit("couple_family"))
@@ -50,30 +51,30 @@ def read_tours(
         "person_id",
         "woman",
         "age",
-        "education_level",
+        pl.col("education_level").cast(pl.String),
         "has_public_transit_subscription",
         oldest_age_diff=pl.col("age").max().over("household_id") - pl.col("age"),
-        professional_status=pl.when(detailed_professional_occupation="worker:part_time")
+        professional_activity=pl.when(pl.col("age") <= 14)
+        .then(pl.lit("under14"))
+        .when(professional_occupation="student")
+        .then(pl.lit("student"))
+        .when(detailed_professional_occupation="worker:part_time")
         .then(pl.lit("part_time_worker"))
         .when(professional_occupation="worker")
         .then(pl.lit("full_time_worker"))
-        .when(detailed_professional_occupation="student:primary_or_secondary")
-        .then(pl.lit("school_student"))
-        .when(professional_occupation="student")
-        .then(pl.lit("higher_ed_student"))
         .when(detailed_professional_occupation="other:retired")
         .then(pl.lit("retired"))
         .otherwise(pl.lit("other")),
-        pcs=pl.when(pl.col("pcs_group_code") <= 6, professional_occupation="worker").then(
-            "pcs_group_code"
-        ),
+        socioprofessional_class=pl.when(
+            pl.col("pcs_group_code") <= 6, professional_occupation="worker"
+        ).then(pl.col("pcs_group_code")),
         has_driving_license=pl.col("has_driving_license").eq("yes"),
         nb_surveyed=pl.col("is_surveyed").sum().over("household_id"),
         nb_women=pl.col("woman").sum().over("household_id"),
-        nb_women_majors=(pl.col("woman") & pl.col("age").ge(18)).sum().over("household_id"),
+        nb_major_women=(pl.col("woman") & pl.col("age").ge(18)).sum().over("household_id"),
         nb_men=pl.col("woman").not_().sum().over("household_id"),
-        nb_men_majors=(pl.col("woman").not_() & pl.col("age").ge(18)).sum().over("household_id"),
-        nb_driving_license=pl.col("has_driving_license").eq("yes").sum().over("household_id"),
+        nb_major_men=(pl.col("woman").not_() & pl.col("age").ge(18)).sum().over("household_id"),
+        nb_driving_licenses=pl.col("has_driving_license").eq("yes").sum().over("household_id"),
         weight="sample_weight_surveyed",
     )
 
@@ -83,9 +84,8 @@ def read_tours(
         "person_id",
         "household_id",
         "home_sequence_index",
-        "origin_purpose_group",
-        "destination_purpose_group",
-        "destination_activity_duration",
+        pl.col("origin_purpose_group").cast(pl.String),
+        pl.col("destination_purpose_group").cast(pl.String),
         "origin_insee_density",
         "origin_insee_urban_type",
         "origin_insee_aav_type",
@@ -94,18 +94,22 @@ def read_tours(
         "destination_insee_urban_type",
         "destination_insee_aav_type",
         "destination_aav_category",
-        # Round departure / arrival time to nearest 5 minutes.
-        ((pl.col("departure_time") / 5).round() * 5).cast(pl.UInt32),
-        ((pl.col("arrival_time") / 5).round() * 5).cast(pl.UInt32),
-        "trip_weekday",
+        pl.col("trip_weekday").cast(pl.String),
         "trip_euclidean_distance_km",
         "trip_perimeter",
+        destination_activity_duration=pl.duration(minutes="destination_activity_duration").alias(
+            "destination_activity_duration"
+        ),
+        # Round departure / arrival time to nearest 5 minutes.
+        departure_time=pl.duration(minutes=((pl.col("departure_time") / 5).round() * 5)),
+        arrival_time=pl.duration(minutes=((pl.col("arrival_time") / 5).round() * 5)),
     ).with_columns(travel_time=pl.col("arrival_time") - pl.col("departure_time"))
 
     # Clean leg-level variables.
     legs = legs.select(
         "trip_id",
         "leg_euclidean_distance_km",
+        # When there is no info, it is assumed that people are travelling alone in the car.
         mode=pl.when(pl.col("nb_persons_in_vehicle").fill_null(1).eq(1), mode_group="car_driver")
         .then(pl.lit("car_driver_alone"))
         .when(mode_group="car_driver")
@@ -242,14 +246,14 @@ def read_tours(
             first_activity_start=pl.col("arrival_time").first(),
             last_activity_end=pl.col("departure_time").last(),
             travel_times=pl.col("travel_time"),
-            distances=pl.col("trip_euclidean_distance_km"),
+            distances=pl.col("trip_euclidean_distance_km") * 1000,  # Convert to meters.
             trip_weekday=pl.col("trip_weekday").first(),  # They should be unique.
             outside_perimeter=pl.col("trip_perimeter").ne("internal").any(),
         )
         .with_columns(
             # Drop last purpose / activity duration (should be home).
-            pl.col("purposes").list.slice(0, pl.col("purposes").list.len()),
-            pl.col("durations").list.slice(0, pl.col("durations").list.len()),
+            pl.col("purposes").list.slice(0, pl.len() - 1),
+            pl.col("durations").list.slice(0, pl.len() - 1),
         )
         .with_columns(
             total_tour_duration=pl.col("last_arrival_time") - pl.col("first_departure_time"),
@@ -257,16 +261,75 @@ def read_tours(
             total_travel_time=pl.col("travel_times").list.sum(),
             total_distance=pl.col("distances").list.sum(),
         )
+        .with_columns(
+            *(
+                pl.col("purposes").list.contains(purpose).alias(f"has_{purpose}_purpose")
+                for purpose in PURPOSES
+            )
+        )
+        .with_columns(
+            lowest_density=pl.min_horizontal(
+                pl.col("origin_insee_density").list.min(),
+                pl.col("destination_insee_density").list.min(),
+            ),
+            highest_density=pl.max_horizontal(
+                pl.col("origin_insee_density").list.max(),
+                pl.col("destination_insee_density").list.max(),
+            ),
+            # Note. The min / max works for insee_urban_type since the variable is of type enum
+            # (with the enum modalities being properly ordered).
+            lowest_urban_type=pl.min_horizontal(
+                pl.col("origin_insee_urban_type").list.min(),
+                pl.col("destination_insee_urban_type").list.min(),
+            ).cast(pl.String),
+            highest_urban_type=pl.max_horizontal(
+                pl.col("origin_insee_urban_type").list.max(),
+                pl.col("destination_insee_urban_type").list.max(),
+            ).cast(pl.String),
+            lowest_functional_area_type=pl.min_horizontal(
+                pl.col("origin_insee_aav_type").list.min(),
+                pl.col("destination_insee_aav_type").list.min(),
+            ).cast(pl.String),
+            highest_functional_area_type=pl.max_horizontal(
+                pl.col("origin_insee_aav_type").list.max(),
+                pl.col("destination_insee_aav_type").list.max(),
+            ).cast(pl.String),
+            lowest_functional_area_category=pl.min_horizontal(
+                pl.col("origin_aav_category").list.min(),
+                pl.col("destination_aav_category").list.min(),
+            ).cast(pl.String),
+            highest_functional_area_category=pl.max_horizontal(
+                pl.col("origin_aav_category").list.max(),
+                pl.col("destination_aav_category").list.max(),
+            ).cast(pl.String),
+        )
+        .drop(
+            "origin_insee_density",
+            "origin_insee_urban_type",
+            "origin_insee_aav_type",
+            "origin_aav_category",
+            "destination_insee_density",
+            "destination_insee_urban_type",
+            "destination_insee_aav_type",
+            "destination_aav_category",
+        )
     )
 
     tours = (
         tours.join(households, on="household_id")
         .join(persons, on="person_id")
         .with_columns(
+            minor_ratio=pl.col("nb_minors") / pl.col("nb_persons"),
+            car_ratio=pl.col("nb_cars") / pl.col("nb_persons"),
+            driving_license_ratio=pl.col("nb_cars")
+            / pl.col("nb_driving_licenses").clip(lower_bound=1),
             household_fully_surveyed=pl.col("nb_surveyed") == pl.col("nb_persons"),
-            household_surveyed_on_same_day=pl.col("trip_weekday").n_unique().over("household_id"),
+            household_surveyed_on_same_day=pl.col("trip_weekday")
+            .n_unique()
+            .over("household_id")
+            .eq(1),
             nb_tours=pl.len().over("person_id"),
-            weighted_dist=pl.col("total_distance") * pl.col("weight"),
+            weighted_distance=pl.col("total_distance") * pl.col("weight"),
         )
         .sort("person_id", "home_sequence_index")
     )
@@ -313,6 +376,11 @@ def read_tours(
     tours = tours.join(
         joint_tours, on=["person_id", "home_sequence_index"], how="left"
     ).with_columns(joint_tour=pl.col("other_person_ids").is_not_null())
+
+    # Create tour_id column.
+    tours = tours.with_columns(
+        tour_id=pl.concat_str("person_id", pl.lit("-"), "home_sequence_index")
+    ).drop("household_id", "person_id", "home_sequence_index")
 
     return tours
 

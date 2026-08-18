@@ -10,6 +10,7 @@ from .files import (
     SurveyedToursFile,
     SurveyedTripsFile,
 )
+from .joint_travel import ClassifyJointToursStep, EstimateJointToursClassifierStep
 from .mobisurvstd import MobiSurvStdImportStep
 from .tours import CleanSurveyToursStep
 
@@ -26,4 +27,9 @@ SURVEY_FILES = [
     SurveyedToursFile,
 ]
 
-SURVEY_STEPS = [MobiSurvStdImportStep, CleanSurveyToursStep]
+SURVEY_STEPS = [
+    MobiSurvStdImportStep,
+    CleanSurveyToursStep,
+    EstimateJointToursClassifierStep,
+    ClassifyJointToursStep,
+]

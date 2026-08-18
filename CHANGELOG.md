@@ -6,6 +6,8 @@ New steps:
 
 - `MobiSurvStdImportStep`
 - `CleanSurveyToursStep`
+- `EstimateJointToursClassifierStep`
+- `CreateToursStep`
 
 New files:
 
@@ -19,10 +21,22 @@ New files:
 - `SurveyedDetailedZonesFile`
 - `SurveyedDrawZonesFile`
 - `SurveyedToursFile`
-    
+- `JointTourEstimatorFile`
+- `ToursFile`
+- `JointToursFile`
+
 New parameters:
 
 - `gtfs.date`
+
+New features:
+
+- New `MetroFile` type for Machine Learning estimators saved with joblib: `MetroMLEstimatorFile`
+
+Other changes:
+
+- Put `"unemployed"` and `"homemaker"` professional activity modalities in the `"other"` modality
+- Rename `"shop"` purpose to `"shopping"`
 
 Removed parameters:
 

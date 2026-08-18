@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     import geopandas as gpd
     import matplotlib.pyplot as plt
     import polars as pl
+    from sklearn.base import BaseEstimator
 
 
 class MetroDataType(Enum):
@@ -26,8 +27,9 @@ class MetroDataType(Enum):
     DURATION = 8
     LIST_OF_IDS = 9
     LIST_OF_FLOATS = 10
-    LIST_OF_TIMES = 11
-    ANY = 12  # Special datatype when we don't want any validation.
+    LIST_OF_DURATIONS = 11
+    LIST_OF_STRINGS = 12
+    ANY = 13  # Special datatype when we don't want any validation.
 
     def is_valid_pl(self, dtype: pl.DataType):
         import polars as pl
@@ -56,8 +58,10 @@ class MetroDataType(Enum):
             )
         elif self == MetroDataType.LIST_OF_FLOATS:
             return isinstance(dtype, pl.List) and dtype.inner.is_float()
-        elif self == MetroDataType.LIST_OF_TIMES:
-            return isinstance(dtype, pl.List) and isinstance(dtype.inner, pl.Time)
+        elif self == MetroDataType.LIST_OF_DURATIONS:
+            return isinstance(dtype, pl.List) and isinstance(dtype.inner, pl.Duration)
+        elif self == MetroDataType.LIST_OF_STRINGS:
+            return isinstance(dtype, pl.List) and isinstance(dtype.inner, pl.String)
         elif self == MetroDataType.ANY:
             return True
         else:
@@ -119,8 +123,10 @@ class MetroDataType(Enum):
             return "list of strings or integers"
         elif self == MetroDataType.LIST_OF_FLOATS:
             return "list of floats"
-        elif self == MetroDataType.LIST_OF_TIMES:
+        elif self == MetroDataType.LIST_OF_DURATIONS:
             return "list of times"
+        elif self == MetroDataType.LIST_OF_STRINGS:
+            return "list of strings"
         else:
             return "unspecified datatype"
 
@@ -266,7 +272,8 @@ class MetroDataFrameFile(MetroFile):
             raise MetropyError("DataFrame has too many rows")
         if self.schema is None:
             return df
-        if not all(col.validate_df(df) for col in self.schema):
+        valid_columns = [col.validate_df(df) for col in self.schema]
+        if not all(valid_columns):
             raise MetropyError("DataFrame is not valid")
         if self.discard_extra_columns:
             for col in df.columns:
@@ -383,6 +390,34 @@ class MetroGeoDataFrameFile(MetroFile):
                 doc += f"{col._md_doc()}\n"
             if not simple:
                 doc += "\n</details>\n"
+        return doc
+
+
+class MetroMLEstimatorFile(MetroFile):
+    """Special MetroFile for Machine-Learning estimators."""
+
+    @error_context(msg="Cannot save joblib file {}", fmt_args=[0])
+    def write(self, estimator: BaseEstimator):
+        import joblib
+
+        with open(self.complete_path, "wb") as f:
+            joblib.dump(estimator, f, protocol=5)
+
+    def read(self) -> str:
+        import joblib
+
+        with open(self.complete_path, "rb") as f:
+            return joblib.load(f)
+
+    def read_if_exists(self) -> str | None:
+        if self.exists():
+            return self.read()
+
+    @override
+    @classmethod
+    def _md_doc(cls) -> str:
+        doc = super()._md_doc()
+        doc += "- **Type:** ML Estimator (joblib)\n"
         return doc
 
 
