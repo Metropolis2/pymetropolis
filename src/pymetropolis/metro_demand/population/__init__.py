@@ -24,7 +24,7 @@ from .generic import (
     PopulationFromTripCoordinatesStep,
 )
 from .tours import CreateToursStep
-from .zones import FrenchHouseholdsHomesZonesStep, FrenchTripsZonesStep
+from .zones import HouseholdsHomesZonesStep, TripsZonesStep
 
 POPULATION_FILES = [
     HouseholdsFile,
@@ -48,8 +48,8 @@ POPULATION_STEPS = [
     UniformDrawsStep,
     EqasimImportStep,
     TripDistancesStep,
-    FrenchHouseholdsHomesZonesStep,
-    FrenchTripsZonesStep,
+    HouseholdsHomesZonesStep,
+    TripsZonesStep,
     ActivitiesLocationsFromTripsLocationsStep,
     CreateToursStep,
 ]
