@@ -287,7 +287,8 @@ class MetroPipeline:
                 end = time.time()
                 logger.info(f"Done in {humanize.precisedelta(end - start)}")
                 if step_by_step:
-                    if click.confirm("Continue to next step?"):
+                    next_step = to_run_steps[i + 1][0]
+                    if click.confirm(f"Continue to next step? [{next_step}]"):
                         continue
                     else:
                         logger.success("Stopped!")

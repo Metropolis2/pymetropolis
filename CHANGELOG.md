@@ -2,9 +2,69 @@
 
 ## [Unreleased]
 
+New steps:
+
+- `MobiSurvStdImportStep`
+- `CleanSurveyToursStep`
+- `EstimateJointToursClassifierStep`
+- `CreateToursStep`
+- `ClassifyJointToursStep`
+- `FrenchZonesStep`
+- `CustomZonesLevel1Step`
+- `CustomZonesLevel2Step`
+- `CustomZonesLevel3Step`
+- `CustomZonesLevel4Step`
+- `CustomZonesLevel5Step`
+- `HouseholdHomesZonesStep`
+- `TripsZonesStep`
+- `FrenchHouseholdsUrbanTypeStep`
+- `FrenchTripsUrbanTypeStep`
+
+New files:
+
+- `SurveyedHouseholdsFile`
+- `SurveyedPersonsFile`
+- `SurveyedTripsFile`
+- `SurveyedLegsFile`
+- `SurveyedCarsFile`
+- `SurveyedMotorcyclesFile`
+- `SurveyedSpecialLocationsFile`
+- `SurveyedDetailedZonesFile`
+- `SurveyedDrawZonesFile`
+- `SurveyedToursFile`
+- `JointTourEstimatorFile`
+- `ToursFile`
+- `JointToursFile`
+- `ZonesLevel1File`
+- `ZonesLevel2File`
+- `ZonesLevel3File`
+- `ZonesLevel4File`
+- `ZonesLevel5File`
+- `HouseholdHomesUrbanTypeFile`
+- `TripsUrbanTypeFile`
+
 New parameters:
 
 - `gtfs.date`
+
+New features:
+
+- New `MetroFile` type for Machine Learning estimators saved with joblib: `MetroMLEstimatorFile`
+
+Other changes:
+
+- Put `"unemployed"` and `"homemaker"` professional activity modalities in the `"other"` modality
+- Rename `"shop"` purpose to `"shopping"`
+
+Removed steps:
+
+- `CustomZonesStep` (use one of the 5 `CustomZonesLevelXStep` instead)
+- `FrenchHouseholdHomesZonesStep`
+- `FrenchTripsZonesStep`
+
+Removed files:
+
+- `ZonesFile` (use one of the 5 `ZonesLevelXFile` instead)
 
 Removed parameters:
 

@@ -113,6 +113,18 @@ class AdminExpressStep(IGNStep):
         description="Name of the API service from which to request communes data.",
         note='For faster but less accurate queries, you can use the "COG-CARTO-PE" version.',
     )
+    api_departements_service_name = StringParameter(
+        "ign.api_departements_service_name",
+        default="ADMINEXPRESS-COG-CARTO.LATEST:departement",
+        description="Name of the API service from which to request départements data.",
+        note='For faster but less accurate queries, you can use the "COG-CARTO-PE" version.',
+    )
+    api_regions_service_name = StringParameter(
+        "ign.api_regions_service_name",
+        default="ADMINEXPRESS-COG-CARTO.LATEST:region",
+        description="Name of the API service from which to request régions data.",
+        note='For faster but less accurate queries, you can use the "COG-CARTO-PE" version.',
+    )
 
     def read_communes(
         self, bbox: tuple[float, float, float, float] | None = None
@@ -140,39 +152,17 @@ class AdminExpressStep(IGNStep):
                 communes = gpd.read_file(
                     global_file,
                     layer="commune",
-                    columns=[
-                        "geometry",
-                        "code_insee",
-                        "code_insee_du_departement",
-                        "code_insee_de_la_region",
-                        "nom_officiel",
-                    ],
+                    columns=["geometry", "code_insee", "nom_officiel"],
                     mask=mask,
                 )
                 communes.rename(
-                    columns={
-                        "code_insee": "insee_id",
-                        "code_insee_du_departement": "departement_id",
-                        "code_insee_de_la_region": "region_id",
-                        "nom_officiel": "name",
-                    },
-                    inplace=True,
+                    columns={"code_insee": "insee_id", "nom_officiel": "name"}, inplace=True
                 )
             elif commune_file is not None:
                 communes = gpd.read_file(
-                    commune_file,
-                    columns=["geometry", "INSEE_COM", "INSEE_DEP", "INSEE_REG", "NOM"],
-                    mask=mask,
+                    commune_file, columns=["geometry", "INSEE_COM", "NOM"], mask=mask
                 )
-                communes.rename(
-                    columns={
-                        "INSEE_COM": "insee_id",
-                        "INSEE_DEP": "departement_id",
-                        "INSEE_REG": "region_id",
-                        "NOM": "name",
-                    },
-                    inplace=True,
-                )
+                communes.rename(columns={"INSEE_COM": "insee_id", "NOM": "name"}, inplace=True)
             else:
                 raise MetropyError(
                     "Cannot read communes from ADMIN EXPRESS directory "
@@ -181,25 +171,120 @@ class AdminExpressStep(IGNStep):
         else:
             logger.debug("Reading municipality data from IGN API")
             communes = self.get_ign_data(
-                self.api_communes_service_name,
-                [
-                    "code_insee",
-                    "code_insee_du_departement",
-                    "code_insee_de_la_region",
-                    "nom_officiel",
-                ],
-                bbox,
+                self.api_communes_service_name, ["code_insee", "nom_officiel"], bbox
             )
             communes.rename(
-                columns={
-                    "code_insee": "insee_id",
-                    "code_insee_du_departement": "departement_id",
-                    "code_insee_de_la_region": "region_id",
-                    "nom_officiel": "name",
-                },
-                inplace=True,
+                columns={"code_insee": "insee_id", "nom_officiel": "name"}, inplace=True
             )
         return communes
+
+    def read_departements(
+        self, bbox: tuple[float, float, float, float] | None = None
+    ) -> gpd.GeoDataFrame:
+        """Returns a GeoDataFrame of French départements read from the ADMIN EXPRESS database.
+
+        When the `bbox` parameter is specified, only returns départements that intersect that bbox.
+        """
+        import geopandas as gpd
+        from shapely.geometry import box
+
+        assert self.api_departements_service_name is not None
+
+        if self.admin_express_directory is not None:
+            logger.debug(f"Reading departments data from `{self.admin_express_directory}`")
+            global_file = find_file("ADE*.gpkg", self.admin_express_directory, recursive=True)
+            # Order versions have a departement-specific file.
+            departement_file = find_file(
+                "DEPARTEMENT.shp", self.admin_express_directory, recursive=True
+            )
+            if bbox is None:
+                mask = None
+            else:
+                # Put the bbox in a gpd.GeoSeries so that CRS mis-match are properly resolved.
+                mask = gpd.GeoSeries([box(*bbox)], crs="EPSG:4326")
+            if global_file is not None:
+                departements = gpd.read_file(
+                    global_file,
+                    layer="departement",
+                    columns=["geometry", "code_insee", "nom_officiel"],
+                    mask=mask,
+                )
+                departements.rename(
+                    columns={"code_insee": "departement_id", "nom_officiel": "name"}, inplace=True
+                )
+            elif departement_file is not None:
+                departements = gpd.read_file(
+                    departement_file, columns=["geometry", "INSEE_DEP", "NOM"], mask=mask
+                )
+                departements.rename(
+                    columns={"INSEE_DEP": "departement_id", "NOM": "name"}, inplace=True
+                )
+            else:
+                raise MetropyError(
+                    "Cannot read departements from ADMIN EXPRESS directory "
+                    f"`{self.admin_express_directory}`"
+                )
+        else:
+            logger.debug("Reading departments data from IGN API")
+            departements = self.get_ign_data(
+                self.api_departements_service_name, ["code_insee", "nom_officiel"], bbox
+            )
+            departements.rename(
+                columns={"code_insee": "departement_id", "nom_officiel": "name"}, inplace=True
+            )
+        return departements
+
+    def read_regions(
+        self, bbox: tuple[float, float, float, float] | None = None
+    ) -> gpd.GeoDataFrame:
+        """Returns a GeoDataFrame of French régions read from the ADMIN EXPRESS database.
+
+        When the `bbox` parameter is specified, only returns régions that intersect that bbox.
+        """
+        import geopandas as gpd
+        from shapely.geometry import box
+
+        assert self.api_regions_service_name is not None
+
+        if self.admin_express_directory is not None:
+            logger.debug(f"Reading regions data from `{self.admin_express_directory}`")
+            global_file = find_file("ADE*.gpkg", self.admin_express_directory, recursive=True)
+            # Order versions have a region-specific file.
+            region_file = find_file("REGION.shp", self.admin_express_directory, recursive=True)
+            if bbox is None:
+                mask = None
+            else:
+                # Put the bbox in a gpd.GeoSeries so that CRS mis-match are properly resolved.
+                mask = gpd.GeoSeries([box(*bbox)], crs="EPSG:4326")
+            if global_file is not None:
+                regions = gpd.read_file(
+                    global_file,
+                    layer="region",
+                    columns=["geometry", "code_insee", "nom_officiel"],
+                    mask=mask,
+                )
+                regions.rename(
+                    columns={"code_insee": "region_id", "nom_officiel": "name"}, inplace=True
+                )
+            elif region_file is not None:
+                regions = gpd.read_file(
+                    region_file, columns=["geometry", "INSEE_REG", "NOM"], mask=mask
+                )
+                regions.rename(columns={"INSEE_REG": "region_id", "NOM": "name"}, inplace=True)
+            else:
+                raise MetropyError(
+                    "Cannot read regions from ADMIN EXPRESS directory "
+                    f"`{self.admin_express_directory}`"
+                )
+        else:
+            logger.debug("Reading regions data from IGN API")
+            regions = self.get_ign_data(
+                self.api_regions_service_name, ["code_insee", "nom_officiel"], bbox
+            )
+            regions.rename(
+                columns={"code_insee": "region_id", "nom_officiel": "name"}, inplace=True
+            )
+        return regions
 
 
 class IRISStep(IGNStep):
