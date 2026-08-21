@@ -294,7 +294,7 @@ class TomTomRequestsStep(RandomStep, GeoStep):
 
         nodes, coordinates = generate_random_nodes(
             edges=edges,
-            rng=self.get_rng(),
+            rng=self.get_rng(str(self)),
             nb_routes=self.nb_routes,
             nb_waypoints=self.nb_waypoints,
             excluded_edge_types=self.excluded_edge_types,
@@ -310,7 +310,7 @@ class TomTomRequestsStep(RandomStep, GeoStep):
                 api_key=self.api_key,
                 nodes=nodes,
                 coordinates=coordinates,
-                rng=self.get_rng(),
+                rng=self.get_rng(str(self)),
                 departure_time=departure_time,
                 date=self.date,
                 nb_batches=self.nb_batches,

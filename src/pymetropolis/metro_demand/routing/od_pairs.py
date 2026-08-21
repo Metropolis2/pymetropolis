@@ -8,6 +8,7 @@ from pymetropolis.metro_demand.population.files import TripsDestinationsFile, Tr
 from pymetropolis.metro_network.bicycle_network.files import BicycleEdgesCleanFile
 from pymetropolis.metro_network.pedestrian_network.files import PedestrianEdgesCleanFile
 from pymetropolis.metro_network.road_network.files import RoadEdgesCleanFile
+from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.metro_pipeline.parameters import ListParameter
 from pymetropolis.metro_pipeline.types import String
 from pymetropolis.metro_spatial import GeoStep
@@ -82,7 +83,7 @@ def identify_nodes(edges: gpd.GeoDataFrame, nodes_gdf: gpd.GeoDataFrame) -> pl.D
     return nodes
 
 
-class PedestrianODNodesFromCoordinatesStep(GeoStep):
+class PedestrianODNodesFromCoordinatesStep(GeoStep, PopulationStep):
     """Identifies nodes on the pedestrian network to be used as origins and destinations of the
     trips.
 
@@ -129,7 +130,7 @@ class PedestrianODNodesFromCoordinatesStep(GeoStep):
         self.output["ods"].write(ods)
 
 
-class BicycleODNodesFromCoordinatesStep(GeoStep):
+class BicycleODNodesFromCoordinatesStep(GeoStep, PopulationStep):
     """Identifies nodes on the bicycle network to be used as origins and destinations of the
     trips.
 
@@ -176,7 +177,7 @@ class BicycleODNodesFromCoordinatesStep(GeoStep):
         self.output["ods"].write(ods)
 
 
-class RoadODNodesFromCoordinatesStep(GeoStep):
+class RoadODNodesFromCoordinatesStep(GeoStep, PopulationStep):
     """Identifies nodes on the road network to be used as origins and destinations of the trips.
 
     First, this Step finds the nearest edge to the origin / destination coordinates.

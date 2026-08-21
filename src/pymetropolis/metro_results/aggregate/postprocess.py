@@ -1,6 +1,7 @@
 import json
 
 from pymetropolis.metro_demand.population.files import TripsDistancesFile
+from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.metro_pipeline.steps import InputFile, Step
 from pymetropolis.metro_results.demand.files import TripResultsFile
 from pymetropolis.metro_simulation.common import StepWithSimulationRatio
@@ -10,7 +11,7 @@ from pymetropolis.metro_simulation.supply.files import MetroVehicleTypesFile
 from .files import AggregateOutputFile, IterationResultsFile
 
 
-class AggregateResultsStep(StepWithSimulationRatio):
+class AggregateResultsStep(StepWithSimulationRatio, PopulationStep):
     """Generates a JSON file with various aggregate results on the simulation.
 
     NOTE: The developpement of this step is still in progress. More output will be added in the

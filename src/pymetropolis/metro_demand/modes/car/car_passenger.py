@@ -12,6 +12,7 @@ from pymetropolis.metro_demand.modes.common import (
     pref_value_of_time_parameter,
     preferences_step_docstring,
 )
+from pymetropolis.metro_pipeline import PopulationStep
 
 from .files import CarPassengerPreferencesFile
 
@@ -21,7 +22,7 @@ if TYPE_CHECKING:
 MODE = "car_passenger"
 
 
-class CarPassengerPreferencesStep(PreferencesStep):
+class CarPassengerPreferencesStep(PreferencesStep, PopulationStep):
     __doc__ = cst_preferences_step_docstring(MODE)
 
     constant = pref_constant_parameter(MODE)

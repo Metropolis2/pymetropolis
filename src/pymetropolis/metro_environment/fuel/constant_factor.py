@@ -1,11 +1,11 @@
 from pymetropolis.metro_demand.routing.files import TripsCarFreeFlowTravelTimesFile
-from pymetropolis.metro_pipeline import Step
+from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.metro_pipeline.parameters import FloatParameter
 
 from .files import CarFuelFile
 
 
-class GenericCarFuelStep(Step):
+class GenericCarFuelStep(PopulationStep):
     """Generic Step to compute fuel consumption and price from a constant emission factor applied to
     the free-flow fastest-path length.
     """

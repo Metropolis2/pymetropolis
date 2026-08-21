@@ -1,13 +1,14 @@
 from pymetropolis.metro_common.io import read_dataframe
 from pymetropolis.metro_demand.routing.files import TripsRoadNodesFile
 from pymetropolis.metro_network.road_network.files import RoadEdgesCleanFile
+from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.metro_pipeline.parameters import PathParameter
 from pymetropolis.random import RandomStep
 
 from .common import generate_trips_from_od_matrix
 
 
-class CustomODMatrixStep(RandomStep):
+class CustomODMatrixStep(RandomStep, PopulationStep):
     """Generates car driver origin-destination pairs from the provided origin-destination matrix.
 
     The origin-destination matrix is provided in a CSV or Parquet file with the following columns:
@@ -43,5 +44,5 @@ class CustomODMatrixStep(RandomStep):
 
         df = read_dataframe(self.file, columns=["origin", "destination", "size"])
         df = df.filter(pl.col("origin") != pl.col("destination"))
-        trips = generate_trips_from_od_matrix(df, self.get_rng())
+        trips = generate_trips_from_od_matrix(df, self.get_rng(str(self)))
         self.output["road_ods"].write(trips)

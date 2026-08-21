@@ -27,14 +27,14 @@ class StepStatus(Enum):
 
 class MetroPipeline:
     # List of defined steps, with their required input files, optional input files and output files.
-    steps: dict[Step, dict[str, set[type[MetroFile]]]]
+    steps: dict[Step, dict[str, set[MetroFile]]]
     # List of files that can be generated, with the Step(s) that generate them.
-    generated_files: dict[type[MetroFile], set[Step]]
+    generated_files: dict[MetroFile, set[Step]]
     # List of files which are required or optional input for primary steps.
     # A step is "primary" if its priority is > 0.
-    primary_input_files: set[type[MetroFile]]
+    primary_input_files: set[MetroFile]
     # List of files which are required or optional input for the target step.
-    target_input_files: set[type[MetroFile]] = set()
+    target_input_files: set[MetroFile] = set()
     config: Config
     target_step: Step | None = None
 
@@ -48,35 +48,31 @@ class MetroPipeline:
         used_keys = set()
         for step_class in step_classes:
             assert issubclass(step_class, Step), f"Not a valid Step: {step_class}"
-            # Instantiate the step with the config.
-            step = step_class(self.config)
             # Keep track of all keys used.
             for _, p in step_class._iter_params():
                 used_keys.add(str(p))
-            all_output_files.update(step.output_files.values())
-            if step.is_defined() and step.output_files:
-                steps[step]["required_inputs"] = set(
-                    map(lambda f: f[1], step._iter_input_files(required=True))
-                )
-                steps[step]["optional_inputs"] = set(
-                    map(lambda f: f[1], step._iter_input_files(required=False))
-                )
-                steps[step]["outputs"] = set(map(lambda f: f, step.output_files.values()))
+            # Instantiate the step with the config.
+            # Multiple steps are returned for PopulationStep when multiple populations are defined
+            # in the config.
+            step_insts = self.config.instantiate_step(step_class)
+            for step in step_insts:
+                all_output_files.update(step.output.values())
+                if step.is_defined() and step.output:
+                    steps[step]["required_inputs"] = set(
+                        step._iter_resolved_input_files(required=True)
+                    )
+                    steps[step]["optional_inputs"] = set(
+                        step._iter_resolved_input_files(required=False)
+                    )
+                    steps[step]["outputs"] = set(step.output.values())
         self.steps = steps
-        self.check_unused_keys(used_keys)
+        self.config.check_unused_keys(used_keys)
         self.check_target_step_defined(target_step, step_classes)
         self.set_feasible()
         self.solve_conflicts()
         self.check_files_to_delete(all_output_files)
 
-    def check_unused_keys(self, used_keys: set[str]):
-        unused_keys = self.config.get_unused_keys(used_keys)
-        if unused_keys:
-            logger.warning("The following keys appear in the configuration but are not used:")
-            for k in sorted(unused_keys):
-                logger.warning(f"- {k}")
-
-    def check_files_to_delete(self, all_output_files: set[type[MetroFile]]):
+    def check_files_to_delete(self, all_output_files: set[MetroFile]):
         to_delete_files = list()
         for ofile in all_output_files:
             f = ofile.from_dir(self.config.main_directory)
@@ -149,12 +145,12 @@ class MetroPipeline:
             # At this point, target step is defined but it is not feasible because one of its input
             # file is not getting generated.
             errors = False
-            for _, ifile in self.target_step._iter_input_files(required=True):
+            for ifile in self.target_step._iter_resolved_input_files(required=True):
                 if ifile not in self.generated_files:
                     errors = True
                     logger.error(
-                        f"File {ifile.__name__} is required by Step {self.target_step}, but no "
-                        "defined step can generate it"
+                        f"File {ifile} is required by Step {self.target_step}, but no defined step "
+                        "can generate it"
                     )
             if errors:
                 sys.exit()
@@ -163,7 +159,7 @@ class MetroPipeline:
         for ofile, steps in self.generated_files.items():
             if len(steps) >= 2:
                 steps_str = ", ".join(map(str, steps))
-                logger.debug(f"Multiple steps are generating file {ofile.__name__}: {steps_str}")
+                logger.debug(f"Multiple steps are generating file {ofile}: {steps_str}")
                 return steps
 
     def solve_conflicts(self):
@@ -283,7 +279,7 @@ class MetroPipeline:
             for i, (step, _) in enumerate(to_run_steps):
                 logger.info(f"=== Step {i + 1} / {n}: {step} ===")
                 start = time.time()
-                step.execute(self.config)
+                step.execute()
                 end = time.time()
                 logger.info(f"Done in {humanize.precisedelta(end - start)}")
                 if step_by_step:

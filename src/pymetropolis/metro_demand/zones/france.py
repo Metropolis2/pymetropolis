@@ -35,9 +35,9 @@ class FrenchZonesStep(IRISStep, AdminExpressStep, GeoStep):
     )
     input_files = {
         "area": SimulationAreaFile,
-        "origins": InputFile(TripsOriginsFile, optional=True),
-        "destinations": InputFile(TripsDestinationsFile, optional=True),
-        "homes": InputFile(HouseholdsHomesFile, optional=True),
+        "origins": InputFile(TripsOriginsFile, optional=True, all_populations=True),
+        "destinations": InputFile(TripsDestinationsFile, optional=True, all_populations=True),
+        "homes": InputFile(HouseholdsHomesFile, optional=True, all_populations=True),
     }
     output_files = {
         "zones1": ZonesLevel1File,
@@ -55,12 +55,14 @@ class FrenchZonesStep(IRISStep, AdminExpressStep, GeoStep):
 
         area = self.input["area"].get_area(crs="EPSG:4326")  # ty: ignore[unresolved-attribute]
 
-        # Read all simulation locations (origin, destination, home) if they are defined.
+        # Read all simulation locations (origin, destination, home), for every population, if
+        # they are defined.
         all_points = gpd.GeoSeries([], crs="EPSG:4326")
         for loc in ("origins", "destinations", "homes"):
-            if self.input[loc] is not None:
-                gdf = self.input[loc].read()
-                all_points = pd.concat((all_points, gdf.geometry.to_crs("EPSG:4326")))
+            for f in self.input_populations[loc].values():
+                if f.exists():
+                    gdf = f.read()
+                    all_points = pd.concat((all_points, gdf.geometry.to_crs("EPSG:4326")))
 
         # Compute the largest bbox that should be retrieved.
         minx, miny, maxx, maxy = area.bounds

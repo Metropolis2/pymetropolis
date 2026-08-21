@@ -16,7 +16,7 @@ from pymetropolis.metro_network.road_network.files import (
     RoadEdgesCleanFile,
     RoadEdgesPrimaryFlagFile,
 )
-from pymetropolis.metro_pipeline import Step
+from pymetropolis.metro_pipeline import PopulationStep, Step
 from pymetropolis.metro_pipeline.parameters import BoolParameter, ListParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_pipeline.types import String
@@ -212,9 +212,7 @@ class RoadNetworkPrimaryEdgesStep(Step):
     input_files = {
         "edges": RoadEdgesCleanFile,
         "car_ff_routes": InputFile(
-            TripsCarFreeFlowTravelTimesFile,
-            when=lambda inst: inst.secondary_types and inst.ensure_primary_connected,
-            when_doc="if `secondary_types` is not empty and `ensure_primary_connected` is `true`",
+            TripsCarFreeFlowTravelTimesFile, optional=True, all_populations=True
         ),
     }
     output_files = {"edges_primary": RoadEdgesPrimaryFlagFile}
@@ -232,7 +230,17 @@ class RoadNetworkPrimaryEdgesStep(Step):
             # Default case: all edges are primary.
             df = edges.select("edge_id", primary=True)
         if not df["primary"].all() and self.ensure_primary_connected:
-            routes = self.input["car_ff_routes"].read().select("trip_id", route="free_flow_route")
+            routes = pl.concat(
+                (
+                    f.read().select(route="free_flow_route")
+                    for f in self.input_populations["car_ff_routes"].values()
+                    if f.exists()
+                ),
+                how="vertical",
+            )
+            # Create new `trip_id` to have unique ids (they are just used for grouping, it does not
+            # matter if they do not match the original ids).
+            routes = routes.with_columns(trip_id=pl.int_range(pl.len()))
             primary_edges = set(df.filter("primary")["edge_id"])
             primary_edges = find_primary_edges(routes, primary_edges)
             edges = edges.with_columns(primary=pl.col("edge_id").is_in(primary_edges))
@@ -263,7 +271,7 @@ class RoadNetworkPrimaryEdgesStep(Step):
         self.output["edges_primary"].write(df)
 
 
-class CarAccessEgressStep(Step):
+class CarAccessEgressStep(PopulationStep):
     """Identifies the access and egress parts of car trips based on the primary road network.
 
     For each car trip, this step determines:

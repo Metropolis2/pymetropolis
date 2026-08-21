@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, override
+from typing import TYPE_CHECKING, Any, ClassVar, Self, override
 
 from loguru import logger
 
@@ -215,8 +215,16 @@ class MetroFile:
     def __str__(self) -> str:
         return self.__class__.__name__
 
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, MetroFile):
+            return NotImplemented
+        return type(self) is type(other) and self.complete_path == other.complete_path
+
+    def __hash__(self) -> int:
+        return hash((type(self), self.complete_path))
+
     @classmethod
-    def from_dir(cls, main_directory: Path) -> MetroFile:
+    def from_dir(cls, main_directory: Path) -> Self:
         instance = cls.__new__(cls)
         instance.complete_path = main_directory / Path(cls.path)
         instance.create_dir_if_needed()
@@ -462,3 +470,38 @@ class MetroPlotFile(MetroFile):
         doc = super()._md_doc()
         doc += "- **Type:** Plot\n"
         return doc
+
+
+class PopulationFile(MetroFile):
+    """A MetroFile whose path depends on which population produced it.
+
+    `path` must contain a `{population}` placeholder, e.g. `"demand/{population}/trips.parquet"`.
+    """
+
+    _population_variants: ClassVar[dict[str, type[MetroFile]]] = {}
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        # Each subclass needs its own cache: without this, `_population_variants` would be
+        # inherited from `PopulationFile` and shared by every subclass, so two different files
+        # requesting the same population name would collide and get back each other's class.
+        cls._population_variants = {}
+
+    @classmethod
+    def for_population(cls, population: str) -> type[MetroFile]:
+        # Memoized so the same population always resolves to the same class object —
+        # generated_files/primary_input_files compare by class identity.
+        if population not in cls._population_variants:
+            if "{population}" not in cls.path:
+                # Without the placeholder, `.format` below is a silent no-op: every population
+                # would resolve to the identical path and collide (see `AggregateOutputFile`).
+                raise MetropyError(
+                    f"`{cls.__name__}.path` must contain a `{{population}}` placeholder, got "
+                    f"`{cls.path}`"
+                )
+            cls._population_variants[population] = type(
+                f"{population}__{cls.__name__}",
+                (cls,),
+                {"path": cls.path.format(population=population)},
+            )
+        return cls._population_variants[population]

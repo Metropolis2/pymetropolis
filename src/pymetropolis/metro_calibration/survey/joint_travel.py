@@ -7,6 +7,7 @@ from loguru import logger
 from pymetropolis.common import ThreadedStep
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_demand.population.files import JointToursFile, ToursFile
+from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.metro_pipeline.parameters import ListParameter, StringParameter
 from pymetropolis.metro_pipeline.types import String
 from pymetropolis.random import RandomStep
@@ -252,7 +253,7 @@ class EstimateJointToursClassifierStep(RandomStep, ThreadedStep):
         self.output["estimator"].write(estimator)
 
 
-class ClassifyJointToursStep(RandomStep):
+class ClassifyJointToursStep(RandomStep, PopulationStep):
     input_files = {"tours": ToursFile, "estimator": JointTourEstimatorFile}
     output_files = {"joint_tours": JointToursFile}
 
@@ -266,7 +267,7 @@ class ClassifyJointToursStep(RandomStep):
 
         X = get_X(tours.filter(pl.col("nb_persons") > 1), features)
 
-        joint_tour_flag = classify_joint_tours(X, estimator, self.get_rng())
+        joint_tour_flag = classify_joint_tours(X, estimator, self.get_rng(str(self)))
 
         # Force `joint_tour` = false for all tours with `nb_persons` = 1.
         df = pl.concat(

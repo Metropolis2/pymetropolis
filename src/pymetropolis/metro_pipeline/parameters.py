@@ -1,13 +1,14 @@
+from __future__ import annotations
+
 from datetime import date, timedelta
 from pathlib import Path
-from typing import Any, Generic, overload
+from typing import TYPE_CHECKING, Any, Generic, overload
 
 from typing_extensions import TypeVar
 
 from pymetropolis.metro_common.errors import error_context
 from pymetropolis.metro_common.time import MetroTime
 
-from .config import Config
 from .types import (
     Bool,
     CustomValidator,
@@ -24,6 +25,9 @@ from .types import (
     Type,
 )
 
+if TYPE_CHECKING:
+    from .config import Config
+
 T = TypeVar("T", default=Any)
 
 
@@ -33,6 +37,9 @@ class Parameter(Generic[T]):
     description: str
     example: str
     note: str
+    # When a parameter is "shared", its value is used across all extra populations, even though it
+    # needs be defined only in the main configuration.
+    shared: bool
 
     def __init__(
         self,
@@ -42,15 +49,15 @@ class Parameter(Generic[T]):
         description: str = "",
         note: str = "",
         example: str = "",
+        shared: bool = False,
     ):
         self.key = key.split(".")
         self.validator = validator
-        self._value = None
         self.description = description
         self.note = note
         self.example = example
-        if default is not None:
-            self._value = self.validator.validate(default)
+        self.shared = shared
+        self.default = self.validator.validate(default) if default is not None else None
 
     def __str__(self) -> str:
         return ".".join(self.key)
@@ -68,7 +75,7 @@ class Parameter(Generic[T]):
         return doc
 
     @overload
-    def __get__(self, instance: None, owner: Any) -> "Parameter[T]": ...
+    def __get__(self, instance: None, owner: Any) -> Parameter[T]: ...
 
     @overload
     def __get__(self, instance: Any, owner: Any) -> T: ...
@@ -77,12 +84,16 @@ class Parameter(Generic[T]):
         return self
 
     @error_context("Cannot validate parameter `{}`", fmt_args=[0])
-    def from_config(self, config: Config) -> T | None:
-        # Read parameter value from the config, or keep the default if no value is specified.
-        value = config.resolve_parameter(self.key)
+    def from_config(self, config: Config, population_name: str | None = None) -> T | None:
+        # Read parameter value from the config, or fall back to the default if no value is
+        # specified. This must not cache the resolved value on `self`: a Parameter is a single
+        # descriptor object shared (by inheritance) across every Step subclass and instance that
+        # declares it, so any state stored on `self` would leak between unrelated steps and
+        # populations.
+        value = config.resolve_parameter(self.key, population_name, shared=self.shared)
         if value is not None:
-            self._value = self.validator.validate(value)
-        return self._value
+            return self.validator.validate(value)
+        return self.default
 
 
 class CustomParameter(Parameter):

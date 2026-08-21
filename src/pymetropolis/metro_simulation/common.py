@@ -1,8 +1,37 @@
+from __future__ import annotations
+
+from collections.abc import Mapping
+from typing import TYPE_CHECKING
+
+from pymetropolis.metro_pipeline import MetroFile
 from pymetropolis.metro_pipeline.parameters import FloatParameter, FractionParameter, ListParameter
 from pymetropolis.metro_pipeline.steps import Step
 from pymetropolis.metro_pipeline.types import Enum
 
+if TYPE_CHECKING:
+    import polars as pl
+
 # TODO: Create Mode class.
+
+
+def merge_populations(
+    files: Mapping[str, MetroFile], id_columns: tuple[str, ...] = ("agent_id",)
+) -> pl.DataFrame:
+    """Reads a MetroDataFrameFile for each population and concatenates them vertically.
+
+    Each column in `id_columns` is prefixed with `f"{population}-"` so that ids stay globally
+    unique after the merge (a plain agent_id / trip_id is only unique within its own population's
+    file).
+    """
+    import polars as pl
+
+    dfs = [
+        f.read().with_columns(
+            **{col: pl.concat_str(pl.lit(f"{population}-"), pl.col(col)) for col in id_columns}
+        )
+        for population, f in files.items()
+    ]
+    return pl.concat(dfs, how="vertical")
 
 
 class StepWithModes(Step):

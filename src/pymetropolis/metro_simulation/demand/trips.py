@@ -25,11 +25,16 @@ from pymetropolis.metro_demand.routing.files import (
     TripsPublicTransitItinerariesFile,
 )
 from pymetropolis.metro_environment.fuel.files import CarFuelFile
+from pymetropolis.metro_pipeline import PopulationStep, Step
 from pymetropolis.metro_pipeline.file import MetroDataFrameFile
 from pymetropolis.metro_pipeline.steps import InputFile
-from pymetropolis.metro_simulation.common import StepWithModes, StepWithRidesharingCount
+from pymetropolis.metro_simulation.common import (
+    StepWithModes,
+    StepWithRidesharingCount,
+    merge_populations,
+)
 
-from .files import MetroTripsFile
+from .files import MetroTripsFile, MetroTripsPopulationFile
 
 if TYPE_CHECKING:
     import polars as pl
@@ -296,8 +301,8 @@ def generate_bicycle_trips(
     return df
 
 
-class WriteMetroTripsStep(StepWithModes, StepWithRidesharingCount):
-    """Generates the input trips file for the Metropolis-Core simulation."""
+class PrepareMetroTripsStep(StepWithModes, StepWithRidesharingCount, PopulationStep):
+    """Prepares the trips for the Metropolis-Core simulation."""
 
     input_files = {
         "trips": TripsFile,
@@ -377,7 +382,7 @@ class WriteMetroTripsStep(StepWithModes, StepWithRidesharingCount):
             when_doc='if the "bicycle" mode is defined',
         ),
     }
-    output_files = {"metro_trips": MetroTripsFile}
+    output_files = {"metro_trips": MetroTripsPopulationFile}
 
     def is_defined(self) -> bool:
         if self.modes is None:
@@ -473,3 +478,18 @@ class WriteMetroTripsStep(StepWithModes, StepWithRidesharingCount):
             return 0.0
         else:
             return 0.0
+
+
+class WriteMetroTripsStep(Step):
+    """Merges the trips in each population and writes the trips input file for Metropolis-Core."""
+
+    input_files = {"population_trips": InputFile(MetroTripsPopulationFile, all_populations=True)}
+    output_files = {"metro_trips": MetroTripsFile}
+
+    # TODO. There is an issue if a population has no trip defined (e.g., only `outside_option`
+    # alternatives) since this Step will never be executed in this caes.
+    def run(self):
+        trips = merge_populations(
+            self.input_populations["population_trips"], id_columns=("agent_id", "trip_id")
+        )
+        self.output["metro_trips"].write(trips)

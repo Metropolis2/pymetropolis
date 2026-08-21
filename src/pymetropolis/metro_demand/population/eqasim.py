@@ -7,6 +7,7 @@ from loguru import logger
 
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_common.utils import find_file
+from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.metro_pipeline.parameters import FractionParameter, PathParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_spatial import GeoStep
@@ -243,7 +244,7 @@ def clean(
     return households, persons, trips
 
 
-class EqasimImportStep(GeoStep, RandomStep):
+class EqasimImportStep(GeoStep, RandomStep, PopulationStep):
     """Imports a synthetic population from the output of the Eqasim pipeline.
 
     To use this step, you first need to generate a synthetic population following the instructions

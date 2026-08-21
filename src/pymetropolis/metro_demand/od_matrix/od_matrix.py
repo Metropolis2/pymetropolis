@@ -1,10 +1,10 @@
 from pymetropolis.metro_demand.od_matrix.file import RoadODMatrixFile
 from pymetropolis.metro_demand.routing.files import TripsRoadNodesFile
 from pymetropolis.metro_network.road_network.files import RoadEdgesCleanFile
-from pymetropolis.metro_pipeline import Step
+from pymetropolis.metro_pipeline import PopulationStep
 
 
-class RoadODMatrixStep(Step):
+class RoadODMatrixStep(PopulationStep):
     """Construct an origin-destination matrix (at the road-network node level) from the trips'
     origins and destinations.
     """

@@ -1,9 +1,10 @@
+from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.random import RandomStep
 
 from .files import TripsFile, UniformDrawsFile
 
 
-class UniformDrawsStep(RandomStep):
+class UniformDrawsStep(RandomStep, PopulationStep):
     """Draws random numbers for the inverse transform sampling of mode choice and departure time
     choice of each tour.
 
@@ -19,7 +20,7 @@ class UniformDrawsStep(RandomStep):
         import polars as pl
 
         trips: pl.DataFrame = self.input["trips"].read()
-        rng = self.get_rng()
+        rng = self.get_rng(str(self))
         tour_ids = trips["tour_id"].unique().sort()
         nb_tours = len(tour_ids)
         mode_u = rng.random(size=nb_tours)

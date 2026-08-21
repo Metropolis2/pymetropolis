@@ -3,13 +3,14 @@ from pymetropolis.metro_pipeline.file import (
     MetroDataFrameFile,
     MetroDataType,
     MetroGeoDataFrameFile,
+    PopulationFile,
 )
 
 from .common import PURPOSES
 
 
-class TripsFile(MetroDataFrameFile):
-    path = "demand/population/trips/trips.parquet"
+class TripsFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/trips/trips.parquet"
     description = "Identifiers and order of the trips for each person."
     schema = [
         Column(
@@ -96,8 +97,8 @@ class TripsFile(MetroDataFrameFile):
     ]
 
 
-class TripsOriginsFile(MetroGeoDataFrameFile):
-    path = "demand/population/trips/origins.geo.parquet"
+class TripsOriginsFile(MetroGeoDataFrameFile, PopulationFile):
+    path = "demand/{population}/trips/origins.geo.parquet"
     description = "Origin coordinates of each trip."
     schema = [
         Column(
@@ -110,8 +111,8 @@ class TripsOriginsFile(MetroGeoDataFrameFile):
     ]
 
 
-class TripsDestinationsFile(MetroGeoDataFrameFile):
-    path = "demand/population/trips/destinations.geo.parquet"
+class TripsDestinationsFile(MetroGeoDataFrameFile, PopulationFile):
+    path = "demand/{population}/trips/destinations.geo.parquet"
     description = "Destination coordinates of each trip."
     schema = [
         Column(
@@ -124,8 +125,8 @@ class TripsDestinationsFile(MetroGeoDataFrameFile):
     ]
 
 
-class ActivitiesLocationsFile(MetroGeoDataFrameFile):
-    path = "demand/population/schedule/activity_locations.geo.parquet"
+class ActivitiesLocationsFile(MetroGeoDataFrameFile, PopulationFile):
+    path = "demand/{population}/schedule/activity_locations.geo.parquet"
     description = "Coordinates of each activity."
     schema = [
         Column(
@@ -149,8 +150,8 @@ class ActivitiesLocationsFile(MetroGeoDataFrameFile):
     ]
 
 
-class TripsZonesFile(MetroDataFrameFile):
-    path = "demand/population/trips/zones.parquet"
+class TripsZonesFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/trips/zones.parquet"
     description = "Zones of the trips' origins and destinations."
     schema = [
         Column(
@@ -233,8 +234,8 @@ class TripsZonesFile(MetroDataFrameFile):
     ]
 
 
-class TripsUrbanTypeFile(MetroDataFrameFile):
-    path = "demand/population/trips/origin_destination_urban_type.parquet"
+class TripsUrbanTypeFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/trips/origin_destination_urban_type.parquet"
     description = "Urban type attributes of trips' origin and destination."
     schema = [
         Column(
@@ -303,8 +304,8 @@ class TripsUrbanTypeFile(MetroDataFrameFile):
     ]
 
 
-class TripsDistancesFile(MetroDataFrameFile):
-    path = "demand/population/trips/distances.parquet"
+class TripsDistancesFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/trips/distances.parquet"
     description = "Euclidean distance of each trip."
     schema = [
         Column(
@@ -323,8 +324,8 @@ class TripsDistancesFile(MetroDataFrameFile):
     ]
 
 
-class PersonsFile(MetroDataFrameFile):
-    path = "demand/population/persons/persons.parquet"
+class PersonsFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/persons/persons.parquet"
     description = "Identifiers and characteristics of the simulated persons."
     schema = [
         Column(
@@ -419,8 +420,8 @@ class PersonsFile(MetroDataFrameFile):
     ]
 
 
-class CarsFile(MetroDataFrameFile):
-    path = "demand/population/cars.parquet"
+class CarsFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/cars.parquet"
     description = "Characteristics of the cars owned by households / persons."
     schema = [
         Column(
@@ -471,8 +472,8 @@ class CarsFile(MetroDataFrameFile):
     ]
 
 
-class HouseholdsFile(MetroDataFrameFile):
-    path = "demand/population/households/households.parquet"
+class HouseholdsFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/households/households.parquet"
     description = (
         "Identifiers and characteristics of the simulated households. "
         "The geometry is a Point representing the household's home."
@@ -558,8 +559,8 @@ class HouseholdsFile(MetroDataFrameFile):
     ]
 
 
-class HouseholdsHomesFile(MetroGeoDataFrameFile):
-    path = "demand/population/households/homes.geo.parquet"
+class HouseholdsHomesFile(MetroGeoDataFrameFile, PopulationFile):
+    path = "demand/{population}/households/homes.geo.parquet"
     description = "Coordinates of the household homes."
     schema = [
         Column(
@@ -572,8 +573,8 @@ class HouseholdsHomesFile(MetroGeoDataFrameFile):
     ]
 
 
-class HouseholdsZonesFile(MetroDataFrameFile):
-    path = "demand/population/households/zones.parquet"
+class HouseholdsZonesFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/households/zones.parquet"
     description = "Zones of the households' home."
     schema = [
         Column(
@@ -621,8 +622,8 @@ class HouseholdsZonesFile(MetroDataFrameFile):
     ]
 
 
-class HouseholdsHomesUrbanTypeFile(MetroDataFrameFile):
-    path = "demand/population/households/homes_urban_type.parquet"
+class HouseholdsHomesUrbanTypeFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/households/homes_urban_type.parquet"
     description = "Urban type attributes of households' home."
     schema = [
         Column(
@@ -664,8 +665,8 @@ class HouseholdsHomesUrbanTypeFile(MetroDataFrameFile):
 
 
 # TODO. Maybe we should consider having the same mode mu for all the tours of a single person?
-class UniformDrawsFile(MetroDataFrameFile):
-    path = "demand/population/uniform_draws.parquet"
+class UniformDrawsFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/uniform_draws.parquet"
     description = (
         "Draws for the inverse transform sampling of mode choice and departure-time choice, "
         "of each tour."
@@ -693,8 +694,8 @@ class UniformDrawsFile(MetroDataFrameFile):
     ]
 
 
-class ToursFile(MetroDataFrameFile):
-    path = "demand/population/tours/tours.parquet"
+class ToursFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/tours/tours.parquet"
     description = "Variables at the tour-level."
     schema = [
         Column("tour_id", MetroDataType.ID, description="Identifier of the tour.", nullable=False),
@@ -1090,8 +1091,8 @@ class ToursFile(MetroDataFrameFile):
     ]
 
 
-class JointToursFile(MetroDataFrameFile):
-    path = "demand/population/tours/joint_tours.parquet"
+class JointToursFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/tours/joint_tours.parquet"
     description = "Tour-level flag for joint trips."
     schema = [
         Column("tour_id", MetroDataType.ID, description="Identifier of the tour.", nullable=False),

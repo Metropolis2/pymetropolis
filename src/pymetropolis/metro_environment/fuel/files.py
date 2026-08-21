@@ -1,8 +1,13 @@
-from pymetropolis.metro_pipeline.file import Column, MetroDataFrameFile, MetroDataType
+from pymetropolis.metro_pipeline.file import (
+    Column,
+    MetroDataFrameFile,
+    MetroDataType,
+    PopulationFile,
+)
 
 
-class CarFuelFile(MetroDataFrameFile):
-    path = "demand/population/modes/car/fuel_consumption.parquet"
+class CarFuelFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/modes/car/fuel_consumption.parquet"
     description = (
         "Fuel consumption of each car trip, based on the length of the fastest free-flow path."
     )

@@ -24,6 +24,7 @@ class IGNStep(Step):
         "ign.api_wfs_url",
         default="https://data.geopf.fr/wfs",
         description="Url to the WFS API from which to get IGN data.",
+        shared=True,
     )
 
     def default_api_params(self) -> dict[str, str]:
@@ -106,24 +107,28 @@ class AdminExpressStep(IGNStep):
             "The ADMIN EXPRESS COG CARTO version and GPKG format are recommended. "
             "The 7z file needs to be extracted."
         ),
+        shared=True,
     )
     api_communes_service_name = StringParameter(
         "ign.api_communes_service_name",
         default="ADMINEXPRESS-COG-CARTO.LATEST:commune",
         description="Name of the API service from which to request communes data.",
         note='For faster but less accurate queries, you can use the "COG-CARTO-PE" version.',
+        shared=True,
     )
     api_departements_service_name = StringParameter(
         "ign.api_departements_service_name",
         default="ADMINEXPRESS-COG-CARTO.LATEST:departement",
         description="Name of the API service from which to request départements data.",
         note='For faster but less accurate queries, you can use the "COG-CARTO-PE" version.',
+        shared=True,
     )
     api_regions_service_name = StringParameter(
         "ign.api_regions_service_name",
         default="ADMINEXPRESS-COG-CARTO.LATEST:region",
         description="Name of the API service from which to request régions data.",
         note='For faster but less accurate queries, you can use the "COG-CARTO-PE" version.',
+        shared=True,
     )
 
     def read_communes(
@@ -305,6 +310,7 @@ class IRISStep(IGNStep):
             "The GPKG format is recommended. "
             "The 7z file needs to be extracted."
         ),
+        shared=True,
     )
     api_iris_service_name = StringParameter(
         "ign.api_iris_service_name",
@@ -314,6 +320,7 @@ class IRISStep(IGNStep):
             'For faster but less accurate queries, you can use the "STATISTICALUNITS.IRIS.PE" '
             "version."
         ),
+        shared=True,
     )
 
     def read_iris(self, bbox: tuple[float, float, float, float] | None = None) -> gpd.GeoDataFrame:

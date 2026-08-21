@@ -4,7 +4,7 @@ from pymetropolis.metro_common.utils import (
     seconds_since_midnight_to_time_string,
     seconds_to_duration_string,
 )
-from pymetropolis.metro_pipeline import Step
+from pymetropolis.metro_pipeline import PopulationStep, Step
 from pymetropolis.metro_results.aggregate import IterationResultsFile
 from pymetropolis.metro_results.demand import TripResultsFile
 from pymetropolis.metro_simulation.run import (
@@ -114,7 +114,7 @@ class ConvergencePlotStep(Step):
             self.output[ofile].write(fig)
 
 
-class TripDepartureTimeDistributionStep(Step):
+class TripDepartureTimeDistributionStep(PopulationStep):
     """Generates a histogram of departure-time distribution at the trip level."""
 
     input_files = {"trip_results": TripResultsFile}
@@ -195,7 +195,7 @@ class RoadNetworkCongestionFunctionPlotsStep(Step):
             self.output[f"{x}_plot"].write(fig)
 
 
-class TripModeSharesStep(Step):
+class TripModeSharesStep(PopulationStep):
     """Generates a plot of mode shares at the trip level."""
 
     input_files = {"trip_results": TripResultsFile}

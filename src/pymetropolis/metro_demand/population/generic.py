@@ -1,8 +1,8 @@
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_common.io import read_dataframe
 from pymetropolis.metro_demand.routing.files import TripsRoadNodesFile
+from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.metro_pipeline.parameters import PathParameter
-from pymetropolis.metro_pipeline.steps import Step
 from pymetropolis.metro_spatial import GeoStep
 
 from .files import (
@@ -14,7 +14,7 @@ from .files import (
 )
 
 
-class GenericPopulationStep(Step):
+class GenericPopulationStep(PopulationStep):
     """Generates a population (persons and trips) from a list of car-driver origin-destination
     pairs.
 
@@ -47,7 +47,7 @@ class GenericPopulationStep(Step):
         self.output["persons"].write(persons)
 
 
-class PopulationFromTripCoordinatesStep(GeoStep):
+class PopulationFromTripCoordinatesStep(GeoStep, PopulationStep):
     """Generates a population (persons and trips) from a list of trips with origin / destination
     coordinates.
 
@@ -116,7 +116,7 @@ class PopulationFromTripCoordinatesStep(GeoStep):
         self.output["persons"].write(persons)
 
 
-class ActivitiesLocationsFromTripsLocationsStep(Step):
+class ActivitiesLocationsFromTripsLocationsStep(PopulationStep):
     """Generates a file with the locations of activities from the locations of trips."""
 
     input_files = {

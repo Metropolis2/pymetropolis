@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from mobisurvstd.resources.insee_data import load_insee_data
 
-from pymetropolis.metro_pipeline import Step
+from pymetropolis.metro_pipeline import PopulationStep
 
 from .common import DENSITY_CATS, FNC_AREA_CAT_CATS, FNC_AREA_TYPE_CATS, URBAN_TYPE_CATS
 from .files import (
@@ -41,7 +41,7 @@ def get_insee_data() -> pl.DataFrame:
     return insee_data
 
 
-class FrenchHouseholdsUrbanTypeStep(Step):
+class FrenchHouseholdsUrbanTypeStep(PopulationStep):
     """Add urban type attributes to households' home, based on INSEE municipalities attributes, for
     France only.
     """
@@ -72,7 +72,7 @@ class FrenchHouseholdsUrbanTypeStep(Step):
         self.output["home_urban_types"].write(df)
 
 
-class FrenchTripsUrbanTypeStep(Step):
+class FrenchTripsUrbanTypeStep(PopulationStep):
     """Add urban type attributes to trips' origin / destination, based on INSEE municipalities
     attributes, for France only.
     """

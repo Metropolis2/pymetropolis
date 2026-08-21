@@ -46,15 +46,23 @@ New files:
 New parameters:
 
 - `gtfs.date`
+- `main_population`
+- `extra_populations`
 
 New features:
 
 - New `MetroFile` type for Machine Learning estimators saved with joblib: `MetroMLEstimatorFile`
+- New `PopulationFile` abstract class for population-specific MetroFiles
+- New `PopulationStep` abstract class for population-specific steps
+- Parameters can be `shared` when they are not necessarily specific to a population (e.g.,
+  `random_seed`)
 
 Other changes:
 
 - Put `"unemployed"` and `"homemaker"` professional activity modalities in the `"other"` modality
 - Rename `"shop"` purpose to `"shopping"`
+- The random number generator (`RandomStep.get_rng()`) now use a different seed for each step, so
+  that reproducibility does not depend on run order
 
 Removed steps:
 

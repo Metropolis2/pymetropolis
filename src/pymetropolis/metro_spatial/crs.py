@@ -41,4 +41,5 @@ class GeoStep(Step):
             "incorrect unit of measure, then some operations might fail or the results might be "
             "erroneous (like road length being overestimated)."
         ),
+        shared=True,
     )

@@ -11,6 +11,7 @@ from pymetropolis.metro_demand.zones.file import (
     ZonesLevel4File,
     ZonesLevel5File,
 )
+from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_spatial.ign import AdminExpressStep, IRISStep
 
@@ -39,7 +40,7 @@ def identify_zones(
     return gdf
 
 
-class HouseholdsHomesZonesStep(AdminExpressStep, IRISStep):
+class HouseholdsHomesZonesStep(AdminExpressStep, IRISStep, PopulationStep):
     """Identifies the geographic zones where households' homes are located."""
 
     input_files = {
@@ -69,7 +70,7 @@ class HouseholdsHomesZonesStep(AdminExpressStep, IRISStep):
         self.output["home_zones"].write(df)
 
 
-class TripsZonesStep(AdminExpressStep, IRISStep):
+class TripsZonesStep(AdminExpressStep, IRISStep, PopulationStep):
     """Identifies the geographic zones where trips' origins and destinations are located."""
 
     input_files = {

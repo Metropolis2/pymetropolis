@@ -1,9 +1,14 @@
-from pymetropolis.metro_pipeline.file import Column, MetroDataFrameFile, MetroDataType
+from pymetropolis.metro_pipeline.file import (
+    Column,
+    MetroDataFrameFile,
+    MetroDataType,
+    PopulationFile,
+)
 
 
-class TripResultsFile(MetroDataFrameFile):
-    path = "results/trip_results.parquet"
-    description = "Clean results for each trip."
+class TripResultsFile(MetroDataFrameFile, PopulationFile):
+    path = "results/{population}/trip_results.parquet"
+    description = "Clean results for each trip in the population."
     schema = [
         Column("trip_id", MetroDataType.ID, description="Identifier of the trip.", nullable=False),
         Column("mode", MetroDataType.STRING, description="Mode used for the trip.", nullable=False),
@@ -74,9 +79,9 @@ class TripResultsFile(MetroDataFrameFile):
     ]
 
 
-class RouteResultsFile(MetroDataFrameFile):
-    path = "results/route_results.parquet"
-    description = "Clean route results for each road trip."
+class RouteResultsFile(MetroDataFrameFile, PopulationFile):
+    path = "results/{population}/route_results.parquet"
+    description = "Clean route results for each road trip in the population."
     schema = [
         Column("trip_id", MetroDataType.ID, description="Identifier of the trip.", nullable=False),
         Column(
@@ -103,9 +108,9 @@ class RouteResultsFile(MetroDataFrameFile):
     ]
 
 
-class ActivityResultsFile(MetroDataFrameFile):
-    path = "results/activity_results.parquet"
-    description = "Clean results for each activity."
+class ActivityResultsFile(MetroDataFrameFile, PopulationFile):
+    path = "results/{population}/activity_results.parquet"
+    description = "Clean results for each activity in the population."
     schema = [
         Column(
             "person_id", MetroDataType.ID, description="Identifier of the person.", nullable=False

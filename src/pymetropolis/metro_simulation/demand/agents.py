@@ -1,14 +1,15 @@
 from pymetropolis.metro_common.errors import MetropyError
 from pymetropolis.metro_demand.population import TripsFile, UniformDrawsFile
+from pymetropolis.metro_pipeline import PopulationStep, Step
 from pymetropolis.metro_pipeline.parameters import EnumParameter, FloatParameter
 from pymetropolis.metro_pipeline.steps import InputFile
-from pymetropolis.metro_simulation.common import StepWithModes
+from pymetropolis.metro_simulation.common import StepWithModes, merge_populations
 
-from .files import MetroAgentsFile
+from .files import MetroAgentsFile, MetroAgentsPopulationFile
 
 
-class WriteMetroAgentsStep(StepWithModes):
-    """Generates the input agents file for the Metropolis-Core simulation.
+class PrepareMetroAgentsStep(StepWithModes, PopulationStep):
+    """Prepares the input agents for the Metropolis-Core simulation.
 
     If mode choice is enabled (more than 1 mode is simulated), the mode-choice parameters of the
     agents are initiated.
@@ -35,7 +36,7 @@ class WriteMetroAgentsStep(StepWithModes):
             when_doc="if there are at least two modes",
         ),
     }
-    output_files = {"metro_agents": MetroAgentsFile}
+    output_files = {"agents": MetroAgentsPopulationFile}
 
     def is_defined(self) -> bool:
         return self.modes is not None and (
@@ -68,4 +69,15 @@ class WriteMetroAgentsStep(StepWithModes):
                 on="agent_id",
                 how="left",
             )
+        self.output["agents"].write(agents)
+
+
+class WriteMetroAgentsStep(Step):
+    """Merges the agents in each population and writes the agents input file for Metropolis-Core."""
+
+    input_files = {"population_agents": InputFile(MetroAgentsPopulationFile, all_populations=True)}
+    output_files = {"metro_agents": MetroAgentsFile}
+
+    def run(self):
+        agents = merge_populations(self.input_populations["population_agents"])
         self.output["metro_agents"].write(agents)

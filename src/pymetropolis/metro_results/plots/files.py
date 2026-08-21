@@ -1,4 +1,4 @@
-from pymetropolis.metro_pipeline.file import MetroPlotFile
+from pymetropolis.metro_pipeline.file import MetroPlotFile, PopulationFile
 
 
 class TourDepartureTimeConvergencePlotFile(MetroPlotFile):
@@ -29,8 +29,8 @@ class MeanSurplusConvergencePlotFile(MetroPlotFile):
     description = "Mean surplus over iterations."
 
 
-class TripDepartureTimeDistributionPlotFile(MetroPlotFile):
-    path = "results/graphs/trips/departure_time_distribution.png"
+class TripDepartureTimeDistributionPlotFile(MetroPlotFile, PopulationFile):
+    path = "results/graphs/{population}/trips/departure_time_distribution.png"
     description = "Histogram of departure time distribution, over trips."
 
 
@@ -52,6 +52,6 @@ class SimulationRoadNetworkCongestionFunctionPlotFile(MetroPlotFile):
     )
 
 
-class TripModeSharesPlotFile(MetroPlotFile):
-    path = "results/graphs/trips/mode_shares.png"
+class TripModeSharesPlotFile(MetroPlotFile, PopulationFile):
+    path = "results/graphs/{population}/trips/mode_shares.png"
     description = "Mode shares at the trip-level (in number of trips)."

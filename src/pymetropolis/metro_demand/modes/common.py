@@ -7,7 +7,7 @@ from loguru import logger
 
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_demand.population.files import PersonsFile
-from pymetropolis.metro_pipeline import Step
+from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.metro_pipeline.parameters import PathParameter
 from pymetropolis.random import FloatDistributionParameter, RandomStep, generate_values
 
@@ -43,7 +43,7 @@ def cst_preferences_step_docstring(mode: str):
     return inspect.cleandoc(doc)
 
 
-class PreferencesStep(RandomStep):
+class PreferencesStep(RandomStep, PopulationStep):
     """Abstract Step to generate the preference parameters of traveling from exogenous values."""
 
     constant = 0.0
@@ -54,7 +54,7 @@ class PreferencesStep(RandomStep):
         return self.constant != 0.0 or self.value_of_time != 0.0
 
     def get_preferences(self, mode: str, persons: pl.DataFrame):
-        rng = self.get_rng()
+        rng = self.get_rng(str(self))
         df = persons.select(
             "person_id",
             generate_values(self.constant, len(persons), rng).alias(f"{mode}_cst"),
@@ -109,7 +109,7 @@ def preferences_step_docstring(mode: str):
     return inspect.cleandoc(doc)
 
 
-class ModePreferencesFromPopulationStep(Step):
+class ModePreferencesFromPopulationStep(PopulationStep):
     """Abstract Step to generate the preference parameters for a given mode from constant values
     over population segments.
     """

@@ -15,6 +15,7 @@ from pymetropolis.metro_demand.population.files import (
 )
 from pymetropolis.metro_demand.routing.files import TripsPublicTransitItinerariesFile
 from pymetropolis.metro_network.public_transit import GTFSStep
+from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.metro_pipeline.parameters import (
     DurationParameter,
     EnumParameter,
@@ -75,7 +76,7 @@ def run_r5py(
     return df
 
 
-class TripsPublicTransitTravelTimeFromR5Step(OSMStep, GTFSStep):
+class TripsPublicTransitTravelTimeFromR5Step(OSMStep, GTFSStep, PopulationStep):
     """Computes the trips' travel time by public transit with r5py.
 
     This is the easiest and (usually) fastest solution to compute public-transit travel times.

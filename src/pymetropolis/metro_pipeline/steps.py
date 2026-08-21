@@ -1,17 +1,32 @@
+from __future__ import annotations
+
 import hashlib
 import json
-from collections.abc import Callable
-from itertools import chain
+from collections.abc import Callable, Iterator
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, Self
 
 from pymetropolis.metro_common.errors import MetropyError, error_context
 
-from .config import Config
-from .file import MetroFile
+from .file import MetroFile, PopulationFile
 from .parameters import Parameter, PathParameter
 
+if TYPE_CHECKING:
+    from .config import Config
+
 # TODO: Add something to measure running time for each step.
+
+# Population "name" used to resolve PopulationFile paths for the main / default population, i.e.
+# the population defined directly in the main config (as opposed to an extra population, defined
+# in its own config file and with its own name).
+MAIN_POPULATION_NAME = "population"
+
+
+def _namespace(file_class: type[MetroFile], population: str) -> type[MetroFile]:
+    """Returns the MetroFile class instance that correspond to the given population."""
+    if issubclass(file_class, PopulationFile):
+        return file_class.for_population(population)
+    return file_class
 
 
 class InputFile:
@@ -21,13 +36,19 @@ class InputFile:
         optional: bool = False,
         when: Callable[[Any], bool] | None = None,
         when_doc: str | None = None,
+        all_populations: bool = False,
     ):
+        if all_populations and not issubclass(file_class, PopulationFile):
+            raise MetropyError(
+                f"`all_populations=True` requires a PopulationFile, got `{file_class.__name__}`"
+            )
         self.file_class = file_class
         self.optional = optional
         self.when = when
         self.when_doc = when_doc
+        self.all_populations = all_populations
 
-    def is_needed(self, step: "Step") -> bool:
+    def is_needed(self, step: Step) -> bool:
         if self.when:
             return self.when(step)
         else:
@@ -37,6 +58,8 @@ class InputFile:
         doc = f"[`{self.file_class.__name__}`](files.html#{self.file_class.__name__.lower()})"
         if self.optional:
             doc += " (optional)"
+        if self.all_populations:
+            doc += " (for all populations)"
         if self.when_doc:
             doc += f" [{self.when_doc}]"
         return doc
@@ -46,17 +69,69 @@ class Step:
     input_files: ClassVar[dict[str, InputFile | type[MetroFile]]] = {}
     output_files: ClassVar[dict[str, type[MetroFile]]] = {}
     priority: ClassVar[int] = 1
+    # Set to True on PopulationStep.
+    _is_population_step: ClassVar[bool] = False
     _input_files: dict[str, MetroFile]
+    # Resolved instances for `all_populations` inputs, keyed by input name then population name.
+    # Kept separate from `_input_files` so `self.input[name]` stays a plain MetroFile everywhere.
+    _population_input_files: dict[str, dict[str, MetroFile]]
     _output_files: dict[str, MetroFile]
     _update_file_path: Path
     _config_dict: dict[str, Any]
     _data_files: dict[str, Path]
 
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        if cls._is_population_step:
+            # A PopulationStep is instantiated once per population, so a non-PopulationFile output
+            # would resolve to the identical path for every population: the pipeline's conflict
+            # resolution would then silently keep only one population's run, discarding the rest.
+            # (Non-PopulationFile inputs are fine: reading the same shared/global file identically
+            # for every population is a normal pattern.)
+            for name, file_class in cls.output_files.items():
+                if not issubclass(file_class, PopulationFile):
+                    raise MetropyError(
+                        f"`{cls.__name__}` is a PopulationStep but declares output `{name}` as "
+                        f"`{file_class.__name__}`, which is not a PopulationFile: every "
+                        "population's instance would write to the identical path, and the "
+                        "pipeline would silently keep only one population's result."
+                    )
+            return
+        # A Step that is not a PopulationStep is only ever instantiated once, resolved against the
+        # main population, so a PopulationFile input/output would silently only ever see the main
+        # population's copy, ignoring every extra population. The only sanctioned way for such a
+        # Step to touch a PopulationFile is an `all_populations=True` input.
+        for name, spec in cls.input_files.items():
+            file_class = spec.file_class if isinstance(spec, InputFile) else spec
+            if issubclass(file_class, PopulationFile) and not (
+                isinstance(spec, InputFile) and spec.all_populations
+            ):
+                raise MetropyError(
+                    f"`{cls.__name__}` is not a PopulationStep but declares input `{name}` as "
+                    f"PopulationFile `{file_class.__name__}` without `all_populations=True`: it "
+                    "would silently only ever see the main population's copy."
+                )
+        for name, file_class in cls.output_files.items():
+            if issubclass(file_class, PopulationFile):
+                raise MetropyError(
+                    f"`{cls.__name__}` is not a PopulationStep but declares output `{name}` as "
+                    f"PopulationFile `{file_class.__name__}`: it would always write only to the "
+                    "main population's path. Make it a PopulationStep instead."
+                )
+
     def __init__(self, config: Config):
+        self._init_from_config(config)
+
+    def _init_from_config(self, config: Config, population_name: str | None = None) -> None:
+        """Fills in the config-derived parameters, input/output files and cache path of the step.
+
+        `population_name` is the extra population this step is being instantiated for, or `None`
+        for the main / default population (defined directly in the main config).
+        """
         self._config_dict = dict()
         self._data_files = dict()
         for param_name, param_obj in self.__class__._iter_params():
-            value = param_obj.from_config(config)
+            value = param_obj.from_config(config, population_name)
             self._config_dict[param_name] = value
             setattr(self, param_name, value)
             if isinstance(param_obj, PathParameter):
@@ -68,11 +143,27 @@ class Step:
                 # This also allows to switch Operating System without having to re-run steps (the
                 # executables have different hashes over different OSs).
                 self._data_files[param_name] = value
-        self._input_files = {
-            k: f.from_dir(config.main_directory) for k, f in self._iter_input_files()
-        }
+        file_population = population_name if population_name is not None else MAIN_POPULATION_NAME
+        all_population_names = [
+            *([MAIN_POPULATION_NAME] if config.main_population else []),
+            *config.extra_populations_dict.keys(),
+        ]
+        self._input_files = {}
+        self._population_input_files = {}
+        for k, f in self._iter_input_files():
+            spec = self.input_files[k]
+            if isinstance(spec, InputFile) and spec.all_populations:
+                self._population_input_files[k] = {
+                    population: _namespace(f, population).from_dir(config.main_directory)
+                    for population in all_population_names
+                }
+            else:
+                self._input_files[k] = _namespace(f, file_population).from_dir(
+                    config.main_directory
+                )
         self._output_files = {
-            k: f.from_dir(config.main_directory) for k, f in self.output_files.items()
+            k: _namespace(f, file_population).from_dir(config.main_directory)
+            for k, f in self.output_files.items()
         }
         self._update_file_path = config.main_directory / "update_files" / f"{self}.json"
 
@@ -103,6 +194,27 @@ class Step:
                     continue
                 yield name, file_spec
 
+    def _iter_resolved_input_files(self, required: bool | None = None) -> Iterator[MetroFile]:
+        """Yields each resolved MetroFile instance for inputs matching `required`.
+
+        For an `all_populations` input, yields each population's instance individually.
+        """
+        for name, _ in self._iter_input_files(required=required):
+            if name in self._population_input_files:
+                yield from self._population_input_files[name].values()
+            else:
+                yield self.input[name]
+
+    def _iter_flat_files(self) -> Iterator[tuple[str, MetroFile]]:
+        """Yields (key, MetroFile) for every input/output file, including one entry per
+        population (with a synthesized `name__population` key) for `all_populations` inputs.
+        """
+        yield from self.input.items()
+        yield from self.output.items()
+        for name, pop_files in self._population_input_files.items():
+            for population, f in pop_files.items():
+                yield f"{name}__{population}", f
+
     def __str__(self) -> str:
         return self.__class__.__name__
 
@@ -119,7 +231,7 @@ class Step:
             return self.priority < other.priority
         if len(self.output) != len(other.output):
             return len(self.output) < len(other.output)
-        return self.__class__.__name__ < other.__class__.__name__
+        return str(self) < str(other)
 
     def run(self):
         """Executes the step.
@@ -131,6 +243,13 @@ class Step:
     @property
     def input(self) -> dict[str, MetroFile]:
         return self._input_files
+
+    @property
+    def input_populations(self) -> dict[str, dict[str, MetroFile]]:
+        """For each input declared with `InputFile(..., all_populations=True)`, the resolved
+        MetroFile instance for each population, keyed by population name.
+        """
+        return self._population_input_files
 
     @property
     def output(self) -> dict[str, MetroFile]:
@@ -150,9 +269,9 @@ class Step:
         return self.priority > 0
 
     @error_context(msg="Failed to execute step `{}`", fmt_args=[0])
-    def execute(self, config: Config):
+    def execute(self):
         self.run()
-        self.save_update_dict(config)
+        self.save_update_dict()
 
     def update_required(self) -> bool:
         """Returns `False` if the step was already executed and does not need to be executed again.
@@ -180,7 +299,7 @@ class Step:
                 # The file exists but was updated since the last run (or did not exist before).
                 return True
         # Check that the input / output MetroFiles have not been modified.
-        for k, f in chain(self.input.items(), self.output.items()):
+        for k, f in self._iter_flat_files():
             if not f.exists():
                 # The file does not exists...
                 if update_dict.get(f"metro_file_{k}_mtime") is None:
@@ -214,7 +333,7 @@ class Step:
         h.update(json_str.encode())
         return h.hexdigest()
 
-    def save_update_dict(self, config: Config):
+    def save_update_dict(self):
         """Saves a dictionary representing the update file of this step."""
         update_dict = dict()
         for k, v in self._data_files.items():
@@ -222,7 +341,7 @@ class Step:
                 # Input file is not specified.
                 continue
             update_dict[f"data_file_{k}_mtime"] = v.stat().st_mtime
-        for k, f in chain(self.input.items(), self.output.items()):
+        for k, f in self._iter_flat_files():
             if not f.exists():
                 continue
             update_dict[f"metro_file_{k}_mtime"] = f.last_modified_time()
@@ -284,3 +403,35 @@ class Step:
         else:
             # There is not output file.
             return ""
+
+
+class PopulationStep(Step):
+    """Abstract Step to define processing steps which might be run for each population defined."""
+
+    _is_population_step: ClassVar[bool] = True
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        if "__init__" in cls.__dict__:
+            raise MetropyError(
+                f"`{cls.__name__}` must not override `__init__`: `for_population` builds extra-"
+                "population instances with `cls.__new__(cls)` followed by `_init_from_config`, "
+                "bypassing `__init__` entirely, so any override would silently only run for the "
+                "main population."
+            )
+
+    # None for the main / default population, defined in the main config. Set to the population
+    # name for extra populations (see `for_population`).
+    population_name: str = MAIN_POPULATION_NAME
+
+    def __str__(self) -> str:
+        if self.population_name != MAIN_POPULATION_NAME:
+            return f"{self.population_name}__{super().__str__()}"
+        return super().__str__()
+
+    @classmethod
+    def for_population(cls, config: Config, population_name: str) -> Self:
+        instance = cls.__new__(cls)
+        instance.population_name = population_name
+        instance._init_from_config(config, population_name)
+        return instance

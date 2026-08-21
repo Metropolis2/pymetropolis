@@ -1,4 +1,4 @@
-from pymetropolis.metro_pipeline import Step
+from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.metro_pipeline.steps import InputFile
 
 from .common import DENSITY_CATS, FNC_AREA_CAT_CATS, FNC_AREA_TYPE_CATS, PURPOSES, URBAN_TYPE_CATS
@@ -13,7 +13,7 @@ from .files import (
 )
 
 
-class CreateToursStep(Step):
+class CreateToursStep(PopulationStep):
     """Generates tour-level variables from trips, persons, and households."""
 
     input_files = {

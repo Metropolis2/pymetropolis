@@ -17,4 +17,5 @@ class OSMStep(Step):
             "the Geofabrik website. You can also download data directly from the OSM website, "
             "using the “Export” button, although it is limited to small areas."
         ),
+        shared=True,
     )

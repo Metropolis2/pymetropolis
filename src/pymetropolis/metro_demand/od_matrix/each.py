@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING
 
 from pymetropolis.metro_demand.routing.files import TripsRoadNodesFile
 from pymetropolis.metro_network.road_network import RoadEdgesCleanFile
+from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.random import IntDistributionParameter, RandomStep, generate_int_values
 
 from .common import generate_trips_from_od_matrix
@@ -10,7 +11,7 @@ if TYPE_CHECKING:
     import geopandas as gpd
 
 
-class ODMatrixEachStep(RandomStep):
+class ODMatrixEachStep(RandomStep, PopulationStep):
     """Generates car driver origin-destination pairs by generating a fixed number of trips for each
     node pair of the road network.
 
@@ -45,7 +46,7 @@ class ODMatrixEachStep(RandomStep):
                 "destination": np.tile(targets, len(sources)),
             }
         )
-        rng = self.get_rng()
+        rng = self.get_rng(str(self))
         df = df.with_columns(size=generate_int_values(self.each, len(df), rng))
-        trips = generate_trips_from_od_matrix(df, self.get_rng())
+        trips = generate_trips_from_od_matrix(df, self.get_rng(str(self)))
         self.output["road_ods"].write(trips)

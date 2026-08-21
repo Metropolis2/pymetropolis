@@ -1,8 +1,13 @@
-from pymetropolis.metro_pipeline.file import Column, MetroDataFrameFile, MetroDataType
+from pymetropolis.metro_pipeline.file import (
+    Column,
+    MetroDataFrameFile,
+    MetroDataType,
+    PopulationFile,
+)
 
 
-class CarDriverPreferencesFile(MetroDataFrameFile):
-    path = "demand/population/modes/car/car_driver_preferences.parquet"
+class CarDriverPreferencesFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/modes/car/car_driver_preferences.parquet"
     description = "Preferences to travel as a car driver, for each person."
     schema = [
         Column(
@@ -27,8 +32,8 @@ class CarDriverPreferencesFile(MetroDataFrameFile):
     ]
 
 
-class CarDriverWithPassengersPreferencesFile(MetroDataFrameFile):
-    path = "demand/population/modes/car/car_driver_with_passengers_preferences.parquet"
+class CarDriverWithPassengersPreferencesFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/modes/car/car_driver_with_passengers_preferences.parquet"
     description = "Preferences to travel as a car driver with passengers, for each person."
     schema = [
         Column(
@@ -53,8 +58,8 @@ class CarDriverWithPassengersPreferencesFile(MetroDataFrameFile):
     ]
 
 
-class CarPassengerPreferencesFile(MetroDataFrameFile):
-    path = "demand/population/modes/car/car_passenger_preferences.parquet"
+class CarPassengerPreferencesFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/modes/car/car_passenger_preferences.parquet"
     description = "Preferences to travel as a car passenger, for each person."
     schema = [
         Column(
@@ -79,8 +84,8 @@ class CarPassengerPreferencesFile(MetroDataFrameFile):
     ]
 
 
-class CarRidesharingPreferencesFile(MetroDataFrameFile):
-    path = "demand/population/modes/car/car_ridesharing_preferences.parquet"
+class CarRidesharingPreferencesFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/modes/car/car_ridesharing_preferences.parquet"
     description = "Preferences to travel by car ridesharing (driver or passenger), for each person."
     schema = [
         Column(

@@ -21,3 +21,6 @@ secrets.toml
 
 # Exclude config files which were not explicitly added.
 config*.toml
+
+# Personal Claude Code settings.
+.claude/settings.local.json

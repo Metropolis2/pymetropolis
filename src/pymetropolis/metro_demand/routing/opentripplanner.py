@@ -23,6 +23,7 @@ from pymetropolis.metro_demand.population.files import (
 )
 from pymetropolis.metro_demand.routing.files import TripsPublicTransitItinerariesFile
 from pymetropolis.metro_network.public_transit import GTFSStep
+from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.metro_pipeline.parameters import (
     EnumParameter,
     FloatParameter,
@@ -329,7 +330,7 @@ def clean_trips_time(
     return trips
 
 
-class TripsOpenTripPlannerStep(ThreadedStep, GTFSStep):
+class TripsOpenTripPlannerStep(ThreadedStep, GTFSStep, PopulationStep):
     """Computes the trips' travel time and generalized time by public transit with OpenTripPlanner.
 
     This step requires having access to an OpenTripPlanner API server.

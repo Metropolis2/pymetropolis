@@ -17,7 +17,7 @@ from pymetropolis.metro_demand.routing.files import (
     TripsPedestrianDistancesFile,
     TripsPedestrianNodesFile,
 )
-from pymetropolis.metro_pipeline import Step
+from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.metro_pipeline.parameters import BoolParameter, EnumParameter, FloatParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 MODE = "bicycle"
 
 
-class BicyclePreferencesStep(PreferencesStep):
+class BicyclePreferencesStep(PreferencesStep, PopulationStep):
     __doc__ = cst_preferences_step_docstring(MODE)
 
     constant = pref_constant_parameter(MODE)
@@ -55,7 +55,7 @@ class BicyclePreferencesFromPopulationStep(ModePreferencesFromPopulationStep):
         self.output["preferences"].write(df)
 
 
-class BicycleTravelTimesFromDistanceStep(Step):
+class BicycleTravelTimesFromDistanceStep(PopulationStep):
     """Computes travel time by bicycle for each trip, from a given distance and a constant speed.
 
     The parameter [`modes.bicycle.distance.type`](parameters.md#modesbicycledistancetype) specifies

@@ -25,7 +25,7 @@ from pymetropolis.metro_network.bicycle_network.files import (
 )
 from pymetropolis.metro_network.pedestrian_network.files import PedestrianEdgesCleanFile
 from pymetropolis.metro_network.road_network.files import RoadEdgesCleanFile
-from pymetropolis.metro_pipeline import Step
+from pymetropolis.metro_pipeline import PopulationStep, Step
 from pymetropolis.metro_pipeline.parameters import BoolParameter, ExecPathParameter
 
 if TYPE_CHECKING:
@@ -39,13 +39,14 @@ class RoutingCLIStep(Step):
         "metropolis_core.routing_exec_path",
         description="Path to the `routing_cli` executable.",
         note='On Windows, you can omit the ".exe" extension',
+        shared=True,
     )
 
     def is_defined(self) -> bool:
         return self.exec_path is not None
 
 
-class TripsPedestrianDistancesStep(RoutingCLIStep):
+class TripsPedestrianDistancesStep(RoutingCLIStep, PopulationStep):
     """Computes the trips' distance on the pedestrian network.
 
     The distance is defined as the length of the shortest path from origin to destination node on
@@ -88,7 +89,7 @@ class TripsPedestrianDistancesStep(RoutingCLIStep):
         self.output["distances"].write(df)
 
 
-class TripsBicycleCostStep(RoutingCLIStep):
+class TripsBicycleCostStep(RoutingCLIStep, PopulationStep):
     """Computes the trips' minimum cost on the bicycle network.
 
     If the [`output_path`](parameters.md#bicycle_routingoutput_path) is set to `true`, the list
@@ -132,7 +133,7 @@ class TripsBicycleCostStep(RoutingCLIStep):
         self.output["costs"].write(df)
 
 
-class TripsCarFreeFlowTravelTimesStep(RoutingCLIStep):
+class TripsCarFreeFlowTravelTimesStep(RoutingCLIStep, PopulationStep):
     """Computes the trips' travel time on the road network by car, under free-flow conditions.
 
     The free-flow travel time is defined as the travel time of the fastest path from origin to

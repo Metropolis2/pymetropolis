@@ -5,21 +5,22 @@ from pymetropolis.metro_demand.routing.files import (
     NonPrimaryCarTrips,
     PrimaryCarTripsAccessEgressFile,
 )
-from pymetropolis.metro_pipeline.steps import InputFile, Step
-from pymetropolis.metro_simulation.demand.files import MetroTripsFile
+from pymetropolis.metro_pipeline import PopulationStep
+from pymetropolis.metro_pipeline.steps import InputFile
+from pymetropolis.metro_simulation.demand.files import MetroTripsPopulationFile
 from pymetropolis.metro_simulation.run import MetroAgentResultsFile, MetroTripResultsFile
 from pymetropolis.metro_simulation.run.files import MetroRouteResultsFile
 
 from .files import ActivityResultsFile, RouteResultsFile, TripResultsFile
 
 
-class TripResultsStep(Step):
+class TripResultsStep(PopulationStep):
     """Reads the results from the Metropolis-Core simulation and produces a clean file for results
     at the trip level.
     """
 
     input_files = {
-        "metro_input_trips": MetroTripsFile,
+        "metro_input_trips": MetroTripsPopulationFile,
         "metro_trip_results": MetroTripResultsFile,
         "metro_agent_results": MetroAgentResultsFile,
         "access_egress_parts": InputFile(PrimaryCarTripsAccessEgressFile, optional=True),
@@ -30,13 +31,24 @@ class TripResultsStep(Step):
     def run(self):
         import polars as pl
 
-        trip_results: pl.DataFrame = self.input["metro_trip_results"].read()
-        agent_results: pl.DataFrame = self.input["metro_agent_results"].read()
+        prefix = f"{self.population_name}-"
+        trip_results: pl.DataFrame = (
+            self.input["metro_trip_results"]
+            .scan()
+            .filter(pl.col("agent_id").str.starts_with(prefix))
+            .collect()
+        )
+        agent_results: pl.DataFrame = (
+            self.input["metro_agent_results"]
+            .scan()
+            .filter(pl.col("agent_id").str.starts_with(prefix))
+            .collect()
+        )
         df = trip_results.join(
             agent_results.select("agent_id", "selected_alt_id"), on="agent_id", how="left"
-        )
+        ).with_columns(pl.col("agent_id").str.strip_prefix(prefix))
         df = df.select(
-            "trip_id",
+            trip_id=pl.col("trip_id").str.strip_prefix(prefix),
             mode="selected_alt_id",
             # TODO. Replace this with something more robust when the Mode class is created.
             is_road=pl.col("selected_alt_id").str.starts_with("car_"),
@@ -118,7 +130,7 @@ class TripResultsStep(Step):
         self.output["trip_results"].write(df)
 
 
-class RouteResultsStep(Step):
+class RouteResultsStep(PopulationStep):
     """Reads the results from the Metropolis-Core simulation and produces a clean file for route
     results of road trips.
     """
@@ -135,10 +147,12 @@ class RouteResultsStep(Step):
     def run(self):
         import polars as pl
 
+        prefix = f"{self.population_name}-"
         df: pl.DataFrame = (
             self.input["metro_route_results"]
             .scan()
             .select("trip_id", "edge_id", "entry_time", "exit_time")
+            .filter(pl.col("trip_id").str.starts_with(prefix))
             .collect()
         )
         lf = df.lazy()
@@ -227,7 +241,7 @@ class RouteResultsStep(Step):
         self.output["route_results"].write(df)
 
 
-class ActivityResultsStep(Step):
+class ActivityResultsStep(PopulationStep):
     """Reads the results from the Metropolis-Core simulation and produces a clean file for activity
     results.
     """
