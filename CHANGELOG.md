@@ -48,6 +48,7 @@ New parameters:
 - `gtfs.date`
 - `main_population`
 - `extra_populations`
+- `custom_steps`
 
 New features:
 
@@ -56,6 +57,10 @@ New features:
 - New `PopulationStep` abstract class for population-specific steps
 - Parameters can be `shared` when they are not necessarily specific to a population (e.g.,
   `random_seed`)
+- Users can define their own `Step` subclasses in Python files listed under `custom_steps` (paths
+  relative to the main config file); they are loaded and made available to the pipeline like any
+  built-in Step. A custom Step whose name matches an existing one (e.g. `EqasimImportStep`)
+  overrides it
 
 Other changes:
 

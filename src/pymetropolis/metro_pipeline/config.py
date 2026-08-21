@@ -21,6 +21,8 @@ POP_NAME_KEY = "population_name"
 # Top-level configuration key used to specify whether the main / default population (defined
 # directly in the main config) should be used.
 MAIN_POPULATION_KEY = "main_population"
+# Top-level configuration key used to specify Python files defining custom Step classes.
+CUSTOM_STEPS_KEY = "custom_steps"
 
 
 def parse_toml(path: Path) -> dict:
@@ -41,6 +43,7 @@ class Config:
     extra_populations_dict: dict[str, dict]
     secrets: dict[str, Any]
     main_population: bool
+    custom_step_paths: list[Path]
 
     def __init__(self, d: dict, main_path: Path | None = None):
         self.dict = d
@@ -48,6 +51,7 @@ class Config:
         self.read_secrets()
         self.read_main_population()
         self.read_extra_populations(main_path)
+        self.read_custom_steps(main_path)
 
     @classmethod
     def from_toml(cls, path: Path):
@@ -147,6 +151,29 @@ class Config:
             raise MetropyError(f"`{MAIN_POPULATION_KEY}` parameter should be a boolean: `{value}`")
         self.main_population = value
 
+    def read_custom_steps(self, main_path: Path | None):
+        """Reads the paths to the Python files defining custom Step classes, if any are defined.
+
+        Paths are resolved relative to the main config file.
+        """
+        custom_steps = self.dict.get(CUSTOM_STEPS_KEY)
+        self.custom_step_paths = list()
+        if not custom_steps:
+            return
+        for custom_step in custom_steps:
+            try:
+                rel_path = Path(custom_step)
+            except (TypeError, ValueError):
+                raise MetropyError(f"Invalid custom step file: Not a path: `{custom_step}`")
+            if main_path is not None:
+                # Path is relative to the config file.
+                path = main_path.parent / rel_path
+            else:
+                path = rel_path
+            if not path.is_file():
+                raise MetropyError(f"Custom step file does not exist: `{path}`")
+            self.custom_step_paths.append(path)
+
     def instantiate_step(self, step_class: type[Step]) -> list[Step]:
         steps = list()
         if not issubclass(step_class, PopulationStep) or self.main_population:
@@ -221,7 +248,13 @@ class Config:
     def get_unused_keys(self, used_keys: set[str], population: str | None = None) -> set[str]:
         """Returns a set of all keys (flatten) in the configuration that are not in `used_keys`."""
         if population is None:
-            used_keys |= {MAIN_DIR_KEY, SECRETS_KEY, POPULATIONS_KEY, MAIN_POPULATION_KEY}
+            used_keys |= {
+                MAIN_DIR_KEY,
+                SECRETS_KEY,
+                POPULATIONS_KEY,
+                MAIN_POPULATION_KEY,
+                CUSTOM_STEPS_KEY,
+            }
             d = self.dict
         else:
             used_keys.add(POP_NAME_KEY)

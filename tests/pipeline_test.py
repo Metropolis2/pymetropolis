@@ -1,4 +1,5 @@
 import tempfile
+from pathlib import Path
 
 from pymetropolis.metro_pipeline import Config, MetroFile, Step
 from pymetropolis.metro_pipeline.file import MetroTxtFile
@@ -293,3 +294,49 @@ def test_step_status_outdated_and_invalidated():
             "StepB": StepStatus.UP_TO_DATE,
             "StepC": StepStatus.INVALIDATED,
         }
+
+
+def test_pipeline_with_custom_steps():
+    """A Step defined in a `custom_steps` Python file is loaded and scheduled like any built-in
+    Step.
+    """
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        custom_steps_path = Path(tmp_dir) / "custom_steps.py"
+        custom_steps_path.write_text(
+            "from pymetropolis.metro_pipeline import MetroFile, Step\n"
+            "\n"
+            "class CustomFile(MetroFile):\n"
+            "    path = 'custom_file'\n"
+            "\n"
+            "class CustomStep(Step):\n"
+            "    output_files = {'1': CustomFile}\n"
+        )
+        config = Config({"main_directory": tmp_dir, "custom_steps": [str(custom_steps_path)]})
+        pipeline = MetroPipeline(config, [])
+        sequence = pipeline.find_sequence()
+        step_sequence = list(map(lambda x: x[0].__class__.__name__, sequence))
+        assert step_sequence == ["CustomStep"]
+
+
+def test_pipeline_with_custom_steps_override():
+    """A custom Step whose name matches an existing Step's name (e.g. a built-in one) replaces it
+    in the pipeline, rather than raising an error, so that users can override a built-in Step
+    (e.g. `EqasimImportStep`) with their own local-specific implementation.
+    """
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        custom_steps_path = Path(tmp_dir) / "custom_steps.py"
+        custom_steps_path.write_text(
+            "from pymetropolis.metro_pipeline import MetroFile, Step\n"
+            "\n"
+            "class OverrideFile(MetroFile):\n"
+            "    path = 'override_file'\n"
+            "\n"
+            "class A(Step):\n"
+            "    overridden = True\n"
+            "    output_files = {'1': OverrideFile}\n"
+        )
+        config = Config({"main_directory": tmp_dir, "custom_steps": [str(custom_steps_path)]})
+        pipeline = MetroPipeline(config, [A])
+        (overriding_step,) = pipeline.steps.keys()
+        assert overriding_step.__class__.__name__ == "A"
+        assert getattr(overriding_step.__class__, "overridden", False) is True

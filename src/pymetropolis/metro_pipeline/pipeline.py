@@ -1,3 +1,4 @@
+import importlib.util
 import sys
 import time
 from collections import defaultdict
@@ -8,6 +9,7 @@ import humanize
 from loguru import logger
 from termcolor import colored
 
+from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_common import logger as metro_logger
 
 from .config import Config
@@ -43,6 +45,7 @@ class MetroPipeline:
     ) -> None:
         metro_logger.setup()
         self.config = config
+        step_classes = self.load_custom_steps(step_classes)
         steps = defaultdict(dict)
         all_output_files = set()
         used_keys = set()
@@ -71,6 +74,49 @@ class MetroPipeline:
         self.set_feasible()
         self.solve_conflicts()
         self.check_files_to_delete(all_output_files)
+
+    def load_custom_steps(self, step_classes: list[type[Step]]) -> list[type[Step]]:
+        """Imports the Step subclasses defined in the user's `custom_steps` Python files (if any)
+        and returns `step_classes` with them merged in.
+
+        A custom Step whose name matches an existing Step's name (built-in, or from an
+        earlier-listed custom file) replaces it, so that users can override a built-in Step with
+        their own local-specific implementation.
+        """
+        if not self.config.custom_step_paths:
+            return step_classes
+        steps_by_name = {cls.__name__: cls for cls in step_classes}
+        for i, path in enumerate(self.config.custom_step_paths):
+            # Give each file a unique, synthetic module name: files are loaded straight from an
+            # arbitrary path rather than imported as part of a package, so there is no "real"
+            # dotted module name for them, and two custom files could otherwise share a stem
+            # (e.g. two different `custom_steps.py` in different directories).
+            module_name = f"_pymetropolis_custom_step_{i}_{path.stem}"
+            # Build a module object from the file path without executing it yet.
+            spec = importlib.util.spec_from_file_location(module_name, path)
+            if spec is None or spec.loader is None:
+                raise MetropyError(f"Could not load custom step file: `{path}`")
+            module = importlib.util.module_from_spec(spec)
+            # Register the module under its synthetic name before executing it, so that any class
+            # defined in the file gets `__module__ == module_name` (this is what the check below
+            # uses to tell "defined in this file" apart from "merely imported into this file",
+            # e.g. the `Step` base class itself).
+            sys.modules[module_name] = module
+            # Actually run the file's code (imports, class definitions, ...).
+            spec.loader.exec_module(module)
+            for obj in vars(module).values():
+                if (
+                    isinstance(obj, type)
+                    and issubclass(obj, Step)
+                    and obj.__module__ == module_name
+                ):
+                    if obj.__name__ in steps_by_name:
+                        logger.info(
+                            f"Custom Step `{obj.__name__}` from `{path}` overrides an existing "
+                            "Step with the same name"
+                        )
+                    steps_by_name[obj.__name__] = obj
+        return list(steps_by_name.values())
 
     def check_files_to_delete(self, all_output_files: set[MetroFile]):
         to_delete_files = list()
