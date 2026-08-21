@@ -514,7 +514,7 @@ class OpenStreetMapBicycleImportStep(GeoStep, OSMStep):
         ),
     )
     reindex = BoolParameter(
-        "osm_pedestrian_import.reindex",
+        "osm_bicycle_import.reindex",
         default=False,
         description=(
             "If `true`, the edges are re-index from 1 to n. If `false`, edge ids match the "
