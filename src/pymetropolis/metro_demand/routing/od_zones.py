@@ -10,25 +10,42 @@ import polars as pl
 from loguru import logger
 
 from pymetropolis.metro_calibration.road.files import RoadEdgesFreeFlowTravelTimeFile
-from pymetropolis.metro_demand.zones.file import ZonesFile
+from pymetropolis.metro_demand.zones.file import (
+    ZonesLevel1File,
+    ZonesLevel2File,
+    ZonesLevel3File,
+    ZonesLevel4File,
+    ZonesLevel5File,
+)
 from pymetropolis.metro_network.road_network.files import RoadEdgesCleanFile
 from pymetropolis.metro_pipeline.parameters import ListParameter
-from pymetropolis.metro_pipeline.types import String, Time
+from pymetropolis.metro_pipeline.types import String, Time, Int
+from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_simulation.run.files import MetroNextExpectedTravelTimeFunctionsFile
 from pymetropolis.metro_spatial import GeoStep
 
-from .files import ZoneODCongestedTravelTimesFile, ZoneODFreeFlowTravelTimesFile, ZonesRoadNodeFile
+from .files import (
+    ZoneODLevel1CongestedTravelTimesFile,
+    ZoneODLevel2CongestedTravelTimesFile,
+    ZoneODLevel3CongestedTravelTimesFile,
+    ZoneODLevel4CongestedTravelTimesFile,
+    ZoneODLevel5CongestedTravelTimesFile,
+    ZoneODLevel1FreeFlowTravelTimesFile,
+    ZoneODLevel2FreeFlowTravelTimesFile,
+    ZoneODLevel3FreeFlowTravelTimesFile,
+    ZoneODLevel4FreeFlowTravelTimesFile,
+    ZoneODLevel5FreeFlowTravelTimesFile,
+    ZonesLevel1RoadNodeFile,
+    ZonesLevel2RoadNodeFile,
+    ZonesLevel3RoadNodeFile,
+    ZonesLevel4RoadNodeFile,
+    ZonesLevel5RoadNodeFile
+)
+
 from .routing_cli import RoutingCLIStep, run_routing, trip_routing
 
 
-class ZonesRoadNodesStep(GeoStep):
-    """Identifies the road-network node representative of each zone, used as
-    a virtual origin/destination when computing OD travel times between zones.
-
-    For each zone, all road-network nodes located within its polygon are listed,
-    and the medoid among them is selected: the node that minimizes the sum
-    of Euclidean distances to the other nodes of the same zone.
-    """
+class ZonesBaseModel(GeoStep):
     forbidden_types = ListParameter(
         "road_network.forbiden_types",
         inner=String(),
@@ -39,8 +56,6 @@ class ZonesRoadNodesStep(GeoStep):
         ),
         example="['motorway', 'motorway_link', 'trunk', 'trunk_link']"
     )
-    input_files = {"zones": ZonesFile, "edges": RoadEdgesCleanFile}
-    output_files = {"zones_road_node": ZonesRoadNodeFile}
 
     def find_origin_destination_node(
         self,
@@ -85,8 +100,16 @@ class ZonesRoadNodesStep(GeoStep):
             }
         ).with_columns(pl.col("road_node").cast(pl.UInt64))
 
+    @property
+    def input_zone(self):
+        raise NotImplementedError
+
+    @property
+    def output_zone(self):
+        raise NotImplementedError
+
     def run(self):
-        zones = self.input["zones"].read()
+        zones = self.input_zone.read()
         zones = zones.to_crs(self.crs)
         edges = self.input["edges"].read()
         edges = edges.loc[
@@ -94,7 +117,68 @@ class ZonesRoadNodesStep(GeoStep):
             ["edge_id", "geometry", "source", "target"],
         ]
         nodes = self.find_origin_destination_node(zones, edges)
-        self.output["zones_road_node"].write(nodes)
+        self.output_zone.write(nodes)
+
+class ZonesLevel1RoadNodesStep(ZonesBaseModel):
+    input_files = {"zone1": ZonesLevel1File, "edges": RoadEdgesCleanFile}
+    output_files = {"zone1_road_node": ZonesLevel1RoadNodeFile}
+
+    @property
+    def input_zone(self):
+        return self.input["zone1"]
+
+    @property
+    def output_zone(self):
+        return self.output["zone1_road_node"]
+
+class ZonesLevel2RoadNodesStep(ZonesBaseModel):
+    input_files = {"zone2": ZonesLevel2File, "edges": RoadEdgesCleanFile}
+    output_files = {"zone2_road_node": ZonesLevel2RoadNodeFile}
+
+    @property
+    def input_zone(self):
+        return self.input["zone2"]
+
+    @property
+    def output_zone(self):
+        return self.output["zone2_road_node"]
+
+class ZonesLevel3RoadNodesStep(ZonesBaseModel):
+    input_files = {"zone3": ZonesLevel3File, "edges": RoadEdgesCleanFile}
+    output_files = {"zone3_road_node": ZonesLevel3RoadNodeFile}
+
+    @property
+    def input_zone(self):
+        return self.input["zone3"]
+
+    @property
+    def output_zone(self):
+        return self.output["zone3_road_node"]
+
+class ZonesLevel4RoadNodesStep(ZonesBaseModel):
+    input_files = {"zone4": ZonesLevel4File, "edges": RoadEdgesCleanFile}
+    output_files = {"zone4_road_node": ZonesLevel4RoadNodeFile}
+
+    @property
+    def input_zone(self):
+        return self.input["zone4"]
+
+    @property
+    def output_zone(self):
+        return self.output["zone4_road_node"]
+
+class ZonesLevel5RoadNodesStep(ZonesBaseModel):
+    input_files = {"zone5": ZonesLevel5File, "edges": RoadEdgesCleanFile}
+    output_files = {"zone5_road_node": ZonesLevel5RoadNodeFile}
+
+    @property
+    def input_zone(self):
+        return self.input["zone5"]
+
+    @property
+    def output_zone(self):
+        return self.output["zone5_road_node"]
+
 
 class ZonesODFreeFlowTravelTimesStep(RoutingCLIStep):
     """
@@ -103,22 +187,39 @@ class ZonesODFreeFlowTravelTimesStep(RoutingCLIStep):
     virtual origin/destination.
     """
 
+    zones = ListParameter(
+        "od_matrix_travel_times.zones_levels",
+        inner=Int(),
+        min_length=1,
+        max_length=2,
+        description=(
+            "differents zones levels where we want to find od free-flow travel time"
+        ),
+        default=[4],
+        example="[3, 4]"
+
+    )
     input_files = {
-        "zones_road_node": ZonesRoadNodeFile,
+        "zone1_road_node": InputFile(ZonesLevel1RoadNodeFile, when=lambda step: 1 in step.zones),
+        "zone2_road_node": InputFile(ZonesLevel2RoadNodeFile, when=lambda step: 2 in step.zones),
+        "zone3_road_node": InputFile(ZonesLevel3RoadNodeFile, when=lambda step: 3 in step.zones),
+        "zone4_road_node": InputFile(ZonesLevel4RoadNodeFile, when=lambda step: 4 in step.zones),
+        "zone5_road_node": InputFile(ZonesLevel5RoadNodeFile, when=lambda step: 5 in step.zones),
         "edges": RoadEdgesCleanFile,
         "edges_fftt": RoadEdgesFreeFlowTravelTimeFile
     }
-    output_files = {"zones_fftt": ZoneODFreeFlowTravelTimesFile}
+    output_files = {
+        "zone1_fftt": ZoneODLevel1FreeFlowTravelTimesFile,
+        "zone2_fftt": ZoneODLevel2FreeFlowTravelTimesFile,
+        "zone3_fftt": ZoneODLevel3FreeFlowTravelTimesFile,
+        "zone4_fftt": ZoneODLevel4FreeFlowTravelTimesFile,
+        "zone5_fftt": ZoneODLevel5FreeFlowTravelTimesFile
+    }
 
     def run(self):
         assert self.exec_path is not None
+        assert self.zones is not None
 
-        zones_df = (
-            self.input["zones_road_node"]
-            .read()
-            .select("zone_id", "road_node")
-        )
-        pairs, trips = read_trips(zones_df)
         edges_gdf = self.input["edges"].read()
         edges_fftt = self.input["edges_fftt"].read()
         edges = (
@@ -132,22 +233,29 @@ class ZonesODFreeFlowTravelTimesStep(RoutingCLIStep):
             logger.warning(f"Discarding {n} edges with NULL free-flow travel time")
             edges = edges.filter(pl.col("weight").is_not_null())
 
-        results = trip_routing(trips, edges, self.exec_path, with_routes=False)
-        results = results.select(
-            query_id="trip_id",
-            free_flow_travel_time=pl.duration(seconds="value")
-        )
-        df = pairs.join(
-            results,
-            on="query_id",
-            how="left",
-            coalesce=False,
-        ).select(
-            "origin_zone_id",
-            "destination_zone_id",
-            "free_flow_travel_time"
-        )
-        self.output["zones_fftt"].write(df)
+        for zone in self.zones:
+            zones_df = (
+                self.input[f"zone{zone}_road_node"]
+                .read()
+                .select("zone_id", "road_node")
+            )
+            pairs, trips = read_trips(zones_df)
+            results = trip_routing(trips, edges, self.exec_path, with_routes=False)
+            results = results.select(
+                query_id="trip_id",
+                free_flow_travel_time=pl.duration(seconds="value")
+            )
+            df = pairs.join(
+                results,
+                on="query_id",
+                how="left",
+                coalesce=False,
+            ).select(
+                "origin_zone_id",
+                "destination_zone_id",
+                "free_flow_travel_time"
+            )
+            self.output[f"zone{zone}_fftt"].write(df)
 
 class ZonesODCongestedTravelTimesStep(RoutingCLIStep):
     """
@@ -177,24 +285,50 @@ class ZonesODCongestedTravelTimesStep(RoutingCLIStep):
         ),
         example="[06:00:00, 09:00:00]",
     )
+    zones = ListParameter(
+        "od_matrix_travel_times.zones_levels",
+        inner=Int(),
+        min_length=1,
+        max_length=5,
+        description=(
+            "differents zones levels where we want to find congested od travel time"
+        ),
+        default=[4],
+        example="[3, 4]"
+    )
+
     input_files = {
-        "zone_road_node": ZonesRoadNodeFile,
+        "zone1_road_node": InputFile(ZonesLevel1RoadNodeFile, when=lambda step: 1 in step.zones),
+        "zone2_road_node": InputFile(ZonesLevel2RoadNodeFile, when=lambda step: 2 in step.zones),
+        "zone3_road_node": InputFile(ZonesLevel3RoadNodeFile, when=lambda step: 3 in step.zones),
+        "zone4_road_node": InputFile(ZonesLevel4RoadNodeFile, when=lambda step: 4 in step.zones),
+        "zone5_road_node": InputFile(ZonesLevel5RoadNodeFile, when=lambda step: 5 in step.zones),
         "edges": RoadEdgesCleanFile,
         "edges_fftt": RoadEdgesFreeFlowTravelTimeFile,
         "edge_ttfs": MetroNextExpectedTravelTimeFunctionsFile,
-        "zones_fftt": ZoneODFreeFlowTravelTimesFile,
+        "zone1_fftt": InputFile(ZoneODLevel1FreeFlowTravelTimesFile,
+                                when=lambda step: 1 in step.zones),
+        "zone2_fftt": InputFile(ZoneODLevel2FreeFlowTravelTimesFile,
+                                when=lambda step: 2 in step.zones),
+        "zone3_fftt": InputFile(ZoneODLevel3FreeFlowTravelTimesFile,
+                                when=lambda step: 3 in step.zones),
+        "zone4_fftt": InputFile(ZoneODLevel4FreeFlowTravelTimesFile,
+                                when=lambda step: 4 in step.zones),
+        "zone5_fftt": InputFile(ZoneODLevel5FreeFlowTravelTimesFile,
+                                when=lambda step: 5 in step.zones)
     }
-    output_files = {"zones_congested": ZoneODCongestedTravelTimesFile}
+    output_files = {
+        "zone1_congested": ZoneODLevel1CongestedTravelTimesFile,
+        "zone2_congested": ZoneODLevel2CongestedTravelTimesFile,
+        "zone3_congested": ZoneODLevel3CongestedTravelTimesFile,
+        "zone4_congested": ZoneODLevel4CongestedTravelTimesFile,
+        "zone5_congested": ZoneODLevel5CongestedTravelTimesFile,
+    }
     def run(self):
         assert self.exec_path is not None
         assert self.time_window is not None
+        assert self.zones is not None
 
-        zones_df = (
-            self.input["zone_road_node"]
-            .read()
-            .select("zone_id", "road_node")
-        )
-        pairs, trips = read_trips(zones_df)
         edges_gdf = self.input["edges"].read()
         edges_fftt = self.input["edges_fftt"].read()
         edges = (
@@ -219,54 +353,63 @@ class ZonesODCongestedTravelTimesStep(RoutingCLIStep):
             )
             .join(edges.select("edge_id"), on="edge_id", how="semi")
         )
-        with tempfile.TemporaryDirectory() as tmp_directory:
-            processing_routing(trips, edges, self.exec_path, edge_ttfs, tmp_directory)
-            df = pl.read_parquet(os.path.join(tmp_directory, "output", "profile_results.parquet"))
-        df = df.filter(
-            (self.time_window[0].seconds() <= pl.col("departure_time")) &
-            (self.time_window[1].seconds() >= pl.col("departure_time"))
-        )
-        results = df.group_by("query_id").agg(
-            congested_travel_time=pl.col("travel_time").median(),
-            congested_travel_time_min=pl.col("travel_time").min(),
-            congested_travel_time_max=pl.col("travel_time").max(),
-            congested_travel_time_std=pl.col("travel_time").std(),
-        )
-        zones_fftt = self.input["zones_fftt"].read().with_columns(
-            pl.col("free_flow_travel_time").dt.total_nanoseconds() / 1e9
-        )
-        df = (
-            pairs.join(results, on="query_id", how="left", coalesce=False)
-            .join(
-                zones_fftt,
-                on=["origin_zone_id", "destination_zone_id"],
-                how="left",
-                coalesce=True,
+
+        for zone in self.zones:
+            zones_df = (
+                self.input[f"zone{zone}_road_node"]
+                .read()
+                .select("zone_id", "road_node")
             )
-            .with_columns(
-                congested_travel_time=pl.coalesce(
-                    "congested_travel_time", "free_flow_travel_time"
-                ),
-                congested_travel_time_min=pl.coalesce(
-                    "congested_travel_time_min", "free_flow_travel_time"
-                ),
-                congested_travel_time_max=pl.coalesce(
-                    "congested_travel_time_max", "free_flow_travel_time"
-                ),
-                # Also fills the single-breakpoint case (std of one value is
-                # undefined in polars, not just the no-breakpoint fallback).
-                congested_travel_time_std=pl.col("congested_travel_time_std").fill_null(0.0),
+            pairs, trips = read_trips(zones_df)
+            with tempfile.TemporaryDirectory() as tmp_directory:
+                processing_routing(trips, edges, self.exec_path, edge_ttfs, tmp_directory)
+                df = pl.read_parquet(os.path.join(tmp_directory, "output",
+                                                  "profile_results.parquet"))
+            df = df.filter(
+                (self.time_window[0].seconds() <= pl.col("departure_time")) &
+                (self.time_window[1].seconds() >= pl.col("departure_time"))
             )
-            .select(
-                "origin_zone_id",
-                "destination_zone_id",
-                congested_travel_time=pl.duration(seconds="congested_travel_time"),
-                congested_travel_time_min=pl.duration(seconds="congested_travel_time_min"),
-                congested_travel_time_max=pl.duration(seconds="congested_travel_time_max"),
-                congested_travel_time_std=pl.duration(seconds="congested_travel_time_std"),
+            results = df.group_by("query_id").agg(
+                congested_travel_time=pl.col("travel_time").median(),
+                congested_travel_time_min=pl.col("travel_time").min(),
+                congested_travel_time_max=pl.col("travel_time").max(),
+                congested_travel_time_std=pl.col("travel_time").std(),
             )
-        )
-        self.output["zones_congested"].write(df)
+            zones_fftt = self.input[f"zone{zone}_fftt"].read().with_columns(
+                pl.col("free_flow_travel_time").dt.total_nanoseconds() / 1e9
+            )
+            df = (
+                pairs.join(results, on="query_id", how="left", coalesce=False)
+                .join(
+                    zones_fftt,
+                    on=["origin_zone_id", "destination_zone_id"],
+                    how="left",
+                    coalesce=True,
+                )
+                .with_columns(
+                    congested_travel_time=pl.coalesce(
+                        "congested_travel_time", "free_flow_travel_time"
+                    ),
+                    congested_travel_time_min=pl.coalesce(
+                        "congested_travel_time_min", "free_flow_travel_time"
+                    ),
+                    congested_travel_time_max=pl.coalesce(
+                        "congested_travel_time_max", "free_flow_travel_time"
+                    ),
+                    # Also fills the single-breakpoint case (std of one value is
+                    # undefined in polars, not just the no-breakpoint fallback).
+                    congested_travel_time_std=pl.col("congested_travel_time_std").fill_null(0.0),
+                )
+                .select(
+                    "origin_zone_id",
+                    "destination_zone_id",
+                    congested_travel_time=pl.duration(seconds="congested_travel_time"),
+                    congested_travel_time_min=pl.duration(seconds="congested_travel_time_min"),
+                    congested_travel_time_max=pl.duration(seconds="congested_travel_time_max"),
+                    congested_travel_time_std=pl.duration(seconds="congested_travel_time_std"),
+                )
+            )
+            self.output[f"zone{zone}_congested"].write(df)
 
 
 def read_trips(zones: pl.DataFrame) -> tuple[pl.DataFrame, pl.DataFrame]:
