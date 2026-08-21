@@ -524,6 +524,7 @@ class TripsPublicTransitItinerariesFile(MetroDataFrameFile):
         ),
     ]
 
+
 class ZonesLevel1RoadNodeFile(MetroDataFrameFile):
     path = "demand/routing/zone1_road_node.parquet"
     description = "Road network node representative of Level-1 zones."
@@ -533,15 +534,16 @@ class ZonesLevel1RoadNodeFile(MetroDataFrameFile):
             MetroDataType.ID,
             description="Identifier of the zone",
             unique=True,
-            nullable=False
+            nullable=False,
         ),
         Column(
             "road_node",
             MetroDataType.ID,
             description="Identifier of the road node representative of the zone.",
-            nullable=True
+            nullable=True,
         ),
     ]
+
 
 class ZonesLevel2RoadNodeFile(MetroDataFrameFile):
     path = "demand/routing/zone2_road_node.parquet"
@@ -552,15 +554,16 @@ class ZonesLevel2RoadNodeFile(MetroDataFrameFile):
             MetroDataType.ID,
             description="Identifier of the zone",
             unique=True,
-            nullable=False
+            nullable=False,
         ),
         Column(
             "road_node",
             MetroDataType.ID,
             description="Identifier of the road node representative of the zone.",
-            nullable=True
-        )
+            nullable=True,
+        ),
     ]
+
 
 class ZonesLevel3RoadNodeFile(MetroDataFrameFile):
     path = "demand/routing/zone3_road_node.parquet"
@@ -571,15 +574,16 @@ class ZonesLevel3RoadNodeFile(MetroDataFrameFile):
             MetroDataType.ID,
             description="Identifier of the zone",
             unique=True,
-            nullable=False
+            nullable=False,
         ),
         Column(
             "road_node",
             MetroDataType.ID,
             description="Identifier of the road node representative of the zone.",
-            nullable=True
-        )
+            nullable=True,
+        ),
     ]
+
 
 class ZonesLevel4RoadNodeFile(MetroDataFrameFile):
     path = "demand/routing/zone4_road_node.parquet"
@@ -590,15 +594,16 @@ class ZonesLevel4RoadNodeFile(MetroDataFrameFile):
             MetroDataType.ID,
             description="Identifier of the zone",
             unique=True,
-            nullable=False
+            nullable=False,
         ),
         Column(
             "road_node",
             MetroDataType.ID,
             description="Identifier of the road node representative of the zone.",
-            nullable=True
-        )
+            nullable=True,
+        ),
     ]
+
 
 class ZonesLevel5RoadNodeFile(MetroDataFrameFile):
     path = "demand/routing/zone5_road_node.parquet"
@@ -609,15 +614,16 @@ class ZonesLevel5RoadNodeFile(MetroDataFrameFile):
             MetroDataType.ID,
             description="Identifier of the zone",
             unique=True,
-            nullable=False
+            nullable=False,
         ),
         Column(
             "road_node",
             MetroDataType.ID,
             description="Identifier of the road node representative of the zone.",
-            nullable=True
-        )
+            nullable=True,
+        ),
     ]
+
 
 class ZoneODLevel1FreeFlowTravelTimesFile(MetroDataFrameFile):
     path = "demand/routing/zone1_od_free_flow_travel_times.parquet"
@@ -641,12 +647,12 @@ class ZoneODLevel1FreeFlowTravelTimesFile(MetroDataFrameFile):
             "free_flow_travel_time",
             MetroDataType.DURATION,
             description=(
-                "Travel time by car between the two zones' road nodes, under free-flow "
-                "conditions."
+                "Travel time by car between the two zones' road nodes, under free-flow conditions."
             ),
             nullable=False,
         ),
     ]
+
 
 class ZoneODLevel1CongestedTravelTimesFile(MetroDataFrameFile):
     path = "demand/routing/zone1_od_congested_travel_times.parquet"
@@ -710,6 +716,7 @@ class ZoneODLevel1CongestedTravelTimesFile(MetroDataFrameFile):
         ),
     ]
 
+
 class ZoneODLevel2FreeFlowTravelTimesFile(MetroDataFrameFile):
     path = "demand/routing/zone2_od_free_flow_travel_times.parquet"
     description = (
@@ -732,12 +739,12 @@ class ZoneODLevel2FreeFlowTravelTimesFile(MetroDataFrameFile):
             "free_flow_travel_time",
             MetroDataType.DURATION,
             description=(
-                "Travel time by car between the two zones' road nodes, under free-flow "
-                "conditions."
+                "Travel time by car between the two zones' road nodes, under free-flow conditions."
             ),
             nullable=False,
         ),
     ]
+
 
 class ZoneODLevel2CongestedTravelTimesFile(MetroDataFrameFile):
     path = "demand/routing/zone2_od_congested_travel_times.parquet"
@@ -801,6 +808,7 @@ class ZoneODLevel2CongestedTravelTimesFile(MetroDataFrameFile):
         ),
     ]
 
+
 class ZoneODLevel3FreeFlowTravelTimesFile(MetroDataFrameFile):
     path = "demand/routing/zone3_od_free_flow_travel_times.parquet"
     description = (
@@ -823,12 +831,12 @@ class ZoneODLevel3FreeFlowTravelTimesFile(MetroDataFrameFile):
             "free_flow_travel_time",
             MetroDataType.DURATION,
             description=(
-                "Travel time by car between the two zones' road nodes, under free-flow "
-                "conditions."
+                "Travel time by car between the two zones' road nodes, under free-flow conditions."
             ),
             nullable=False,
         ),
     ]
+
 
 class ZoneODLevel3CongestedTravelTimesFile(MetroDataFrameFile):
     path = "demand/routing/zone3_od_congested_travel_times.parquet"
@@ -892,6 +900,7 @@ class ZoneODLevel3CongestedTravelTimesFile(MetroDataFrameFile):
         ),
     ]
 
+
 class ZoneODLevel4FreeFlowTravelTimesFile(MetroDataFrameFile):
     path = "demand/routing/zone4_od_free_flow_travel_times.parquet"
     description = (
@@ -914,12 +923,12 @@ class ZoneODLevel4FreeFlowTravelTimesFile(MetroDataFrameFile):
             "free_flow_travel_time",
             MetroDataType.DURATION,
             description=(
-                "Travel time by car between the two zones' road nodes, under free-flow "
-                "conditions."
+                "Travel time by car between the two zones' road nodes, under free-flow conditions."
             ),
             nullable=False,
         ),
     ]
+
 
 class ZoneODLevel4CongestedTravelTimesFile(MetroDataFrameFile):
     path = "demand/routing/zone4_od_congested_travel_times.parquet"
@@ -983,6 +992,7 @@ class ZoneODLevel4CongestedTravelTimesFile(MetroDataFrameFile):
         ),
     ]
 
+
 class ZoneODLevel5FreeFlowTravelTimesFile(MetroDataFrameFile):
     path = "demand/routing/zone5_od_free_flow_travel_times.parquet"
     description = (
@@ -1005,12 +1015,12 @@ class ZoneODLevel5FreeFlowTravelTimesFile(MetroDataFrameFile):
             "free_flow_travel_time",
             MetroDataType.DURATION,
             description=(
-                "Travel time by car between the two zones' road nodes, under free-flow "
-                "conditions."
+                "Travel time by car between the two zones' road nodes, under free-flow conditions."
             ),
             nullable=False,
         ),
     ]
+
 
 class ZoneODLevel5CongestedTravelTimesFile(MetroDataFrameFile):
     path = "demand/routing/zone5_od_congested_travel_times.parquet"
@@ -1073,5 +1083,3 @@ class ZoneODLevel5CongestedTravelTimesFile(MetroDataFrameFile):
             nullable=False,
         ),
     ]
-
-
