@@ -23,7 +23,7 @@ class FrenchZonesStep(IRISStep, AdminExpressStep, GeoStep):
     - Zone 4: IRIS
 
     The fifth level is free to be used as a custom level, with the
-    [`CustomZones1Step`](steps.md#customzones1step).
+    [`CustomZonesLevel5Step`](steps.md#customzoneslevel5step).
     """
 
     enabled = BoolParameter(

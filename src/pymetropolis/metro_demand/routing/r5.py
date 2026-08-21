@@ -94,7 +94,7 @@ class TripsPublicTransitTravelTimeFromR5Step(OSMStep, GTFSStep, PopulationStep):
 
     For this step, `r5py` build the public-transit network from an OpenStreetMap file
     ([`osm_file`](parameters.md#osm_file)) and from GTFS file(s)
-    ([`gtfs_files`](parameters.md#gtfs_files)).
+    ([`gtfs.files`](parameters.md#gtfsfiles)).
 
     The [`gtfs.date`](parameters.md#gtfsdate) parameter controls the date used in the public-transit
     timetables, for all queries.
@@ -113,7 +113,7 @@ class TripsPublicTransitTravelTimeFromR5Step(OSMStep, GTFSStep, PopulationStep):
     Therefore, some approximations are done to "group" together similar origins, destinations, and
     departure times.
     You can control these approximations with the
-    [`coordinates_rounding`](parameters.md#r5coordinates_routing) and
+    [`coordinates_rounding`](parameters.md#r5coordinates_rounding) and
     [`time_rounding`](parameters.md#r5time_rounding) parameters.
     By default, origins and destinations are rounded to the nearest 500 meters and departure time is
     rounded to periods of 1 hour.

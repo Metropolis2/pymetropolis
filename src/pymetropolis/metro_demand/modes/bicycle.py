@@ -61,7 +61,7 @@ class BicycleTravelTimesFromDistanceStep(PopulationStep):
     The parameter [`modes.bicycle.distance.type`](parameters.md#modesbicycledistancetype) specifies
     how the bicycle distance is computed. For now, the only option is `"pedestrian"` which uses the
     distance of the shortest path on the pedestrian network (Step
-    [`TripsPedestrianDistancesStep`](steps.md#TripsPedestrianDistancesStep)).
+    [`TripsPedestrianDistancesStep`](steps.md#tripspedestriandistancesstep)).
 
     The parameter [`modes.bicycle.speed`](parameters.md#modesbicyclespeed) controls the speed at
     which bicycles run.
@@ -70,7 +70,7 @@ class BicycleTravelTimesFromDistanceStep(PopulationStep):
     [`modes.bicycle.distance.with_snap`](parameters.md#modesbicycledistancewith_snap) is set to
     `true`, the snap distance at origin and destination is added to the bicycle travel time, with a
     speed given by [`modes.bicycle.snap_speed`](parameters.md#modesbicyclesnap_speed) (equal to
-    [`modes.bicycle.speed`](parameters.md#modesbicyclesspeed) by default).
+    [`modes.bicycle.speed`](parameters.md#modesbicyclespeed) by default).
     The snap distance corresponds to the distance between the trips' origin and destination and the
     network (See Step
     [`PedestrianODNodesFromCoordinatesStep`](steps.md#pedestrianodnodesfromcoordinatesstep)).

@@ -61,7 +61,7 @@ class WalkingTravelTimesFromDistanceStep(PopulationStep):
     The parameter [`modes.walking.distance.type`](parameters.md#modeswalkingdistancetype) specifies
     how the walking distance is computed. For now, the only option is `"pedestrian"` which uses the
     distance of the shortest path on the pedestrian network (Step
-    [`TripsPedestrianDistancesStep`](steps.md#TripsPedestrianDistancesStep)).
+    [`TripsPedestrianDistancesStep`](steps.md#tripspedestriandistancesstep)).
 
     The parameter [`modes.walking.speed`](parameters.md#modeswalkingspeed) controls the speed at
     which people walk.
@@ -70,7 +70,7 @@ class WalkingTravelTimesFromDistanceStep(PopulationStep):
     [`modes.walking.distance.with_snap`](parameters.md#modeswalkingdistancewith_snap) is set to
     `true`, the snap distance at origin and destination is added to the walking travel time, with a
     speed given by [`modes.walking.snap_speed`](parameters.md#modeswalkingsnap_speed) (equal to
-    [`modes.walking.speed`](parameters.md#modeswalkingsspeed) by default).
+    [`modes.walking.speed`](parameters.md#modeswalkingspeed) by default).
     The snap distance corresponds to the distance between the trips' origin and destination and the
     network (See Step
     [`PedestrianODNodesFromCoordinatesStep`](steps.md#pedestrianodnodesfromcoordinatesstep)).

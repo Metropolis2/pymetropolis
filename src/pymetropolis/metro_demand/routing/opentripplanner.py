@@ -377,17 +377,17 @@ class TripsOpenTripPlannerStep(ThreadedStep, GTFSStep, PopulationStep):
       network, in km/h (default is 4 km/h).
     - [`transfer_cost`](parameters.md#opentripplannertransfer_cost): penalty for transfers, in
       seconds equivalent (default is 5 minutes).
-    - [`multipliers.walk`](parameters.md#opentripplannermultipliers.walk): multiplier for the value
+    - [`multipliers.walk`](parameters.md#opentripplannermultiplierswalk): multiplier for the value
       of time walking (default is 2).
-    - [`multipliers.wait`](parameters.md#opentripplannermultipliers.wait): multiplier for the value
+    - [`multipliers.wait`](parameters.md#opentripplannermultiplierswait): multiplier for the value
       of time waiting (default is 1.1).
-    - [`multipliers.bus`](parameters.md#opentripplannermultipliers.bus): multiplier for the value of
+    - [`multipliers.bus`](parameters.md#opentripplannermultipliersbus): multiplier for the value of
       time in a bus (default is 1.2).
-    - [`multipliers.tram`](parameters.md#opentripplannermultipliers.tram): multiplier for the value
+    - [`multipliers.tram`](parameters.md#opentripplannermultiplierstram): multiplier for the value
       of time in a tramway (default is 1).
-    - [`multipliers.subway`](parameters.md#opentripplannermultipliers.subway): multiplier for the
+    - [`multipliers.subway`](parameters.md#opentripplannermultiplierssubway): multiplier for the
       value of time in a subway (default is 1).
-    - [`multipliers.rail`](parameters.md#opentripplannermultipliers.rail): multiplier for the value
+    - [`multipliers.rail`](parameters.md#opentripplannermultipliersrail): multiplier for the value
       of time for rail transport (default is 1).
 
     When running this step, the public-transit itineraries of all trips are hold in memory.
