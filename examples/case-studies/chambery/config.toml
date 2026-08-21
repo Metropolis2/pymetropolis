@@ -1,16 +1,12 @@
-main_directory = "chambery/output"
+main_directory = "output/"
 
 crs = "epsg:2154"
 
-osm_file = "chambery/data/rhone-alpes-250101.osm.pbf"
+osm_file = "data/rhone-alpes-250101.osm.pbf"
 
 simulation_ratio = 1.0
 
 random_seed = 13081996
-
-[metropolis_core]
-exec_path = "execs/metropolis_cli"
-routing_exec_path = "execs/routing_cli"
 
 # [ign]
 # admin_express_directory = "data/ADMIN-EXPRESS-COG-CARTO_4-0__GPKG_LAMB93_FXX_2025-01-01/"
@@ -25,7 +21,7 @@ france = true
 
 [survey]
 [survey.mobisurvstd]
-path = "chambery/data/emc2-2022.zip"
+path = "data/emc2-2022.zip"
 
 [joint_travel]
 features = [
@@ -120,7 +116,7 @@ secondary_types = [
 # If true, add secondary edges to the primary road network to ensure that
 # free-flow routes are primary-connected.
 ensure_primary_connected = true
-# penalty_coefficients_file = "chambery/data/edges_penalty_coefficients.csv"
+# penalty_coefficients_file = "data/edges_penalty_coefficients.csv"
 min_effective_speed = 5.0
 max_effective_speed = 135.0
 
@@ -265,7 +261,7 @@ forbidden_types = ["trunk", "trunk_link"]
 output_path = true
 
 [synthetic_population]
-eqasim_output = "chambery/data/output_eqasim/"
+eqasim_output = "data/output_eqasim/"
 fraction = 1.0
 
 [fuel]
@@ -283,16 +279,16 @@ mu = 1.0
 
 [modes]
 [modes.car_driver]
-preferences_file = "chambery/data/mode_preferences.csv"
+preferences_file = "data/mode_preferences.csv"
 
 [modes.car_passenger]
-preferences_file = "chambery/data/mode_preferences.csv"
+preferences_file = "data/mode_preferences.csv"
 
 [modes.public_transit]
-preferences_file = "chambery/data/mode_preferences.csv"
+preferences_file = "data/mode_preferences.csv"
 
 [modes.walking]
-preferences_file = "chambery/data/mode_preferences.csv"
+preferences_file = "data/mode_preferences.csv"
 speed = 4.0
 snap_speed = 4.0
 
@@ -301,7 +297,7 @@ type = "pedestrian"
 with_snap = true
 
 [modes.bicycle]
-preferences_file = "chambery/data/mode_preferences.csv"
+preferences_file = "data/mode_preferences.csv"
 speed = 12.0
 snap_speed = 4.0
 
@@ -311,9 +307,9 @@ with_snap = true
 
 [gtfs]
 files = [
-    "chambery/data/gtfs/ondea-gtfs.zip",
-    "chambery/data/gtfs/PT_TH_OFFER_SAVOIE_gtfs_20260518_707_OPENDATA.zip",
-    "chambery/data/gtfs/synchro-gtfs.zip",
+    "data/gtfs/ondea-gtfs.zip",
+    "data/gtfs/PT_TH_OFFER_SAVOIE_gtfs_20260518_707_OPENDATA.zip",
+    "data/gtfs/synchro-gtfs.zip",
 ]
 date = 2026-05-28
 
@@ -327,7 +323,7 @@ time_type = "tstar"
 
 [departure_time]
 [departure_time.linear_schedule]
-preferences_file = "chambery/data/linear_schedule_preferences.csv"
+preferences_file = "data/linear_schedule_preferences.csv"
 tstar_type = "arrival_time"
 
 [departure_time_choice]
@@ -349,7 +345,7 @@ nb_routes = 400
 nb_waypoints = 148
 nb_batches = 5
 excluded_edge_types = ["motorway", "motorway_link", "trunk", "trunk_link", "primary", "primary_link"]
-api_key = "secret:tomtom_api_key"
+api_key = "env:TOMTOM_API_KEY"
 
 [calibration]
 [calibration.free_flow_travel_time]

@@ -57,7 +57,9 @@ class Parameter(Generic[T]):
         self.note = note
         self.example = example
         self.shared = shared
-        self.default = self.validator.validate(default) if default is not None else None
+        # Not validated here: `default` may itself be a `"secret:"` / `"env:"` indirection, which
+        # can only be resolved against a `Config` instance, in `from_config` below.
+        self.default = default
 
     def __str__(self) -> str:
         return ".".join(self.key)
@@ -91,9 +93,12 @@ class Parameter(Generic[T]):
         # declares it, so any state stored on `self` would leak between unrelated steps and
         # populations.
         value = config.resolve_parameter(self.key, population_name, shared=self.shared)
-        if value is not None:
-            return self.validator.validate(value)
-        return self.default
+        if value is None:
+            value = config.resolve_indirection(self.default)
+        if value is None:
+            return None
+        value = self.validator.resolve(value, config.resolve_path)
+        return self.validator.validate(value)
 
 
 class CustomParameter(Parameter):

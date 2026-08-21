@@ -1,4 +1,4 @@
-main_directory = "circular-city/"
+main_directory = "output/"
 
 random_seed = 123454321
 
@@ -71,7 +71,3 @@ period = [06:00:00, 10:00:00]
 recording_interval = 300
 learning_factor = 0.005
 nb_iterations = 200
-
-[metropolis_core]
-exec_path = "execs/metropolis_cli"
-routing_exec_path = "execs/routing_cli"

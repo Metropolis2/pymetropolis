@@ -1,4 +1,4 @@
-main_directory = "bottleneck-sim/"
+main_directory = "output/"
 
 random_seed = 123454321
 
@@ -47,7 +47,3 @@ period = [07:00:00, 08:00:00]
 recording_interval = 60
 learning_factor = 0.1
 nb_iterations = 200
-
-[metropolis_core]
-exec_path = "execs/metropolis_cli"
-routing_exec_path = "execs/routing_cli"

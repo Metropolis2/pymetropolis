@@ -2,8 +2,11 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
+from dotenv import find_dotenv, load_dotenv
+from loguru import logger
 
 import pymetropolis
+from pymetropolis.metro_common import logger as metro_logger
 
 from .metro_pipeline import Config, MetroPipeline
 from .schema import STEPS
@@ -38,6 +41,12 @@ def app(
 ):
     """Python command line tool to generate, calibrate, run and analyse a METROPOLIS2 simulation."""
     # TODO command to list available steps
+    metro_logger.setup()
+    # Load environment variables from .env file, if any exists.
+    envfile = find_dotenv(usecwd=True)
+    if envfile:
+        load_dotenv(envfile)
+        logger.debug(f"Successfully read environment variables from {envfile}.")
     config = Config.from_toml(config)
     pipeline = MetroPipeline(config, STEPS, target_step=step)
     pipeline.run(dry_run, step_by_step)

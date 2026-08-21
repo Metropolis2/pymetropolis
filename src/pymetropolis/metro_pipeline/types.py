@@ -11,6 +11,15 @@ class Type:
     def validate(self, value: Any) -> Any:
         return value
 
+    def resolve(self, value: Any, resolve_path: Callable[[Any], Any]) -> Any:
+        """Hook called on the raw value before `validate`, so context-dependent values (e.g.
+        relative paths, resolved against the main config file via `resolve_path`) can be resolved.
+
+        No-op by default; overridden by `PathType`/`ExecPathType` (and propagated by container
+        types like `List`).
+        """
+        return value
+
     def _describe(self) -> str:
         return "Any value"
 
@@ -80,6 +89,10 @@ class PathType(Type):
         self.extensions = extensions
 
     @override
+    def resolve(self, value: Any, resolve_path: Callable[[Any], Any]) -> Any:
+        return resolve_path(value)
+
+    @override
     def validate(self, value: Any) -> Path:
         if isinstance(value, str):
             value = Path(value)
@@ -108,6 +121,10 @@ class PathType(Type):
 
 
 class ExecPathType(Type):
+    @override
+    def resolve(self, value: Any, resolve_path: Callable[[Any], Any]) -> Any:
+        return resolve_path(value)
+
     @override
     def validate(self, value: Any) -> Path:
         if isinstance(value, str):
@@ -268,6 +285,12 @@ class List(Type):
         if self.length is not None:
             assert self.min_length is None
             assert self.max_length is None
+
+    @override
+    def resolve(self, value: Any, resolve_path: Callable[[Any], Any]) -> Any:
+        if not isinstance(value, list):
+            return value
+        return [self.inner.resolve(elem, resolve_path) for elem in value]
 
     def validate(self, value: Any) -> list[Any]:
         if not isinstance(value, list):

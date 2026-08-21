@@ -10,7 +10,6 @@ from loguru import logger
 from termcolor import colored
 
 from pymetropolis.metro_common import MetropyError
-from pymetropolis.metro_common import logger as metro_logger
 
 from .config import Config
 from .file import MetroFile
@@ -53,7 +52,6 @@ class MetroPipeline:
     def __init__(
         self, config: Config, step_classes: list[type[Step]], target_step: str | None = None
     ) -> None:
-        metro_logger.setup()
         self.config = config
         step_classes = self.load_custom_steps(step_classes)
         steps = defaultdict(dict)

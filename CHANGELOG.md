@@ -61,16 +61,21 @@ New features:
   relative to the main config file); they are loaded and made available to the pipeline like any
   built-in Step. A custom Step whose name matches an existing one (e.g. `EqasimImportStep`)
   overrides it
+- Environment variables can be automatically loaded from .env files
 
 Other changes:
 
-- Relative `main_directory` and `secrets_file` paths are now resolved against the directory of the
-  main config file, instead of the current working directory (consistent with `extra_populations`
-  and `custom_steps`)
+- Relative `main_directory`, `secrets_file`, and every `PathParameter`/`ExecPathParameter` value
+  (e.g. `exec_path`, `routing_exec_path`, `osm_file`, `eqasim_output`, ...) are now resolved against
+  the directory of the main config file, instead of the current working directory (consistent with
+  `extra_populations` and `custom_steps`)
 - Put `"unemployed"` and `"homemaker"` professional activity modalities in the `"other"` modality
 - Rename `"shop"` purpose to `"shopping"`
 - The random number generator (`RandomStep.get_rng()`) now use a different seed for each step, so
   that reproducibility does not depend on run order
+- Examples configurations are now all located within the `examples/` directory
+- `exec_path` and `routing_exec_path` now default to `"env:METROPOLIS_EXEC_PATH"` and
+  `"env:METROPOLIS_ROUTING_EXEC_PATH"`, respectively
 
 Removed steps:
 

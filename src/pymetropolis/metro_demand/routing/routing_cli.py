@@ -38,6 +38,7 @@ class RoutingCLIStep(Step):
     exec_path = ExecPathParameter(
         "metropolis_core.routing_exec_path",
         description="Path to the `routing_cli` executable.",
+        default="env:METROPOLIS_ROUTING_EXEC_PATH",
         note='On Windows, you can omit the ".exe" extension',
         shared=True,
     )

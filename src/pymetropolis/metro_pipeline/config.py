@@ -39,6 +39,7 @@ def parse_toml(path: Path) -> dict:
 
 class Config:
     main_directory: Path
+    main_path: Path | None
     dict: dict[str, Any]
     extra_populations_dict: dict[str, dict]
     secrets: dict[str, Any]
@@ -47,11 +48,12 @@ class Config:
 
     def __init__(self, d: dict, main_path: Path | None = None):
         self.dict = d
-        self.check_main_directory(main_path)
-        self.read_secrets(main_path)
+        self.main_path = main_path
+        self.check_main_directory()
+        self.read_secrets()
         self.read_main_population()
-        self.read_extra_populations(main_path)
-        self.read_custom_steps(main_path)
+        self.read_extra_populations()
+        self.read_custom_steps()
 
     @classmethod
     def from_toml(cls, path: Path):
@@ -63,37 +65,31 @@ class Config:
         inst = cls(input_dict, path)
         return inst
 
-    def check_main_directory(self, main_path: Path | None):
+    def check_main_directory(self):
         """Asserts that `main_directory` is properly defined and that the directory exists.
 
         If the directory does not exist, creates it.
 
-        A relative `main_directory` is resolved against the directory of the main config file
-        (`main_path`), not against the current working directory.
+        A relative `main_directory` is resolved against the directory of the main config file.
         """
         main_dir = self.dict.get(MAIN_DIR_KEY)
         if main_dir is None:
             raise MetropyError(f"Missing `{MAIN_DIR_KEY}` in config")
         if not isinstance(main_dir, str):
             raise MetropyError(f"Config value `{MAIN_DIR_KEY}` should be a path, got `{main_dir}`")
-        rel_path = Path(main_dir)
-        if main_path is not None:
-            path = main_path.parent / rel_path
-        else:
-            path = rel_path
+        path = self.resolve_path(main_dir)
         path.mkdir(exist_ok=True, parents=True)
         self.main_directory = path
         # Also create the update_files/ directory if needed.
         update_files_path = path / "update_files"
         update_files_path.mkdir(exist_ok=True)
 
-    def read_secrets(self, main_path: Path | None):
+    def read_secrets(self):
         """Reads the secrets file if it exists.
 
         If the SECRETS_KEY config key is not defined, the default path is `secrets.toml`.
 
-        A relative path is resolved against the directory of the main config file (`main_path`),
-        not against the current working directory.
+        A relative path is resolved against the directory of the main config file.
         """
         secrets_file_def = self.dict.get(SECRETS_KEY)
         if secrets_file_def is not None and not isinstance(secrets_file_def, str):
@@ -101,11 +97,7 @@ class Config:
                 f"Invalid `{SECRETS_KEY}` parameter: Not a path: `{secrets_file_def}`"
             )
         # When not specified, default path is `secrets.toml`.
-        rel_path = Path(secrets_file_def or "secrets.toml")
-        if main_path is not None:
-            path = main_path.parent / rel_path
-        else:
-            path = rel_path
+        path = self.resolve_path(secrets_file_def or "secrets.toml")
         if secrets_file_def is not None and not path.exists():
             raise MetropyError(f"Invalid `{SECRETS_KEY}` parameter: Path `{path}` does not exist")
         if path.exists():
@@ -115,8 +107,11 @@ class Config:
             logger.debug(f"Secrets file path does not exist: `{path}`")
             self.secrets = dict()
 
-    def read_extra_populations(self, main_path: Path | None):
-        """Reads the configuration files for the extra populations, if they are defined."""
+    def read_extra_populations(self):
+        """Reads the configuration files for the extra populations, if they are defined.
+
+        Paths are resolved relative to the main config file.
+        """
         populations = self.dict.get(POPULATIONS_KEY)
         self.extra_populations_dict = dict()
         used_names = set()
@@ -126,15 +121,9 @@ class Config:
             # Not population defined, or only a "standard" population.
             return
         for pop_config in populations:
-            try:
-                rel_path = Path(pop_config)
-            except (TypeError, ValueError):
+            if not isinstance(pop_config, str):
                 raise MetropyError(f"Invalid population config file: Not a path: `{pop_config}`")
-            if main_path is not None:
-                # Path is relative to the config file.
-                path = main_path.parent / rel_path
-            else:
-                path = rel_path
+            path = self.resolve_path(pop_config)
             pop_dict = parse_toml(path)
             name = pop_dict.get(POP_NAME_KEY)
             if name is None:
@@ -161,7 +150,7 @@ class Config:
             raise MetropyError(f"`{MAIN_POPULATION_KEY}` parameter should be a boolean: `{value}`")
         self.main_population = value
 
-    def read_custom_steps(self, main_path: Path | None):
+    def read_custom_steps(self):
         """Reads the paths to the Python files defining custom Step classes, if any are defined.
 
         Paths are resolved relative to the main config file.
@@ -171,15 +160,9 @@ class Config:
         if not custom_steps:
             return
         for custom_step in custom_steps:
-            try:
-                rel_path = Path(custom_step)
-            except (TypeError, ValueError):
+            if not isinstance(custom_step, str):
                 raise MetropyError(f"Invalid custom step file: Not a path: `{custom_step}`")
-            if main_path is not None:
-                # Path is relative to the config file.
-                path = main_path.parent / rel_path
-            else:
-                path = rel_path
+            path = self.resolve_path(custom_step)
             if not path.is_file():
                 raise MetropyError(f"Custom step file does not exist: `{path}`")
             self.custom_step_paths.append(path)
@@ -202,11 +185,8 @@ class Config:
         file. If it is not defined there, it is only read from the main config when `shared` is
         `True`, i.e., the parameter is declared as being shared across populations.
 
-        If the value is of the form `"secret:skey"`, returns the value associated to `skey` in the
-        secrets instead.
-
-        If the value is of the form `"env:var"`, returns the value associated to the environnement
-        variable `var` instead.
+        The resolved value is passed through `resolve_indirection` (so `"secret:"` / `"env:"`
+        values are handled).
 
         Returns None if the value is not defined.
         """
@@ -217,14 +197,39 @@ class Config:
                 return None
         if value is None:
             value = self._resolve_from_dict(self.dict, key)
-        # At this point, `value` is equal to the resolved value (or None if it is not defined).
+        return self.resolve_indirection(value)
+
+    def resolve_indirection(self, value: Any) -> Any:
+        """Resolves a `"secret:skey"` / `"env:var"` string indirection to its actual value.
+
+        If the value is of the form `"secret:skey"`, returns the value associated to `skey` in the
+        secrets instead.
+
+        If the value is of the form `"env:var"`, returns the value associated to the environment
+        variable `var` instead.
+
+        Any other value (including `None`) is returned unchanged.
+        """
         if isinstance(value, str) and value.startswith("secret:"):
             skey = value.removeprefix("secret:")
-            value = self.secrets.get(skey)
+            return self.secrets.get(skey)
         elif isinstance(value, str) and value.startswith("env:"):
             var = value.removeprefix("env:")
-            value = os.environ.get(var)
+            return os.environ.get(var)
         return value
+
+    def resolve_path(self, value: Any) -> Any:
+        """Resolves a relative path-like `value` against the directory of the main config file.
+
+        Returns a `Path` when `value` is a `str`/`Path`, converting it if needed; any other value
+        is returned unchanged. An absolute path is returned as-is.
+        """
+        if not isinstance(value, (str, Path)):
+            return value
+        path = Path(value)
+        if self.main_path is not None and not path.is_absolute():
+            return self.main_path.parent / path
+        return path
 
     @staticmethod
     def _resolve_from_dict(d: dict[str, Any], key: list[str]) -> Any:

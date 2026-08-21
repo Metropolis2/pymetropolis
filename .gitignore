@@ -10,17 +10,12 @@ wheels/
 .venv
 
 # Custom
-bottleneck-sim/
-circular-city*/
-chambery/
-data/
-execs/metropolis_cli
-execs/routing_cli
+examples/**/data/
+examples/**/output*/
+examples/**/extras/
+examples/perso
+execs/
 qgis/
 secrets.toml
-
-# Exclude config files which were not explicitly added.
-config*.toml
-
-# Personal Claude Code settings.
+.env
 .claude/settings.local.json

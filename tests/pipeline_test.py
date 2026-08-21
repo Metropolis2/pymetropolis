@@ -3,9 +3,10 @@ from pathlib import Path
 
 from pymetropolis.metro_pipeline import Config, MetroFile, Step
 from pymetropolis.metro_pipeline.file import MetroTxtFile
-from pymetropolis.metro_pipeline.parameters import StringParameter
+from pymetropolis.metro_pipeline.parameters import ListParameter, PathParameter, StringParameter
 from pymetropolis.metro_pipeline.pipeline import MetroPipeline, StepStatus
 from pymetropolis.metro_pipeline.steps import InputFile
+from pymetropolis.metro_pipeline.types import PathType
 
 
 class File1(MetroFile):
@@ -447,3 +448,92 @@ def test_relative_secrets_file_is_resolved_against_config_file():
         config_path.write_text('main_directory = "output"\nsecrets_file = "secrets.toml"\n')
         config = Config.from_toml(config_path)
         assert config.secrets == {"mysecret": "hello"}
+
+
+class EnvDefaultStep(Step):
+    value = StringParameter("dep.value", default="env:PYMETROPOLIS_TEST_ENV_DEFAULT")
+
+
+class SecretDefaultStep(Step):
+    value = StringParameter("dep.value", default="secret:test_secret")
+
+
+def test_parameter_default_resolves_env_indirection(monkeypatch):
+    """A Parameter's `default` can itself be an `"env:VAR"` indirection: it is resolved lazily
+    against the environment, not validated as a literal string at class-definition time.
+    """
+    monkeypatch.setenv("PYMETROPOLIS_TEST_ENV_DEFAULT", "hello")
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        config = Config({"main_directory": tmp_dir})
+        step = EnvDefaultStep(config)
+        assert step.value == "hello"
+
+
+def test_parameter_default_resolves_secret_indirection():
+    """A Parameter's `default` can itself be a `"secret:key"` indirection, resolved lazily against
+    the config's secrets.
+    """
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        config = Config({"main_directory": tmp_dir})
+        config.secrets = {"test_secret": "hello"}
+        step = SecretDefaultStep(config)
+        assert step.value == "hello"
+
+
+class DataFileStep(Step):
+    data_file = PathParameter("dep.data_file", check_file_exists=True)
+
+
+def test_relative_path_parameter_is_resolved_against_config_file():
+    """A relative `PathParameter` value is resolved against the directory of the main config file,
+    not against the current working directory, matching `main_directory`.
+    """
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        config_dir = Path(tmp_dir) / "subdir"
+        config_dir.mkdir()
+        (config_dir / "data.csv").write_text("a,b\n")
+        config_path = config_dir / "config.toml"
+        config_path.write_text('main_directory = "output"\n[dep]\ndata_file = "data.csv"\n')
+        config = Config.from_toml(config_path)
+        step = DataFileStep(config)
+        assert step.data_file == config_dir / "data.csv"
+
+
+def test_absolute_path_parameter_is_unaffected_by_config_file_location():
+    """An absolute `PathParameter` value is used as-is, regardless of the main config file's
+    location.
+    """
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        config_dir = Path(tmp_dir) / "subdir"
+        config_dir.mkdir()
+        data_file = Path(tmp_dir) / "data.csv"
+        data_file.write_text("a,b\n")
+        config_path = config_dir / "config.toml"
+        config_path.write_text(
+            f'main_directory = "output"\n[dep]\ndata_file = "{data_file.as_posix()}"\n'
+        )
+        config = Config.from_toml(config_path)
+        step = DataFileStep(config)
+        assert step.data_file == data_file
+
+
+class DataFilesStep(Step):
+    data_files = ListParameter("dep.data_files", inner=PathType(check_file_exists=True))
+
+
+def test_relative_paths_in_a_list_parameter_are_resolved_against_config_file():
+    """Each relative path in a `ListParameter(inner=PathType(...))` value (e.g. `gtfs.files`) is
+    resolved against the directory of the main config file, same as a plain `PathParameter`.
+    """
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        config_dir = Path(tmp_dir) / "subdir"
+        config_dir.mkdir()
+        (config_dir / "a.csv").write_text("a\n")
+        (config_dir / "b.csv").write_text("b\n")
+        config_path = config_dir / "config.toml"
+        config_path.write_text(
+            'main_directory = "output"\n[dep]\ndata_files = ["a.csv", "b.csv"]\n'
+        )
+        config = Config.from_toml(config_path)
+        step = DataFilesStep(config)
+        assert step.data_files == [config_dir / "a.csv", config_dir / "b.csv"]

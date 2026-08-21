@@ -1,0 +1,22 @@
+main_directory = "output/"
+
+random_seed = 123454321
+
+main_population = false
+extra_populations = ["pop1.toml", "pop2.toml"]
+
+[grid_network]
+nb_rows = 1
+nb_columns = 2
+length = 1000
+right_to_left = false
+
+[road_network]
+default_speed_limit = 120
+capacities = 16_000
+
+[simulation]
+period = [07:00:00, 08:00:00]
+recording_interval = 60
+learning_factor = 0.1
+nb_iterations = 200

@@ -1,0 +1,20 @@
+population_name = "pop1"
+
+[node_od_matrix]
+each = 5_000
+
+[mode_choice]
+modes = ["car_driver"]
+
+[modes]
+[modes.car_driver]
+alpha = 10
+
+[departure_time_choice]
+model = "ContinuousLogit"
+mu = 1
+
+[departure_time.linear_schedule]
+beta = 5
+gamma = 7
+tstar = 07:45:00
