@@ -7,6 +7,7 @@ from .files import (
     CarsFile,
     HouseholdsFile,
     HouseholdsHomesFile,
+    HouseholdsHomesUrbanTypeFile,
     HouseholdsZonesFile,
     JointToursFile,
     PersonsFile,
@@ -15,6 +16,7 @@ from .files import (
     TripsDistancesFile,
     TripsFile,
     TripsOriginsFile,
+    TripsUrbanTypeFile,
     TripsZonesFile,
     UniformDrawsFile,
 )
@@ -42,6 +44,8 @@ POPULATION_FILES = [
     ActivitiesLocationsFile,
     ToursFile,
     JointToursFile,
+    HouseholdsHomesUrbanTypeFile,
+    TripsUrbanTypeFile,
 ]
 POPULATION_STEPS = [
     GenericPopulationStep,

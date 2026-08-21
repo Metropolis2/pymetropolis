@@ -4,6 +4,7 @@ from .files import (
     MetroExpectedTravelTimeFunctionsFile,
     MetroIterationResultsFile,
     MetroNextExpectedTravelTimeFunctionsFile,
+    MetroRouteResultsFile,
     MetroSimulatedTravelTimeFunctionsFile,
     MetroTripResultsFile,
 )
@@ -15,5 +16,6 @@ RUN_FILES = [
     MetroSimulatedTravelTimeFunctionsFile,
     MetroExpectedTravelTimeFunctionsFile,
     MetroNextExpectedTravelTimeFunctionsFile,
+    MetroRouteResultsFile,
 ]
 RUN_STEPS = [RunSimulationStep]

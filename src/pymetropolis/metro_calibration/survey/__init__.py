@@ -1,4 +1,5 @@
 from .files import (
+    JointTourEstimatorFile,
     SurveyedCarsFile,
     SurveyedDetailedZonesFile,
     SurveyedDrawZonesFile,
@@ -25,6 +26,7 @@ SURVEY_FILES = [
     SurveyedDetailedZonesFile,
     SurveyedDrawZonesFile,
     SurveyedToursFile,
+    JointTourEstimatorFile,
 ]
 
 SURVEY_STEPS = [

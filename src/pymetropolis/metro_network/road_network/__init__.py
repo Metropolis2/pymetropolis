@@ -5,6 +5,7 @@ from .files import (
     AllRoadDistancesFile,
     RoadEdgesCapacitiesFile,
     RoadEdgesCleanFile,
+    RoadEdgesPrimaryFlagFile,
     RoadEdgesRawFile,
     RoadEdgesUrbanFlagFile,
 )
@@ -19,6 +20,7 @@ ROAD_NETWORK_FILES = [
     RoadEdgesCapacitiesFile,
     RoadEdgesRawFile,
     RoadEdgesUrbanFlagFile,
+    RoadEdgesPrimaryFlagFile,
     AllRoadDistancesFile,
 ]
 

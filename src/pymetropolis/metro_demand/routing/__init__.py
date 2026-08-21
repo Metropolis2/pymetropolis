@@ -1,4 +1,5 @@
 from .files import (
+    NonPrimaryCarTrips,
     PrimaryCarTripsAccessEgressFile,
     TripsBicycleCostsFile,
     TripsBicycleNodesFile,
@@ -31,6 +32,7 @@ ROUTING_FILES = [
     TripsCarFreeFlowTravelTimesFile,
     PrimaryCarTripsAccessEgressFile,
     TripsPublicTransitItinerariesFile,
+    NonPrimaryCarTrips,
 ]
 
 ROUTING_STEPS = [
