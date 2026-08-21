@@ -47,8 +47,8 @@ class Config:
 
     def __init__(self, d: dict, main_path: Path | None = None):
         self.dict = d
-        self.check_main_directory()
-        self.read_secrets()
+        self.check_main_directory(main_path)
+        self.read_secrets(main_path)
         self.read_main_population()
         self.read_extra_populations(main_path)
         self.read_custom_steps(main_path)
@@ -63,41 +63,51 @@ class Config:
         inst = cls(input_dict, path)
         return inst
 
-    def check_main_directory(self):
+    def check_main_directory(self, main_path: Path | None):
         """Asserts that `main_directory` is properly defined and that the directory exists.
 
         If the directory does not exist, creates it.
+
+        A relative `main_directory` is resolved against the directory of the main config file
+        (`main_path`), not against the current working directory.
         """
         main_dir = self.dict.get(MAIN_DIR_KEY)
         if main_dir is None:
             raise MetropyError(f"Missing `{MAIN_DIR_KEY}` in config")
         if not isinstance(main_dir, str):
             raise MetropyError(f"Config value `{MAIN_DIR_KEY}` should be a path, got `{main_dir}`")
-        path = Path(main_dir)
+        rel_path = Path(main_dir)
+        if main_path is not None:
+            path = main_path.parent / rel_path
+        else:
+            path = rel_path
         path.mkdir(exist_ok=True, parents=True)
         self.main_directory = path
         # Also create the update_files/ directory if needed.
         update_files_path = path / "update_files"
         update_files_path.mkdir(exist_ok=True)
 
-    def read_secrets(self):
+    def read_secrets(self, main_path: Path | None):
         """Reads the secrets file if it exists.
 
         If the SECRETS_KEY config key is not defined, the default path is `secrets.toml`.
+
+        A relative path is resolved against the directory of the main config file (`main_path`),
+        not against the current working directory.
         """
         secrets_file_def = self.dict.get(SECRETS_KEY)
-        if secrets_file_def is not None:
-            if not isinstance(secrets_file_def, str):
-                raise MetropyError(
-                    f"Invalid `{SECRETS_KEY}` parameter: Not a path: `{secrets_file_def}`"
-                )
-            if not Path(secrets_file_def).exists():
-                raise MetropyError(
-                    f"Invalid `{SECRETS_KEY}` parameter: Path `{secrets_file_def}` does not exist"
-                )
+        if secrets_file_def is not None and not isinstance(secrets_file_def, str):
+            raise MetropyError(
+                f"Invalid `{SECRETS_KEY}` parameter: Not a path: `{secrets_file_def}`"
+            )
         # When not specified, default path is `secrets.toml`.
-        secrets_file = secrets_file_def or "secrets.toml"
-        path = Path(secrets_file)
+        rel_path = Path(secrets_file_def or "secrets.toml")
+        if main_path is not None:
+            path = main_path.parent / rel_path
+        else:
+            path = rel_path
+        if secrets_file_def is not None and not path.exists():
+            raise MetropyError(f"Invalid `{SECRETS_KEY}` parameter: Path `{path}` does not exist")
         if path.exists():
             self.secrets = parse_toml(path)
         else:

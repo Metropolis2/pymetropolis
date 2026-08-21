@@ -64,6 +64,9 @@ New features:
 
 Other changes:
 
+- Relative `main_directory` and `secrets_file` paths are now resolved against the directory of the
+  main config file, instead of the current working directory (consistent with `extra_populations`
+  and `custom_steps`)
 - Put `"unemployed"` and `"homemaker"` professional activity modalities in the `"other"` modality
 - Rename `"shop"` purpose to `"shopping"`
 - The random number generator (`RandomStep.get_rng()`) now use a different seed for each step, so

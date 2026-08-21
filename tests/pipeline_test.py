@@ -340,3 +340,110 @@ def test_pipeline_with_custom_steps_override():
         (overriding_step,) = pipeline.steps.keys()
         assert overriding_step.__class__.__name__ == "A"
         assert getattr(overriding_step.__class__, "overridden", False) is True
+
+
+class IndepFileB(MetroFile):
+    path = "indep_b"
+
+
+class IndepFileC(MetroFile):
+    path = "indep_c"
+
+
+class IndepFileD(MetroFile):
+    path = "indep_d"
+
+
+class IndepFileE(MetroFile):
+    path = "indep_e"
+
+
+class IndepSinkFile(MetroFile):
+    path = "indep_sink"
+
+
+class IndepB(Step):
+    output_files = {"b": IndepFileB}
+
+
+class IndepC(Step):
+    output_files = {"c": IndepFileC}
+
+
+class IndepD(Step):
+    output_files = {"d": IndepFileD}
+
+
+class IndepE(Step):
+    output_files = {"e": IndepFileE}
+
+
+class IndepSink(Step):
+    input_files = {"b": IndepFileB, "c": IndepFileC, "d": IndepFileD, "e": IndepFileE}
+    output_files = {"sink": IndepSinkFile}
+
+
+def test_pipeline_sequence_is_deterministic():
+    """Steps that become runnable at the same time (here the four independent `Indep*` steps) are
+    always sequenced in the same, name-sorted order.
+
+    `Step` does not define `__hash__`, so iterating the `set` of remaining steps directly would
+    order them by object id and yield a different sequence from one run to the next.
+    """
+    step_classes: list[type[Step]] = [IndepB, IndepC, IndepD, IndepE, IndepSink]
+    expected = ["IndepB", "IndepC", "IndepD", "IndepE", "IndepSink"]
+    permutations: list[list[type[Step]]] = [
+        step_classes,
+        list(reversed(step_classes)),
+        [IndepSink, IndepD, IndepB, IndepE, IndepC],
+        [IndepE, IndepC, IndepSink, IndepB, IndepD],
+    ]
+    # Feeding the step classes in different orders is what makes the instances' ids (and hence the
+    # `set` iteration order) differ between the pipelines built below.
+    for permutation in permutations:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            config = Config({"main_directory": tmp_dir})
+            pipeline = MetroPipeline(config, permutation)
+            sequence = pipeline.find_sequence()
+            step_sequence = [step.__class__.__name__ for step, _ in sequence]
+            assert step_sequence == expected
+
+
+def test_relative_main_directory_is_resolved_against_config_file():
+    """A relative `main_directory` is resolved against the directory of the main config file, not
+    against the current working directory.
+    """
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        config_dir = Path(tmp_dir) / "subdir"
+        config_dir.mkdir()
+        config_path = config_dir / "config.toml"
+        config_path.write_text('main_directory = "output"\n')
+        config = Config.from_toml(config_path)
+        assert config.main_directory == config_dir / "output"
+        assert config.main_directory.is_dir()
+
+
+def test_absolute_main_directory_is_unaffected_by_config_file_location():
+    """An absolute `main_directory` is used as-is, regardless of the main config file's location."""
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        config_dir = Path(tmp_dir) / "subdir"
+        config_dir.mkdir()
+        config_path = config_dir / "config.toml"
+        main_dir = Path(tmp_dir) / "output"
+        config_path.write_text(f'main_directory = "{main_dir.as_posix()}"\n')
+        config = Config.from_toml(config_path)
+        assert config.main_directory == main_dir
+
+
+def test_relative_secrets_file_is_resolved_against_config_file():
+    """A relative `secrets_file` is resolved against the directory of the main config file, not
+    against the current working directory.
+    """
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        config_dir = Path(tmp_dir) / "subdir"
+        config_dir.mkdir()
+        (config_dir / "secrets.toml").write_text('mysecret = "hello"\n')
+        config_path = config_dir / "config.toml"
+        config_path.write_text('main_directory = "output"\nsecrets_file = "secrets.toml"\n')
+        config = Config.from_toml(config_path)
+        assert config.secrets == {"mysecret": "hello"}
