@@ -17,6 +17,16 @@ from .file import MetroFile
 from .steps import Step
 
 
+def _file_key(f: MetroFile) -> str:
+    """Sort key giving a stable, run-independent order for MetroFiles.
+
+    `MetroFile.__hash__` is based on the class and the resolved path, so iterating a `set` of them
+    yields an order that depends on `PYTHONHASHSEED`; sorting on the (unique) resolved path instead
+    makes the order reproducible across runs.
+    """
+    return str(f.get_path())
+
+
 class StepStatus(Enum):
     # Step has already be run, its config did not change, the input files did not change.
     UP_TO_DATE = 0
@@ -120,7 +130,7 @@ class MetroPipeline:
 
     def check_files_to_delete(self, all_output_files: set[MetroFile]):
         to_delete_files = list()
-        for ofile in all_output_files:
+        for ofile in sorted(all_output_files, key=_file_key):
             f = ofile.from_dir(self.config.main_directory)
             if ofile not in self.generated_files and f.exists():
                 to_delete_files.append(f)
@@ -167,19 +177,22 @@ class MetroPipeline:
         self.primary_input_files = set()
         remaining = set(self.steps.keys())
         while True:
-            steps_to_add = {
+            # `remaining` and the output file sets below are iterated in sorted order so that the
+            # insertion order of `generated_files` (which drives `find_next_conflict`) does not
+            # depend on object ids / hash randomization.
+            steps_to_add = [
                 s
-                for s in remaining
+                for s in sorted(remaining, key=str)
                 if self.steps[s]["required_inputs"].issubset(self.generated_files)
-            }
+            ]
             if not steps_to_add:
                 break
-            remaining -= steps_to_add
+            remaining -= set(steps_to_add)
             for s in steps_to_add:
                 if s.is_primary():
                     for f in self.steps[s]["required_inputs"] | self.steps[s]["optional_inputs"]:
                         self.primary_input_files.add(f)
-                for f in self.steps[s]["outputs"]:
+                for f in sorted(self.steps[s]["outputs"], key=_file_key):
                     self.generated_files[f].add(s)
         # Remove unfeasible steps from the step list.
         for s in remaining:
@@ -204,7 +217,7 @@ class MetroPipeline:
     def find_next_conflict(self) -> set[Step] | None:
         for ofile, steps in self.generated_files.items():
             if len(steps) >= 2:
-                steps_str = ", ".join(map(str, steps))
+                steps_str = ", ".join(sorted(map(str, steps)))
                 logger.debug(f"Multiple steps are generating file {ofile}: {steps_str}")
                 return steps
 
@@ -213,7 +226,7 @@ class MetroPipeline:
             conflict = self.find_next_conflict()
             if conflict is None:
                 break
-            to_remove_steps = self.least_priority_steps(conflict)
+            to_remove_steps = sorted(self.least_priority_steps(conflict), key=str)
             steps_str = ", ".join(map(str, to_remove_steps))
             if len(to_remove_steps) > 1:
                 logger.debug(f"Steps {steps_str} are discarded.")
@@ -231,9 +244,12 @@ class MetroPipeline:
         to_run_steps = set()
         outdated_files = set()
         while True:
+            # `remaining` is iterated in sorted order (rather than in `set` order, which depends on
+            # object ids) so that steps which become runnable at the same time are always sequenced
+            # in the same order from one run to the next.
             steps_to_add = [
                 s
-                for s in remaining
+                for s in sorted(remaining, key=str)
                 # Condition 1: all required files have already been generated.
                 if self.steps[s]["required_inputs"].issubset(available_files)
                 # Condition 2: all optional files *which will be generated* have already been
@@ -271,7 +287,7 @@ class MetroPipeline:
                 remaining.remove(step)
                 available_files.update(set(self.steps[step]["outputs"]))
         # Check that all feasible *primary* steps were added to the sequence.
-        remaining_primary = list(filter(lambda s: s.is_primary(), remaining))
+        remaining_primary = sorted(filter(lambda s: s.is_primary(), remaining), key=str)
         assert not remaining_primary, (
             "Some Steps could not be added to the sequence: "
             f"{', '.join(map(str, remaining_primary))}"
