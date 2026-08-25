@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from mobisurvstd.resources.insee_data import load_insee_data
-
 from pymetropolis.metro_pipeline import PopulationStep
 
 from .common import DENSITY_CATS, FNC_AREA_CAT_CATS, FNC_AREA_TYPE_CATS, URBAN_TYPE_CATS
@@ -20,6 +18,7 @@ if TYPE_CHECKING:
 
 def get_insee_data() -> pl.DataFrame:
     import polars as pl
+    from mobisurvstd.resources.insee_data import load_insee_data
 
     insee_data: pl.DataFrame = load_insee_data()
     max_year = max(

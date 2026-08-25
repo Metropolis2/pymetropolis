@@ -1,6 +1,6 @@
-from typing import Any
+from __future__ import annotations
 
-from mobisurvstd.classes import SurveyData
+from typing import TYPE_CHECKING, Any
 
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_pipeline import Step
@@ -17,6 +17,9 @@ from .files import (
     SurveyedSpecialLocationsFile,
     SurveyedTripsFile,
 )
+
+if TYPE_CHECKING:
+    from mobisurvstd.classes import SurveyData
 
 
 def prepare_survey(survey: SurveyData, idx: int) -> dict[str, Any]:
