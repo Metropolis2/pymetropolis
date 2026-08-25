@@ -523,3 +523,50 @@ class TripsPublicTransitItinerariesFile(MetroDataFrameFile):
             optional=True,
         ),
     ]
+
+
+SCHEMA_ZONE_ROAD_NODE = [
+    Column(
+        "zone_id",
+        MetroDataType.ID,
+        description="Identifier of the zone",
+        unique=True,
+        nullable=False,
+    ),
+    Column(
+        "road_node",
+        MetroDataType.ID,
+        description="Identifier of the road node representative of the zone.",
+        nullable=True,
+    ),
+]
+
+
+class ZonesLevel1RoadNodeFile(MetroDataFrameFile):
+    path = "demand/routing/zone1_road_node.parquet"
+    description = "Road network node representative of Level-1 zones."
+    schema = SCHEMA_ZONE_ROAD_NODE
+
+
+class ZonesLevel2RoadNodeFile(MetroDataFrameFile):
+    path = "demand/routing/zone2_road_node.parquet"
+    description = "Road network node representative of Level-2 zones."
+    schema = SCHEMA_ZONE_ROAD_NODE
+
+
+class ZonesLevel3RoadNodeFile(MetroDataFrameFile):
+    path = "demand/routing/zone3_road_node.parquet"
+    description = "Road network node representative of Level-3 zones."
+    schema = SCHEMA_ZONE_ROAD_NODE
+
+
+class ZonesLevel4RoadNodeFile(MetroDataFrameFile):
+    path = "demand/routing/zone4_road_node.parquet"
+    description = "Road network node representative of Level-4 zones."
+    schema = SCHEMA_ZONE_ROAD_NODE
+
+
+class ZonesLevel5RoadNodeFile(MetroDataFrameFile):
+    path = "demand/routing/zone5_road_node.parquet"
+    description = "Road network node representative of Level-5 zones."
+    schema = SCHEMA_ZONE_ROAD_NODE

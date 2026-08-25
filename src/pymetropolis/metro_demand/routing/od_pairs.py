@@ -8,6 +8,7 @@ from pymetropolis.metro_demand.population.files import TripsDestinationsFile, Tr
 from pymetropolis.metro_network.bicycle_network.files import BicycleEdgesCleanFile
 from pymetropolis.metro_network.pedestrian_network.files import PedestrianEdgesCleanFile
 from pymetropolis.metro_network.road_network.files import RoadEdgesCleanFile
+from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import ListParameter
 from pymetropolis.metro_pipeline.types import String
 from pymetropolis.metro_spatial import GeoStep
@@ -176,16 +177,8 @@ class BicycleODNodesFromCoordinatesStep(GeoStep):
         self.output["ods"].write(ods)
 
 
-class RoadODNodesFromCoordinatesStep(GeoStep):
-    """Identifies nodes on the road network to be used as origins and destinations of the trips.
-
-    First, this Step finds the nearest edge to the origin / destination coordinates.
-    Edges whose type is specified in the
-    [`forbidden_types`](parameters.md#road_networkforbidden_types) parameter are excluded from that
-    search.
-    Then, the origin / destination node is either the source or target of that nearest edge,
-    whichever is closer.
-    """
+class StepWithRoadForbiddenTypes(Step):
+    """Abstract class to make the `road_network.forbidden_types` parameter reusable."""
 
     forbidden_types = ListParameter(
         "road_network.forbidden_types",
@@ -196,6 +189,19 @@ class RoadODNodesFromCoordinatesStep(GeoStep):
         ),
         example='`["motorway", "motorway_link", "trunk", "trunk_link"]`',
     )
+
+
+class RoadODNodesFromCoordinatesStep(GeoStep, StepWithRoadForbiddenTypes):
+    """Identifies nodes on the road network to be used as origins and destinations of the trips.
+
+    First, this Step finds the nearest edge to the origin / destination coordinates.
+    Edges whose type is specified in the
+    [`forbidden_types`](parameters.md#road_networkforbidden_types) parameter are excluded from that
+    search.
+    Then, the origin / destination node is either the source or target of that nearest edge,
+    whichever is closer.
+    """
+
     input_files = {
         "edges": RoadEdgesCleanFile,
         "origins": TripsOriginsFile,
