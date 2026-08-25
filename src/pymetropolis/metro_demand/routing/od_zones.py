@@ -251,22 +251,23 @@ class ZonesODCongestedTravelTimesStep(RoutingCLIStep):
     run once per zone pair againt the congested edge travel-time functions
     produced by the simulation (MetroNextExpectedTravlTimeFunctionsFile),
     giving one breakpoint every recording_interval. The stored value is the median
-    travel time over breakpoints falling within time_window (along with the min,
+    travel time over breakpoints falling within `time_window` (along with the min,
     max and standard deviation over the same breakpoints).
+    If `time_window` is not specified, the full time window of the simulation is used.
     """
 
     time_window = ListParameter(
         "od_matrix_travel_times.time_window",
         inner=Time(),
         length=2,
-        description="Time window over which the congested travel time is aggregated",
+        description="Time window over which the congested travel time is aggregated.",
         example="`[06:00:00, 09:00:00]`",
     )
     zones = ListParameter(
         "od_matrix_travel_times.zones_levels",
         inner=Int(),
         max_length=5,
-        description="differents zones levels where we want to find congested od travel time",
+        description="Differents zones levels where we want to find congested od travel time.",
         default=None,
         example="`[3, 4]`",
     )
@@ -300,13 +301,12 @@ class ZonesODCongestedTravelTimesStep(RoutingCLIStep):
     }
 
     def is_defined(self) -> bool:
-        return super().is_defined() and self.zones is not None and self.time_window is not None
+        return super().is_defined() and self.zones is not None
 
     def run(self):
         import polars as pl
 
         assert self.exec_path is not None
-        assert self.time_window is not None
         assert self.zones is not None
 
         edges_gdf = self.input["edges"].read()
@@ -323,11 +323,12 @@ class ZonesODCongestedTravelTimesStep(RoutingCLIStep):
             edges = edges.filter(pl.col("weight").is_not_null())
 
         edge_ttfs = self.input["edge_ttfs"].read()
+        if self.time_window is not None:
+            # Remove breakpoints before the start of the time window (we don't need them and they
+            # slow down the queries).
+            edge_ttfs = edge_ttfs.filter(pl.col("departure_time") >= self.time_window[0].seconds())
         edge_ttfs = (
-            edge_ttfs.filter(
-                (pl.col("vehicle_id") == "car_driver_alone")
-                & (pl.col("departure_time") >= self.time_window[0].seconds())
-            )
+            edge_ttfs.filter(pl.col("vehicle_id") == "car_driver_alone")
             .select("edge_id", "departure_time", "travel_time")
             .join(edges.select("edge_id"), on="edge_id", how="semi")
         )
@@ -340,13 +341,14 @@ class ZonesODCongestedTravelTimesStep(RoutingCLIStep):
                 df = pl.read_parquet(
                     os.path.join(tmp_directory, "output", "profile_results.parquet")
                 )
-            # A null departure_time means the travel time is constant over the whole
-            # simulated period (the route was never affected by congestion).
-            df = df.filter(
-                pl.col("departure_time").is_null()
-                | (self.time_window[0].seconds() <= pl.col("departure_time"))
-                & (self.time_window[1].seconds() >= pl.col("departure_time"))
-            )
+            if self.time_window is not None:
+                # A null departure_time means the travel time is constant over the whole
+                # simulated period (the route was never affected by congestion).
+                df = df.filter(
+                    pl.col("departure_time").is_null()
+                    | (self.time_window[0].seconds() <= pl.col("departure_time"))
+                    & (self.time_window[1].seconds() >= pl.col("departure_time"))
+                )
             results = df.group_by("query_id").agg(
                 congested_travel_time=pl.col("travel_time").median(),
                 congested_travel_time_min=pl.col("travel_time").min(),
