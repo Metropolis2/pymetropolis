@@ -40,9 +40,12 @@ documented step-by-step in the Book. Kept in sync with the walkthroughs there.
 Additional example configurations, not covered by the Book, showcasing other Pymetropolis
 features.
 
-- [`bottleneck-2pop/`](extra/bottleneck-2pop/): the Bottleneck network split into two demand
-  populations with different desired arrival times, demonstrating multi-population support
-  (`extra_populations`).
+- [`bottleneck-multi-demand/`](extra/bottleneck-multi-demand/): the Bottleneck network split into
+  two demand populations with different desired arrival times, demonstrating multi-population
+  support (`extra_populations`).
+- [`bottleneck-custom-steps/`](extra/bottleneck-custom-steps/): the Bottleneck case study
+  reproduced with custom Steps, demonstrating how to extend or override the pipeline with your own
+  code (`custom_steps`).
 - [`france/config-joint-tours.toml`](extra/france/config-joint-tours.toml): trains a joint-tours
   classifier from an aggregation of French mobility surveys, imported with
   [MobiSurvStd](https://github.com/Metropolis2/mobisurvstd).
