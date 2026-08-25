@@ -174,10 +174,10 @@ class ZonesODFreeFlowTravelTimesStep(RoutingCLIStep):
     """
 
     zones = ListParameter(
-        "od_matrix_travel_times.zones_levels",
+        "od_matrix_travel_times.free_flow_zones_levels",
         inner=Int(lb=1, ub=5),
         max_length=5,
-        description="Differents zones levels where we want to find OD free-flow travel time.",
+        description="Zones levels for which OD free-flow travel times are computed.",
         default=None,
         example="`[3, 4]`",
     )
@@ -264,10 +264,10 @@ class ZonesODCongestedTravelTimesStep(RoutingCLIStep):
         example="`[06:00:00, 09:00:00]`",
     )
     zones = ListParameter(
-        "od_matrix_travel_times.zones_levels",
+        "od_matrix_travel_times.congested_zones_levels",
         inner=Int(),
         max_length=5,
-        description="Differents zones levels where we want to find congested od travel time.",
+        description="Zones levels for which OD congested travel times are computed.",
         default=None,
         example="`[3, 4]`",
     )
