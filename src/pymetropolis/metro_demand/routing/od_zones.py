@@ -350,24 +350,20 @@ class ZonesODCongestedTravelTimesStep(RoutingCLIStep):
                     & (self.time_window[1].seconds() >= pl.col("departure_time"))
                 )
             results = df.group_by("query_id").agg(
-                congested_travel_time=pl.col("travel_time").median(),
-                congested_travel_time_min=pl.col("travel_time").min(),
-                congested_travel_time_max=pl.col("travel_time").max(),
-                congested_travel_time_std=pl.col("travel_time").std(),
+                congested_travel_time=pl.duration(seconds=pl.col("travel_time").median()),
+                congested_travel_time_min=pl.duration(seconds=pl.col("travel_time").min()),
+                congested_travel_time_max=pl.duration(seconds=pl.col("travel_time").max()),
+                congested_travel_time_std=pl.duration(
+                    seconds=pl.col("travel_time").std().fill_null(0.0)
+                ),
             )
-            df = (
-                pairs.join(results, on="query_id", how="left", coalesce=False)
-                .with_columns(
-                    congested_travel_time_std=pl.col("congested_travel_time_std").fill_null(0.0)
-                )
-                .select(
-                    "origin_zone_id",
-                    "destination_zone_id",
-                    congested_travel_time=pl.duration(seconds="congested_travel_time"),
-                    congested_travel_time_min=pl.duration(seconds="congested_travel_time_min"),
-                    congested_travel_time_max=pl.duration(seconds="congested_travel_time_max"),
-                    congested_travel_time_std=pl.duration(seconds="congested_travel_time_std"),
-                )
+            df = pairs.join(results, on="query_id", how="left", coalesce=False).select(
+                "origin_zone_id",
+                "destination_zone_id",
+                "congested_travel_time",
+                "congested_travel_time_min",
+                "congested_travel_time_max",
+                "congested_travel_time_std",
             )
             self.output[f"zone{zone}_congested"].write(df)
 
