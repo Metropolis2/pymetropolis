@@ -19,6 +19,13 @@ New steps:
 - `TripsZonesStep`
 - `FrenchHouseholdsUrbanTypeStep`
 - `FrenchTripsUrbanTypeStep`
+- `ZonesLevel1RoadNodesStep`
+- `ZonesLevel2RoadNodesStep`
+- `ZonesLevel3RoadNodesStep`
+- `ZonesLevel4RoadNodesStep`
+- `ZonesLevel5RoadNodesStep`
+- `ZonesODFreeFlowTravelTimesStep`
+- `ZonesODCongestedTravelTimesStep`
 
 New files:
 
@@ -42,6 +49,21 @@ New files:
 - `ZonesLevel5File`
 - `HouseholdHomesUrbanTypeFile`
 - `TripsUrbanTypeFile`
+- `ZonesLevel1RoadNodeFile`
+- `ZonesLevel2RoadNodeFile`
+- `ZonesLevel3RoadNodeFile`
+- `ZonesLevel4RoadNodeFile`
+- `ZonesLevel5RoadNodeFile`
+- `ZoneODLevel1FreeFlowTravelTimesFile`
+- `ZoneODLevel2FreeFlowTravelTimesFile`
+- `ZoneODLevel3FreeFlowTravelTimesFile`
+- `ZoneODLevel4FreeFlowTravelTimesFile`
+- `ZoneODLevel5FreeFlowTravelTimesFile`
+- `ZoneODLevel1CongestedTravelTimesFile`
+- `ZoneODLevel2CongestedTravelTimesFile`
+- `ZoneODLevel3CongestedTravelTimesFile`
+- `ZoneODLevel4CongestedTravelTimesFile`
+- `ZoneODLevel5CongestedTravelTimesFile`
 
 New parameters:
 
@@ -49,6 +71,11 @@ New parameters:
 - `main_population`
 - `extra_populations`
 - `custom_steps`
+- `road_network.forbiden_types`
+- `zones.weiszfeld.threshold`
+- `zones.weiszfeld.max_iter`
+- `od_matrix_travel_times.zones_levels`
+- `od_matrix_travel_times.time_window`
 
 New features:
 
