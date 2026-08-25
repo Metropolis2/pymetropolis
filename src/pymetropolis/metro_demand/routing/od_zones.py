@@ -72,7 +72,7 @@ class ZonesBaseModel(GeoStep, StepWithRoadForbiddenTypes):
     )
 
     def weiszfeldOptimumNode(self, nodes: np.ndarray) -> np.ndarray:
-        """find the approximate of the geometric median of nodes."""
+        """Find the approximate of the geometric median of nodes."""
         import numpy as np
 
         assert self.max_iter is not None
@@ -102,7 +102,7 @@ class ZonesBaseModel(GeoStep, StepWithRoadForbiddenTypes):
         from scipy.spatial import KDTree
         from shapely.geometry import Point
 
-        logger.debug("Listing candidate road-network nodes")
+        logger.debug("Listing candidate road-network nodes.")
         source_nodes = edges[["source", "geometry"]].rename(columns={"source": "node"})
         source_nodes["geometry"] = source_nodes["geometry"].apply(lambda g: Point(g.coords[0]))
         target_nodes = edges[["target", "geometry"]].rename(columns={"target": "node"})
@@ -111,10 +111,10 @@ class ZonesBaseModel(GeoStep, StepWithRoadForbiddenTypes):
             pd.concat([source_nodes, target_nodes], ignore_index=True), crs=edges.crs
         ).drop_duplicates(subset="node")
 
-        logger.debug("Assigning each road-network node to its zone")
+        logger.debug("Assigning each road-network node to its zone.")
         nodes = nodes.sjoin(zones, how="inner", predicate="within").drop(columns=["index_right"])
 
-        logger.debug("Finding the optimum_node node in each zone")
+        logger.debug("Finding the optimum_node node in each zone.")
         nodes["x"] = nodes.geometry.x
         nodes["y"] = nodes.geometry.y
         df = pl.from_pandas(nodes.loc[:, ["node", "zone_id", "x", "y"]])
@@ -169,35 +169,33 @@ class ZonesLevel5RoadNodesStep(ZonesBaseModel):
 
 
 class ZonesODFreeFlowTravelTimesStep(RoutingCLIStep):
-    """
-    Computes the free-flow travel time by car between each ordered pair of
-    zones, using each zone's representative road node (ZonesRoadNodeFile) as a
-    virtual origin/destination.
+    """Computes the free-flow travel time by car between each ordered pair of zones, using each
+    zone's representative road node (ZonesRoadNodeFile) as a virtual origin/destination.
     """
 
     zones = ListParameter(
         "od_matrix_travel_times.zones_levels",
         inner=Int(lb=1, ub=5),
         max_length=5,
-        description="differents zones levels where we want to find od free-flow travel time",
+        description="Differents zones levels where we want to find OD free-flow travel time.",
         default=None,
-        example="[3, 4]",
+        example="`[3, 4]`",
     )
     input_files = {
         "zone1_road_node": InputFile(
-            ZonesLevel1RoadNodeFile, when=lambda step: bool(step.zones) and 1 in step.zones
+            ZonesLevel1RoadNodeFile, when=lambda step: step.zones is not None and 1 in step.zones
         ),
         "zone2_road_node": InputFile(
-            ZonesLevel2RoadNodeFile, when=lambda step: bool(step.zones) and 2 in step.zones
+            ZonesLevel2RoadNodeFile, when=lambda step: step.zones is not None and 2 in step.zones
         ),
         "zone3_road_node": InputFile(
-            ZonesLevel3RoadNodeFile, when=lambda step: bool(step.zones) and 3 in step.zones
+            ZonesLevel3RoadNodeFile, when=lambda step: step.zones is not None and 3 in step.zones
         ),
         "zone4_road_node": InputFile(
-            ZonesLevel4RoadNodeFile, when=lambda step: bool(step.zones) and 4 in step.zones
+            ZonesLevel4RoadNodeFile, when=lambda step: step.zones is not None and 4 in step.zones
         ),
         "zone5_road_node": InputFile(
-            ZonesLevel5RoadNodeFile, when=lambda step: bool(step.zones) and 5 in step.zones
+            ZonesLevel5RoadNodeFile, when=lambda step: step.zones is not None and 5 in step.zones
         ),
         "edges": RoadEdgesCleanFile,
         "edges_fftt": RoadEdgesFreeFlowTravelTimeFile,
@@ -211,7 +209,7 @@ class ZonesODFreeFlowTravelTimesStep(RoutingCLIStep):
     }
 
     def is_defined(self) -> bool:
-        return super().is_defined() and bool(self.zones)
+        return super().is_defined() and self.zones is not None
 
     def run(self):
         import polars as pl
@@ -229,7 +227,7 @@ class ZonesODFreeFlowTravelTimesStep(RoutingCLIStep):
         )
         n = edges["weight"].null_count()
         if n:
-            logger.warning(f"Discarding {n} edges with NULL free-flow travel time")
+            logger.warning(f"Discarding {n} edges with NULL free-flow travel time.")
             edges = edges.filter(pl.col("weight").is_not_null())
 
         for zone in self.zones:
@@ -246,9 +244,8 @@ class ZonesODFreeFlowTravelTimesStep(RoutingCLIStep):
 
 
 class ZonesODCongestedTravelTimesStep(RoutingCLIStep):
-    """
-    Computes the congested travel time by car between each ordered pair of zones,
-    using each zone's representative road node as a virtual origin/destination.
+    """Computes the congested travel time by car between each ordered pair of zones, using each
+    zone's representative road node as a virtual origin/destination.
 
     Unlike the free-flow variant, results depend on departure time: routing is
     run once per zone pair againt the congested edge travel-time functions
@@ -263,7 +260,7 @@ class ZonesODCongestedTravelTimesStep(RoutingCLIStep):
         inner=Time(),
         length=2,
         description="Time window over which the congested travel time is aggregated",
-        example="[06:00:00, 09:00:00]",
+        example="`[06:00:00, 09:00:00]`",
     )
     zones = ListParameter(
         "od_matrix_travel_times.zones_levels",
@@ -271,24 +268,24 @@ class ZonesODCongestedTravelTimesStep(RoutingCLIStep):
         max_length=5,
         description="differents zones levels where we want to find congested od travel time",
         default=None,
-        example="[3, 4]",
+        example="`[3, 4]`",
     )
 
     input_files = {
         "zone1_road_node": InputFile(
-            ZonesLevel1RoadNodeFile, when=lambda step: bool(step.zones) and 1 in step.zones
+            ZonesLevel1RoadNodeFile, when=lambda step: step.zones is not None and 1 in step.zones
         ),
         "zone2_road_node": InputFile(
-            ZonesLevel2RoadNodeFile, when=lambda step: bool(step.zones) and 2 in step.zones
+            ZonesLevel2RoadNodeFile, when=lambda step: step.zones is not None and 2 in step.zones
         ),
         "zone3_road_node": InputFile(
-            ZonesLevel3RoadNodeFile, when=lambda step: bool(step.zones) and 3 in step.zones
+            ZonesLevel3RoadNodeFile, when=lambda step: step.zones is not None and 3 in step.zones
         ),
         "zone4_road_node": InputFile(
-            ZonesLevel4RoadNodeFile, when=lambda step: bool(step.zones) and 4 in step.zones
+            ZonesLevel4RoadNodeFile, when=lambda step: step.zones is not None and 4 in step.zones
         ),
         "zone5_road_node": InputFile(
-            ZonesLevel5RoadNodeFile, when=lambda step: bool(step.zones) and 5 in step.zones
+            ZonesLevel5RoadNodeFile, when=lambda step: step.zones is not None and 5 in step.zones
         ),
         "edges": RoadEdgesCleanFile,
         "edges_fftt": RoadEdgesFreeFlowTravelTimeFile,
@@ -303,7 +300,7 @@ class ZonesODCongestedTravelTimesStep(RoutingCLIStep):
     }
 
     def is_defined(self) -> bool:
-        return super().is_defined() and bool(self.zones) and self.time_window is not None
+        return super().is_defined() and self.zones is not None and self.time_window is not None
 
     def run(self):
         import polars as pl
@@ -322,7 +319,7 @@ class ZonesODCongestedTravelTimesStep(RoutingCLIStep):
         )
         n = edges["weight"].null_count()
         if n:
-            logger.warning(f"Discarding {n} edges with NULL free-flow travel time")
+            logger.warning(f"Discarding {n} edges with NULL free-flow travel time.")
             edges = edges.filter(pl.col("weight").is_not_null())
 
         edge_ttfs = self.input["edge_ttfs"].read()
@@ -374,8 +371,7 @@ class ZonesODCongestedTravelTimesStep(RoutingCLIStep):
 
 
 def read_trips(zones: pl.DataFrame) -> tuple[pl.DataFrame, pl.DataFrame]:
-    """
-    Builds the zone x zone virtual "trips" used as OD queries for routing:
+    """Builds the zone x zone virtual "trips" used as OD queries for routing:
     every ordered pair of distinct zones, using each zone's representative road
     node as origin/destination.
 
