@@ -52,6 +52,8 @@ class ZonesBaseModel(GeoStep, StepWithRoadForbiddenTypes):
         ),
     )
 
+    priority = 0
+
     def weiszfeldOptimumNode(self, nodes: np.ndarray) -> np.ndarray:
         """Find the approximate of the geometric median of nodes."""
         import numpy as np
