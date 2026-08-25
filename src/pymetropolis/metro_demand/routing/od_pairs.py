@@ -12,6 +12,7 @@ from pymetropolis.metro_pipeline.parameters import ListParameter
 from pymetropolis.metro_pipeline.types import String
 from pymetropolis.metro_spatial import GeoStep
 
+from .common import StepWithRoadForbiddenTypes
 from .files import TripsBicycleNodesFile, TripsPedestrianNodesFile, TripsRoadNodesFile
 
 if TYPE_CHECKING:
@@ -176,7 +177,7 @@ class BicycleODNodesFromCoordinatesStep(GeoStep):
         self.output["ods"].write(ods)
 
 
-class RoadODNodesFromCoordinatesStep(GeoStep):
+class RoadODNodesFromCoordinatesStep(GeoStep, StepWithRoadForbiddenTypes):
     """Identifies nodes on the road network to be used as origins and destinations of the trips.
 
     First, this Step finds the nearest edge to the origin / destination coordinates.
@@ -187,15 +188,6 @@ class RoadODNodesFromCoordinatesStep(GeoStep):
     whichever is closer.
     """
 
-    forbidden_types = ListParameter(
-        "road_network.forbidden_types",
-        inner=String(),
-        default=[],
-        description=(
-            "List of road edges' types that *cannot* be used as origin / destination edge."
-        ),
-        example='`["motorway", "motorway_link", "trunk", "trunk_link"]`',
-    )
     input_files = {
         "edges": RoadEdgesCleanFile,
         "origins": TripsOriginsFile,

@@ -19,10 +19,11 @@ from pymetropolis.metro_demand.zones.file import (
 from pymetropolis.metro_network.road_network.files import RoadEdgesCleanFile
 from pymetropolis.metro_pipeline.parameters import FloatParameter, IntParameter, ListParameter
 from pymetropolis.metro_pipeline.steps import InputFile
-from pymetropolis.metro_pipeline.types import Int, String, Time
+from pymetropolis.metro_pipeline.types import Int, Time
 from pymetropolis.metro_simulation.run.files import MetroNextExpectedTravelTimeFunctionsFile
 from pymetropolis.metro_spatial import GeoStep
 
+from .common import StepWithRoadForbiddenTypes
 from .files import (
     ZoneODLevel1CongestedTravelTimesFile,
     ZoneODLevel1FreeFlowTravelTimesFile,
@@ -48,14 +49,7 @@ if TYPE_CHECKING:
     import polars as pl
 
 
-class ZonesBaseModel(GeoStep):
-    forbidden_types = ListParameter(
-        "road_network.forbiden_types",
-        inner=String(),
-        default=[],
-        description="List of road edges' types that cannot be used as a zone's roadnode.",
-        example="['motorway', 'motorway_link', 'trunk', 'trunk_link']",
-    )
+class ZonesBaseModel(GeoStep, StepWithRoadForbiddenTypes):
     threshold = FloatParameter(
         "zones.weiszfeld.threshold",
         default=1e-6,
