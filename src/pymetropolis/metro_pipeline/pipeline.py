@@ -15,6 +15,10 @@ from .config import Config
 from .file import MetroFile
 from .steps import Step
 
+UP_TO_DATE_COLOR = (120, 120, 120)
+INVALIDATED_COLOR = (230, 160, 0)
+OUTDATED_COLOR = (220, 40, 40)
+
 
 def _file_key(f: MetroFile) -> str:
     """Sort key giving a stable, run-independent order for MetroFiles.
@@ -315,19 +319,30 @@ class MetroPipeline:
             self.run_sequence(sequence, step_by_step=step_by_step)
 
     def print_sequence(self, sequence: list[tuple[Step, StepStatus]]):
+        legend = ", ".join(
+            colored(label, color, attrs=attrs)
+            for label, color, attrs in (
+                ("up to date", UP_TO_DATE_COLOR, []),
+                ("outdated", OUTDATED_COLOR, ["bold"]),
+                ("invalidated", INVALIDATED_COLOR, []),
+            )
+        )
+        print(f"Legend: {legend}\n")
         s = ""
         for i, (step, status) in enumerate(sequence):
             attrs = list()
             match status:
                 case StepStatus.UP_TO_DATE:
-                    # attrs.append("strike")
-                    color = (163, 112, 0)
+                    color = UP_TO_DATE_COLOR
+                    tag = "up to date"
                 case StepStatus.INVALIDATED:
-                    color = (0, 73, 230)
+                    color = INVALIDATED_COLOR
+                    tag = "invalidated"
                 case StepStatus.OUTDATED:
                     attrs.append("bold")
-                    color = (0, 81, 255)
-            dep_str = colored(f"{i + 1}. {step}", color, attrs=attrs)
+                    color = OUTDATED_COLOR
+                    tag = "outdated"
+            dep_str = colored(f"{i + 1}. {step} [{tag}]", color, attrs=attrs)
             s += dep_str + "\n"
         print(s)
         # TODO: Plot a graph of the pipeline.

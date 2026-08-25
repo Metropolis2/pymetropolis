@@ -76,6 +76,7 @@ Other changes:
 - Examples configurations are now all located within the `examples/` directory
 - `exec_path` and `routing_exec_path` now default to `"env:METROPOLIS_EXEC_PATH"` and
   `"env:METROPOLIS_ROUTING_EXEC_PATH"`, respectively
+- Step status with `--dry-run` use more distinct colors and a legend has been added
 
 Removed steps:
 
