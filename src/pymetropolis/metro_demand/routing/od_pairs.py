@@ -8,11 +8,11 @@ from pymetropolis.metro_demand.population.files import TripsDestinationsFile, Tr
 from pymetropolis.metro_network.bicycle_network.files import BicycleEdgesCleanFile
 from pymetropolis.metro_network.pedestrian_network.files import PedestrianEdgesCleanFile
 from pymetropolis.metro_network.road_network.files import RoadEdgesCleanFile
+from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import ListParameter
 from pymetropolis.metro_pipeline.types import String
 from pymetropolis.metro_spatial import GeoStep
 
-from .common import StepWithRoadForbiddenTypes
 from .files import TripsBicycleNodesFile, TripsPedestrianNodesFile, TripsRoadNodesFile
 
 if TYPE_CHECKING:
@@ -175,6 +175,20 @@ class BicycleODNodesFromCoordinatesStep(GeoStep):
             .name.replace("destination_", "destination_bicycle_")
         )
         self.output["ods"].write(ods)
+
+
+class StepWithRoadForbiddenTypes(Step):
+    """Abstract class to make the `road_network.forbidden_types` parameter reusable."""
+
+    forbidden_types = ListParameter(
+        "road_network.forbidden_types",
+        inner=String(),
+        default=[],
+        description=(
+            "List of road edges' types that *cannot* be used as origin / destination edge."
+        ),
+        example='`["motorway", "motorway_link", "trunk", "trunk_link"]`',
+    )
 
 
 class RoadODNodesFromCoordinatesStep(GeoStep, StepWithRoadForbiddenTypes):
