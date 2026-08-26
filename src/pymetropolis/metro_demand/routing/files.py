@@ -352,8 +352,8 @@ class TripsRoadNodesFile(MetroDataFrameFile, PopulationFile):
     ]
 
 
-class ParkAndRideRoadNodesFile(MetroDataFrameFile):
-    path = "demand/population/trips/park_and_ride/road_nodes.parquet"
+class ParkAndRideRoadNodesFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/trips/park_and_ride/road_nodes.parquet"
     description = "Road nodes matching the park-and-ride facility of each tour."
     schema = [
         Column(
@@ -445,8 +445,8 @@ class TripsCarFreeFlowTravelTimesFile(MetroDataFrameFile, PopulationFile):
     ]
 
 
-class ParkAndRideTripsCarFreeFlowTravelTimesFile(MetroDataFrameFile):
-    path = "demand/population/trips/park_and_ride/road_free_flow_travel_times.parquet"
+class ParkAndRideTripsCarFreeFlowTravelTimesFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/trips/park_and_ride/road_free_flow_travel_times.parquet"
     description = "Travel time under free-flow conditions of the car part for P+R trip."
     schema = [
         Column(
@@ -552,8 +552,8 @@ class PrimaryCarTripsAccessEgressFile(MetroDataFrameFile, PopulationFile):
     ]
 
 
-class PrimaryParkAndRideCarTripsAccessEgressFile(MetroDataFrameFile):
-    path = "demand/population/trips/park_and_ride/primary_car_trips_access_egress.parquet"
+class PrimaryParkAndRideCarTripsAccessEgressFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/trips/park_and_ride/primary_car_trips_access_egress.parquet"
     description = "Data on access / egress of the car parts for park-and-ride trips."
     schema = [
         Column(
@@ -652,8 +652,8 @@ class NonPrimaryCarTrips(MetroDataFrameFile, PopulationFile):
     ]
 
 
-class NonPrimaryParkAndRideCarTrips(MetroDataFrameFile):
-    path = "demand/population/trips/park_and_ride/non_primary_car_trips.parquet"
+class NonPrimaryParkAndRideCarTrips(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/trips/park_and_ride/non_primary_car_trips.parquet"
     description = (
         "Data on car parts of park-and-ride trips, when traveling exclusively on non-primary edges."
     )
@@ -727,8 +727,8 @@ class TripsPublicTransitItinerariesFile(MetroDataFrameFile, PopulationFile):
     ]
 
 
-class ParkAndRideTripsPublicTransitItinerariesFile(MetroDataFrameFile):
-    path = "demand/population/trips/park_and_ride/public_transit_itineraries.parquet"
+class ParkAndRideTripsPublicTransitItinerariesFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/trips/park_and_ride/public_transit_itineraries.parquet"
     description = (
         "Minimum-cost public-transit itinerary for the public-transit part of each P+R trip."
     )

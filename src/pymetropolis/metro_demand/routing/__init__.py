@@ -21,7 +21,7 @@ from .files import (
 )
 from .od_pairs import (
     BicycleODNodesFromCoordinatesStep,
-    ParkAndRideRoadNodesFromCoordinatesStep,
+    ParkAndRideRoadODNodesFromCoordinatesStep,
     PedestrianODNodesFromCoordinatesStep,
     RoadODNodesFromCoordinatesStep,
 )
@@ -81,7 +81,7 @@ ROUTING_STEPS = [
     TripsOpenTripPlannerStep,
     TripsPublicTransitTravelTimeFromR5Step,
     ParkAndRideCarAccessEgressStep,
-    ParkAndRideRoadNodesFromCoordinatesStep,
+    ParkAndRideRoadODNodesFromCoordinatesStep,
     ParkAndRideTripsOpenTripPlannerStep,
     ParkAndRideTripsCarFreeFlowTravelTimesStep,
     ZonesLevel1RoadNodesStep,

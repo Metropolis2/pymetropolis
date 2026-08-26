@@ -351,7 +351,7 @@ class CarAccessEgressStep(PopulationStep):
         self.output["secondary_trips"].write(secondary_trips)
 
 
-class ParkAndRideCarAccessEgressStep(Step):
+class ParkAndRideCarAccessEgressStep(PopulationStep):
     """Identifies the access and egress parts of the car part of park-and-ride trips, based on the
     primary road network.
 

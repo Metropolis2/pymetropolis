@@ -57,6 +57,9 @@ class ParkAndRideFuelStep(GenericCarFuelStep):
     def run(self):
         import polars as pl
 
+        # Note PFR. With this Step, fuel consumption can be automatically computed for the car part
+        # of the trip. There is nothing more to do.
+
         df: pl.DataFrame = self.input["ff_distances"].read()
         df = df.select(
             "trip_id", fuel_consumption=self.fuel_factor * pl.col("free_flow_distance") / 1000.0

@@ -242,7 +242,7 @@ class RoadODNodesFromCoordinatesStep(GenericRoadNodesStep, PopulationStep):
         self.output["ods"].write(ods)
 
 
-class ParkAndRideRoadNodesFromCoordinatesStep(GenericRoadNodesStep):
+class ParkAndRideRoadODNodesFromCoordinatesStep(GenericRoadNodesStep, PopulationStep):
     """For each park-and-ride facility, identifies the node of the road network to be used as
     origin / destination for the car parts of park-and-ride trips.
 

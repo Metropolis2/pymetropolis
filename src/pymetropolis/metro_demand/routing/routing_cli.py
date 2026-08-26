@@ -179,7 +179,7 @@ class TripsCarFreeFlowTravelTimesStep(RoutingCLIStep, PopulationStep):
         self.output["fftt"].write(df)
 
 
-class ParkAndRideTripsCarFreeFlowTravelTimesStep(RoutingCLIStep):
+class ParkAndRideTripsCarFreeFlowTravelTimesStep(RoutingCLIStep, PopulationStep):
     """Computes the travel time on the road network by car, under free-flow conditions, for the car
     part of park-and-ride trips.
 

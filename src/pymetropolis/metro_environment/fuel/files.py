@@ -32,8 +32,8 @@ class CarFuelFile(MetroDataFrameFile, PopulationFile):
     ]
 
 
-class ParkAndRideFuelFile(MetroDataFrameFile):
-    path = "demand/population/modes/park_and_ride/fuel_consumption.parquet"
+class ParkAndRideFuelFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/modes/park_and_ride/fuel_consumption.parquet"
     description = "Fuel consumption of the car part for each park-and-ride trip."
     schema = [
         Column(

@@ -3,14 +3,14 @@ from pymetropolis.metro_network.public_transit.files import (
     PublicTransitRoutesFile,
     PublicTransitStopsFile,
 )
-from pymetropolis.metro_pipeline import Step
+from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.metro_pipeline.parameters import ListParameter
 from pymetropolis.metro_pipeline.types import Int, String
 
 from .files import ParkAndRideStopsFile
 
 
-class ParkAndRideFacilitiesFromNearestStopStep(Step):
+class ParkAndRideFacilitiesFromNearestStopStep(PopulationStep):
     """Generates park-and-ride facilities location for each tour based on nearest stop location."""
 
     route_types = ListParameter(

@@ -581,7 +581,7 @@ class TripsOpenTripPlannerStep(GenericOpenTripPlannerStep, PopulationStep):
         self.output["costs"].write(df)
 
 
-class ParkAndRideTripsOpenTripPlannerStep(GenericOpenTripPlannerStep):
+class ParkAndRideTripsOpenTripPlannerStep(GenericOpenTripPlannerStep, PopulationStep):
     """Computes the travel time and generalized time for the public-transit parts of P+R trips with
     OpenTripPlanner.
 
