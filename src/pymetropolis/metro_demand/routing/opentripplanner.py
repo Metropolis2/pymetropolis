@@ -213,7 +213,7 @@ def run_queries_batch(
                 travel_time=pl.duration(seconds=pl.element().struct.field("travel_time"))
             )
         ),
-    )
+    ).drop("query_time")
     return df
 
 
