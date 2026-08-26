@@ -1,5 +1,6 @@
 from .files import (
     JointTourEstimatorFile,
+    ModeEstimatorFile,
     SurveyedCarsFile,
     SurveyedDetailedZonesFile,
     SurveyedDrawZonesFile,
@@ -11,8 +12,13 @@ from .files import (
     SurveyedToursFile,
     SurveyedTripsFile,
 )
-from .joint_travel import ClassifyJointToursStep, EstimateJointToursClassifierStep
+from .joint_travel import (
+    ClassifyJointToursStep,
+    EstimateJointToursClassifierStep,
+    ExternalJointToursClassifierStep,
+)
 from .mobisurvstd import MobiSurvStdImportStep
+from .modes import ClassifyToursModeStep, EstimateModeClassifierStep, ExternalModeClassifierStep
 from .tours import CleanSurveyToursStep
 
 SURVEY_FILES = [
@@ -27,11 +33,16 @@ SURVEY_FILES = [
     SurveyedDrawZonesFile,
     SurveyedToursFile,
     JointTourEstimatorFile,
+    ModeEstimatorFile,
 ]
 
 SURVEY_STEPS = [
     MobiSurvStdImportStep,
     CleanSurveyToursStep,
+    ExternalJointToursClassifierStep,
     EstimateJointToursClassifierStep,
     ClassifyJointToursStep,
+    ExternalModeClassifierStep,
+    EstimateModeClassifierStep,
+    ClassifyToursModeStep,
 ]

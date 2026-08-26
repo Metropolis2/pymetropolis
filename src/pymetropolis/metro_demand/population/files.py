@@ -1103,3 +1103,12 @@ class JointToursFile(MetroDataFrameFile, PopulationFile):
             nullable=False,
         ),
     ]
+
+
+class ToursModeFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/tours/modes.parquet"
+    description = "Ex-ante mode for each tour."
+    schema = [
+        Column("tour_id", MetroDataType.ID, description="Identifier of the tour.", nullable=False),
+        Column("mode", MetroDataType.STRING, description="Predicted mode ex-ante.", nullable=False),
+    ]

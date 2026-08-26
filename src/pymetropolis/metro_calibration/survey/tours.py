@@ -345,18 +345,42 @@ def read_tours(
     )
 
     # Find main mode at the tour level.
-    tours = tours.with_columns(
-        tour_mode=pl.when(pl.col("modes").list.n_unique() == 1)
-        .then(pl.col("modes").list.first())
-        .when(pl.col("modes").list.eval(pl.element().str.starts_with("car_driver_")).list.any())
-        .then(pl.lit("car_driver_mixed"))
-        .when(
-            pl.col("modes").list.contains("public_transit")
-            & pl.col("modes").list.contains("park_and_ride")
+    # To reduce the occurence of "mixed", we discard the walking mode if total walking distance is
+    # smaller than 1km.
+    tours = (
+        tours.with_columns(
+            tmp_modes=pl.when(
+                pl.col("modes").list.len() >= 2,
+                pl.col("distances")
+                .list.gather(
+                    pl.col("modes").list.eval(
+                        pl.int_range(pl.len()).filter(pl.element() == "walking")
+                    )
+                )
+                .list.sum()
+                < 1000,
+            )
+            .then(pl.col("modes").list.filter(pl.element() != "walking"))
+            .otherwise("modes")
         )
-        .then(pl.lit("park_and_ride"))
-        .when(pl.col("modes").list.contains(None).not_())
-        .then(pl.lit("mixed"))
+        .with_columns(
+            tour_mode=pl.when(pl.col("tmp_modes").list.n_unique() == 1)
+            .then(pl.col("tmp_modes").list.first())
+            .when(
+                pl.col("tmp_modes")
+                .list.eval(pl.element().str.starts_with("car_driver_"))
+                .list.all()
+            )
+            .then(pl.lit("car_driver_mixed"))
+            .when(
+                pl.col("tmp_modes").list.contains("public_transit")
+                & pl.col("tmp_modes").list.contains("park_and_ride")
+            )
+            .then(pl.lit("park_and_ride"))
+            .when(pl.col("tmp_modes").list.contains(None).not_())
+            .then(pl.lit("mixed"))
+        )
+        .drop("tmp_modes")
     )
     # At this point, `tour_mode` = NULL when some trip-level modes are unknown.
 

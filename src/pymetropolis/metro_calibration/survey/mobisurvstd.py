@@ -58,6 +58,7 @@ def prepare_survey(survey: SurveyData, idx: int) -> dict[str, Any]:
 
 def concatenate_surveys(surveys: list[SurveyData]) -> SurveyData:
     import polars as pl
+    from mobisurvstd.classes import SurveyData
 
     data = dict()
     survey_data = list()

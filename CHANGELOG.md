@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+New steps:
+
+- `ExternalJointToursClassifierStep`
+- `ExternalModeClassifierStep`
+- `EstimateModeClassifierStep`
+- `ClassifyToursModeStep`
+
+New files:
+
+- `ModeEstimatorFile`
+- `ToursModeFile`
+
 ## [0.12.0] – 2026-08-25
 
 New steps:

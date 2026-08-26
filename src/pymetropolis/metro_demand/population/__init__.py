@@ -12,6 +12,7 @@ from .files import (
     JointToursFile,
     PersonsFile,
     ToursFile,
+    ToursModeFile,
     TripsDestinationsFile,
     TripsDistancesFile,
     TripsFile,
@@ -44,6 +45,7 @@ POPULATION_FILES = [
     ActivitiesLocationsFile,
     ToursFile,
     JointToursFile,
+    ToursModeFile,
     HouseholdsHomesUrbanTypeFile,
     TripsUrbanTypeFile,
 ]

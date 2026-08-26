@@ -574,3 +574,8 @@ class SurveyedToursFile(MetroDataFrameFile):
 class JointTourEstimatorFile(MetroMLEstimatorFile):
     path = "calibration/survey/joint_tour_estimator.joblib"
     description = "ML estimator for the classification of joint tours."
+
+
+class ModeEstimatorFile(MetroMLEstimatorFile):
+    path = "calibration/survey/mode_estimator.joblib"
+    description = "ML estimator for the classification of tours' mode."

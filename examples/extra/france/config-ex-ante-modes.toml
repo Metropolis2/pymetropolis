@@ -1,0 +1,79 @@
+main_directory = "output-ex-ante-modes/"
+
+random_seed = 13081996
+
+[survey]
+[survey.mobisurvstd]
+path = "data/surveys/"
+bulk = true
+
+[mode_classifier]
+model = "random_forest"
+modes = [
+    "walking",
+    "car_driver_alone",
+    "car_driver_mixed",
+    "car_driver_with_passengers",
+    "car_passenger",
+    "public_transit",
+    "bicycle",
+]
+group_car_driver_modes = true
+features = [
+    # Tour-level variables.
+    "nb_trips",
+    "first_departure_time",
+    "last_arrival_time",
+    "first_activity_start",
+    "last_activity_end",
+    # "outside_perimeter",
+    "total_tour_duration",
+    "total_activity_duration",
+    "total_travel_time",
+    "total_distance",
+    "has_work_purpose",
+    "has_education_purpose",
+    "has_shopping_purpose",
+    "has_task_purpose",
+    "has_leisure_purpose",
+    "has_escort_purpose",
+    "has_other_purpose",
+    "lowest_density",
+    "highest_density",
+    "lowest_urban_type",
+    "highest_urban_type",
+    "lowest_functional_area_type",
+    "highest_functional_area_type",
+    "lowest_functional_area_category",
+    "highest_functional_area_category",
+    # Household-level variables.
+    "home_density",
+    "home_urban_type",
+    "home_functional_area_type",
+    "home_functional_area_category",
+    "nb_cars",
+    "nb_motorcycles",
+    "nb_bicycles",
+    "nb_persons",
+    "nb_majors",
+    "nb_minors",
+    "nb_women",
+    "nb_major_women",
+    "nb_men",
+    "nb_major_men",
+    "nb_driving_licenses",
+    # "household_type",
+    "minor_ratio",
+    "car_ratio",
+    "driving_license_ratio",
+    # Person-level variables.
+    "woman",
+    "age",
+    "oldest_age_diff",
+    "education_level",
+    "professional_activity",
+    "socioprofessional_class",
+    "has_driving_license",
+    "has_public_transit_subscription",
+    "nb_tours",
+]
