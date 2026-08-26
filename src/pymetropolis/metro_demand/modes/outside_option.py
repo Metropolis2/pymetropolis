@@ -3,7 +3,7 @@ from loguru import logger
 from pymetropolis.metro_common.utils import pl_duration_to_seconds
 from pymetropolis.metro_demand.population import TripsFile
 from pymetropolis.metro_demand.routing.files import TripsCarFreeFlowTravelTimesFile
-from pymetropolis.metro_pipeline import Step
+from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.metro_pipeline.parameters import FloatParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.random import FloatDistributionParameter, RandomStep, generate_values
@@ -11,7 +11,7 @@ from pymetropolis.random import FloatDistributionParameter, RandomStep, generate
 from .files import OutsideOptionPreferencesFile, OutsideOptionTravelTimesFile
 
 
-class OutsideOptionPreferencesStep(RandomStep):
+class OutsideOptionPreferencesStep(RandomStep, PopulationStep):
     """Generates the preference parameters of the outside option alternative from exogenous values.
 
     The following parameters are generated:
@@ -48,7 +48,7 @@ class OutsideOptionPreferencesStep(RandomStep):
 
         trips = self.input["trips"].read()
         df = trips.select("tour_id").unique().sort("tour_id")
-        rng = self.get_rng()
+        rng = self.get_rng(str(self))
         df = df.select("tour_id", outside_option_cst=generate_values(self.constant, len(df), rng))
         if self.input["outside_option_travel_times"].exists():
             tts: pl.DataFrame = self.input["outside_option_travel_times"].read()
@@ -78,7 +78,7 @@ class OutsideOptionPreferencesStep(RandomStep):
         self.output["outside_option_preferences"].write(df)
 
 
-class OutsideOptionTravelTimesFromRoadDistancesStep(Step):
+class OutsideOptionTravelTimesFromRoadDistancesStep(PopulationStep):
     """Generates travel times for the outside option alternatives by applying a constant speed to
     the shortest-path distances of the car-driver trips.
 

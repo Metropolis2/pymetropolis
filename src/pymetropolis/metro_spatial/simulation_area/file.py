@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from pymetropolis.metro_pipeline.file import MetroGeoDataFrameFile
 
 if TYPE_CHECKING:
+    import pyproj
     from shapely.geometry import MultiPolygon, Polygon
 
 
@@ -13,21 +14,31 @@ class SimulationAreaFile(MetroGeoDataFrameFile):
     description = "Single-feature file with the geometry of the simulation area."
     max_rows = 1
 
-    def get_area(self) -> Polygon | MultiPolygon:
+    def get_area(self, crs: pyproj.CRS | None = None) -> Polygon | MultiPolygon:
         """Returns the simulation area as a Polygon.
 
-        If the file does not exist, raises an error."""
+        If the file does not exist, raises an error.
+
+        If a CRS is provided, the geometry is converted to that CRS. Default is to return the
+        geometry in the config's CRS.
+        """
         from shapely.geometry import MultiPolygon, Polygon
 
         gdf = self.read()
+        if crs is not None:
+            gdf.to_crs(crs, inplace=True)
         area = gdf["geometry"].iloc[0]
         assert isinstance(area, Polygon) or isinstance(area, MultiPolygon)
         return area
 
-    def get_area_opt(self) -> Polygon | MultiPolygon | None:
+    def get_area_opt(self, crs: pyproj.CRS | None = None) -> Polygon | MultiPolygon | None:
         """Returns the simulation area as a Polygon.
 
-        If the file does not exist, returns None."""
+        If the file does not exist, returns None.
+
+        If a CRS is provided, the geometry is converted to that CRS. Default is to return the
+        geometry in the config's CRS.
+        """
         if not self.exists():
             return None
-        return self.get_area()
+        return self.get_area(crs=crs)

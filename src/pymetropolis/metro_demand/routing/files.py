@@ -1,8 +1,13 @@
-from pymetropolis.metro_pipeline.file import Column, MetroDataFrameFile, MetroDataType
+from pymetropolis.metro_pipeline.file import (
+    Column,
+    MetroDataFrameFile,
+    MetroDataType,
+    PopulationFile,
+)
 
 
-class TripsPedestrianNodesFile(MetroDataFrameFile):
-    path = "demand/population/trips/pedestrian/origins_destinations.parquet"
+class TripsPedestrianNodesFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/trips/pedestrian/origins_destinations.parquet"
     description = "Origin and destination nodes on the pedestrian network for each trip."
     schema = [
         Column(
@@ -100,8 +105,8 @@ class TripsPedestrianNodesFile(MetroDataFrameFile):
     ]
 
 
-class TripsPedestrianDistancesFile(MetroDataFrameFile):
-    path = "demand/population/trips/pedestrian/distances.parquet"
+class TripsPedestrianDistancesFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/trips/pedestrian/distances.parquet"
     description = "Distance of the shortest path on the pedestrian network for each trip."
     schema = [
         Column(
@@ -127,8 +132,8 @@ class TripsPedestrianDistancesFile(MetroDataFrameFile):
     ]
 
 
-class TripsBicycleNodesFile(MetroDataFrameFile):
-    path = "demand/population/trips/bicycle/origins_destinations.parquet"
+class TripsBicycleNodesFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/trips/bicycle/origins_destinations.parquet"
     description = "Origin and destination nodes on the bicycle network for each trip."
     schema = [
         Column(
@@ -224,8 +229,8 @@ class TripsBicycleNodesFile(MetroDataFrameFile):
     ]
 
 
-class TripsBicycleCostsFile(MetroDataFrameFile):
-    path = "demand/population/trips/bicycle/costs.parquet"
+class TripsBicycleCostsFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/trips/bicycle/costs.parquet"
     description = "Minimum cost on the bicycle network for each trip."
     schema = [
         Column(
@@ -250,8 +255,8 @@ class TripsBicycleCostsFile(MetroDataFrameFile):
     ]
 
 
-class TripsRoadNodesFile(MetroDataFrameFile):
-    path = "demand/population/trips/road/origins_destinations.parquet"
+class TripsRoadNodesFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/trips/road/origins_destinations.parquet"
     description = "Origin and destination nodes on the road network for each trip."
     schema = [
         Column(
@@ -403,8 +408,8 @@ class ParkAndRideRoadNodesFile(MetroDataFrameFile):
     ]
 
 
-class TripsCarFreeFlowTravelTimesFile(MetroDataFrameFile):
-    path = "demand/population/trips/road/free_flow_travel_times.parquet"
+class TripsCarFreeFlowTravelTimesFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/trips/road/free_flow_travel_times.parquet"
     description = "Travel time by car under free-flow conditions for each trip."
     schema = [
         Column(
@@ -479,8 +484,8 @@ class ParkAndRideTripsCarFreeFlowTravelTimesFile(MetroDataFrameFile):
     ]
 
 
-class PrimaryCarTripsAccessEgressFile(MetroDataFrameFile):
-    path = "demand/population/trips/road/primary_car_trips_access_egress.parquet"
+class PrimaryCarTripsAccessEgressFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/trips/road/primary_car_trips_access_egress.parquet"
     description = "Data on the access / egress parts of the car trips."
     schema = [
         Column(
@@ -615,8 +620,8 @@ class PrimaryParkAndRideCarTripsAccessEgressFile(MetroDataFrameFile):
     ]
 
 
-class NonPrimaryCarTrips(MetroDataFrameFile):
-    path = "demand/population/trips/road/non_primary_car_trips.parquet"
+class NonPrimaryCarTrips(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/trips/road/non_primary_car_trips.parquet"
     description = "Data on car trips traveling exclusively on non-primary edges."
     schema = [
         Column(
@@ -681,8 +686,8 @@ class NonPrimaryParkAndRideCarTrips(MetroDataFrameFile):
     ]
 
 
-class TripsPublicTransitItinerariesFile(MetroDataFrameFile):
-    path = "demand/population/trips/public_transit/itineraries.parquet"
+class TripsPublicTransitItinerariesFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/trips/public_transit/itineraries.parquet"
     description = "Minimum-cost public-transit itinerary for each trip."
     schema = [
         Column(
@@ -763,3 +768,50 @@ class ParkAndRideTripsPublicTransitItinerariesFile(MetroDataFrameFile):
             optional=True,
         ),
     ]
+
+
+SCHEMA_ZONE_ROAD_NODE = [
+    Column(
+        "zone_id",
+        MetroDataType.ID,
+        description="Identifier of the zone",
+        unique=True,
+        nullable=False,
+    ),
+    Column(
+        "road_node",
+        MetroDataType.ID,
+        description="Identifier of the road node representative of the zone.",
+        nullable=True,
+    ),
+]
+
+
+class ZonesLevel1RoadNodeFile(MetroDataFrameFile):
+    path = "demand/routing/zone1_road_node.parquet"
+    description = "Road network node representative of Level-1 zones."
+    schema = SCHEMA_ZONE_ROAD_NODE
+
+
+class ZonesLevel2RoadNodeFile(MetroDataFrameFile):
+    path = "demand/routing/zone2_road_node.parquet"
+    description = "Road network node representative of Level-2 zones."
+    schema = SCHEMA_ZONE_ROAD_NODE
+
+
+class ZonesLevel3RoadNodeFile(MetroDataFrameFile):
+    path = "demand/routing/zone3_road_node.parquet"
+    description = "Road network node representative of Level-3 zones."
+    schema = SCHEMA_ZONE_ROAD_NODE
+
+
+class ZonesLevel4RoadNodeFile(MetroDataFrameFile):
+    path = "demand/routing/zone4_road_node.parquet"
+    description = "Road network node representative of Level-4 zones."
+    schema = SCHEMA_ZONE_ROAD_NODE
+
+
+class ZonesLevel5RoadNodeFile(MetroDataFrameFile):
+    path = "demand/routing/zone5_road_node.parquet"
+    description = "Road network node representative of Level-5 zones."
+    schema = SCHEMA_ZONE_ROAD_NODE

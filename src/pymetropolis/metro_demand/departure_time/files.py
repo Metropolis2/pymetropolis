@@ -1,8 +1,13 @@
-from pymetropolis.metro_pipeline.file import Column, MetroDataFrameFile, MetroDataType
+from pymetropolis.metro_pipeline.file import (
+    Column,
+    MetroDataFrameFile,
+    MetroDataType,
+    PopulationFile,
+)
 
 
-class LinearScheduleFile(MetroDataFrameFile):
-    path = "demand/population/schedule/linear_schedule_parameters.parquet"
+class LinearScheduleFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/schedule/linear_schedule_parameters.parquet"
     description = "Schedule preferences for each trip, for the linear model."
     schema = [
         Column(
@@ -33,8 +38,8 @@ class LinearScheduleFile(MetroDataFrameFile):
     ]
 
 
-class TstarsFile(MetroDataFrameFile):
-    path = "demand/population/schedule/tstars.parquet"
+class TstarsFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/schedule/tstars.parquet"
     description = "Desired start time for the activity following each trip."
     schema = [
         Column(

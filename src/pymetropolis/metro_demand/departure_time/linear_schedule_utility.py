@@ -8,7 +8,7 @@ from loguru import logger
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_common.io import read_dataframe
 from pymetropolis.metro_demand.population.files import TripsFile
-from pymetropolis.metro_pipeline import Step
+from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.metro_pipeline.parameters import EnumParameter, PathParameter
 from pymetropolis.random import (
     DurationDistributionParameter,
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     import polars as pl
 
 
-class LinearScheduleStep(RandomStep):
+class LinearScheduleStep(RandomStep, PopulationStep):
     """Generates the preference parameters for schedule-delay utility of each trip, using a
     linear-penalty model (à la Arnott, de Palma, Lindsey), from exogenous values.
 
@@ -64,7 +64,7 @@ class LinearScheduleStep(RandomStep):
 
     def run(self):
         trips: pl.DataFrame = self.input["trips"].read()
-        rng = self.get_rng()
+        rng = self.get_rng(str(self))
         df = trips.select(
             "trip_id",
             beta=generate_values(self.beta, len(trips), rng),
@@ -74,7 +74,7 @@ class LinearScheduleStep(RandomStep):
         self.output["linear_schedule"].write(df)
 
 
-class LinearScheduleFromPurposeStep(Step):
+class LinearScheduleFromPurposeStep(PopulationStep):
     """Generates the preference parameters for schedule-delay utility of each trip, from constant
     values over purposes.
 
@@ -168,7 +168,7 @@ class LinearScheduleFromPurposeStep(Step):
         self.output["linear_schedule"].write(df)
 
 
-class HomogeneousTstarStep(RandomStep):
+class HomogeneousTstarStep(RandomStep, PopulationStep):
     """Generates the desired start time of the activity following each trip, from exogenous values.
 
     The desired start times can be constant over trips or sampled from a specific distribution.
@@ -189,12 +189,12 @@ class HomogeneousTstarStep(RandomStep):
 
     def run(self):
         trips = self.input["trips"].read().select("trip_id")
-        tstars = generate_time_values(self.tstar, len(trips), self.get_rng())
+        tstars = generate_time_values(self.tstar, len(trips), self.get_rng(str(self)))
         df = trips.with_columns(tstar=tstars)
         self.output["tstars"].write(df)
 
 
-class TstarFromArrivalTimeStep(Step):
+class TstarFromArrivalTimeStep(PopulationStep):
     """Generates the desired start time of the activity following each trip, from the trip's ex-ante
     arrival time.
 

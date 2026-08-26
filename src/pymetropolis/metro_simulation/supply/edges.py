@@ -114,31 +114,26 @@ class WriteMetroEdgesStep(Step):
             overtaking=pl.lit(True),
         )
         if self.input["capacities"].exists():
-            capacities: pl.DataFrame = self.input["capacities"].read()
+            capacities: pl.DataFrame = (
+                self.input["capacities"]
+                .read()
+                .with_columns(original_id=pl.col("edge_id").cast(pl.String))
+                .drop("edge_id")
+            )
             # The join is done on the `original_id` column so that both normal edges and HOV edges
             # are attached the correct capacity.
             df = (
-                df.join(
-                    capacities.select(
-                        "capacity",
-                        "capacities",
-                        "times",
-                        original_id=pl.col("edge_id").cast(pl.String),
-                    ),
-                    on="original_id",
-                    how="left",
-                )
-                .with_columns(
-                    bottleneck_flow=pl.col("capacity") / 3600.0,
+                df.join(capacities, on="original_id", how="left")
+                .with_columns(bottleneck_flow=pl.col("capacity") / 3600.0)
+                .drop("capacity")
+            )
+            if "capacities" in capacities.columns and "times" in capacities.columns:
+                df = df.with_columns(
                     bottleneck_flows=pl.col("capacities").list.eval(pl.element() / 3600.0),
                     bottleneck_times=pl.col("times").list.eval(
                         pl_duration_to_seconds(pl.element())
                     ),
-                )
-                .drop("capacity", "capacities", "times")
-            )
-            if df["bottleneck_flows"].is_null().all():
-                df = df.drop("bottleneck_flows", "bottleneck_times")
+                ).drop("capacities", "times")
         if self.input["penalties"].exists():
             penalties: pl.DataFrame = self.input["penalties"].read()
             df = (

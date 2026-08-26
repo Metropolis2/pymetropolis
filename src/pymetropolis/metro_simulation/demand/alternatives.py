@@ -5,11 +5,12 @@ from typing import TYPE_CHECKING
 from pymetropolis.metro_common.errors import MetropyError, error_context
 from pymetropolis.metro_demand.modes import OutsideOptionPreferencesFile
 from pymetropolis.metro_demand.population import UniformDrawsFile
+from pymetropolis.metro_pipeline import PopulationStep, Step
 from pymetropolis.metro_pipeline.parameters import EnumParameter, FloatParameter
 from pymetropolis.metro_pipeline.steps import InputFile
-from pymetropolis.metro_simulation.common import StepWithModes
+from pymetropolis.metro_simulation.common import StepWithModes, merge_populations
 
-from .files import MetroAlternativesFile, MetroTripsFile
+from .files import MetroAlternativesFile, MetroAlternativesPopulationFile, MetroTripsPopulationFile
 
 if TYPE_CHECKING:
     import polars as pl
@@ -58,8 +59,8 @@ def generate_outside_option_alts(pref_file: OutsideOptionPreferencesFile):
     return df
 
 
-class WriteMetroAlternativesStep(StepWithModes):
-    """Generates the input alternatives file for the Metropolis-Core simulation."""
+class PrepareMetroAlternativesStep(StepWithModes, PopulationStep):
+    """Prepares the alternatives for the Metropolis-Core simulation."""
 
     departure_time_choice_model = EnumParameter(
         "departure_time_choice.model",
@@ -74,7 +75,7 @@ class WriteMetroAlternativesStep(StepWithModes):
     )
     input_files = {
         "input_trips": InputFile(
-            MetroTripsFile,
+            MetroTripsPopulationFile,
             when=lambda inst: inst.has_trip_mode(),
             when_doc='if at least one "trip-based" mode is defined',
         ),
@@ -94,7 +95,7 @@ class WriteMetroAlternativesStep(StepWithModes):
             when_doc="if the outside-option mode is defined",
         ),
     }
-    output_files = {"metro_alternatives": MetroAlternativesFile}
+    output_files = {"metro_alternatives": MetroAlternativesPopulationFile}
 
     def is_defined(self) -> bool:
         if self.modes is None or len(self.modes) == 0:
@@ -127,3 +128,18 @@ class WriteMetroAlternativesStep(StepWithModes):
             alts = pl.concat((alts, outside_option_alts), how="diagonal")
         alts = alts.sort("agent_id", "alt_id")
         self.output["metro_alternatives"].write(alts)
+
+
+class WriteMetroAlternativesStep(Step):
+    """Merges the alternatives in each population and writes the trips input file for
+    Metropolis-Core.
+    """
+
+    input_files = {
+        "population_alts": InputFile(MetroAlternativesPopulationFile, all_populations=True)
+    }
+    output_files = {"metro_alts": MetroAlternativesFile}
+
+    def run(self):
+        alts = merge_populations(self.input_populations["population_alts"])
+        self.output["metro_alts"].write(alts)

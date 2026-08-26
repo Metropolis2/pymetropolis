@@ -4,11 +4,8 @@ from pymetropolis.metro_common.errors import MetropyError
 from pymetropolis.metro_network.road_network import RoadEdgesCleanFile
 from pymetropolis.metro_pipeline.parameters import FloatParameter
 from pymetropolis.metro_pipeline.steps import InputFile
-from pymetropolis.metro_simulation.common import (
-    StepWithModes,
-    StepWithRidesharingCount,
-    StepWithSimulationRatio,
-)
+from pymetropolis.metro_simulation.common import StepWithRidesharingCount, StepWithSimulationRatio
+from pymetropolis.metro_simulation.demand.files import MetroTripsFile
 
 from .files import MetroVehicleTypesFile
 
@@ -16,7 +13,7 @@ if TYPE_CHECKING:
     import geopandas as gpd
 
 
-class WriteMetroVehicleTypesStep(StepWithModes, StepWithRidesharingCount, StepWithSimulationRatio):
+class WriteMetroVehicleTypesStep(StepWithRidesharingCount, StepWithSimulationRatio):
     """Generates the input vehicle-types file for the Metropolis-Core simulation."""
 
     car_headway = FloatParameter(
@@ -30,17 +27,10 @@ class WriteMetroVehicleTypesStep(StepWithModes, StepWithRidesharingCount, StepWi
         description="Passenger car equivalent of a typical car",
     )
     input_files = {
-        "edges": InputFile(
-            RoadEdgesCleanFile,
-            when=lambda inst: inst.has_mode("car_driver"),
-            when_doc='if the "car_driver" mode is defined',
-        )
+        "edges": InputFile(RoadEdgesCleanFile, optional=True),
+        "metro_trips": MetroTripsFile,
     }
     output_files = {"metro_vehicle_types": MetroVehicleTypesFile}
-
-    def is_defined(self):
-        # The step does not need to be run if there is no "car" mode.
-        return self.has_car_mode()
 
     def run(self):
         import polars as pl
@@ -50,15 +40,26 @@ class WriteMetroVehicleTypesStep(StepWithModes, StepWithRidesharingCount, StepWi
         assert self.simulation_ratio is not None
         assert self.ridesharing_passenger_count is not None
 
-        vehicles = list()
+        trips = self.input["metro_trips"].read()
+        vehicles = set(trips["class.vehicle"].unique().drop_nulls().sort())
+
+        if not vehicles:
+            # No vehicle-based trip to simulate.
+            return
+
+        if not self.input["edges"].exists():
+            # At this point, vehicle-based trips were defined but there is no road network.
+            # This should never happen in practice.
+            # Note. This is an actual issue only if "car_driver_alone" is simulated, but it's best
+            # to raise an error in any case.
+            raise MetropyError("Cannot write vehicle types when there is no road network.")
+
+        metro_vehicles = list()
         headway = self.car_headway / self.simulation_ratio
         pce = self.car_pce / self.simulation_ratio
-        if self.has_mode("car_driver") or self.has_mode("park_and_ride"):
-            # PFR. I realise now that there could be P+R as a driver or as a passenger.
-            # For now I assume that it's always as a driver. We can discuss how to do things
-            # differently.
-            # (Remove this comment when done.)
+        if "car_driver_alone" in vehicles:
             v = {"vehicle_id": "car_driver_alone", "headway": headway, "pce": pce}
+            # TODO. Maybe `hov_lanes` should be a column in its own file?
             edges_gdf: gpd.GeoDataFrame = self.input["edges"].read()
             edges = pl.from_pandas(edges_gdf.loc[:, ["edge_id", "hov_lanes"]])
             hov_edges = (
@@ -70,24 +71,26 @@ class WriteMetroVehicleTypesStep(StepWithModes, StepWithRidesharingCount, StepWi
             )
             if hov_edges:
                 v["restricted_edges"] = hov_edges
-            vehicles.append(v)
-        if self.has_mode("car_driver_with_passengers"):
-            vehicles.append({"vehicle_id": "car_driver_multi", "headway": headway, "pce": pce})
-        if self.has_mode("car_passenger"):
-            vehicles.append({"vehicle_id": "car_passenger", "headway": 0.0, "pce": 0.0})
-        if self.has_mode("car_ridesharing"):
+            metro_vehicles.append(v)
+        if "car_driver_multi" in vehicles:
+            metro_vehicles.append(
+                {"vehicle_id": "car_driver_multi", "headway": headway, "pce": pce}
+            )
+        if "car_passenger" in vehicles:
+            metro_vehicles.append({"vehicle_id": "car_passenger", "headway": 0.0, "pce": 0.0})
+        if "car_ridesharing" in vehicles:
             c = self.ridesharing_passenger_count
             if c < 0.0:
                 raise MetropyError(
                     "Number of passenger count for ridesharing is negative "
                     f"(`ridesharing_passenger_count` = {c})"
                 )
-            vehicles.append(
+            metro_vehicles.append(
                 {
                     "vehicle_id": "car_ridesharing",
                     "headway": headway / (c + 1),
                     "pce": pce / (c + 1),
                 }
             )
-        df = pl.DataFrame(vehicles)
+        df = pl.DataFrame(metro_vehicles)
         self.output["metro_vehicle_types"].write(df)

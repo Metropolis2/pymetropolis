@@ -17,7 +17,7 @@ from pymetropolis.metro_demand.routing.files import (
     TripsPedestrianDistancesFile,
     TripsPedestrianNodesFile,
 )
-from pymetropolis.metro_pipeline import Step
+from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.metro_pipeline.parameters import BoolParameter, EnumParameter, FloatParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 MODE = "walking"
 
 
-class WalkingPreferencesStep(PreferencesStep):
+class WalkingPreferencesStep(PreferencesStep, PopulationStep):
     __doc__ = cst_preferences_step_docstring(MODE)
 
     constant = pref_constant_parameter(MODE)
@@ -55,13 +55,13 @@ class WalkingPreferencesFromPopulationStep(ModePreferencesFromPopulationStep):
         self.output["preferences"].write(df)
 
 
-class WalkingTravelTimesFromDistanceStep(Step):
+class WalkingTravelTimesFromDistanceStep(PopulationStep):
     """Computes travel time by walking for each trip, from a given distance and a constant speed.
 
     The parameter [`modes.walking.distance.type`](parameters.md#modeswalkingdistancetype) specifies
     how the walking distance is computed. For now, the only option is `"pedestrian"` which uses the
     distance of the shortest path on the pedestrian network (Step
-    [`TripsPedestrianDistancesStep`](steps.md#TripsPedestrianDistancesStep)).
+    [`TripsPedestrianDistancesStep`](steps.md#tripspedestriandistancesstep)).
 
     The parameter [`modes.walking.speed`](parameters.md#modeswalkingspeed) controls the speed at
     which people walk.
@@ -70,7 +70,7 @@ class WalkingTravelTimesFromDistanceStep(Step):
     [`modes.walking.distance.with_snap`](parameters.md#modeswalkingdistancewith_snap) is set to
     `true`, the snap distance at origin and destination is added to the walking travel time, with a
     speed given by [`modes.walking.snap_speed`](parameters.md#modeswalkingsnap_speed) (equal to
-    [`modes.walking.speed`](parameters.md#modeswalkingsspeed) by default).
+    [`modes.walking.speed`](parameters.md#modeswalkingspeed) by default).
     The snap distance corresponds to the distance between the trips' origin and destination and the
     network (See Step
     [`PedestrianODNodesFromCoordinatesStep`](steps.md#pedestrianodnodesfromcoordinatesstep)).

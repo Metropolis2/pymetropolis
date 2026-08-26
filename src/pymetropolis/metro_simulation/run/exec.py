@@ -25,6 +25,7 @@ class RunSimulationStep(Step):
     exec_path = ExecPathParameter(
         "metropolis_core.exec_path",
         description="Path to the `metropolis_cli` executable.",
+        default="env:METROPOLIS_EXEC_PATH",
         note='On Windows, you can omit the ".exe" extension',
     )
     # The Step depends only on the parameters.json, which itself depends on all the input files.

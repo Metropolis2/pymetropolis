@@ -127,7 +127,7 @@ road = 1500
         df = pl.from_pandas(edges.loc[:, edges.columns.isin(["edge_id", "edge_type"])])
         df = df.with_columns(
             capacity=pl.lit(None, dtype=pl.Float64),
-            times=pl.lit(None, dtype=pl.List(pl.Time)),
+            times=pl.lit(None, dtype=pl.List(pl.Duration)),
             capacities=pl.lit(None, dtype=pl.List(pl.Float64)),
         )
         if isinstance(capacities, float | int):

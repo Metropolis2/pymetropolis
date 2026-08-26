@@ -24,12 +24,28 @@ class RandomStep(Step):
             "If the random seed is not defined, some operations are not deterministic, i.e., they "
             "can produce different results if re-run."
         ),
+        shared=True,
     )
 
-    def get_rng(self) -> np.random.Generator:
+    def get_rng(self, step_name: str) -> np.random.Generator:
+        """Returns a random number generator, seeded from `random_seed` and `step_name`.
+
+        Mixing in `step_name` (the calling step's `str(self)`, e.g. including the population name
+        for a `PopulationStep`) means different steps / populations that share `random_seed` draw
+        independent random sequences instead of identical ones.
+        """
+        import hashlib
+
         import numpy as np
 
-        return np.random.default_rng(self.random_seed)
+        if self.random_seed is None:
+            # No seed defined: fall back to non-deterministic behavior, as documented on
+            # `random_seed`.
+            return np.random.default_rng(None)
+        # `hash()` is not used here because it is salted per-process for strings, which would make
+        # the generator non-reproducible across runs even with the same `random_seed`.
+        step_hash = int.from_bytes(hashlib.sha256(step_name.encode()).digest()[:8])
+        return np.random.default_rng([self.random_seed, step_hash])
 
 
 # List of valid `distribution` values.

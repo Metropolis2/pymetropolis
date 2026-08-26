@@ -1,13 +1,14 @@
 from pymetropolis.metro_calibration.road import AllRoadFreeFlowTravelTimesFile
 from pymetropolis.metro_common.utils import pl_duration_to_seconds
 from pymetropolis.metro_demand.routing.files import TripsRoadNodesFile
+from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.metro_pipeline.parameters import FloatParameter, StringParameter
 from pymetropolis.random import IntDistributionParameter, RandomStep, generate_int_values
 
 from .common import generate_trips_from_od_matrix
 
 
-class GravityODMatrixStep(RandomStep):
+class GravityODMatrixStep(RandomStep, PopulationStep):
     r"""Generates car driver origin-destination pairs by generating trips from a gravity model.
 
     The model is based on de Palma, A., Kilani, M., & Lindsey, R. (2005). Congestion pricing on a
@@ -67,9 +68,9 @@ class GravityODMatrixStep(RandomStep):
         df = df.with_columns(
             normalized_rate=pl.col("rate") / pl.col("rate").sum().over("origin_id")
         )
-        rng = self.get_rng()
+        rng = self.get_rng(str(self))
         df = df.with_columns(trips_per_node=generate_int_values(self.trips_per_node, len(df), rng))
         df = df.with_columns(size=pl.col("normalized_rate") * pl.col("trips_per_node"))
         df = df.select(origin="origin_id", destination="destination_id", size="size")
-        trips = generate_trips_from_od_matrix(df, self.get_rng())
+        trips = generate_trips_from_od_matrix(df, self.get_rng(str(self)))
         self.output["road_ods"].write(trips)

@@ -15,6 +15,7 @@ from pymetropolis.metro_demand.population.files import (
 )
 from pymetropolis.metro_demand.routing.files import TripsPublicTransitItinerariesFile
 from pymetropolis.metro_network.public_transit import GTFSStep
+from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.metro_pipeline.parameters import (
     DurationParameter,
     EnumParameter,
@@ -75,7 +76,7 @@ def run_r5py(
     return df
 
 
-class TripsPublicTransitTravelTimeFromR5Step(OSMStep, GTFSStep):
+class TripsPublicTransitTravelTimeFromR5Step(OSMStep, GTFSStep, PopulationStep):
     """Computes the trips' travel time by public transit with r5py.
 
     This is the easiest and (usually) fastest solution to compute public-transit travel times.
@@ -93,7 +94,7 @@ class TripsPublicTransitTravelTimeFromR5Step(OSMStep, GTFSStep):
 
     For this step, `r5py` build the public-transit network from an OpenStreetMap file
     ([`osm_file`](parameters.md#osm_file)) and from GTFS file(s)
-    ([`gtfs_files`](parameters.md#gtfs_files)).
+    ([`gtfs.files`](parameters.md#gtfsfiles)).
 
     The [`gtfs.date`](parameters.md#gtfsdate) parameter controls the date used in the public-transit
     timetables, for all queries.
@@ -112,7 +113,7 @@ class TripsPublicTransitTravelTimeFromR5Step(OSMStep, GTFSStep):
     Therefore, some approximations are done to "group" together similar origins, destinations, and
     departure times.
     You can control these approximations with the
-    [`coordinates_rounding`](parameters.md#r5coordinates_routing) and
+    [`coordinates_rounding`](parameters.md#r5coordinates_rounding) and
     [`time_rounding`](parameters.md#r5time_rounding) parameters.
     By default, origins and destinations are rounded to the nearest 500 meters and departure time is
     rounded to periods of 1 hour.

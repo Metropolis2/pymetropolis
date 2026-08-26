@@ -1,8 +1,13 @@
-from pymetropolis.metro_pipeline.file import Column, MetroDataFrameFile, MetroDataType
+from pymetropolis.metro_pipeline.file import (
+    Column,
+    MetroDataFrameFile,
+    MetroDataType,
+    PopulationFile,
+)
 
 
-class OutsideOptionPreferencesFile(MetroDataFrameFile):
-    path = "demand/population/modes/outside_option/preferences.parquet"
+class OutsideOptionPreferencesFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/modes/outside_option/preferences.parquet"
     description = "Utility of the outside option alternative, for each tour."
     schema = [
         Column(
@@ -21,8 +26,8 @@ class OutsideOptionPreferencesFile(MetroDataFrameFile):
     ]
 
 
-class OutsideOptionTravelTimesFile(MetroDataFrameFile):
-    path = "demand/population/modes/outside_option/travel_times.parquet"
+class OutsideOptionTravelTimesFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/modes/outside_option/travel_times.parquet"
     description = "Travel time of the outside option alternative, for each tour."
     schema = [
         Column(
@@ -41,8 +46,8 @@ class OutsideOptionTravelTimesFile(MetroDataFrameFile):
     ]
 
 
-class PublicTransitPreferencesFile(MetroDataFrameFile):
-    path = "demand/population/modes/public_transit/preferences.parquet"
+class PublicTransitPreferencesFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/modes/public_transit/preferences.parquet"
     description = "Preferences to travel by public transit, for each person."
     schema = [
         Column(
@@ -67,8 +72,8 @@ class PublicTransitPreferencesFile(MetroDataFrameFile):
     ]
 
 
-class WalkingPreferencesFile(MetroDataFrameFile):
-    path = "demand/population/modes/walking/preferences.parquet"
+class WalkingPreferencesFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/modes/walking/preferences.parquet"
     description = "Preferences to travel by walk, for each person."
     schema = [
         Column(
@@ -93,8 +98,8 @@ class WalkingPreferencesFile(MetroDataFrameFile):
     ]
 
 
-class WalkingTravelTimesFile(MetroDataFrameFile):
-    path = "demand/population/modes/walking/travel_times.parquet"
+class WalkingTravelTimesFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/modes/walking/travel_times.parquet"
     description = "Travel time of each trip, when traveling by walking."
     schema = [
         Column(
@@ -113,8 +118,8 @@ class WalkingTravelTimesFile(MetroDataFrameFile):
     ]
 
 
-class BicyclePreferencesFile(MetroDataFrameFile):
-    path = "demand/population/modes/bicycle/preferences.parquet"
+class BicyclePreferencesFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/modes/bicycle/preferences.parquet"
     description = "Preferences to travel by bicycle, for each person."
     schema = [
         Column(
@@ -139,8 +144,8 @@ class BicyclePreferencesFile(MetroDataFrameFile):
     ]
 
 
-class BicycleTravelTimesFile(MetroDataFrameFile):
-    path = "demand/population/modes/bicycle/travel_times.parquet"
+class BicycleTravelTimesFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/modes/bicycle/travel_times.parquet"
     description = "Travel time of each trip, when traveling by bicycle."
     schema = [
         Column(

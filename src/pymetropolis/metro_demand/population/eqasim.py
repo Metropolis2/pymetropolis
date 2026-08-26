@@ -7,6 +7,7 @@ from loguru import logger
 
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_common.utils import find_file
+from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.metro_pipeline.parameters import FractionParameter, PathParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_spatial import GeoStep
@@ -81,7 +82,9 @@ def read_persons(
         age=pl.col("age").cast(pl.UInt8),
         detailed_education_level=pl.col("detailed_education_level").cast(pl.String),
         education_level=pl.col("education_level").cast(pl.String),
-        professional_activity="professional_activity",
+        professional_activity=pl.col("professional_activity").replace(
+            {"unemployed": "other", "homemaker": "other"}
+        ),
         socioprofessional_class=pl.col("socioprofessional_class").cast(pl.UInt8),
         has_driving_license="has_driving_license",
         has_public_transit_subscription="has_pt_subscription",
@@ -130,8 +133,8 @@ def read_trips(
         trip_id=pl.format("{}-{}", "person_id", "trip_index"),
         person_id="person_id",
         trip_index=pl.col("trip_index").cast(pl.UInt8) + 1,
-        origin_purpose_group="preceding_purpose",
-        destination_purpose_group="following_purpose",
+        origin_purpose_group=pl.col("preceding_purpose").replace("shop", "shopping"),
+        destination_purpose_group=pl.col("following_purpose").replace("shop", "shopping"),
         departure_time=pl.duration(seconds="departure_time"),
         arrival_time=pl.duration(seconds="arrival_time"),
     ).with_columns(
@@ -241,7 +244,7 @@ def clean(
     return households, persons, trips
 
 
-class EqasimImportStep(GeoStep, RandomStep):
+class EqasimImportStep(GeoStep, RandomStep, PopulationStep):
     """Imports a synthetic population from the output of the Eqasim pipeline.
 
     To use this step, you first need to generate a synthetic population following the instructions

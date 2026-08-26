@@ -246,12 +246,14 @@ class RoadEdgesCapacitiesFile(MetroDataFrameFile):
                 "Bottleneck capacity of the edge for different time periods, in PCE per hour."
             ),
             nullable=True,
+            optional=True,
         ),
         Column(
             "times",
-            MetroDataType.LIST_OF_TIMES,
+            MetroDataType.LIST_OF_DURATIONS,
             description="Time at which the bottleneck capacity changes on the edge.",
             nullable=True,
+            optional=True,
         ),
     ]
 

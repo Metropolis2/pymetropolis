@@ -36,5 +36,7 @@ def generate_trips_from_od_matrix(df: pl.DataFrame, rng: np.random.Generator):
             "destination_road_node": np.repeat(df["destination"], df["size"]),
         }
     )
-    trips = trips.with_columns(trip_id=pl.arange(1, pl.len() + 1, dtype=pl.UInt64))
+    # We just cast trip_id to String here because they might be forced-converted to String later and
+    # that create many problems.
+    trips = trips.with_columns(trip_id=pl.arange(1, pl.len() + 1, dtype=pl.UInt64).cast(pl.String))
     return trips

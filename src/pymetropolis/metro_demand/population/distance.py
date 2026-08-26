@@ -3,10 +3,10 @@ from pymetropolis.metro_demand.population.files import (
     TripsDistancesFile,
     TripsOriginsFile,
 )
-from pymetropolis.metro_pipeline import Step
+from pymetropolis.metro_pipeline import PopulationStep
 
 
-class TripDistancesStep(Step):
+class TripDistancesStep(PopulationStep):
     """Computes the Euclidean distances between origin and destination for each trip."""
 
     input_files = {"origins": TripsOriginsFile, "destinations": TripsDestinationsFile}

@@ -1,8 +1,13 @@
-from pymetropolis.metro_pipeline.file import Column, MetroDataType, MetroGeoDataFrameFile
+from pymetropolis.metro_pipeline.file import (
+    Column,
+    MetroDataType,
+    MetroGeoDataFrameFile,
+    PopulationFile,
+)
 
 
-class RoadODMatrixFile(MetroGeoDataFrameFile):
-    path = "demand/population/trips/road/origin_destination_matrix.parquet"
+class RoadODMatrixFile(MetroGeoDataFrameFile, PopulationFile):
+    path = "demand/{population}/trips/road/origin_destination_matrix.parquet"
     description = "Origin / destination matrix at the road-network node level."
     schema = [
         Column(

@@ -27,9 +27,120 @@ New files:
 - `ParkAndRidePreferencesFile`
 - `ParkAndRideFuelFile`
 
+## [0.12.0] – 2026-08-25
+
+New steps:
+
+- `MobiSurvStdImportStep`
+- `CleanSurveyToursStep`
+- `EstimateJointToursClassifierStep`
+- `CreateToursStep`
+- `ClassifyJointToursStep`
+- `FrenchZonesStep`
+- `CustomZonesLevel1Step`
+- `CustomZonesLevel2Step`
+- `CustomZonesLevel3Step`
+- `CustomZonesLevel4Step`
+- `CustomZonesLevel5Step`
+- `HouseholdHomesZonesStep`
+- `TripsZonesStep`
+- `FrenchHouseholdsUrbanTypeStep`
+- `FrenchTripsUrbanTypeStep`
+- `ZonesLevel1RoadNodesStep`
+- `ZonesLevel2RoadNodesStep`
+- `ZonesLevel3RoadNodesStep`
+- `ZonesLevel4RoadNodesStep`
+- `ZonesLevel5RoadNodesStep`
+- `ZonesODFreeFlowTravelTimesStep`
+- `ZonesODCongestedTravelTimesStep`
+
+New files:
+
+- `SurveyedHouseholdsFile`
+- `SurveyedPersonsFile`
+- `SurveyedTripsFile`
+- `SurveyedLegsFile`
+- `SurveyedCarsFile`
+- `SurveyedMotorcyclesFile`
+- `SurveyedSpecialLocationsFile`
+- `SurveyedDetailedZonesFile`
+- `SurveyedDrawZonesFile`
+- `SurveyedToursFile`
+- `JointTourEstimatorFile`
+- `ToursFile`
+- `JointToursFile`
+- `ZonesLevel1File`
+- `ZonesLevel2File`
+- `ZonesLevel3File`
+- `ZonesLevel4File`
+- `ZonesLevel5File`
+- `HouseholdHomesUrbanTypeFile`
+- `TripsUrbanTypeFile`
+- `ZonesLevel1RoadNodeFile`
+- `ZonesLevel2RoadNodeFile`
+- `ZonesLevel3RoadNodeFile`
+- `ZonesLevel4RoadNodeFile`
+- `ZonesLevel5RoadNodeFile`
+- `ZoneODLevel1FreeFlowTravelTimesFile`
+- `ZoneODLevel2FreeFlowTravelTimesFile`
+- `ZoneODLevel3FreeFlowTravelTimesFile`
+- `ZoneODLevel4FreeFlowTravelTimesFile`
+- `ZoneODLevel5FreeFlowTravelTimesFile`
+- `ZoneODLevel1CongestedTravelTimesFile`
+- `ZoneODLevel2CongestedTravelTimesFile`
+- `ZoneODLevel3CongestedTravelTimesFile`
+- `ZoneODLevel4CongestedTravelTimesFile`
+- `ZoneODLevel5CongestedTravelTimesFile`
+
 New parameters:
 
 - `gtfs.date`
+- `main_population`
+- `extra_populations`
+- `custom_steps`
+- `road_network.forbiden_types`
+- `zones.weiszfeld.threshold`
+- `zones.weiszfeld.max_iter`
+- `od_matrix_travel_times.zones_levels`
+- `od_matrix_travel_times.time_window`
+
+New features:
+
+- New `MetroFile` type for Machine Learning estimators saved with joblib: `MetroMLEstimatorFile`
+- New `PopulationFile` abstract class for population-specific MetroFiles
+- New `PopulationStep` abstract class for population-specific steps
+- Parameters can be `shared` when they are not necessarily specific to a population (e.g.,
+  `random_seed`)
+- Users can define their own `Step` subclasses in Python files listed under `custom_steps` (paths
+  relative to the main config file); they are loaded and made available to the pipeline like any
+  built-in Step. A custom Step whose name matches an existing one (e.g. `EqasimImportStep`)
+  overrides it
+- Environment variables can be automatically loaded from .env files
+
+Other changes:
+
+- Relative `main_directory`, `secrets_file`, and every `PathParameter`/`ExecPathParameter` value
+  (e.g. `exec_path`, `routing_exec_path`, `osm_file`, `eqasim_output`, ...) are now resolved against
+  the directory of the main config file, instead of the current working directory (consistent with
+  `extra_populations` and `custom_steps`)
+- Put `"unemployed"` and `"homemaker"` professional activity modalities in the `"other"` modality
+- Rename `"shop"` purpose to `"shopping"`
+- The random number generator (`RandomStep.get_rng()`) now use a different seed for each step, so
+  that reproducibility does not depend on run order
+- Examples configurations are now all located within the `examples/` directory
+- `exec_path` and `routing_exec_path` now default to `"env:METROPOLIS_EXEC_PATH"` and
+  `"env:METROPOLIS_ROUTING_EXEC_PATH"`, respectively
+- Step status with `--dry-run` use more distinct colors and a legend has been added
+
+Removed steps:
+
+- `CustomZonesStep` (use one of the 5 `CustomZonesLevelXStep` instead)
+- `FrenchHouseholdHomesZonesStep`
+- `FrenchTripsZonesStep`
+
+Removed files:
+
+- `ZonesFile` (use one of the 5 `ZonesLevelXFile` instead)
 
 Removed parameters:
 
@@ -272,7 +383,8 @@ Breaking changes:
 - Renamed `nb_lanes` to `lanes`
 - Updated path for some demand files
 
-[unreleased]: https://github.com/Metropolis2/pymetropolis/compare/0.11.0...HEAD
+[unreleased]: https://github.com/Metropolis2/pymetropolis/compare/0.12.0...HEAD
+[0.12.0]: https://github.com/Metropolis2/pymetropolis/releases/tag/0.12.0
 [0.11.0]: https://github.com/Metropolis2/pymetropolis/releases/tag/0.11.0
 [0.10.0]: https://github.com/Metropolis2/pymetropolis/releases/tag/0.10.0
 [0.9.0]: https://github.com/Metropolis2/pymetropolis/releases/tag/0.9.0

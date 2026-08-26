@@ -3,11 +3,14 @@ from pymetropolis.metro_pipeline.file import (
     MetroDataFrameFile,
     MetroDataType,
     MetroGeoDataFrameFile,
+    PopulationFile,
 )
 
+from .common import PURPOSES
 
-class TripsFile(MetroDataFrameFile):
-    path = "demand/population/trips/trips.parquet"
+
+class TripsFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/trips/trips.parquet"
     description = "Identifiers and order of the trips for each person."
     schema = [
         Column(
@@ -94,8 +97,8 @@ class TripsFile(MetroDataFrameFile):
     ]
 
 
-class TripsOriginsFile(MetroGeoDataFrameFile):
-    path = "demand/population/trips/origins.geo.parquet"
+class TripsOriginsFile(MetroGeoDataFrameFile, PopulationFile):
+    path = "demand/{population}/trips/origins.geo.parquet"
     description = "Origin coordinates of each trip."
     schema = [
         Column(
@@ -108,8 +111,8 @@ class TripsOriginsFile(MetroGeoDataFrameFile):
     ]
 
 
-class TripsDestinationsFile(MetroGeoDataFrameFile):
-    path = "demand/population/trips/destinations.geo.parquet"
+class TripsDestinationsFile(MetroGeoDataFrameFile, PopulationFile):
+    path = "demand/{population}/trips/destinations.geo.parquet"
     description = "Destination coordinates of each trip."
     schema = [
         Column(
@@ -122,8 +125,8 @@ class TripsDestinationsFile(MetroGeoDataFrameFile):
     ]
 
 
-class ActivitiesLocationsFile(MetroGeoDataFrameFile):
-    path = "demand/population/schedule/activity_locations.geo.parquet"
+class ActivitiesLocationsFile(MetroGeoDataFrameFile, PopulationFile):
+    path = "demand/{population}/schedule/activity_locations.geo.parquet"
     description = "Coordinates of each activity."
     schema = [
         Column(
@@ -147,8 +150,8 @@ class ActivitiesLocationsFile(MetroGeoDataFrameFile):
     ]
 
 
-class TripsZonesFile(MetroDataFrameFile):
-    path = "demand/population/trips/zones.parquet"
+class TripsZonesFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/trips/zones.parquet"
     description = "Zones of the trips' origins and destinations."
     schema = [
         Column(
@@ -231,8 +234,78 @@ class TripsZonesFile(MetroDataFrameFile):
     ]
 
 
-class TripsDistancesFile(MetroDataFrameFile):
-    path = "demand/population/trips/distances.parquet"
+class TripsUrbanTypeFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/trips/origin_destination_urban_type.parquet"
+    description = "Urban type attributes of trips' origin and destination."
+    schema = [
+        Column(
+            "trip_id",
+            MetroDataType.ID,
+            description="Identifier of the trip.",
+            nullable=False,
+            unique=True,
+        ),
+        Column(
+            "origin_density",
+            MetroDataType.ENUM,
+            description="Urban density category of the origin municipality.",
+            nullable=True,
+            optional=False,
+        ),
+        Column(
+            "origin_urban_type",
+            MetroDataType.ENUM,
+            description="Urban type of the origin municipality.",
+            nullable=True,
+            optional=False,
+        ),
+        Column(
+            "origin_functional_area_type",
+            MetroDataType.ENUM,
+            description="Type of the origin municipality within its functional area.",
+            nullable=True,
+            optional=False,
+        ),
+        Column(
+            "origin_functional_area_category",
+            MetroDataType.ENUM,
+            description="Category of the functional area of the origin municipality.",
+            nullable=True,
+            optional=False,
+        ),
+        Column(
+            "destination_density",
+            MetroDataType.ENUM,
+            description="Urban density category of the destination municipality.",
+            nullable=True,
+            optional=False,
+        ),
+        Column(
+            "destination_urban_type",
+            MetroDataType.ENUM,
+            description="Urban type of the destination municipality.",
+            nullable=True,
+            optional=False,
+        ),
+        Column(
+            "destination_functional_area_type",
+            MetroDataType.ENUM,
+            description="Type of the destination municipality within its functional area.",
+            nullable=True,
+            optional=False,
+        ),
+        Column(
+            "destination_functional_area_category",
+            MetroDataType.ENUM,
+            description="Category of the functional area of the destination municipality.",
+            nullable=True,
+            optional=False,
+        ),
+    ]
+
+
+class TripsDistancesFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/trips/distances.parquet"
     description = "Euclidean distance of each trip."
     schema = [
         Column(
@@ -251,8 +324,8 @@ class TripsDistancesFile(MetroDataFrameFile):
     ]
 
 
-class PersonsFile(MetroDataFrameFile):
-    path = "demand/population/persons/persons.parquet"
+class PersonsFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/persons/persons.parquet"
     description = "Identifiers and characteristics of the simulated persons."
     schema = [
         Column(
@@ -347,8 +420,8 @@ class PersonsFile(MetroDataFrameFile):
     ]
 
 
-class CarsFile(MetroDataFrameFile):
-    path = "demand/population/cars.parquet"
+class CarsFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/cars.parquet"
     description = "Characteristics of the cars owned by households / persons."
     schema = [
         Column(
@@ -399,8 +472,8 @@ class CarsFile(MetroDataFrameFile):
     ]
 
 
-class HouseholdsFile(MetroDataFrameFile):
-    path = "demand/population/households/households.parquet"
+class HouseholdsFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/households/households.parquet"
     description = (
         "Identifiers and characteristics of the simulated households. "
         "The geometry is a Point representing the household's home."
@@ -486,8 +559,8 @@ class HouseholdsFile(MetroDataFrameFile):
     ]
 
 
-class HouseholdsHomesFile(MetroGeoDataFrameFile):
-    path = "demand/population/households/homes.geo.parquet"
+class HouseholdsHomesFile(MetroGeoDataFrameFile, PopulationFile):
+    path = "demand/{population}/households/homes.geo.parquet"
     description = "Coordinates of the household homes."
     schema = [
         Column(
@@ -500,8 +573,8 @@ class HouseholdsHomesFile(MetroGeoDataFrameFile):
     ]
 
 
-class HouseholdsZonesFile(MetroDataFrameFile):
-    path = "demand/population/households/zones.parquet"
+class HouseholdsZonesFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/households/zones.parquet"
     description = "Zones of the households' home."
     schema = [
         Column(
@@ -549,9 +622,51 @@ class HouseholdsZonesFile(MetroDataFrameFile):
     ]
 
 
+class HouseholdsHomesUrbanTypeFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/households/homes_urban_type.parquet"
+    description = "Urban type attributes of households' home."
+    schema = [
+        Column(
+            "household_id",
+            MetroDataType.ID,
+            description="Identifier of the household.",
+            nullable=False,
+            unique=True,
+        ),
+        Column(
+            "home_density",
+            MetroDataType.ENUM,
+            description="Urban density category of the household municipality.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "home_urban_type",
+            MetroDataType.ENUM,
+            description="Urban type of the household municipality.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "home_functional_area_type",
+            MetroDataType.ENUM,
+            description="Type of the municipality within its functional area.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "home_functional_area_category",
+            MetroDataType.ENUM,
+            description="Category of the functional area of the home municipality.",
+            nullable=True,
+            optional=True,
+        ),
+    ]
+
+
 # TODO. Maybe we should consider having the same mode mu for all the tours of a single person?
-class UniformDrawsFile(MetroDataFrameFile):
-    path = "demand/population/uniform_draws.parquet"
+class UniformDrawsFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/uniform_draws.parquet"
     description = (
         "Draws for the inverse transform sampling of mode choice and departure-time choice, "
         "of each tour."
@@ -574,6 +689,417 @@ class UniformDrawsFile(MetroDataFrameFile):
             "departure_time_u",
             MetroDataType.FLOAT,
             description="Random uniform draw for departure-time choice.",
+            nullable=False,
+        ),
+    ]
+
+
+class ToursFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/tours/tours.parquet"
+    description = "Variables at the tour-level."
+    schema = [
+        Column("tour_id", MetroDataType.ID, description="Identifier of the tour.", nullable=False),
+        Column(
+            "nb_trips",
+            MetroDataType.UINT,
+            description="Number of trips in the tour.",
+            nullable=False,
+        ),
+        Column(
+            "nb_activities",
+            MetroDataType.UINT,
+            description="Number of activities in the tour.",
+            nullable=False,
+        ),
+        Column(
+            "first_purpose",
+            MetroDataType.STRING,
+            description="Purpose of the first activity in the tour.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "last_purpose",
+            MetroDataType.STRING,
+            description="Purpose of the last activity in the tour.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "purposes",
+            MetroDataType.LIST_OF_STRINGS,
+            description="Purpose of each activity in the tour.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "durations",
+            MetroDataType.LIST_OF_DURATIONS,
+            description="Duration of each activity in the tour.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "first_departure_time",
+            MetroDataType.DURATION,
+            description="Departure time from the first origin of the tour.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "last_arrival_time",
+            MetroDataType.DURATION,
+            description="Arrival time at the last destination of the tour.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "first_activity_start",
+            MetroDataType.DURATION,
+            description="Start time of the first activity of the tour.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "last_activity_end",
+            MetroDataType.DURATION,
+            description="End time of the last activity of the tour.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "travel_times",
+            MetroDataType.LIST_OF_DURATIONS,
+            description="Duration of each trip of the tour.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "distances",
+            MetroDataType.LIST_OF_FLOATS,
+            description="Euclidean distance of each trip of the tour, in meters.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "trip_weekday",
+            MetroDataType.STRING,
+            description="Weekday during which the tour took place.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "outside_perimeter",
+            MetroDataType.BOOL,
+            description="Whether the tour has trips outside the simulation area.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "total_tour_duration",
+            MetroDataType.DURATION,
+            description=(
+                "Duration of the tour, from departure from first origin to arrival at last "
+                "destination."
+            ),
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "total_activity_duration",
+            MetroDataType.DURATION,
+            description="Total duration of all activities in the tour.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "total_travel_time",
+            MetroDataType.DURATION,
+            description="Total travel time of all trips in the tour.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "total_distance",
+            MetroDataType.FLOAT,
+            description="Total Euclidean distance of all trips in the tour, in meters.",
+            nullable=True,
+            optional=True,
+        ),
+        *[
+            Column(
+                f"has_{purpose}_purpose",
+                MetroDataType.BOOL,
+                description=f"Whether the tour has at least one activity with '{purpose}' purpose.",
+                nullable=True,
+                optional=True,
+            )
+            for purpose in PURPOSES
+        ],
+        Column(
+            "lowest_density",
+            MetroDataType.ENUM,
+            description="Lowest urban density category over activity locations.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "highest_density",
+            MetroDataType.ENUM,
+            description="Highest urban density category over activity locations.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "lowest_urban_type",
+            MetroDataType.ENUM,
+            description="Lowest urban type over activity locations.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "highest_urban_type",
+            MetroDataType.ENUM,
+            description="Highest urban type over activity locations.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "lowest_functional_area_type",
+            MetroDataType.ENUM,
+            description="Lowest functional area type over activity locations.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "highest_functional_area_type",
+            MetroDataType.ENUM,
+            description="Highest functional area type over activity locations.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "lowest_functional_area_category",
+            MetroDataType.ENUM,
+            description="Lowest functional area category over activity locations.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "highest_functional_area_category",
+            MetroDataType.ENUM,
+            description="Highest functional area category over activity locations.",
+            nullable=True,
+            optional=True,
+        ),
+        # Household-level variables.
+        Column(
+            "home_density",
+            MetroDataType.ENUM,
+            description="Urban density category of the household municipality.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "home_urban_type",
+            MetroDataType.ENUM,
+            description="Urban type of the household municipality.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "home_functional_area_type",
+            MetroDataType.ENUM,
+            description="Type of the municipality within its functional area.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "home_functional_area_category",
+            MetroDataType.ENUM,
+            description="Category of the functional area of the home municipality.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "nb_cars",
+            MetroDataType.UINT,
+            description="Number of cars owned by the household.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "nb_motorcycles",
+            MetroDataType.UINT,
+            description="Number of motorcycles owned by the household.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "nb_bicycles",
+            MetroDataType.UINT,
+            description="Number of bicycles owned by the household.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "nb_persons",
+            MetroDataType.UINT,
+            description="Number of persons living in the household.",
+            nullable=True,
+        ),
+        Column(
+            "nb_majors",
+            MetroDataType.UINT,
+            description="Number of persons 18 or older living in the household.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "nb_minors",
+            MetroDataType.UINT,
+            description="Number of persons 17 or younger living in the household.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "nb_women",
+            MetroDataType.UINT,
+            description="Number of women living in the household.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "nb_major_women",
+            MetroDataType.UINT,
+            description="Number of women 18 or older living in the household.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "nb_men",
+            MetroDataType.UINT,
+            description="Number of men living in the household.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "nb_major_men",
+            MetroDataType.UINT,
+            description="Number of men 18 or older living in the household.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "nb_driving_licenses",
+            MetroDataType.UINT,
+            description="Number of driving-license holders living in the household.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "household_type",
+            MetroDataType.STRING,
+            description="Type of household structure (single, couple, singleparent, etc.).",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "minor_ratio",
+            MetroDataType.FLOAT,
+            description="Share of household members 17 or younger.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "car_ratio",
+            MetroDataType.FLOAT,
+            description="Number of cars per person in the household.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "driving_license_ratio",
+            MetroDataType.FLOAT,
+            description="Number of cars per driving-license holder.",
+            nullable=True,
+            optional=True,
+        ),
+        # Person-level variables.
+        Column(
+            "woman",
+            MetroDataType.BOOL,
+            description="Whether the person is a woman.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "age",
+            MetroDataType.UINT,
+            description="Age of the person.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "oldest_age_diff",
+            MetroDataType.UINT,
+            description="Age difference to the oldest person in the household.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "education_level",
+            MetroDataType.STRING,
+            description="Education level of the person.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "professional_activity",
+            MetroDataType.STRING,
+            description="Professional status of the person (e.g., worker, student, retiree).",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "socioprofessional_class",
+            MetroDataType.UINT,
+            description="Socioprofessional class (job type) of the person.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "has_driving_license",
+            MetroDataType.BOOL,
+            description="Whether the person has a driving license.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "has_public_transit_subscription",
+            MetroDataType.BOOL,
+            description="Whether the person has a public-transit subscription.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "nb_tours",
+            MetroDataType.UINT,
+            description="Number of tours that the person did during the surveyed day.",
+            nullable=True,
+        ),
+    ]
+
+
+class JointToursFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/tours/joint_tours.parquet"
+    description = "Tour-level flag for joint trips."
+    schema = [
+        Column("tour_id", MetroDataType.ID, description="Identifier of the tour.", nullable=False),
+        Column(
+            "joint_tour",
+            MetroDataType.BOOL,
+            description="Whether the tour is done jointly with another household member.",
             nullable=False,
         ),
     ]

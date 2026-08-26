@@ -9,7 +9,7 @@ from pymetropolis.metro_demand.population.files import TripsDestinationsFile, Tr
 from pymetropolis.metro_network.bicycle_network.files import BicycleEdgesCleanFile
 from pymetropolis.metro_network.pedestrian_network.files import PedestrianEdgesCleanFile
 from pymetropolis.metro_network.road_network.files import RoadEdgesCleanFile
-from pymetropolis.metro_pipeline import Step
+from pymetropolis.metro_pipeline import PopulationStep, Step
 from pymetropolis.metro_pipeline.parameters import ListParameter
 from pymetropolis.metro_pipeline.types import String
 
@@ -98,7 +98,7 @@ def identify_nodes(
     return nodes
 
 
-class PedestrianODNodesFromCoordinatesStep(Step):
+class PedestrianODNodesFromCoordinatesStep(PopulationStep):
     """Identifies nodes on the pedestrian network to be used as origins and destinations of the
     trips.
 
@@ -145,7 +145,7 @@ class PedestrianODNodesFromCoordinatesStep(Step):
         self.output["ods"].write(ods)
 
 
-class BicycleODNodesFromCoordinatesStep(Step):
+class BicycleODNodesFromCoordinatesStep(PopulationStep):
     """Identifies nodes on the bicycle network to be used as origins and destinations of the
     trips.
 
@@ -193,6 +193,8 @@ class BicycleODNodesFromCoordinatesStep(Step):
 
 
 class GenericRoadNodesStep(Step):
+    """Abstract class to make the `road_network.forbidden_types` parameter reusable."""
+
     forbidden_types = ListParameter(
         "road_network.forbidden_types",
         inner=String(),
@@ -204,7 +206,7 @@ class GenericRoadNodesStep(Step):
     )
 
 
-class RoadODNodesFromCoordinatesStep(GenericRoadNodesStep):
+class RoadODNodesFromCoordinatesStep(GenericRoadNodesStep, PopulationStep):
     """Identifies nodes on the road network to be used as origins and destinations of the trips.
 
     First, this Step finds the nearest edge to the origin / destination coordinates.

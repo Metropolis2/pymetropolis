@@ -1,3 +1,4 @@
+import importlib.util
 import sys
 import time
 from collections import defaultdict
@@ -8,11 +9,25 @@ import humanize
 from loguru import logger
 from termcolor import colored
 
-from pymetropolis.metro_common import logger as metro_logger
+from pymetropolis.metro_common import MetropyError
 
 from .config import Config
 from .file import MetroFile
 from .steps import Step
+
+UP_TO_DATE_COLOR = (120, 120, 120)
+INVALIDATED_COLOR = (230, 160, 0)
+OUTDATED_COLOR = (220, 40, 40)
+
+
+def _file_key(f: MetroFile) -> str:
+    """Sort key giving a stable, run-independent order for MetroFiles.
+
+    `MetroFile.__hash__` is based on the class and the resolved path, so iterating a `set` of them
+    yields an order that depends on `PYTHONHASHSEED`; sorting on the (unique) resolved path instead
+    makes the order reproducible across runs.
+    """
+    return str(f.get_path())
 
 
 class StepStatus(Enum):
@@ -27,58 +42,97 @@ class StepStatus(Enum):
 
 class MetroPipeline:
     # List of defined steps, with their required input files, optional input files and output files.
-    steps: dict[Step, dict[str, set[type[MetroFile]]]]
+    steps: dict[Step, dict[str, set[MetroFile]]]
     # List of files that can be generated, with the Step(s) that generate them.
-    generated_files: dict[type[MetroFile], set[Step]]
+    generated_files: dict[MetroFile, set[Step]]
     # List of files which are required or optional input for primary steps.
     # A step is "primary" if its priority is > 0.
-    primary_input_files: set[type[MetroFile]]
+    primary_input_files: set[MetroFile]
     # List of files which are required or optional input for the target step.
-    target_input_files: set[type[MetroFile]] = set()
+    target_input_files: set[MetroFile] = set()
     config: Config
     target_step: Step | None = None
 
     def __init__(
         self, config: Config, step_classes: list[type[Step]], target_step: str | None = None
     ) -> None:
-        metro_logger.setup()
         self.config = config
+        step_classes = self.load_custom_steps(step_classes)
         steps = defaultdict(dict)
         all_output_files = set()
         used_keys = set()
         for step_class in step_classes:
             assert issubclass(step_class, Step), f"Not a valid Step: {step_class}"
-            # Instantiate the step with the config.
-            step = step_class(self.config)
             # Keep track of all keys used.
             for _, p in step_class._iter_params():
                 used_keys.add(str(p))
-            all_output_files.update(step.output_files.values())
-            if step.is_defined() and step.output_files:
-                steps[step]["required_inputs"] = set(
-                    map(lambda f: f[1], step._iter_input_files(required=True))
-                )
-                steps[step]["optional_inputs"] = set(
-                    map(lambda f: f[1], step._iter_input_files(required=False))
-                )
-                steps[step]["outputs"] = set(map(lambda f: f, step.output_files.values()))
+            # Instantiate the step with the config.
+            # Multiple steps are returned for PopulationStep when multiple populations are defined
+            # in the config.
+            step_insts = self.config.instantiate_step(step_class)
+            for step in step_insts:
+                all_output_files.update(step.output.values())
+                if step.is_defined() and step.output:
+                    steps[step]["required_inputs"] = set(
+                        step._iter_resolved_input_files(required=True)
+                    )
+                    steps[step]["optional_inputs"] = set(
+                        step._iter_resolved_input_files(required=False)
+                    )
+                    steps[step]["outputs"] = set(step.output.values())
         self.steps = steps
-        self.check_unused_keys(used_keys)
+        self.config.check_unused_keys(used_keys)
         self.check_target_step_defined(target_step, step_classes)
         self.set_feasible()
         self.solve_conflicts()
         self.check_files_to_delete(all_output_files)
 
-    def check_unused_keys(self, used_keys: set[str]):
-        unused_keys = self.config.get_unused_keys(used_keys)
-        if unused_keys:
-            logger.warning("The following keys appear in the configuration but are not used:")
-            for k in sorted(unused_keys):
-                logger.warning(f"- {k}")
+    def load_custom_steps(self, step_classes: list[type[Step]]) -> list[type[Step]]:
+        """Imports the Step subclasses defined in the user's `custom_steps` Python files (if any)
+        and returns `step_classes` with them merged in.
 
-    def check_files_to_delete(self, all_output_files: set[type[MetroFile]]):
+        A custom Step whose name matches an existing Step's name (built-in, or from an
+        earlier-listed custom file) replaces it, so that users can override a built-in Step with
+        their own local-specific implementation.
+        """
+        if not self.config.custom_step_paths:
+            return step_classes
+        steps_by_name = {cls.__name__: cls for cls in step_classes}
+        for i, path in enumerate(self.config.custom_step_paths):
+            # Give each file a unique, synthetic module name: files are loaded straight from an
+            # arbitrary path rather than imported as part of a package, so there is no "real"
+            # dotted module name for them, and two custom files could otherwise share a stem
+            # (e.g. two different `custom_steps.py` in different directories).
+            module_name = f"_pymetropolis_custom_step_{i}_{path.stem}"
+            # Build a module object from the file path without executing it yet.
+            spec = importlib.util.spec_from_file_location(module_name, path)
+            if spec is None or spec.loader is None:
+                raise MetropyError(f"Could not load custom step file: `{path}`")
+            module = importlib.util.module_from_spec(spec)
+            # Register the module under its synthetic name before executing it, so that any class
+            # defined in the file gets `__module__ == module_name` (this is what the check below
+            # uses to tell "defined in this file" apart from "merely imported into this file",
+            # e.g. the `Step` base class itself).
+            sys.modules[module_name] = module
+            # Actually run the file's code (imports, class definitions, ...).
+            spec.loader.exec_module(module)
+            for obj in vars(module).values():
+                if (
+                    isinstance(obj, type)
+                    and issubclass(obj, Step)
+                    and obj.__module__ == module_name
+                ):
+                    if obj.__name__ in steps_by_name:
+                        logger.info(
+                            f"Custom Step `{obj.__name__}` from `{path}` overrides an existing "
+                            "Step with the same name"
+                        )
+                    steps_by_name[obj.__name__] = obj
+        return list(steps_by_name.values())
+
+    def check_files_to_delete(self, all_output_files: set[MetroFile]):
         to_delete_files = list()
-        for ofile in all_output_files:
+        for ofile in sorted(all_output_files, key=_file_key):
             f = ofile.from_dir(self.config.main_directory)
             if ofile not in self.generated_files and f.exists():
                 to_delete_files.append(f)
@@ -125,19 +179,22 @@ class MetroPipeline:
         self.primary_input_files = set()
         remaining = set(self.steps.keys())
         while True:
-            steps_to_add = {
+            # `remaining` and the output file sets below are iterated in sorted order so that the
+            # insertion order of `generated_files` (which drives `find_next_conflict`) does not
+            # depend on object ids / hash randomization.
+            steps_to_add = [
                 s
-                for s in remaining
+                for s in sorted(remaining, key=str)
                 if self.steps[s]["required_inputs"].issubset(self.generated_files)
-            }
+            ]
             if not steps_to_add:
                 break
-            remaining -= steps_to_add
+            remaining -= set(steps_to_add)
             for s in steps_to_add:
                 if s.is_primary():
                     for f in self.steps[s]["required_inputs"] | self.steps[s]["optional_inputs"]:
                         self.primary_input_files.add(f)
-                for f in self.steps[s]["outputs"]:
+                for f in sorted(self.steps[s]["outputs"], key=_file_key):
                     self.generated_files[f].add(s)
         # Remove unfeasible steps from the step list.
         for s in remaining:
@@ -149,12 +206,12 @@ class MetroPipeline:
             # At this point, target step is defined but it is not feasible because one of its input
             # file is not getting generated.
             errors = False
-            for _, ifile in self.target_step._iter_input_files(required=True):
+            for ifile in self.target_step._iter_resolved_input_files(required=True):
                 if ifile not in self.generated_files:
                     errors = True
                     logger.error(
-                        f"File {ifile.__name__} is required by Step {self.target_step}, but no "
-                        "defined step can generate it"
+                        f"File {ifile} is required by Step {self.target_step}, but no defined step "
+                        "can generate it"
                     )
             if errors:
                 sys.exit()
@@ -162,8 +219,8 @@ class MetroPipeline:
     def find_next_conflict(self) -> set[Step] | None:
         for ofile, steps in self.generated_files.items():
             if len(steps) >= 2:
-                steps_str = ", ".join(map(str, steps))
-                logger.debug(f"Multiple steps are generating file {ofile.__name__}: {steps_str}")
+                steps_str = ", ".join(sorted(map(str, steps)))
+                logger.debug(f"Multiple steps are generating file {ofile}: {steps_str}")
                 return steps
 
     def solve_conflicts(self):
@@ -171,7 +228,7 @@ class MetroPipeline:
             conflict = self.find_next_conflict()
             if conflict is None:
                 break
-            to_remove_steps = self.least_priority_steps(conflict)
+            to_remove_steps = sorted(self.least_priority_steps(conflict), key=str)
             steps_str = ", ".join(map(str, to_remove_steps))
             if len(to_remove_steps) > 1:
                 logger.debug(f"Steps {steps_str} are discarded.")
@@ -189,9 +246,12 @@ class MetroPipeline:
         to_run_steps = set()
         outdated_files = set()
         while True:
+            # `remaining` is iterated in sorted order (rather than in `set` order, which depends on
+            # object ids) so that steps which become runnable at the same time are always sequenced
+            # in the same order from one run to the next.
             steps_to_add = [
                 s
-                for s in remaining
+                for s in sorted(remaining, key=str)
                 # Condition 1: all required files have already been generated.
                 if self.steps[s]["required_inputs"].issubset(available_files)
                 # Condition 2: all optional files *which will be generated* have already been
@@ -229,7 +289,7 @@ class MetroPipeline:
                 remaining.remove(step)
                 available_files.update(set(self.steps[step]["outputs"]))
         # Check that all feasible *primary* steps were added to the sequence.
-        remaining_primary = list(filter(lambda s: s.is_primary(), remaining))
+        remaining_primary = sorted(filter(lambda s: s.is_primary(), remaining), key=str)
         assert not remaining_primary, (
             "Some Steps could not be added to the sequence: "
             f"{', '.join(map(str, remaining_primary))}"
@@ -259,19 +319,30 @@ class MetroPipeline:
             self.run_sequence(sequence, step_by_step=step_by_step)
 
     def print_sequence(self, sequence: list[tuple[Step, StepStatus]]):
+        legend = ", ".join(
+            colored(label, color, attrs=attrs)
+            for label, color, attrs in (
+                ("up to date", UP_TO_DATE_COLOR, []),
+                ("outdated", OUTDATED_COLOR, ["bold"]),
+                ("invalidated", INVALIDATED_COLOR, []),
+            )
+        )
+        print(f"Legend: {legend}\n")
         s = ""
         for i, (step, status) in enumerate(sequence):
             attrs = list()
             match status:
                 case StepStatus.UP_TO_DATE:
-                    # attrs.append("strike")
-                    color = (163, 112, 0)
+                    color = UP_TO_DATE_COLOR
+                    tag = "up to date"
                 case StepStatus.INVALIDATED:
-                    color = (0, 73, 230)
+                    color = INVALIDATED_COLOR
+                    tag = "invalidated"
                 case StepStatus.OUTDATED:
                     attrs.append("bold")
-                    color = (0, 81, 255)
-            dep_str = colored(f"{i + 1}. {step}", color, attrs=attrs)
+                    color = OUTDATED_COLOR
+                    tag = "outdated"
+            dep_str = colored(f"{i + 1}. {step} [{tag}]", color, attrs=attrs)
             s += dep_str + "\n"
         print(s)
         # TODO: Plot a graph of the pipeline.
@@ -283,11 +354,12 @@ class MetroPipeline:
             for i, (step, _) in enumerate(to_run_steps):
                 logger.info(f"=== Step {i + 1} / {n}: {step} ===")
                 start = time.time()
-                step.execute(self.config)
+                step.execute()
                 end = time.time()
                 logger.info(f"Done in {humanize.precisedelta(end - start)}")
                 if step_by_step:
-                    if click.confirm("Continue to next step?"):
+                    next_step = to_run_steps[i + 1][0]
+                    if click.confirm(f"Continue to next step? [{next_step}]"):
                         continue
                     else:
                         logger.success("Stopped!")

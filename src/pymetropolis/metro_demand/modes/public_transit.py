@@ -16,7 +16,7 @@ from pymetropolis.metro_demand.routing.files import (
     TripsCarFreeFlowTravelTimesFile,
     TripsPublicTransitItinerariesFile,
 )
-from pymetropolis.metro_pipeline import Step
+from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.metro_pipeline.parameters import FloatParameter
 
 from .files import PublicTransitPreferencesFile
@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 MODE = "public_transit"
 
 
-class PublicTransitPreferencesStep(PreferencesStep):
+class PublicTransitPreferencesStep(PreferencesStep, PopulationStep):
     __doc__ = cst_preferences_step_docstring(MODE)
 
     constant = pref_constant_parameter(MODE)
@@ -53,7 +53,7 @@ class PublicTransitPreferencesFromPopulationStep(ModePreferencesFromPopulationSt
         self.output["preferences"].write(df)
 
 
-class PublicTransitTravelTimesFromRoadDistancesStep(Step):
+class PublicTransitTravelTimesFromRoadDistancesStep(PopulationStep):
     """Generates travel times for the public-transit trips by applying a constant speed to
     the shortest-path distances of the car-driver trips.
     """
