@@ -40,17 +40,17 @@ def get_classifiers(random_seed: int | None):
 
 
 def get_param_grids():
+    # Note. `class_weight` is not part of the grids: the predicted probabilities are meant to be
+    # sampled from (so that the predicted shares match the observed ones) and re-weighting the
+    # classes distorts them (e.g., with `class_weight="balanced"`, the probabilities are those of
+    # a population where all the classes are equally frequent). The classifiers are thus always
+    # fitted with their default `class_weight=None`.
     return {
         "dummy": {},
-        "logistic": {
-            "clf__C": [0.01, 0.1, 1, 10, 100],
-            "clf__class_weight": ["balanced", None],
-            "clf__solver": ["lbfgs", "liblinear"],
-        },
+        "logistic": {"clf__C": [0.01, 0.1, 1, 10, 100], "clf__solver": ["lbfgs", "liblinear"]},
         "decision_tree": {
             "clf__max_depth": [None, 5, 10, 20],
             "clf__min_samples_leaf": [1, 5, 10, 20],
-            "clf__class_weight": ["balanced", None],
         },
         "knn": {
             "clf__n_neighbors": [3, 5, 10, 20, 50],
@@ -62,14 +62,12 @@ def get_param_grids():
             "clf__max_depth": [None, 5, 10, 20],
             "clf__min_samples_leaf": [1, 5, 10, 20],
             "clf__max_features": ["sqrt", "log2", 0.3],
-            "clf__class_weight": ["balanced", "balanced_subsample"],
         },
         "extra_tree": {
             "clf__n_estimators": [100, 200, 500],
             "clf__max_depth": [None, 5, 10, 20],
             "clf__min_samples_leaf": [1, 5, 10, 20],
             "clf__max_features": ["sqrt", "log2", 0.3],
-            "clf__class_weight": ["balanced", "balanced_subsample"],
         },
         "adaboost": {
             "clf__n_estimators": [50, 100, 200, 500],
@@ -150,13 +148,39 @@ def get_preprocessor():
     return preprocessor
 
 
-def test_models(X: pd.DataFrame, y: pd.Series, random_seed: int | None, nb_threads: int | None):
-    from sklearn.model_selection import StratifiedKFold, cross_validate
+def get_cv_splits(
+    X: pd.DataFrame, y: pd.Series, groups: np.ndarray, random_seed: int | None, n_splits: int = 5
+) -> list[tuple[np.ndarray, np.ndarray]]:
+    """Returns the (train, test) indices of the cross-validation folds.
+
+    The folds are stratified by `y` and grouped by `groups`: all the observations sharing a group
+    are assigned to the same fold. Grouping is required whenever the observations are not
+    independent (e.g., the tours of the members of a same household share all their household-level
+    variables and joint tours are duplicated over the household members): without it, near-copies
+    of a test observation are part of the training set and the scores are over-optimistic.
+
+    The folds are returned as a list of indices (instead of a splitter) so that the exact same
+    folds can be re-used by the estimators that do not accept `groups` in `fit`.
+    """
+    from sklearn.model_selection import StratifiedGroupKFold
+
+    cv = StratifiedGroupKFold(n_splits=n_splits, shuffle=True, random_state=random_seed)
+    return list(cv.split(X, y, groups))
+
+
+def test_models(
+    X: pd.DataFrame,
+    y: pd.Series,
+    groups: np.ndarray,
+    random_seed: int | None,
+    nb_threads: int | None,
+):
+    from sklearn.model_selection import cross_validate
     from sklearn.pipeline import Pipeline
 
     classifiers = get_classifiers(random_seed)
     preprocessor = get_preprocessor()
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_seed)
+    cv = get_cv_splits(X, y, groups, random_seed)
 
     results = {}
     for model, classifier in classifiers.items():
@@ -181,15 +205,19 @@ def _grid_size(param_grid: dict) -> int:
 
 
 def estimate_model(
-    X: pd.DataFrame, y: pd.Series, model: str, random_seed: int | None, nb_threads: int | None
+    X: pd.DataFrame,
+    y: pd.Series,
+    groups: np.ndarray,
+    model: str,
+    random_seed: int | None,
+    nb_threads: int | None,
 ) -> BaseEstimator:
-    from sklearn.calibration import CalibratedClassifierCV
-    from sklearn.model_selection import RandomizedSearchCV, StratifiedKFold
+    from sklearn.model_selection import RandomizedSearchCV
     from sklearn.pipeline import Pipeline
 
     classifiers = get_classifiers(random_seed)
     preprocessor = get_preprocessor()
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_seed)
+    cv = get_cv_splits(X, y, groups, random_seed)
 
     classifier = classifiers.get(model)
     if classifier is None:
@@ -214,12 +242,10 @@ def estimate_model(
     logger.debug(f"Best parameters: {search.best_params_}")
     logger.debug(f"Best CV Brier score: {-search.best_score_:.2%}")
 
-    # Estimate a calibrated model.
-    calibrated = CalibratedClassifierCV(
-        search.best_estimator_, method="sigmoid", cv=cv, n_jobs=nb_threads
-    )
-    calibrated.fit(X, y)
-    return calibrated
+    # Note. The estimator is not re-calibrated (e.g., with a `CalibratedClassifierCV`): the
+    # probabilities are meant to be sampled from and the one-vs-rest calibration of a multiclass
+    # classifier does not preserve the predicted shares (it makes them less accurate in practice).
+    return search.best_estimator_
 
 
 def predict(X: pd.DataFrame, estimator: BaseEstimator, rng: np.random.Generator):

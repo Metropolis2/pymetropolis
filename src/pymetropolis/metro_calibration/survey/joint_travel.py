@@ -84,12 +84,15 @@ class EstimateJointToursClassifierStep(RandomStep, ThreadedStep):
 
         X = get_X(tours, self.features)
         y = tours["joint_tour"].cast(pl.Int64).to_pandas()
+        # A joint tour is defined by the co-travel of household members, so the tours of a same
+        # household must all be assigned to the same cross-validation fold.
+        groups = tours["household_id"].to_numpy()
         if self.model is None:
-            model = test_models(X, y, self.random_seed, self.nb_threads or -1)
+            model = test_models(X, y, groups, self.random_seed, self.nb_threads or -1)
         else:
             model = self.model
 
-        estimator = estimate_model(X, y, model, self.random_seed, self.nb_threads or -1)
+        estimator = estimate_model(X, y, groups, model, self.random_seed, self.nb_threads or -1)
 
         self.output["estimator"].write(estimator)
 

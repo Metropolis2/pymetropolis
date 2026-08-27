@@ -19,35 +19,51 @@ from .files import (
 )
 
 if TYPE_CHECKING:
+    import polars as pl
     from mobisurvstd.classes import SurveyData
+
+OFFSET = 1_000_000
+
+
+def with_survey_name(households: pl.DataFrame, metadata: dict | None) -> pl.DataFrame:
+    """Adds a `survey_name` column identifying the survey the households belong to."""
+    import polars as pl
+
+    name = metadata.get("name") if metadata is not None else None
+    return households.with_columns(survey_name=pl.lit(name, dtype=pl.String))
 
 
 def prepare_survey(survey: SurveyData, idx: int) -> dict[str, Any]:
     import polars as pl
 
+    if any(len(getattr(survey, k)) >= OFFSET for k in ("households", "persons", "trips", "legs")):
+        # Survey ids are offset by OFFSET to prevent duplicate ids over surveys.
+        # If a survey has more than OFFSET observations in a DataFrame, duplicate ids mighgt occur.
+        raise MetropyError(f"Surveys with more than {OFFSET} observation are not supported.")
+
     data = dict()
-    data["households"] = survey.households.with_columns(
-        pl.col("household_id") + idx * 1_000_000
+    data["households"] = with_survey_name(
+        survey.households.with_columns(pl.col("household_id") + idx * OFFSET), survey.metadata
     ).drop("original_household_id")
     data["persons"] = survey.persons.with_columns(
-        pl.col("household_id") + idx * 1_000_000, pl.col("person_id") + idx * 1_000_000
+        pl.col("household_id") + idx * OFFSET, pl.col("person_id") + idx * OFFSET
     ).drop("original_person_id")
     data["trips"] = survey.trips.with_columns(
-        pl.col("household_id") + idx * 1_000_000,
-        pl.col("person_id") + idx * 1_000_000,
-        pl.col("trip_id") + idx * 1_000_000,
+        pl.col("household_id") + idx * OFFSET,
+        pl.col("person_id") + idx * OFFSET,
+        pl.col("trip_id") + idx * OFFSET,
     ).drop("original_trip_id")
     data["legs"] = survey.legs.with_columns(
-        pl.col("household_id") + idx * 1_000_000,
-        pl.col("person_id") + idx * 1_000_000,
-        pl.col("trip_id") + idx * 1_000_000,
-        pl.col("leg_id") + idx * 1_000_000,
+        pl.col("household_id") + idx * OFFSET,
+        pl.col("person_id") + idx * OFFSET,
+        pl.col("trip_id") + idx * OFFSET,
+        pl.col("leg_id") + idx * OFFSET,
     ).drop("original_leg_id")
     data["cars"] = survey.cars.with_columns(
-        pl.col("household_id") + idx * 1_000_000, pl.col("car_id") + idx * 1_000_000
+        pl.col("household_id") + idx * OFFSET, pl.col("car_id") + idx * OFFSET
     ).drop("original_car_id")
     data["motorcycles"] = survey.motorcycles.with_columns(
-        pl.col("household_id") + idx * 1_000_000, pl.col("motorcycle_id") + idx * 1_000_000
+        pl.col("household_id") + idx * OFFSET, pl.col("motorcycle_id") + idx * OFFSET
     ).drop("original_motorcycle_id")
     # Note. For now, zones are not read when in bulk (all ids would need to be adjusted).
     data["special_locations"] = None
@@ -128,7 +144,13 @@ class MobiSurvStdImportStep(Step):
             if survey is None:
                 raise MetropyError(f"Failed to read survey with MobiSurvStd: `{self.survey_path}`.")
 
-        self.output["households"].write(survey.households)
+        households = survey.households
+        if not self.bulk:
+            # In bulk, `survey_name` is already set for each survey by `prepare_survey` (the
+            # metadata of the concatenated survey is `None`).
+            households = with_survey_name(households, survey.metadata)
+
+        self.output["households"].write(households)
         self.output["persons"].write(survey.persons)
         self.output["trips"].write(survey.trips)
         self.output["legs"].write(survey.legs)

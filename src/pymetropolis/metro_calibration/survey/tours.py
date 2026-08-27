@@ -31,6 +31,7 @@ def read_tours(
     # Clean household-level variables.
     households = households.select(
         "household_id",
+        "survey_name",
         "nb_cars",
         "nb_motorcycles",
         "nb_bicycles",
@@ -414,7 +415,7 @@ def read_tours(
     # Create tour_id column.
     tours = tours.with_columns(
         tour_id=pl.concat_str("person_id", pl.lit("-"), "home_sequence_index")
-    ).drop("household_id", "person_id", "home_sequence_index")
+    ).drop("home_sequence_index")
 
     return tours
 

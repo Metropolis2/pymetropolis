@@ -104,6 +104,24 @@ class SurveyedToursFile(MetroDataFrameFile):
     schema = [
         Column("tour_id", MetroDataType.ID, description="Identifier of the tour.", nullable=False),
         Column(
+            "survey_name",
+            MetroDataType.STRING,
+            description="Name of the survey the tour comes from.",
+            nullable=True,
+        ),
+        Column(
+            "household_id",
+            MetroDataType.ID,
+            description="Identifier of the household of the person who did the tour.",
+            nullable=False,
+        ),
+        Column(
+            "person_id",
+            MetroDataType.ID,
+            description="Identifier of the person who did the tour.",
+            nullable=False,
+        ),
+        Column(
             "nb_trips",
             MetroDataType.UINT,
             description="Number of trips in the tour.",

@@ -115,12 +115,16 @@ class EstimateModeClassifierStep(RandomStep, ThreadedStep):
         # The estimator is fitted on the mode names themselves (not on encoded values) so that
         # `estimator.classes_` can be used to label the predictions of `ClassifyToursModeStep`.
         y = tours["tour_mode"].to_pandas()
+        # The tours of a same household are not independent observations (they share all the
+        # household-level variables and joint tours are duplicated over the household members), so
+        # they must all be assigned to the same cross-validation fold.
+        groups = tours["household_id"].to_numpy()
         if self.model is None:
-            model = test_models(X, y, self.random_seed, self.nb_threads or -1)
+            model = test_models(X, y, groups, self.random_seed, self.nb_threads or -1)
         else:
             model = self.model
 
-        estimator = estimate_model(X, y, model, self.random_seed, self.nb_threads or -1)
+        estimator = estimate_model(X, y, groups, model, self.random_seed, self.nb_threads or -1)
 
         self.output["estimator"].write(estimator)
 
