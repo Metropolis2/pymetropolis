@@ -6,7 +6,7 @@ from loguru import logger
 
 from pymetropolis.common import ThreadedStep
 from pymetropolis.metro_common import MetropyError
-from pymetropolis.metro_common.ml_models import estimate_model, get_X, predict, test_models
+from pymetropolis.metro_common.ml_models import estimate_model, get_X, sample_classes, test_models
 from pymetropolis.metro_demand.population.files import ToursFile, ToursModeFile
 from pymetropolis.metro_pipeline import PopulationStep, Step
 from pymetropolis.metro_pipeline.parameters import (
@@ -86,7 +86,6 @@ class EstimateModeClassifierStep(RandomStep, ThreadedStep):
 
     def run(self):
         import polars as pl
-        from sklearn.preprocessing import LabelEncoder
 
         assert self.features is not None
 
@@ -110,9 +109,12 @@ class EstimateModeClassifierStep(RandomStep, ThreadedStep):
                 )
             )
 
+        tours = tours.drop_nulls("tour_mode")
+
         X = get_X(tours, self.features)
-        encoder = LabelEncoder()
-        y = encoder.fit_transform(tours["tour_mode"])
+        # The estimator is fitted on the mode names themselves (not on encoded values) so that
+        # `estimator.classes_` can be used to label the predictions of `ClassifyToursModeStep`.
+        y = tours["tour_mode"].to_pandas()
         if self.model is None:
             model = test_models(X, y, self.random_seed, self.nb_threads or -1)
         else:
@@ -130,6 +132,7 @@ class ClassifyToursModeStep(RandomStep, PopulationStep):
     output_files = {"modes": ToursModeFile}
 
     def run(self):
+        import polars as pl
 
         tours = self.input["tours"].read()
         estimator = self.input["estimator"].read()
@@ -138,6 +141,11 @@ class ClassifyToursModeStep(RandomStep, PopulationStep):
 
         X = get_X(tours, features)
 
-        modes = predict(X, estimator, self.get_rng(str(self)))
+        modes = sample_classes(X, estimator, self.get_rng(str(self)))
 
-        self.output["modes"].write(modes)
+        df = tours.select("tour_id", mode=pl.Series("mode", modes, dtype=pl.String))
+
+        for mode, count in df["mode"].value_counts(sort=True).iter_rows():
+            logger.info(f"Share of tours with mode `{mode}`: {count / len(df):.2%}")
+
+        self.output["modes"].write(df)

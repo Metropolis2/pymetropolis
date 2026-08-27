@@ -98,16 +98,40 @@ def get_X(tours: pl.DataFrame, features: list[str]) -> pd.DataFrame:
         raise MetropyError("Cannot generate tours with all features")
 
     tours = tours.with_columns(cs.boolean().cast(pl.Int64), cs.duration().dt.total_seconds())
-    return tours.select(*features).to_pandas()
+    X = tours.select(*features).to_pandas()
+
+    # The ColumnTransformer of `get_preprocessor` drops the columns that no selector matches, so
+    # any feature with an unhandled dtype would be silently excluded from the model.
+    numeric_selector, categorical_selector = get_column_selectors()
+    handled = set(numeric_selector(X)) | set(categorical_selector(X))
+    if ignored := [col for col in X.columns if col not in handled]:
+        logger.warning(
+            "The following features have a dtype that the preprocessor does not handle, they are "
+            f"ignored by the model: {', '.join(ignored)}"
+        )
+
+    return X
+
+
+def get_column_selectors():
+    """Returns the selectors of the numeric and categorical columns used by the preprocessor."""
+    import numpy as np
+    from sklearn.compose import make_column_selector
+
+    numeric_selector = make_column_selector(dtype_include=np.number)
+    # Polars Enum columns become pandas categorical columns when converted to pandas, they must be
+    # selected as categorical variables (otherwise they are dropped by the ColumnTransformer).
+    categorical_selector = make_column_selector(dtype_include=[object, "string", "category"])
+    return numeric_selector, categorical_selector
 
 
 def get_preprocessor():
-    import numpy as np
-    from sklearn.compose import ColumnTransformer, make_column_selector
+    from sklearn.compose import ColumnTransformer
     from sklearn.impute import SimpleImputer
     from sklearn.pipeline import Pipeline
     from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
+    numeric_selector, categorical_selector = get_column_selectors()
     numeric_transformer = Pipeline(
         [("imputer", SimpleImputer(strategy="median")), ("scaler", StandardScaler())]
     )
@@ -119,12 +143,8 @@ def get_preprocessor():
     )
     preprocessor = ColumnTransformer(
         [
-            ("num", numeric_transformer, make_column_selector(dtype_include=np.number)),
-            (
-                "cat",
-                categorical_transformer,
-                make_column_selector(dtype_include=[object, "string"]),
-            ),
+            ("num", numeric_transformer, numeric_selector),
+            ("cat", categorical_transformer, categorical_selector),
         ]
     )
     return preprocessor
@@ -203,8 +223,36 @@ def estimate_model(
 
 
 def predict(X: pd.DataFrame, estimator: BaseEstimator, rng: np.random.Generator):
-    probs = estimator.predict_proba(X)[:, 1]  # ty: ignore[unresolved-attribute]
-    return rng.binomial(n=1, p=probs).astype(bool)
+    """Draws a boolean outcome for each observation, from a binary classifier."""
+    probs = estimator.predict_proba(X)  # ty: ignore[unresolved-attribute]
+    if probs.shape[1] != 2:
+        raise MetropyError(
+            f"`predict` requires a binary classifier but the estimator has {probs.shape[1]} "
+            "classes; use `sample_classes` instead"
+        )
+    return rng.binomial(n=1, p=probs[:, 1]).astype(bool)
+
+
+def sample_classes(
+    X: pd.DataFrame, estimator: BaseEstimator, rng: np.random.Generator
+) -> np.ndarray:
+    """Draws a class for each observation, from the probabilities of a classifier.
+
+    The classes drawn are the labels the estimator was fitted on (`estimator.classes_`), so the
+    estimator must have been fitted with the actual labels, not with encoded values.
+    """
+    import numpy as np
+
+    probs = estimator.predict_proba(X)  # ty: ignore[unresolved-attribute]
+    classes = np.asarray(estimator.classes_)  # ty: ignore[unresolved-attribute]
+    # Inverse-transform sampling: draw one uniform per observation and find the first class whose
+    # cumulated probability exceeds it.
+    cumulated_probs = probs.cumsum(axis=1)
+    # Guard against floating-point round-off leaving the last cumulated probability below 1.
+    cumulated_probs[:, -1] = 1.0
+    draws = rng.random(len(probs))
+    indices = (draws[:, np.newaxis] < cumulated_probs).argmax(axis=1)
+    return classes[indices]
 
 
 def compute_lasso(
