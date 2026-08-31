@@ -1,4 +1,5 @@
 import json
+from datetime import timedelta
 from math import inf, isfinite
 
 from pymetropolis.common import ThreadedStep
@@ -92,6 +93,19 @@ class WriteMetroParametersStep(ThreadedStep):
     nb_iterations = IntParameter(
         "simulation.nb_iterations", default=1, description="Number of iterations to be simulated."
     )
+    node_order_reuse_threshold = DurationParameter(
+        "simulation.node_order_reuse_threshold",
+        default=timedelta(seconds=1),
+        description=(
+            "Threshold for expected edge TTFs RMSE above which node ordering is recomputed at next "
+            "iteration."
+        ),
+        note=(
+            "Edge TTFs RMSE is the RMSE of the difference between expected edge-level road travel "
+            "times at the previous and current iteration."
+        ),
+    )
+
     input_files = {
         "agents": MetroAgentsFile,
         "alternatives": MetroAlternativesFile,
@@ -145,6 +159,7 @@ class WriteMetroParametersStep(ThreadedStep):
             "recording_interval": recording_interval,
             "spillback": self.spillback,
             "algorithm_type": self.routing_algorithm,
+            "node_order_reuse_threshold": self.node_order_reuse_threshold,
         }
         if self.max_pending_duration is not None:
             params["road_network"]["max_pending_duration"] = (
