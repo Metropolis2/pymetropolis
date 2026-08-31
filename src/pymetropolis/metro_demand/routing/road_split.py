@@ -230,39 +230,40 @@ class RoadNetworkPrimaryEdgesStep(Step):
             # Default case: all edges are primary.
             df = edges.select("edge_id", primary=True)
         if not df["primary"].all() and self.ensure_primary_connected:
-            routes = pl.concat(
-                (
-                    f.read().select(route="free_flow_route")
-                    for f in self.input_populations["car_ff_routes"].values()
-                    if f.exists()
-                ),
-                how="vertical",
-            )
-            # Create new `trip_id` to have unique ids (they are just used for grouping, it does not
-            # matter if they do not match the original ids).
-            routes = routes.with_columns(trip_id=pl.int_range(pl.len()))
-            primary_edges = set(df.filter("primary")["edge_id"])
-            primary_edges = find_primary_edges(routes, primary_edges)
-            edges = edges.with_columns(primary=pl.col("edge_id").is_in(primary_edges))
-            # Select the largest strongly connected component.
-            # Some patches of edges can be disconnected and are not re-connected to the main part
-            # since no trip is starting from them.
-            nodes = get_largest_strongly_connected_component_nodes(
-                edges.filter("primary").select("source", "target")
-            )
-            n0 = len(primary_edges)
-            df = edges.select(
-                "edge_id",
-                primary=pl.col("primary")
-                .and_(pl.col("source").is_in(nodes))
-                .and_(pl.col("target").is_in(nodes)),
-            )
-            n1 = df["primary"].sum()
-            if n1 < n0:
-                logger.warning(
-                    f"Discarding {n0 - n1} primary edges ({(n0 - n1) / n0:.2%}) disconnected from "
-                    "the largest graph component."
+            routes: pl.DataFrame | None = None
+            dfs = [
+                f.read().select(route="free_flow_route")
+                for f in self.input_populations["car_ff_routes"].values()
+                if f.exists()
+            ]
+            if dfs:
+                routes = pl.concat(dfs, how="vertical")
+            if routes is not None:
+                # Create new `trip_id` to have unique ids (they are just used for grouping, it does
+                # not matter if they do not match the original ids).
+                routes = routes.with_columns(trip_id=pl.int_range(pl.len()))
+                primary_edges = set(df.filter("primary")["edge_id"])
+                primary_edges = find_primary_edges(routes, primary_edges)
+                edges = edges.with_columns(primary=pl.col("edge_id").is_in(primary_edges))
+                # Select the largest strongly connected component.
+                # Some patches of edges can be disconnected and are not re-connected to the main
+                # part since no trip is starting from them.
+                nodes = get_largest_strongly_connected_component_nodes(
+                    edges.filter("primary").select("source", "target")
                 )
+                n0 = len(primary_edges)
+                df = edges.select(
+                    "edge_id",
+                    primary=pl.col("primary")
+                    .and_(pl.col("source").is_in(nodes))
+                    .and_(pl.col("target").is_in(nodes)),
+                )
+                n1 = df["primary"].sum()
+                if n1 < n0:
+                    logger.warning(
+                        f"Discarding {n0 - n1} primary edges ({(n0 - n1) / n0:.2%}) disconnected "
+                        "from the largest graph component."
+                    )
         if not df["primary"].sum():
             raise MetropyError(
                 "There is no edge in the primary network. "
