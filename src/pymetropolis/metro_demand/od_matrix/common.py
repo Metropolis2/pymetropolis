@@ -13,7 +13,7 @@ def generate_trips_from_od_matrix(df: pl.DataFrame, rng: np.random.Generator):
 
     if df["size"].dtype.is_float():
         decimals = df["size"] % 1.0
-        if (decimals.is_close(0.0, abs_tol=1e-9)).any():
+        if (decimals.is_close(0.0, abs_tol=1e-9).not_()).any():
             # Some values for `size` are not integers: we randomly draw the previous or next integer
             # for each value, with probability equal to the decimal part.
             # The draws are such that, on aggregate, the total number of trips is equal to the sum
