@@ -119,12 +119,20 @@ class EstimateModeClassifierStep(RandomStep, ThreadedStep):
         # household-level variables and joint tours are duplicated over the household members), so
         # they must all be assigned to the same cross-validation fold.
         groups = tours["household_id"].to_numpy()
+        # What matters for the simulation is not only the share of tours made with each mode, but
+        # also the distance travelled with each mode (the vehicle-kilometers). The tours are thus
+        # also weighted by their total distance to compute a second fidelity metric.
+        weights = tours["total_distance"].to_pandas() if "total_distance" in tours.columns else None
         if self.model is None:
-            model = test_models(X, y, groups, self.random_seed, self.nb_threads or -1)
+            model = test_models(
+                X, y, groups, self.random_seed, self.nb_threads or -1, fidelity_weights=weights
+            )
         else:
             model = self.model
 
-        estimator = estimate_model(X, y, groups, model, self.random_seed, self.nb_threads or -1)
+        estimator = estimate_model(
+            X, y, groups, model, self.random_seed, self.nb_threads or -1, fidelity_weights=weights
+        )
 
         self.output["estimator"].write(estimator)
 

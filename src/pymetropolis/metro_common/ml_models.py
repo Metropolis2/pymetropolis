@@ -16,9 +16,8 @@ if TYPE_CHECKING:
 def get_classifiers(random_seed: int | None):
     from sklearn.dummy import DummyClassifier
     from sklearn.ensemble import (
-        AdaBoostClassifier,
         ExtraTreesClassifier,
-        GradientBoostingClassifier,
+        HistGradientBoostingClassifier,
         RandomForestClassifier,
     )
     from sklearn.linear_model import LogisticRegression
@@ -26,15 +25,36 @@ def get_classifiers(random_seed: int | None):
     from sklearn.tree import DecisionTreeClassifier
     # from sklearn.neural_network import MLPClassifier
 
+    # Note. The hyperparameters set below are the ones used by `test_models` to compare the
+    # classifiers with each other (`estimate_model` searches over `get_param_grids` instead). They
+    # depart from the scikit-learn defaults where those are tuned for hard classification: the
+    # classifiers here are compared with a Brier score and their probabilities are meant to be
+    # sampled from, which requires leaves / neighborhoods large enough to estimate a probability
+    # (with the scikit-learn defaults, a tree leaf holds a single observation, so the predicted
+    # probabilities are all 0 or 1).
     return {
-        "dummy": DummyClassifier(strategy="stratified", random_state=random_seed),
-        "logistic": LogisticRegression(random_state=random_seed),
-        "decision_tree": DecisionTreeClassifier(random_state=random_seed),
-        "knn": KNeighborsClassifier(),
-        "random_forest": RandomForestClassifier(random_state=random_seed),
-        "extra_tree": ExtraTreesClassifier(random_state=random_seed),
-        "adaboost": AdaBoostClassifier(random_state=random_seed),
-        "gradient_boosting": GradientBoostingClassifier(random_state=random_seed),
+        # The class priors are the reference "no-information" probabilities. With the
+        # `"stratified"` strategy, the dummy classifier draws a class at random instead, i.e. it
+        # predicts probabilities of 0 or 1, which is a much weaker baseline.
+        "dummy": DummyClassifier(strategy="prior"),
+        "logistic": LogisticRegression(random_state=random_seed, max_iter=1000),
+        "decision_tree": DecisionTreeClassifier(random_state=random_seed, min_samples_leaf=20),
+        "knn": KNeighborsClassifier(n_neighbors=50),
+        "random_forest": RandomForestClassifier(random_state=random_seed, min_samples_leaf=5),
+        "extra_tree": ExtraTreesClassifier(random_state=random_seed, min_samples_leaf=5),
+        # The histogram-based implementation is used rather than `GradientBoostingClassifier` for
+        # best speed on large datasets.
+        "gradient_boosting": HistGradientBoostingClassifier(
+            random_state=random_seed,
+            early_stopping=False,
+            learning_rate=0.1,
+            max_leaf_nodes=31,
+            min_samples_leaf=100,
+            l2_regularization=10.0,
+            max_iter=200,
+        ),
+        # Classifiers disabled (poor performances).
+        # "adaboost": AdaBoostClassifier(random_state=random_seed),
         # "mlp": MLPClassifier(random_state=random_seed, max_iter=1000),
     }
 
@@ -47,7 +67,7 @@ def get_param_grids():
     # fitted with their default `class_weight=None`.
     return {
         "dummy": {},
-        "logistic": {"clf__C": [0.01, 0.1, 1, 10, 100], "clf__solver": ["lbfgs", "liblinear"]},
+        "logistic": {"clf__C": [0.001, 0.01, 0.1, 1, 10, 100, 1000]},
         "decision_tree": {
             "clf__max_depth": [None, 5, 10, 20],
             "clf__min_samples_leaf": [1, 5, 10, 20],
@@ -73,12 +93,22 @@ def get_param_grids():
             "clf__n_estimators": [50, 100, 200, 500],
             "clf__learning_rate": [0.01, 0.1, 0.5, 1.0],
         },
+        # Note. The hyperparameters are those of `HistGradientBoostingClassifier`: the number of
+        # iterations is `max_iter` (not `n_estimators`), the complexity of each tree is bounded by
+        # `max_leaf_nodes` (not `max_depth`) and there is no `subsample`.
+        # "gradient_boosting": {
+        #     "clf__max_iter": [100, 200, 500],
+        #     "clf__learning_rate": [0.01, 0.05, 0.1],
+        #     "clf__max_leaf_nodes": [8, 15, 31],
+        #     "clf__min_samples_leaf": [20, 50, 100],
+        #     "clf__l2_regularization": [0.0, 1.0, 10.0],
+        # },
         "gradient_boosting": {
-            "clf__n_estimators": [100, 200, 500],
-            "clf__max_depth": [2, 3, 5, 10],
-            "clf__learning_rate": [0.01, 0.1, 0.5],
-            "clf__min_samples_leaf": [1, 5, 10, 20],
-            "clf__subsample": [0.5, 0.8, 1.0],
+            "clf__max_iter": [200],
+            "clf__learning_rate": [0.1],
+            "clf__max_leaf_nodes": [31],
+            "clf__min_samples_leaf": [100],
+            "clf__l2_regularization": [10.0],
         },
     }
 
@@ -168,12 +198,83 @@ def get_cv_splits(
     return list(cv.split(X, y, groups))
 
 
+def fidelity(
+    y_true: np.ndarray, y_proba: np.ndarray, labels: np.ndarray, weights: pd.Series | None = None
+) -> float:
+    """Returns the gap between the predicted and the observed share of each class.
+
+    The gap is the sum, over the classes, of the absolute difference between the predicted share of
+    a class and its observed share (so it is zero for a perfect fit and lower is better). Contrary
+    to the Brier score, which measures how good the predictions are for each individual
+    observation, this measures how good they are in aggregate: it is the expected error on the
+    shares of a population whose classes are drawn from the predicted probabilities (as
+    `sample_classes` does).
+
+    With `weights`, the shares are weighted by observation instead of being simple counts. Weighting
+    the tours by their total distance, for example, gives the expected error on the distance
+    travelled with each mode (rather than on the number of tours made with each mode), which is
+    what matters for the vehicle-kilometers simulated by METROPOLIS2. `weights` is indexed like the
+    `y` the scorer was built from, so that the weights of a cross-validation fold can be recovered
+    from the index of `y_true`.
+    """
+    import numpy as np
+
+    labels = np.asarray(labels)
+    if y_proba.shape[1] != len(labels):
+        # A class is missing from the training fold: the predicted probabilities cannot be matched
+        # with the classes.
+        return np.nan
+    if weights is None:
+        w = np.ones(len(y_proba))
+    else:
+        w = weights.loc[y_true.index].to_numpy()  # ty: ignore[unresolved-attribute]
+        # A null weight is a null contribution to the shares.
+        w = np.nan_to_num(w, nan=0.0)
+    total = w.sum()
+    if total <= 0:
+        return np.nan
+    is_class = np.asarray(y_true)[:, np.newaxis] == labels[np.newaxis, :]
+    observed_shares = (w[:, np.newaxis] * is_class).sum(axis=0) / total
+    predicted_shares = (w[:, np.newaxis] * y_proba).sum(axis=0) / total
+    return float(np.abs(predicted_shares - observed_shares).sum())
+
+
+def get_fidelity_scorer(y: pd.Series, weights: pd.Series | None = None):
+    """Returns a scikit-learn scorer for the `fidelity` metric (negated, as scorers are maximized).
+
+    The classes are read from `y` (and not from each fold) because a scorer only sees the
+    probabilities, whose columns are ordered like the sorted classes of the fitted estimator.
+    """
+    import numpy as np
+    from sklearn.metrics import make_scorer
+
+    return make_scorer(
+        fidelity,
+        response_method="predict_proba",
+        greater_is_better=False,
+        labels=np.unique(y),
+        weights=weights,
+    )
+
+
+def get_scoring(y: pd.Series, fidelity_weights: pd.Series | None = None) -> dict:
+    """Returns the metrics computed for each model / candidate.
+
+    `weighted_fidelity` is only included when `fidelity_weights` is given.
+    """
+    scoring = {"brier": "neg_brier_score", "fidelity": get_fidelity_scorer(y)}
+    if fidelity_weights is not None:
+        scoring["weighted_fidelity"] = get_fidelity_scorer(y, fidelity_weights)
+    return scoring
+
+
 def test_models(
     X: pd.DataFrame,
     y: pd.Series,
     groups: np.ndarray,
     random_seed: int | None,
     nb_threads: int | None,
+    fidelity_weights: pd.Series | None = None,
 ):
     from sklearn.model_selection import cross_validate
     from sklearn.pipeline import Pipeline
@@ -182,17 +283,32 @@ def test_models(
     preprocessor = get_preprocessor()
     cv = get_cv_splits(X, y, groups, random_seed)
 
-    results = {}
+    scoring = get_scoring(y, fidelity_weights)
+
+    briers = {}
+    fidelities = {}
+    weighted_fidelities = {}
     for model, classifier in classifiers.items():
         logger.debug(f"Evaluating {model}...")
         pipe = Pipeline([("pre", preprocessor), ("clf", classifier)])
-        cv_res = cross_validate(pipe, X, y, cv=cv, scoring="neg_brier_score", n_jobs=nb_threads)
-        results[model] = cv_res["test_score"].mean()
+        cv_res = cross_validate(pipe, X, y, cv=cv, scoring=scoring, n_jobs=nb_threads)
+        briers[model] = cv_res["test_brier"].mean()
+        fidelities[model] = -cv_res["test_fidelity"].mean()
+        if "test_weighted_fidelity" in cv_res:
+            weighted_fidelities[model] = -cv_res["test_weighted_fidelity"].mean()
 
-    best_model = sorted(results.items(), key=lambda i: i[1], reverse=True)[0]
+    ranking = sorted(briers.items(), key=lambda i: i[1], reverse=True)
+    logger.info("Model comparison (Brier score and fidelities, lower is better for all):")
+    for model, brier in ranking:
+        msg = f"  {model}: Brier score: {-brier:.2%}; fidelity: {fidelities[model]:.2%}"
+        if model in weighted_fidelities:
+            msg += f"; weighted fidelity: {weighted_fidelities[model]:.2%}"
+        logger.info(msg)
+
+    best_model = ranking[0]
     logger.info(
         f"Best model: {best_model[0]}; Brier score: {-best_model[1]:.2%}; "
-        f"Stratified dummy score: {-results['dummy']:.2%}"
+        f"Class-priors dummy score: {-briers['dummy']:.2%}"
     )
     return best_model[0]
 
@@ -211,6 +327,7 @@ def estimate_model(
     model: str,
     random_seed: int | None,
     nb_threads: int | None,
+    fidelity_weights: pd.Series | None = None,
 ) -> BaseEstimator:
     from sklearn.model_selection import RandomizedSearchCV
     from sklearn.pipeline import Pipeline
@@ -232,15 +349,27 @@ def estimate_model(
         pipe,
         param_distributions=param_grid,
         n_iter=min(50, max(1, _grid_size(param_grid))),
-        scoring="neg_brier_score",
+        # The fidelity is only reported, the hyperparameters are selected on the Brier score alone
+        # (`refit`). Computing it is free: it is another metric over the same predictions, not
+        # another fit.
+        scoring=get_scoring(y, fidelity_weights),
+        refit="brier",
         cv=cv,
         n_jobs=nb_threads,
         random_state=random_seed,
+        verbose=2,
     )
     search.fit(X, y)
 
     logger.debug(f"Best parameters: {search.best_params_}")
-    logger.debug(f"Best CV Brier score: {-search.best_score_:.2%}")
+    msg = (
+        f"Best CV Brier score: {-search.best_score_:.2%}; "
+        f"fidelity: {-search.cv_results_['mean_test_fidelity'][search.best_index_]:.2%}"
+    )
+    if "mean_test_weighted_fidelity" in search.cv_results_:
+        weighted = -search.cv_results_["mean_test_weighted_fidelity"][search.best_index_]
+        msg += f"; weighted fidelity: {weighted:.2%}"
+    logger.debug(msg)
 
     # Note. The estimator is not re-calibrated (e.g., with a `CalibratedClassifierCV`): the
     # probabilities are meant to be sampled from and the one-vs-rest calibration of a multiclass
