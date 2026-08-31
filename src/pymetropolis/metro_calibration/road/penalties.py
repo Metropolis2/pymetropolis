@@ -319,7 +319,9 @@ class EdgePenaltiesFromCoefficientsStep(Step):
         df = check_bounds(df, "additive", self.additive_lb, self.additive_ub)
         df = check_bounds(df, "multiplicative", self.multiplicative_lb, self.multiplicative_ub)
 
-        df = df.select("edge_id", constant="additive", speed_multiplier="multiplicative")
+        df = df.select(
+            "edge_id", constant="additive", speed_multiplier=1.0 / pl.col("multiplicative")
+        )
         self.output["edges_penalties"].write(df)
 
 

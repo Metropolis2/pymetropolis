@@ -421,6 +421,7 @@ def compute_lasso(
     import numpy as np
     from sklearn.linear_model import LassoCV
     from sklearn.metrics import root_mean_squared_error
+    from sklearn.preprocessing import StandardScaler
 
     logger.info("Fitting a LASSO model...")
     Y = endog_variable.to_numpy()
@@ -435,15 +436,22 @@ def compute_lasso(
         )
     logger.debug(f"Number of observations: {X.shape[0]}")
     logger.debug(f"Number of variables: {X.shape[1]}")
+    # Scale (but do not center) the variables so that the LASSO's single penalization factor
+    # applies fairly across variables of very different magnitudes. Centering is skipped because
+    # the model is fitted without an intercept (`fit_intercept=False`): the returned coefficients
+    # must stay usable as multiplicative penalties applied to the raw, unscaled variables.
+    scaler = StandardScaler(with_mean=False)
+    X_scaled = scaler.fit_transform(X)
     lassocv = LassoCV(fit_intercept=False, max_iter=10_000)
-    lassocv.fit(X, Y)
+    lassocv.fit(X_scaled, Y)
     logger.debug(f"Value of the penalization factor: {lassocv.alpha_}")
-    Y_hat = lassocv.predict(X)
+    Y_hat = lassocv.predict(X_scaled)
     residuals = Y - Y_hat
     rmse = root_mean_squared_error(Y, Y_hat)
     logger.debug(f"RMSE: {rmse}")
     corr = np.corrcoef(Y, Y_hat)[0][1]
     logger.debug(f"Correlation: {corr:.8%}")
-    coefs = lassocv.coef_
+    # Rescale the coefficients back to the original (unscaled) variables' units.
+    coefs = lassocv.coef_ / scaler.scale_
     coef_lasso = {var: coef for var, coef in zip(exog_variables.columns, coefs)}
     return (Y_hat, residuals, rmse, coef_lasso)

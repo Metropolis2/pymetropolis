@@ -3,6 +3,7 @@ from pymetropolis.metro_pipeline.file import (
     MetroDataFrameFile,
     MetroDataType,
     MetroGeoDataFrameFile,
+    MetroPlotFile,
 )
 
 
@@ -177,6 +178,14 @@ class TomTomRoutesFile(MetroGeoDataFrameFile):
             nullable=False,
         ),
     ]
+
+
+class FreeFlowTravelTimeComparisonPlotFile(MetroPlotFile):
+    path = "calibration/road/free_flow/travel_time_comparison.png"
+    description = (
+        "Scatter plot comparing TomTom-observed and Metropolis-simulated free-flow travel "
+        "times at the OD level."
+    )
 
 
 class TomTomRoutesMatchedFile(MetroDataFrameFile):

@@ -8,11 +8,13 @@ New steps:
 - `ExternalModeClassifierStep`
 - `EstimateModeClassifierStep`
 - `ClassifyToursModeStep`
+- `FreeFlowTravelTimeComparisonStep`
 
 New files:
 
 - `ModeEstimatorFile`
 - `ToursModeFile`
+- `FreeFlowTravelTimeComparisonPlotFile`
 
 ## [0.12.0] – 2026-08-25
 

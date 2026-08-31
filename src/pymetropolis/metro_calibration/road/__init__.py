@@ -1,5 +1,6 @@
 from .files import (
     AllRoadFreeFlowTravelTimesFile,
+    FreeFlowTravelTimeComparisonPlotFile,
     RoadEdgesFreeFlowTravelTimeFile,
     RoadEdgesPenaltiesFile,
     RoadEdgesPenaltyCoefficientsFile,
@@ -7,7 +8,7 @@ from .files import (
     TomTomRoutesFile,
     TomTomRoutesMatchedFile,
 )
-from .free_flow_lasso import FreeFlowLassoStep
+from .free_flow_lasso import FreeFlowLassoStep, FreeFlowTravelTimeComparisonStep
 from .map_matching import MapMatchingStep
 from .penalties import (
     EdgePenaltiesFromCoefficientsStep,
@@ -26,6 +27,7 @@ ROAD_FILES = [
     AllRoadFreeFlowTravelTimesFile,
     TomTomRoutesFile,
     TomTomRoutesMatchedFile,
+    FreeFlowTravelTimeComparisonPlotFile,
 ]
 
 ROAD_STEPS = [
@@ -37,4 +39,5 @@ ROAD_STEPS = [
     TomTomRequestsStep,
     MapMatchingStep,
     FreeFlowLassoStep,
+    FreeFlowTravelTimeComparisonStep,
 ]
