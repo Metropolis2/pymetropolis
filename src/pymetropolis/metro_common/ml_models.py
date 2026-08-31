@@ -220,7 +220,12 @@ def fidelity(
     import numpy as np
 
     labels = np.asarray(labels)
-    if y_proba.shape[1] != len(labels):
+    if y_proba.ndim == 1:
+        # For a binary target, scikit-learn's scorer collapses `predict_proba` to a single column.
+        if len(labels) != 2:
+            return np.nan
+        y_proba = np.column_stack([1.0 - y_proba, y_proba])
+    elif y_proba.shape[1] != len(labels):
         # A class is missing from the training fold: the predicted probabilities cannot be matched
         # with the classes.
         return np.nan
