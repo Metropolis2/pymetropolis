@@ -9,12 +9,22 @@ New steps:
 - `EstimateModeClassifierStep`
 - `ClassifyToursModeStep`
 - `FreeFlowTravelTimeComparisonStep`
+- `ImportTripCoordinatesStep`
+- `AbstractODMatrixStep`
 
 New files:
 
 - `ModeEstimatorFile`
 - `ToursModeFile`
 - `FreeFlowTravelTimeComparisonPlotFile`
+
+Other changes:
+
+- Steps `ODMatrixEachStep`, `GravityODMatrixStep`, and `CustomODMatrixStep` now inherits from
+  `AbtractODMatrixStep` and can thus define an OD matrix not only from pairs of road nodes, but also
+  from zone pairs, with the actual origin and destination either set to the zone' centroid or drawn
+  randomly along the edges within the zone. These steps received new parameters and had some existing
+  parameters renamed.
 
 ## [0.12.0] – 2026-08-25
 

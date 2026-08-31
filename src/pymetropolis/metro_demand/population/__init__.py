@@ -24,6 +24,7 @@ from .files import (
 from .generic import (
     ActivitiesLocationsFromTripsLocationsStep,
     GenericPopulationStep,
+    ImportTripCoordinatesStep,
     PopulationFromTripCoordinatesStep,
 )
 from .tours import CreateToursStep
@@ -51,6 +52,7 @@ POPULATION_FILES = [
 ]
 POPULATION_STEPS = [
     GenericPopulationStep,
+    ImportTripCoordinatesStep,
     PopulationFromTripCoordinatesStep,
     UniformDrawsStep,
     EqasimImportStep,

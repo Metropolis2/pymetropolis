@@ -42,9 +42,10 @@ radius = 4000
 "Ring 1" = 1
 "Ring 2" = 1
 
-[gravity_od_matrix]
-exponential_decay = 0.07
-trips_per_node = 8000
+[od_matrix]
+[od_matrix.gravity]
+exponential_decay = 4.0
+trips_per_origin = 8000
 
 [mode_choice]
 modes = ["car_driver", "car_ridesharing", "public_transit"]
