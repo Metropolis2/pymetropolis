@@ -128,6 +128,7 @@ class WriteMetroParametersStep(ThreadedStep):
         assert not self.spillback or self.max_pending_duration is not None
         assert self.departure_time_interval is not None
         assert self.backward_wave_speed is not None
+        assert self.node_order_reuse_threshold is not None
 
         t0, t1 = self.period
         if t1 <= t0:
@@ -159,7 +160,7 @@ class WriteMetroParametersStep(ThreadedStep):
             "recording_interval": recording_interval,
             "spillback": self.spillback,
             "algorithm_type": self.routing_algorithm,
-            "node_order_reuse_threshold": self.node_order_reuse_threshold,
+            "node_order_reuse_threshold": self.node_order_reuse_threshold.total_seconds(),
         }
         if self.max_pending_duration is not None:
             params["road_network"]["max_pending_duration"] = (
