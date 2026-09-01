@@ -11,6 +11,7 @@ New steps:
 - `FreeFlowTravelTimeComparisonStep`
 - `ImportTripCoordinatesStep`
 - `AbstractODMatrixStep`
+- `AbstractFrenchZonesStep`
 
 New files:
 

@@ -82,6 +82,7 @@ class TripsZonesStep(PopulationStep):
         "zones5": InputFile(ZonesLevel5File, optional=True),
     }
     output_files = {"trip_zones": TripsZonesFile}
+    priority = 0
 
     def run(self):
         import polars as pl
