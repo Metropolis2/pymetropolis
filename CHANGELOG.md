@@ -23,8 +23,13 @@ Other changes:
 - Steps `ODMatrixEachStep`, `GravityODMatrixStep`, and `CustomODMatrixStep` now inherits from
   `AbtractODMatrixStep` and can thus define an OD matrix not only from pairs of road nodes, but also
   from zone pairs, with the actual origin and destination either set to the zone' centroid or drawn
-  randomly along the edges within the zone. These steps received new parameters and had some existing
-  parameters renamed.
+  randomly along the edges within the zone. These steps received new parameters and had some
+  existing parameters renamed. They now generate origin / destination coordinates instead of origin
+  / destination road nodes.
+
+Removed steps:
+
+- `GenericPopulationStep` (should no longer be needed with the changes to OD matrix steps)
 
 ## [0.12.0] – 2026-08-25
 

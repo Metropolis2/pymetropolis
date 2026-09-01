@@ -23,7 +23,6 @@ from .files import (
 )
 from .generic import (
     ActivitiesLocationsFromTripsLocationsStep,
-    GenericPopulationStep,
     ImportTripCoordinatesStep,
     PopulationFromTripCoordinatesStep,
 )
@@ -51,7 +50,6 @@ POPULATION_FILES = [
     TripsUrbanTypeFile,
 ]
 POPULATION_STEPS = [
-    GenericPopulationStep,
     ImportTripCoordinatesStep,
     PopulationFromTripCoordinatesStep,
     UniformDrawsStep,
