@@ -5,6 +5,9 @@ from pymetropolis.metro_pipeline.file import (
     MetroDataType,
     MetroGeoDataFrameFile,
     MetroMLEstimatorFile,
+    MetroPlotFile,
+    MetroTxtFile,
+    PopulationFile,
 )
 
 
@@ -137,6 +140,34 @@ class SurveyedToursFile(MetroDataFrameFile):
             "modes",
             MetroDataType.LIST_OF_STRINGS,
             description="Main mode taken for each trip of the tour.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "origin_lngs",
+            MetroDataType.LIST_OF_FLOATS,
+            description="Longitude at origin for each trip of the tour.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "origin_lats",
+            MetroDataType.LIST_OF_FLOATS,
+            description="Latitude at origin for each trip of the tour.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "destination_lngs",
+            MetroDataType.LIST_OF_FLOATS,
+            description="Longitude at destination for each trip of the tour.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "destination_lats",
+            MetroDataType.LIST_OF_FLOATS,
+            description="Latitude at destination for each trip of the tour.",
             nullable=True,
             optional=True,
         ),
@@ -597,3 +628,21 @@ class JointTourEstimatorFile(MetroMLEstimatorFile):
 class ModeEstimatorFile(MetroMLEstimatorFile):
     path = "calibration/survey/mode_estimator.joblib"
     description = "ML estimator for the classification of tours' mode."
+
+
+class ToursModeShareComparisonFile(MetroTxtFile, PopulationFile):
+    path = "calibration/survey/{population}/mode_share_comparison.json"
+    description = (
+        "JSON file comparing, by tour count and by distance, the mode shares observed in the "
+        "survey and the ex-ante mode shares predicted for the simulated population."
+    )
+
+
+class ToursModeShareTourCountPlotFile(MetroPlotFile, PopulationFile):
+    path = "calibration/survey/{population}/mode_share_tour_count.png"
+    description = "Comparison of survey vs. ex-ante mode shares, by tour count."
+
+
+class ToursModeShareDistancePlotFile(MetroPlotFile, PopulationFile):
+    path = "calibration/survey/{population}/mode_share_distance.png"
+    description = "Comparison of survey vs. ex-ante mode shares, by tour distance."

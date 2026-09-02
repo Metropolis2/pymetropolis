@@ -96,20 +96,20 @@ def get_param_grids():
         # Note. The hyperparameters are those of `HistGradientBoostingClassifier`: the number of
         # iterations is `max_iter` (not `n_estimators`), the complexity of each tree is bounded by
         # `max_leaf_nodes` (not `max_depth`) and there is no `subsample`.
-        # "gradient_boosting": {
-        #     "clf__max_iter": [100, 200, 500],
-        #     "clf__learning_rate": [0.01, 0.05, 0.1],
-        #     "clf__max_leaf_nodes": [8, 15, 31],
-        #     "clf__min_samples_leaf": [20, 50, 100],
-        #     "clf__l2_regularization": [0.0, 1.0, 10.0],
-        # },
         "gradient_boosting": {
-            "clf__max_iter": [200],
-            "clf__learning_rate": [0.1],
-            "clf__max_leaf_nodes": [31],
-            "clf__min_samples_leaf": [100],
-            "clf__l2_regularization": [10.0],
+            "clf__max_iter": [100, 200, 500],
+            "clf__learning_rate": [0.01, 0.05, 0.1],
+            "clf__max_leaf_nodes": [8, 15, 31],
+            "clf__min_samples_leaf": [20, 50, 100],
+            "clf__l2_regularization": [0.0, 1.0, 10.0],
         },
+        # "gradient_boosting": {
+        #     "clf__max_iter": [200],
+        #     "clf__learning_rate": [0.1],
+        #     "clf__max_leaf_nodes": [31],
+        #     "clf__min_samples_leaf": [100],
+        #     "clf__l2_regularization": [10.0],
+        # },
     }
 
 
@@ -368,7 +368,7 @@ def estimate_model(
 
     logger.debug(f"Best parameters: {search.best_params_}")
     msg = (
-        f"Best CV Brier score: {-search.best_score_:.2%}; "
+        f"Best CV Brier score: {-search.cv_results_['mean_test_brier'][search.best_index_]:.2%}; "
         f"fidelity: {-search.cv_results_['mean_test_fidelity'][search.best_index_]:.2%}"
     )
     if "mean_test_weighted_fidelity" in search.cv_results_:

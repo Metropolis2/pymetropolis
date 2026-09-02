@@ -12,12 +12,17 @@ New steps:
 - `ImportTripCoordinatesStep`
 - `AbstractODMatrixStep`
 - `AbstractFrenchZonesStep`
+- `ModeClassifierConfigStep`
+- `CompareToursModeSharesStep`
 
 New files:
 
 - `ModeEstimatorFile`
 - `ToursModeFile`
 - `FreeFlowTravelTimeComparisonPlotFile`
+- `ToursModeShareComparisonFile`
+- `ToursModeShareTourCountPlotFile`
+- `ToursModeShareDistancePlotFile`
 
 Other changes:
 

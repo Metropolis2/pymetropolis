@@ -712,6 +712,30 @@ class ToursFile(MetroDataFrameFile, PopulationFile):
             nullable=False,
         ),
         Column(
+            "origin_lngs",
+            MetroDataType.LIST_OF_FLOATS,
+            description="Longitude at origin for each trip of the tour.",
+            nullable=True,
+        ),
+        Column(
+            "origin_lats",
+            MetroDataType.LIST_OF_FLOATS,
+            description="Latitude at origin for each trip of the tour.",
+            nullable=True,
+        ),
+        Column(
+            "destination_lngs",
+            MetroDataType.LIST_OF_FLOATS,
+            description="Longitude at destination for each trip of the tour.",
+            nullable=True,
+        ),
+        Column(
+            "destination_lats",
+            MetroDataType.LIST_OF_FLOATS,
+            description="Latitude at destination for each trip of the tour.",
+            nullable=True,
+        ),
+        Column(
             "first_purpose",
             MetroDataType.STRING,
             description="Purpose of the first activity in the tour.",

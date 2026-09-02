@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.metro_pipeline.steps import InputFile
 
@@ -7,10 +11,33 @@ from .files import (
     HouseholdsHomesUrbanTypeFile,
     PersonsFile,
     ToursFile,
+    TripsDestinationsFile,
     TripsDistancesFile,
     TripsFile,
+    TripsOriginsFile,
     TripsUrbanTypeFile,
 )
+
+if TYPE_CHECKING:
+    import geopandas as gpd
+    import polars as pl
+
+
+def add_lng_lat(trips: pl.DataFrame, gdf: gpd.GeoDataFrame | None, name: str):
+    import polars as pl
+
+    if gdf is not None:
+        gdf.to_crs("EPSG:4326", inplace=True)
+        gdf[f"{name}_lng"] = gdf.geometry.x
+        gdf[f"{name}_lat"] = gdf.geometry.y
+        df = pl.from_pandas(gdf[["trip_id", f"{name}_lng", f"{name}_lat"]])
+        trips = trips.join(df, on="trip_id", how="left")
+    else:
+        trips = trips.with_columns(
+            pl.lit(None, dtype=pl.Float64).alias(f"{name}_lng"),
+            pl.lit(None, dtype=pl.Float64).alias(f"{name}_lat"),
+        )
+    return trips
 
 
 class CreateToursStep(PopulationStep):
@@ -23,6 +50,8 @@ class CreateToursStep(PopulationStep):
         "persons": PersonsFile,
         "home_urban_type": InputFile(HouseholdsHomesUrbanTypeFile, optional=True),
         "trip_urban_type": InputFile(TripsUrbanTypeFile, optional=True),
+        "origins": InputFile(TripsOriginsFile, optional=True),
+        "destinations": InputFile(TripsDestinationsFile, optional=True),
     }
     output_files = {"tours": ToursFile}
 
@@ -50,12 +79,19 @@ class CreateToursStep(PopulationStep):
                 destination_functional_area_category=pl.lit(None, dtype=pl.Enum(FNC_AREA_CAT_CATS)),
             )
 
+        trips = add_lng_lat(trips, self.input["origins"].read_if_exists(), "origin")
+        trips = add_lng_lat(trips, self.input["destinations"].read_if_exists(), "destination")
+
         tours = (
             trips.group_by("tour_id")
             .agg(
                 person_id=pl.col("person_id").first(),
                 nb_trips=pl.len(),
                 nb_activities=pl.len() - 1,
+                origin_lngs=pl.col("origin_lng"),
+                origin_lats=pl.col("origin_lat"),
+                destination_lngs=pl.col("destination_lng"),
+                destination_lats=pl.col("destination_lat"),
                 first_purpose=pl.col("origin_purpose_group").first(),
                 last_purpose=pl.col("destination_purpose_group").last(),
                 purposes=pl.col("destination_purpose_group"),
