@@ -270,6 +270,9 @@ class CongestionTimeComparisonStep(Step):
         predicted = df["metropolis_congested_time"].to_numpy()
         rmse = float(((observed - predicted) ** 2).mean() ** 0.5)
 
+        logger.debug(f"Average congested time (observed): {observed.mean()}")
+        logger.debug(f"Average congested time (simulated): {predicted.mean()}")
+
         fig = plot_travel_time_comparison(
             observed,
             predicted,
