@@ -49,6 +49,11 @@ New files:
 - `TomTomCongestionTimesFile`
 - `CongestionTimeComparisonPlotFile`
 
+New parameters:
+
+- `road_network.capacity_multipliers.traffic_signal`
+- `road_network.capacity_multipliers.roundabout`
+
 Other changes:
 
 - Steps `ODMatrixEachStep`, `GravityODMatrixStep`, and `CustomODMatrixStep` now inherits from

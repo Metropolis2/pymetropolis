@@ -4,7 +4,7 @@ from typing import Any
 from pymetropolis.metro_common.errors import MetropyError
 from pymetropolis.metro_common.time import MetroTime
 from pymetropolis.metro_pipeline import Step
-from pymetropolis.metro_pipeline.parameters import CustomParameter
+from pymetropolis.metro_pipeline.parameters import CustomParameter, FloatParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 
 from .files import RoadEdgesCapacitiesFile, RoadEdgesCleanFile, RoadEdgesUrbanFlagFile
@@ -103,6 +103,18 @@ road = 1500
 ```
         """,
     )
+    traffic_signal_multiplier = FloatParameter(
+        "road_network.capacity_multipliers.traffic_signals",
+        default=1.0,
+        description="Factor to apply to capacity on roads with traffic signals.",
+        lower_bound=1e-8,
+    )
+    roundabout_multiplier = FloatParameter(
+        "road_network.capacity_multipliers.roundabout",
+        default=1.0,
+        description="Factor to apply to capacity on roundabout roads.",
+        lower_bound=1e-8,
+    )
     input_files = {
         "clean_edges": RoadEdgesCleanFile,
         "urban_edges": InputFile(
@@ -121,10 +133,13 @@ road = 1500
 
     def run(self):
         import polars as pl
+        import polars.selectors as cs
 
         capacities = self.capacities
-        edges = self.input["clean_edges"].read()
-        df = pl.from_pandas(edges.loc[:, edges.columns.isin(["edge_id", "edge_type"])])
+        df: pl.DataFrame = self.input["clean_edges"].read_as_df()  # ty: ignore[unresolved-attribute]
+        df = df.select(
+            cs.by_name("edge_id", "edge_type", "traffic_signals", "roundabout", require_all=False)
+        )
         df = df.with_columns(
             capacity=pl.lit(None, dtype=pl.Float64),
             times=pl.lit(None, dtype=pl.List(pl.Duration)),
@@ -201,5 +216,21 @@ road = 1500
                         raise MetropyError(
                             f"Unexpected type for capacities values of edge type `{edge_type}`"
                         )
-        df = df.drop("edge_type", "urban", strict=False)
+        if self.traffic_signal_multiplier != 1.0:
+            if "traffic_signals" not in df.columns:
+                raise MetropyError("Edges have no `traffic_signals` column.")
+            df = df.with_columns(
+                capacity=pl.when("traffic_signals")
+                .then(pl.col("capacity") * self.traffic_signal_multiplier)
+                .otherwise("capacity")
+            )
+        if self.roundabout_multiplier != 1.0:
+            if "roundabout" not in df.columns:
+                raise MetropyError("Edges have no `roundabout` column.")
+            df = df.with_columns(
+                capacity=pl.when("roundabout")
+                .then(pl.col("capacity") * self.roundabout_multiplier)
+                .otherwise("capacity")
+            )
+        df = df.drop("edge_type", "urban", "traffic_signals", "roundabout", strict=False)
         self.output["edges_capacities"].write(df)
