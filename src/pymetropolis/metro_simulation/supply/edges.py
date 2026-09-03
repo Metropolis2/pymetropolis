@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from pymetropolis.metro_calibration.road import RoadEdgesPenaltiesFile
+from pymetropolis.metro_calibration.road.files import RoadEdgesPenaltiesFile
 from pymetropolis.metro_common.utils import pl_duration_to_seconds
 from pymetropolis.metro_network.road_network import RoadEdgesCapacitiesFile, RoadEdgesCleanFile
 from pymetropolis.metro_network.road_network.files import RoadEdgesPrimaryFlagFile

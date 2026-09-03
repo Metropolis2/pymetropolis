@@ -249,8 +249,11 @@ class MetroFile:
     def exists(self) -> bool:
         return self.complete_path.exists()
 
-    def get_path(self) -> Path:
-        return self.complete_path
+    def get_path(self, absolute: bool = False) -> Path:
+        if absolute:
+            return self.complete_path.absolute()
+        else:
+            return self.complete_path
 
     def last_modified_time(self) -> int | float:
         return self.complete_path.stat().st_mtime
@@ -377,6 +380,24 @@ class MetroGeoDataFrameFile(MetroFile):
         import geopandas as gpd
 
         return gpd.read_parquet(self.complete_path)
+
+    def read_as_df(self, with_geometry: bool = False) -> pl.DataFrame:
+        """Reads a GeoParquet file as a DataFrame.
+
+        If `with_geometry` is `True`, the `geometry` column is returned in the WKB format.
+        Otherwise, the `geometry` column is dropped.
+        """
+        import polars as pl
+
+        if pl.get_extension_type("geoarrow.wkb") is None:
+            # Register the "geoarrow.wkb" extension so that polars does not send a warning when
+            # importing geoparquet files.
+            pl.register_extension_type("geoarrow.wkb", ext_class=pl.Extension)
+
+        df = pl.read_parquet(self.complete_path)
+        if not with_geometry:
+            df = df.drop("geometry")
+        return df
 
     def read_if_exists(self) -> gpd.GeoDataFrame | None:
         if self.exists():

@@ -123,8 +123,7 @@ road = 0.9
     def run(self):
         import polars as pl
 
-        edges: gpd.GeoDataFrame = self.input["clean_edges"].read()
-        df = pl.from_pandas(edges.drop("geometry"))
+        df: pl.DataFrame = self.input["clean_edges"].read_as_df()  # ty: ignore[unresolved-attribute]
         for col, param in zip(
             ("constant", "speed_multiplier"), (self.penalties, self.speed_multiplier)
         ):

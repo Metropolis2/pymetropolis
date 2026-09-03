@@ -3,7 +3,9 @@ from datetime import timedelta
 from math import inf, isfinite
 
 from pymetropolis.common import ThreadedStep
+from pymetropolis.metro_calibration.road.files import TomTomCongestionTimesFile
 from pymetropolis.metro_common import MetropyError
+from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import (
     BoolParameter,
     DurationParameter,
@@ -27,12 +29,8 @@ from pymetropolis.metro_simulation.supply.files import MetroEdgesFile, MetroVehi
 from .file import MetroExAnteParametersFile, MetroParametersFile
 
 
-class AbstractWriteMetroParametersStep(ThreadedStep):
-    """Abstract Step for the generation of Metropolis-Core parameters.
-
-    Only the input files ("agents", "alternatives", "trips", "edges", "vehicle_types") and output
-    file ("parameters") need to be defined.
-    """
+class StepWithPeriod(Step):
+    """Abstract Step that holds the `simulation.period` parameter."""
 
     period = ListParameter(
         "simulation.period",
@@ -42,6 +40,15 @@ class AbstractWriteMetroParametersStep(ThreadedStep):
         example="`[06:00:00, 10:00:00]`",
         note="The window can span multiple days.",
     )
+
+
+class AbstractWriteMetroParametersStep(StepWithPeriod, ThreadedStep):
+    """Abstract Step for the generation of Metropolis-Core parameters.
+
+    Only the input files ("agents", "alternatives", "trips", "edges", "vehicle_types") and output
+    file ("parameters") need to be defined.
+    """
+
     departure_time_interval = DurationParameter(
         "simulation.departure_time_interval",
         description=(
@@ -187,6 +194,7 @@ class WriteMetroParametersStep(AbstractWriteMetroParametersStep):
         "edges": InputFile(MetroEdgesFile, optional=True),
         "vehicle_types": InputFile(MetroVehicleTypesFile, optional=True),
         "trips": InputFile(MetroTripsFile, optional=True),
+        "tmp": TomTomCongestionTimesFile,
     }
     output_files = {"parameters": MetroParametersFile}
 

@@ -224,3 +224,33 @@ class TomTomRoutesMatchedFile(MetroDataFrameFile):
             nullable=False,
         ),
     ]
+
+
+class TomTomCongestionTimesFile(MetroDataFrameFile):
+    path = "calibration/road/tomtom_congestion_times.parquet"
+    description = (
+        "Metropolis-simulated travel time and congested time of each map-matched TomTom route."
+    )
+    schema = [
+        Column(
+            "tomtom_id",
+            MetroDataType.ID,
+            description="Identifier of the request.",
+            unique=True,
+            nullable=False,
+        ),
+        Column(
+            "travel_time",
+            MetroDataType.DURATION,
+            description="Simulated travel time on the route.",
+            nullable=False,
+        ),
+        Column(
+            "congested_time",
+            MetroDataType.DURATION,
+            description=(
+                "Simulated congested time on the route (travel time minus free-flow time)."
+            ),
+            nullable=False,
+        ),
+    ]
