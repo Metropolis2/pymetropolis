@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Self
 from pymetropolis.metro_common.errors import MetropyError, error_context
 
 from .file import MetroFile, PopulationFile
-from .parameters import Parameter, PathParameter
+from .parameters import ExecPathParameter, Parameter, PathParameter
 
 if TYPE_CHECKING:
     from .config import Config
@@ -132,8 +132,12 @@ class Step:
         self._data_files = dict()
         for param_name, param_obj in self.__class__._iter_params():
             value = param_obj.from_config(config, population_name)
-            self._config_dict[param_name] = value
             setattr(self, param_name, value)
+            if not isinstance(param_obj, ExecPathParameter):
+                # For ExecPathParameter, we do not save the parameter value in `_config_dict` so
+                # that running the pipeline on a different computer (where the exec path is usually
+                # different) does not trigger a re-run of the simulations.
+                self._config_dict[param_name] = value
             if isinstance(param_obj, PathParameter):
                 # Store path parameters so we can check whether they are tempered with.
                 # Note. Executable files (metropolis_cli and routing_cli) are excluded from this
