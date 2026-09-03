@@ -14,6 +14,14 @@ New steps:
 - `AbstractFrenchZonesStep`
 - `ModeClassifierConfigStep`
 - `CompareToursModeSharesStep`
+- `PrepareExAnteMetroAgentsStep`
+- `WriteExAnteMetroAgentsStep`
+- `PrepareExAnteMetroAlternativesStep`
+- `WriteExAnteMetroAlternativesStep`
+- `PrepareExAnteMetroTripsStep`
+- `WriteExAnteMetroTripsStep`
+- `WriteExAnteMetroParametersStep`
+- `RunExAnteSimulationStep`
 
 New files:
 
@@ -23,6 +31,19 @@ New files:
 - `ToursModeShareComparisonFile`
 - `ToursModeShareTourCountPlotFile`
 - `ToursModeShareDistancePlotFile`
+- `MetroExAnteAgentsPopulationFile`
+- `MetroExAnteAgentsFile`
+- `MetroExAnteAlternativesPopulationFile`
+- `MetroExAnteAlternativesFile`
+- `MetroExAnteTripsPopulationFile`
+- `MetroExAnteTripsFile`
+- `MetroExAnteParametersFile`
+- `MetroExAnteAgentResultsFile`
+- `MetroExAnteTripResultsFile`
+- `MetroExAnteRouteResultsFile`
+- `MetroExAnteSimulatedTravelTimeFunctionsFile`
+- `MetroExAnteExpectedTravelTimeFunctionsFile`
+- `MetroExAnteNextExpectedTravelTimeFunctionsFile`
 
 Other changes:
 
