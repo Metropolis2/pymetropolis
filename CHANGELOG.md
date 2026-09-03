@@ -23,6 +23,7 @@ New steps:
 - `WriteExAnteMetroParametersStep`
 - `RunExAnteSimulationStep`
 - `CongestionSimulationStep`
+- `CongestionTimeComparisonStep`
 
 New files:
 
@@ -46,6 +47,7 @@ New files:
 - `MetroExAnteExpectedTravelTimeFunctionsFile`
 - `MetroExAnteNextExpectedTravelTimeFunctionsFile`
 - `TomTomCongestionTimesFile`
+- `CongestionTimeComparisonPlotFile`
 
 Other changes:
 

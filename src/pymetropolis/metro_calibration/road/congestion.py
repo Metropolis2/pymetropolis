@@ -11,16 +11,19 @@ from loguru import logger
 from pymetropolis.common import ThreadedStep
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_network.road_network.files import RoadEdgesCleanFile
+from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_simulation.parameters.step import StepWithPeriod
 from pymetropolis.metro_simulation.run.exec import AbstractRunSimulationStep
 from pymetropolis.metro_simulation.run.files import MetroExAnteSimulatedTravelTimeFunctionsFile
 
 from .files import (
+    CongestionTimeComparisonPlotFile,
     RoadEdgesPenaltiesFile,
     TomTomCongestionTimesFile,
     TomTomRoutesFile,
     TomTomRoutesMatchedFile,
 )
+from .plots import plot_travel_time_comparison
 
 if TYPE_CHECKING:
     import polars as pl
@@ -235,3 +238,43 @@ class CongestionSimulationStep(ThreadedStep, AbstractRunSimulationStep, StepWith
         logger.debug("Computing congestion times")
         congestion_times = compute_congestion_times(route_results, edges)
         self.output["congestion_times"].write(congestion_times)
+
+
+class CongestionTimeComparisonStep(Step):
+    """Compares TomTom-observed and Metropolis-simulated congested times, by OD."""
+
+    input_files = {"routes": TomTomRoutesFile, "congestion_times": TomTomCongestionTimesFile}
+    output_files = {"comparison_plot": CongestionTimeComparisonPlotFile}
+
+    def run(self):
+        import polars as pl
+
+        routes = self.input["routes"].read()
+        congestion_times = self.input["congestion_times"].scan()
+
+        observed_tt = pl.from_pandas(
+            routes.loc[:, ["tomtom_id", "tt_no_traffic", "tt_traffic"]]
+        ).with_columns(
+            tomtom_congested_time=(pl.col("tt_traffic") - pl.col("tt_no_traffic")).dt.total_seconds(
+                fractional=True
+            )
+        )
+
+        simulated_tt = congestion_times.select(
+            "tomtom_id",
+            metropolis_congested_time=pl.col("congested_time").dt.total_seconds(fractional=True),
+        ).collect()
+
+        df = simulated_tt.join(observed_tt, on="tomtom_id", how="inner")
+        observed = df["tomtom_congested_time"].to_numpy()
+        predicted = df["metropolis_congested_time"].to_numpy()
+        rmse = float(((observed - predicted) ** 2).mean() ** 0.5)
+
+        fig = plot_travel_time_comparison(
+            observed,
+            predicted,
+            rmse,
+            xlabel="TomTom congested time",
+            ylabel="Metropolis congested time",
+        )
+        self.output["comparison_plot"].write(fig)

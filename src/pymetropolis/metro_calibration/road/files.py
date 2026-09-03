@@ -226,6 +226,14 @@ class TomTomRoutesMatchedFile(MetroDataFrameFile):
     ]
 
 
+class CongestionTimeComparisonPlotFile(MetroPlotFile):
+    path = "calibration/road/congestion_time_comparison.png"
+    description = (
+        "Scatter plot comparing TomTom-observed and Metropolis-simulated congested "
+        "times at the OD level."
+    )
+
+
 class TomTomCongestionTimesFile(MetroDataFrameFile):
     path = "calibration/road/tomtom_congestion_times.parquet"
     description = (

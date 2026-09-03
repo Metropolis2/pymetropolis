@@ -6,7 +6,13 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 
-from pymetropolis.metro_calibration.road.files import (
+from pymetropolis.metro_common import MetropyError
+from pymetropolis.metro_common.ml_models import compute_lasso
+from pymetropolis.metro_pipeline import Step
+from pymetropolis.metro_pipeline.parameters import ListParameter
+from pymetropolis.metro_pipeline.types import List, String
+
+from .files import (
     FreeFlowTravelTimeComparisonPlotFile,
     RoadEdgesFreeFlowTravelTimeFile,
     RoadEdgesPenaltyCoefficientsFile,
@@ -14,16 +20,9 @@ from pymetropolis.metro_calibration.road.files import (
     TomTomRoutesFile,
     TomTomRoutesMatchedFile,
 )
-from pymetropolis.metro_common import MetropyError
-from pymetropolis.metro_common.ml_models import compute_lasso
-from pymetropolis.metro_common.utils import seconds_to_duration_string
-from pymetropolis.metro_pipeline import Step
-from pymetropolis.metro_pipeline.parameters import ListParameter
-from pymetropolis.metro_pipeline.types import List, String
+from .plots import plot_travel_time_comparison
 
 if TYPE_CHECKING:
-    import matplotlib.pyplot as plt
-    import numpy as np
     import polars as pl
 
 
@@ -150,45 +149,6 @@ def coefs_to_df(coefs: dict[str, float]) -> pl.DataFrame:
         orient="row",
     )
     return df
-
-
-def plot_travel_time_comparison(
-    observed: np.ndarray, predicted: np.ndarray, rmse: float
-) -> plt.Figure:
-    import matplotlib.pyplot as plt
-    from matplotlib.ticker import FuncFormatter
-
-    n = observed.size
-    fig, ax = plt.subplots()
-    vmax = max(observed.max(), predicted.max()) * 1.05
-
-    # Overplotting makes a plain scatter unreadable past a few hundred points;
-    # switch to a log-scaled 2D density above that so dense datasets stay legible.
-    if n > 500:
-        hb = ax.hexbin(observed, predicted, gridsize=50, mincnt=1, bins="log", cmap="viridis")
-        fig.colorbar(hb, ax=ax, label="Number of ODs (log scale)")
-    else:
-        ax.scatter(observed, predicted, s=14, alpha=0.6, edgecolors="none")
-
-    ax.plot([0, vmax], [0, vmax], linestyle="--", color="black", linewidth=1, label="y = x")
-    ax.set_xlim(0, vmax)
-    ax.set_ylim(0, vmax)
-    ax.set_aspect("equal", adjustable="box")
-    ax.set_xlabel("TomTom free-flow travel time")
-    ax.set_ylabel("Metropolis free-flow travel time")
-    formatter = FuncFormatter(lambda x, pos: seconds_to_duration_string(x))
-    ax.xaxis.set_major_formatter(formatter)
-    ax.yaxis.set_major_formatter(formatter)
-    ax.annotate(
-        f"N = {n}\nRMSE = {seconds_to_duration_string(rmse)}",
-        xy=(0.02, 0.98),
-        xycoords="axes fraction",
-        va="top",
-    )
-    ax.grid()
-    ax.legend(loc="lower right")
-    fig.tight_layout()
-    return fig
 
 
 class FreeFlowLassoStep(Step):
@@ -320,5 +280,11 @@ class FreeFlowTravelTimeComparisonStep(Step):
         predicted = df["metropolis_tt"].to_numpy()
         rmse = float(((observed - predicted) ** 2).mean() ** 0.5)
 
-        fig = plot_travel_time_comparison(observed, predicted, rmse)
+        fig = plot_travel_time_comparison(
+            observed,
+            predicted,
+            rmse,
+            xlabel="TomTom free-flow travel time",
+            ylabel="Metropolis free-flow travel time",
+        )
         self.output["comparison_plot"].write(fig)
