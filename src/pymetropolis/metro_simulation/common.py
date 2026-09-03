@@ -1,15 +1,17 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
-from pymetropolis.metro_pipeline import MetroFile
 from pymetropolis.metro_pipeline.parameters import FloatParameter, FractionParameter, ListParameter
 from pymetropolis.metro_pipeline.steps import Step
 from pymetropolis.metro_pipeline.types import Enum
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     import polars as pl
+
+    from pymetropolis.metro_pipeline import MetroFile
 
 # TODO: Create Mode class.
 

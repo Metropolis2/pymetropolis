@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import time
-from collections.abc import Generator
 from datetime import date, datetime, timedelta
 from typing import TYPE_CHECKING
 
@@ -24,6 +23,8 @@ from pymetropolis.random import RandomStep
 from .files import TomTomRoutesFile
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
     import aiohttp
     import geopandas as gpd
     import numpy as np

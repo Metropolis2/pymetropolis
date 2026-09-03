@@ -1,7 +1,3 @@
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
 from loguru import logger
 
 from pymetropolis.common import ThreadedStep
@@ -14,9 +10,6 @@ from pymetropolis.metro_pipeline.types import String
 from pymetropolis.random import RandomStep
 
 from .files import JointTourEstimatorFile, SurveyedToursFile
-
-if TYPE_CHECKING:
-    pass
 
 
 class ExternalJointToursClassifierStep(Step):

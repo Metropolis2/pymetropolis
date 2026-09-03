@@ -29,7 +29,6 @@ from pymetropolis.metro_demand.routing.files import (
 )
 from pymetropolis.metro_environment.fuel.files import CarFuelFile
 from pymetropolis.metro_pipeline import PopulationStep, Step
-from pymetropolis.metro_pipeline.file import MetroDataFrameFile
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_simulation.common import (
     StepWithModes,
@@ -46,6 +45,8 @@ from .files import (
 
 if TYPE_CHECKING:
     import polars as pl
+
+    from pymetropolis.metro_pipeline.file import MetroDataFrameFile
 
 
 def clean_trips(trips: pl.DataFrame) -> pl.DataFrame:

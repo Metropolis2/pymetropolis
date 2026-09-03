@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Callable, Iterator
-from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, Self
 
 from pymetropolis.metro_common.errors import MetropyError, error_context
@@ -12,6 +10,9 @@ from .file import MetroFile, PopulationFile
 from .parameters import ExecPathParameter, Parameter, PathParameter
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Iterator
+    from pathlib import Path
+
     from .config import Config
 
 # TODO: Add something to measure running time for each step.

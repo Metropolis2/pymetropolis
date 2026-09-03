@@ -72,7 +72,7 @@ line-length = 100
 skip-magic-trailing-comma = true
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "RUF", "PLW"]
+select = ["E", "F", "I", "UP", "RUF", "PLW", "TC"]
 ignore = [
     "C408",  # C408: allow list() and dict() calls
     "RUF012",  # mutable-class-default: allow input_files / output_files syntax

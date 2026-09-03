@@ -4,7 +4,6 @@ import json
 import os
 import subprocess
 import tempfile
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from loguru import logger
@@ -29,6 +28,8 @@ from pymetropolis.metro_pipeline import PopulationStep, Step
 from pymetropolis.metro_pipeline.parameters import BoolParameter, ExecPathParameter
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     import polars as pl
 
 

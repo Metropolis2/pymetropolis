@@ -14,7 +14,6 @@ from loguru import logger
 
 from pymetropolis.common import ThreadedStep
 from pymetropolis.metro_common import MetropyError
-from pymetropolis.metro_common.time import MetroTime
 from pymetropolis.metro_demand.departure_time.files import TstarsFile
 from pymetropolis.metro_demand.population.files import (
     TripsDestinationsFile,
@@ -36,6 +35,8 @@ from pymetropolis.metro_pipeline.steps import InputFile
 if TYPE_CHECKING:
     import polars as pl
     import requests
+
+    from pymetropolis.metro_common.time import MetroTime
 
 MAX_TRIES = 3
 

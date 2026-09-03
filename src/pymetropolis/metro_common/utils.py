@@ -4,7 +4,6 @@ import os
 import shutil
 import tempfile
 from contextlib import contextmanager
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from loguru import logger
@@ -12,6 +11,8 @@ from loguru import logger
 from .errors import MetropyError
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     import polars as pl
 
 

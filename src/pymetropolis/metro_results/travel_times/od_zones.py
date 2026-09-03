@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import os
 import tempfile
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from loguru import logger
@@ -37,6 +36,8 @@ from .files import (
 )
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     import polars as pl
 
 
