@@ -109,7 +109,7 @@ class AbstractWriteMetroParametersStep(StepWithPeriod, ThreadedStep):
     )
     node_order_reuse_threshold = DurationParameter(
         "simulation.node_order_reuse_threshold",
-        default=timedelta(seconds=1),
+        default=timedelta(seconds=10),
         description=(
             "Threshold for expected edge TTFs RMSE above which node ordering is recomputed at next "
             "iteration."
