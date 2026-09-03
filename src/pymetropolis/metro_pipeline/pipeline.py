@@ -50,6 +50,11 @@ class MetroPipeline:
     primary_input_files: set[MetroFile]
     # List of files which are required or optional input for the target step.
     target_input_files: set[MetroFile] = set()
+    # Transitive closure of `primary_input_files` and `target_input_files`: also includes the
+    # required/optional inputs of whichever (possibly non-primary) Step generates a needed file, so
+    # that a chain of non-primary Steps feeding a primary Step only indirectly (through other
+    # non-primary Steps) is entirely kept in the sequence, not just its last link.
+    needed_files: set[MetroFile]
     config: Config
     target_step: Step | None = None
 
@@ -85,6 +90,7 @@ class MetroPipeline:
         self.check_target_step_defined(target_step, step_classes)
         self.set_feasible()
         self.solve_conflicts()
+        self.compute_needed_files()
         self.check_files_to_delete(all_output_files)
 
     def load_custom_steps(self, step_classes: list[type[Step]]) -> list[type[Step]]:
@@ -201,6 +207,29 @@ class MetroPipeline:
             self.steps.pop(s)
         self.check_target_step_files()
 
+    def compute_needed_files(self):
+        """Computes `needed_files`, the transitive closure of `primary_input_files` and
+        `target_input_files`.
+
+        `primary_input_files` only holds the input files of primary Steps directly. A non-primary
+        Step whose output is required only by *another non-primary* Step (itself feeding, possibly
+        through further non-primary Steps, a primary Step) would not be recognized as needed from
+        `primary_input_files` alone. This walks `generated_files` backward from the files already
+        known to be needed, repeatedly pulling in the required/optional inputs of whichever Step
+        generates each newly-needed file, until no new file is added.
+        """
+        self.needed_files = set(self.primary_input_files) | set(self.target_input_files)
+        frontier = set(self.needed_files)
+        while frontier:
+            new_frontier: set[MetroFile] = set()
+            for f in frontier:
+                for s in self.generated_files.get(f, ()):
+                    new_frontier |= (
+                        self.steps[s]["required_inputs"] | self.steps[s]["optional_inputs"]
+                    ) - self.needed_files
+            self.needed_files |= new_frontier
+            frontier = new_frontier
+
     def check_target_step_files(self):
         if self.target_step is not None and self.target_step not in self.steps:
             # At this point, target step is defined but it is not feasible because one of its input
@@ -260,11 +289,11 @@ class MetroPipeline:
                 .intersection(self.generated_files)
                 .issubset(available_files)
                 # Condition 3: step is primary or one of its output file is needed for a primary
-                # step (or the target step), or it is the target step.
+                # step (or the target step), possibly indirectly through other non-primary steps,
+                # or it is the target step.
                 and (
                     s.is_primary()
-                    or any(f in self.primary_input_files for f in self.steps[s]["outputs"])
-                    or any(f in self.target_input_files for f in self.steps[s]["outputs"])
+                    or any(f in self.needed_files for f in self.steps[s]["outputs"])
                     or s == self.target_step
                 )
             ]

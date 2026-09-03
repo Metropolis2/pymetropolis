@@ -121,6 +121,104 @@ def test_pipeline_with_optional_and_no_producer():
         assert step_sequence == ["A", "Cbis"]
 
 
+class NPFile1(MetroFile):
+    path = "np_file1"
+
+
+class NPFile2(MetroFile):
+    path = "np_file2"
+
+
+class NPFile3(MetroFile):
+    path = "np_file3"
+
+
+class NPSinkFile(MetroFile):
+    path = "np_sink"
+
+
+class NPStep1(Step):
+    """Non-primary Step at the bottom of the chain: its output is only needed by another
+    non-primary Step (`NPStep2`), not directly by any primary Step.
+    """
+
+    priority = 0
+    output_files = {"1": NPFile1}
+
+
+class NPStep2(Step):
+    """Non-primary Step in the middle of the chain: reads `NPStep1`'s output, and its own output is
+    only needed by another non-primary Step (`NPStep3`).
+    """
+
+    priority = 0
+    input_files = {"1": NPFile1}
+    output_files = {"2": NPFile2}
+
+
+class NPStep3(Step):
+    """Non-primary Step directly below the primary consumer: reads `NPStep2`'s output."""
+
+    priority = 0
+    input_files = {"2": NPFile2}
+    output_files = {"3": NPFile3}
+
+
+class NPConsumer(Step):
+    """Primary Step needing `NPStep3`'s output."""
+
+    input_files = {"3": NPFile3}
+    output_files = {"sink": NPSinkFile}
+
+
+def test_pipeline_with_multi_hop_non_primary_chain():
+    """A chain of non-primary Steps (`NPStep1` -> `NPStep2` -> `NPStep3`) feeding a primary Step
+    (`NPConsumer`) must be entirely included in the sequence, not just `NPStep3` (the last link,
+    whose output is directly needed by the primary Step): `primary_input_files` alone only captures
+    that direct, one-hop relationship, so this exercises the transitive closure in
+    `compute_needed_files`.
+    """
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        config = Config({"main_directory": tmp_dir})
+        pipeline = MetroPipeline(config, [NPStep1, NPStep2, NPStep3, NPConsumer])
+        sequence = pipeline.find_sequence()
+        step_sequence = [step.__class__.__name__ for step, _ in sequence]
+        assert step_sequence == ["NPStep1", "NPStep2", "NPStep3", "NPConsumer"]
+
+
+class OrphanFile1(MetroFile):
+    path = "orphan_file1"
+
+
+class OrphanFile2(MetroFile):
+    path = "orphan_file2"
+
+
+class OrphanStep1(Step):
+    priority = 0
+    output_files = {"1": OrphanFile1}
+
+
+class OrphanStep2(Step):
+    priority = 0
+    input_files = {"1": OrphanFile1}
+    output_files = {"2": OrphanFile2}
+
+
+def test_pipeline_excludes_non_primary_chain_not_needed_by_any_primary_step():
+    """A chain of non-primary Steps whose final output is not required by any primary Step (nor the
+    target Step) is entirely excluded from the sequence, not just kept because it is "feasible": the
+    transitive closure in `compute_needed_files` must not make every non-primary Step needed
+    unconditionally.
+    """
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        config = Config({"main_directory": tmp_dir})
+        pipeline = MetroPipeline(config, [A, OrphanStep1, OrphanStep2])
+        sequence = pipeline.find_sequence()
+        step_sequence = [step.__class__.__name__ for step, _ in sequence]
+        assert step_sequence == ["A"]
+
+
 class PriorityWinner(Step):
     priority = 10
     input_files = {"1": File1}
