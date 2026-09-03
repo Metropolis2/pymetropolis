@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from loguru import logger
+
 from pymetropolis.metro_common.errors import error_context
 from pymetropolis.metro_common.utils import pl_duration_to_seconds
 from pymetropolis.metro_demand.departure_time import LinearScheduleFile, TstarsFile
@@ -19,6 +21,7 @@ from pymetropolis.metro_demand.modes.files import (
     WalkingTravelTimesFile,
 )
 from pymetropolis.metro_demand.population import TripsFile
+from pymetropolis.metro_demand.population.files import ToursModeFile
 from pymetropolis.metro_demand.routing.files import (
     NonPrimaryCarTrips,
     PrimaryCarTripsAccessEgressFile,
@@ -34,10 +37,35 @@ from pymetropolis.metro_simulation.common import (
     merge_populations,
 )
 
-from .files import MetroTripsFile, MetroTripsPopulationFile
+from .files import (
+    MetroExAnteTripsFile,
+    MetroExAnteTripsPopulationFile,
+    MetroTripsFile,
+    MetroTripsPopulationFile,
+)
 
 if TYPE_CHECKING:
     import polars as pl
+
+
+def clean_trips(trips: pl.DataFrame) -> pl.DataFrame:
+    import polars as pl
+
+    if "destination_activity_duration" not in trips.columns:
+        trips = trips.with_columns(destination_activity_duration=pl.lit(None, dtype=pl.Duration))
+    df = trips.select(
+        "trip_id",
+        "person_id",
+        agent_id="tour_id",
+        activity_time=pl_duration_to_seconds("destination_activity_duration").fill_null(0.0),
+    ).sort("agent_id", "trip_id")
+    # Set activity time to 0 for the last trip of the tour.
+    df = df.with_columns(
+        activity_time=pl.when(pl.col("trip_id") != pl.col("trip_id").last().over("agent_id"))
+        .then("activity_time")
+        .otherwise(0.0)
+    )
+    return df
 
 
 @error_context(msg="Cannot generate car trips")
@@ -47,11 +75,11 @@ def generate_car_trips(
     df: pl.DataFrame,
     primary_trips_file: PrimaryCarTripsAccessEgressFile,
     secondary_trips_file: NonPrimaryCarTrips,
-    pref_file: MetroDataFrameFile,
-    tstars_file: TstarsFile,
-    schedule_pref_file: LinearScheduleFile,
-    fuel_file: CarFuelFile,
-    fuel_share: float,
+    pref_file: MetroDataFrameFile | None = None,
+    tstars_file: TstarsFile | None = None,
+    schedule_pref_file: LinearScheduleFile | None = None,
+    fuel_file: CarFuelFile | None = None,
+    fuel_share: float | None = None,
 ):
     import polars as pl
 
@@ -86,7 +114,7 @@ def generate_car_trips(
         + pl.col("activity_time")
         + pl.col("access_time_sec").shift(-1).over("agent_id").fill_null(0.0)
     )
-    if pref_file.exists():
+    if pref_file is not None and pref_file.exists():
         params: pl.DataFrame = pref_file.read().select(
             "person_id",
             constant_utility=-pl.col(f"{mode}_cst"),
@@ -98,27 +126,11 @@ def generate_car_trips(
             constant_utility=pl.col("constant_utility")
             - pl.col("alpha") * (pl.col("access_time_sec") + pl.col("egress_time_sec"))
         )
-    if tstars_file.exists():
-        tstars: pl.DataFrame = tstars_file.read()
-        df = (
-            df.join(tstars, on="trip_id", how="left")
-            .with_columns(pl_duration_to_seconds("tstar").alias("schedule_utility.tstar"))
-            .drop("tstar")
-        )
-    if schedule_pref_file.exists():
-        params: pl.DataFrame = schedule_pref_file.read()
-        # TODO: Send warning if linear schedule is defined but not tstars.
-        df = (
-            df.join(params, on="trip_id", how="left")
-            .with_columns(
-                pl.lit("Linear").alias("schedule_utility.type"),
-                (pl.col("beta") / 3600.0).alias("schedule_utility.beta"),
-                (pl.col("gamma") / 3600.0).alias("schedule_utility.gamma"),
-                pl_duration_to_seconds("delta").alias("schedule_utility.delta"),
-            )
-            .drop("beta", "gamma", "delta")
-        )
-    if fuel_file.exists() and fuel_share != 0.0:
+    df = add_schedule_preferences(df, schedule_pref_file, tstars_file)
+    if "schedule_utility.tstar" in df.columns:
+        # Add egress time to tstar.
+        df = df.with_columns(pl.col("schedule_utility.tstar") - pl.col("egress_time_sec"))
+    if fuel_file is not None and fuel_file.exists() and fuel_share != 0.0:
         fuel: pl.DataFrame = fuel_file.read()
         if "constant_utility" not in df.columns:
             # Create the `constant_utility` column if it does not exist yet.
@@ -140,9 +152,9 @@ def generate_car_trips(
 def generate_public_transit_trips(
     df: pl.DataFrame,
     itineraries_file: TripsPublicTransitItinerariesFile,
-    pref_file: PublicTransitPreferencesFile,
-    tstars_file: TstarsFile,
-    schedule_pref_file: LinearScheduleFile,
+    pref_file: PublicTransitPreferencesFile | None = None,
+    tstars_file: TstarsFile | None = None,
+    schedule_pref_file: LinearScheduleFile | None = None,
 ):
     import polars as pl
 
@@ -158,7 +170,7 @@ def generate_public_transit_trips(
         how="inner",
     )
     df = df.filter(pl.col("class.travel_time").is_not_null().all().over("agent_id"))
-    if pref_file.exists():
+    if pref_file is not None and pref_file.exists():
         params: pl.DataFrame = pref_file.read()
         if "generalized_time" not in itineraries.columns:
             itineraries = itineraries.with_columns(generalized_time="travel_time")
@@ -179,25 +191,7 @@ def generate_public_transit_trips(
             )
             .drop("public_transit_cst", "public_transit_vot", "generalized_time")
         )
-    if tstars_file.exists():
-        tstars: pl.DataFrame = tstars_file.read()
-        df = (
-            df.join(tstars, on="trip_id", how="left")
-            .with_columns(pl_duration_to_seconds("tstar").alias("schedule_utility.tstar"))
-            .drop("tstar")
-        )
-    if schedule_pref_file.exists():
-        params: pl.DataFrame = schedule_pref_file.read()
-        df = (
-            df.join(params, on="trip_id", how="left")
-            .with_columns(
-                pl.lit("Linear").alias("schedule_utility.type"),
-                (pl.col("beta") / 3600.0).alias("schedule_utility.beta"),
-                (pl.col("gamma") / 3600.0).alias("schedule_utility.gamma"),
-                pl_duration_to_seconds("delta").alias("schedule_utility.delta"),
-            )
-            .drop("beta", "gamma", "delta")
-        )
+    df = add_schedule_preferences(df, schedule_pref_file, tstars_file)
     return df
 
 
@@ -205,9 +199,9 @@ def generate_public_transit_trips(
 def generate_walking_trips(
     df: pl.DataFrame,
     tts_file: WalkingTravelTimesFile,
-    pref_file: WalkingPreferencesFile,
-    tstars_file: TstarsFile,
-    schedule_pref_file: LinearScheduleFile,
+    pref_file: WalkingPreferencesFile | None = None,
+    tstars_file: TstarsFile | None = None,
+    schedule_pref_file: LinearScheduleFile | None = None,
 ):
     import polars as pl
 
@@ -220,7 +214,7 @@ def generate_walking_trips(
         .with_columns(pl_duration_to_seconds("walking_travel_time").alias("class.travel_time"))
         .drop("walking_travel_time")
     )
-    if pref_file.exists():
+    if pref_file is not None and pref_file.exists():
         params: pl.DataFrame = pref_file.read()
         df = (
             df.join(params, on="person_id", how="left")
@@ -229,25 +223,7 @@ def generate_walking_trips(
             )
             .drop("walking_cst", "walking_vot")
         )
-    if tstars_file.exists():
-        tstars: pl.DataFrame = tstars_file.read()
-        df = (
-            df.join(tstars, on="trip_id", how="left")
-            .with_columns(pl_duration_to_seconds("tstar").alias("schedule_utility.tstar"))
-            .drop("tstar")
-        )
-    if schedule_pref_file.exists():
-        params: pl.DataFrame = schedule_pref_file.read()
-        df = (
-            df.join(params, on="trip_id", how="left")
-            .with_columns(
-                pl.lit("Linear").alias("schedule_utility.type"),
-                (pl.col("beta") / 3600.0).alias("schedule_utility.beta"),
-                (pl.col("gamma") / 3600.0).alias("schedule_utility.gamma"),
-                pl_duration_to_seconds("delta").alias("schedule_utility.delta"),
-            )
-            .drop("beta", "gamma", "delta")
-        )
+    df = add_schedule_preferences(df, schedule_pref_file, tstars_file)
     return df
 
 
@@ -255,9 +231,9 @@ def generate_walking_trips(
 def generate_bicycle_trips(
     df: pl.DataFrame,
     tts_file: BicycleTravelTimesFile,
-    pref_file: BicyclePreferencesFile,
-    tstars_file: TstarsFile,
-    schedule_pref_file: LinearScheduleFile,
+    pref_file: BicyclePreferencesFile | None = None,
+    tstars_file: TstarsFile | None = None,
+    schedule_pref_file: LinearScheduleFile | None = None,
 ):
     import polars as pl
 
@@ -270,7 +246,7 @@ def generate_bicycle_trips(
         .with_columns(pl_duration_to_seconds("bicycle_travel_time").alias("class.travel_time"))
         .drop("bicycle_travel_time")
     )
-    if pref_file.exists():
+    if pref_file is not None and pref_file.exists():
         params: pl.DataFrame = pref_file.read()
         df = (
             df.join(params, on="person_id", how="left")
@@ -279,17 +255,26 @@ def generate_bicycle_trips(
             )
             .drop("bicycle_cst", "bicycle_vot")
         )
-    if tstars_file.exists():
-        tstars: pl.DataFrame = tstars_file.read()
+    df = add_schedule_preferences(df, schedule_pref_file, tstars_file)
+    return df
+
+
+def add_schedule_preferences(
+    df: pl.DataFrame, schedule_pref_file: LinearScheduleFile | None, tstars_file: TstarsFile | None
+) -> pl.DataFrame:
+    import polars as pl
+
+    if tstars_file is not None and tstars_file.exists():
         df = (
-            df.join(tstars, on="trip_id", how="left")
+            df.join(tstars_file.read(), on="trip_id", how="left")
             .with_columns(pl_duration_to_seconds("tstar").alias("schedule_utility.tstar"))
             .drop("tstar")
         )
-    if schedule_pref_file.exists():
-        params: pl.DataFrame = schedule_pref_file.read()
+    if schedule_pref_file is not None and schedule_pref_file.exists():
+        if "schedule_utility.tstar" not in df.columns:
+            logger.warning("Schedule-delay parameters are defined but there is no tstar.")
         df = (
-            df.join(params, on="trip_id", how="left")
+            df.join(schedule_pref_file.read(), on="trip_id", how="left")
             .with_columns(
                 pl.lit("Linear").alias("schedule_utility.type"),
                 (pl.col("beta") / 3600.0).alias("schedule_utility.beta"),
@@ -393,23 +378,8 @@ class PrepareMetroTripsStep(StepWithModes, StepWithRidesharingCount, PopulationS
     def run(self):
         import polars as pl
 
-        trips: pl.DataFrame = self.input["trips"].read()
-        if "destination_activity_duration" not in trips.columns:
-            trips = trips.with_columns(
-                destination_activity_duration=pl.lit(None, dtype=pl.Duration)
-            )
-        df = trips.select(
-            "trip_id",
-            "person_id",
-            agent_id="tour_id",
-            activity_time=pl_duration_to_seconds("destination_activity_duration").fill_null(0.0),
-        ).sort("agent_id", "trip_id")
-        # Set activity time to 0 for the last trip of the tour.
-        df = df.with_columns(
-            activity_time=pl.when(pl.col("trip_id") != pl.col("trip_id").last().over("agent_id"))
-            .then("activity_time")
-            .otherwise(0.0)
-        )
+        trips = self.input["trips"].read()
+        df = clean_trips(trips)
         metro_trips = pl.DataFrame()
         for car_mode, vehicle_type in (
             ("car_driver", "car_driver_alone"),
@@ -480,6 +450,92 @@ class PrepareMetroTripsStep(StepWithModes, StepWithRidesharingCount, PopulationS
             return 0.0
 
 
+class PrepareExAnteMetroTripsStep(StepWithModes, StepWithRidesharingCount, PopulationStep):
+    """Prepares the trips using ex-ante modes and departure time for the ex-ante simulation.
+
+    Preference parameters are not defined (they have no impact on route choice).
+    """
+
+    input_files = {
+        "trips": TripsFile,
+        "tour_modes": ToursModeFile,
+        "primary_car_trips": InputFile(
+            PrimaryCarTripsAccessEgressFile,
+            when=lambda inst: inst.has_car_mode(),
+            when_doc=r'if any "car\_\*" mode is defined',
+        ),
+        "secondary_car_trips": InputFile(
+            NonPrimaryCarTrips,
+            when=lambda inst: inst.has_car_mode(),
+            when_doc=r'if any "car\_\*" mode is defined',
+        ),
+        "public_transit_travel_times": InputFile(
+            TripsPublicTransitItinerariesFile,
+            when=lambda inst: inst.has_mode("public_transit"),
+            when_doc='if the "public_transit" mode is defined',
+        ),
+        "walking_travel_times": InputFile(
+            WalkingTravelTimesFile,
+            when=lambda inst: inst.has_mode("walking"),
+            when_doc='if the "walking" mode is defined',
+        ),
+        "bicycle_travel_times": InputFile(
+            BicycleTravelTimesFile,
+            when=lambda inst: inst.has_mode("bicycle"),
+            when_doc='if the "bicycle" mode is defined',
+        ),
+    }
+    output_files = {"metro_trips": MetroExAnteTripsPopulationFile}
+    priority = 0
+
+    def is_defined(self) -> bool:
+        # If there is no "road-based mode", this step cannot be run (there is no trip to generate).
+        return self.has_trip_mode()
+
+    def run(self):
+        import polars as pl
+
+        trips: pl.DataFrame = self.input["trips"].read()
+        df = clean_trips(trips)
+        metro_trips = pl.DataFrame()
+        for car_mode, vehicle_type in (
+            ("car_driver", "car_driver_alone"),
+            ("car_driver_with_passengers", "car_driver_multi"),
+            ("car_passenger", "car_passenger"),
+            ("car_ridesharing", "car_ridesharing"),
+        ):
+            if self.has_mode(car_mode):
+                car_trips = generate_car_trips(
+                    car_mode,
+                    vehicle_type,
+                    df=df,
+                    primary_trips_file=self.input["primary_car_trips"],
+                    secondary_trips_file=self.input["secondary_car_trips"],
+                )
+                metro_trips = pl.concat((metro_trips, car_trips), how="diagonal")
+        if self.has_mode("public_transit"):
+            public_transit_trips = generate_public_transit_trips(
+                df, self.input["public_transit_travel_times"]
+            )
+            metro_trips = pl.concat((metro_trips, public_transit_trips), how="diagonal")
+        if self.has_mode("walking"):
+            walking_trips = generate_walking_trips(df, self.input["walking_travel_times"])
+            metro_trips = pl.concat((metro_trips, walking_trips), how="diagonal")
+        if self.has_mode("bicycle"):
+            bicycle_trips = generate_bicycle_trips(df, self.input["bicycle_travel_times"])
+            metro_trips = pl.concat((metro_trips, bicycle_trips), how="diagonal")
+        metro_trips = metro_trips.drop("person_id")
+        metro_trips = metro_trips.sort("agent_id", "alt_id", "trip_id")
+        # Keep only trips with the ex-ante mode.
+        tour_modes = self.input["tour_modes"].read()
+        metro_trips = metro_trips.join(
+            tour_modes, left_on=["agent_id", "alt_id"], right_on=["tour_id", "mode"], how="semi"
+        )
+        # In the ex-ante simulation, 1 agent = 1 trip.
+        metro_trips = metro_trips.with_columns(agent_id="trip_id")
+        self.output["metro_trips"].write(metro_trips)
+
+
 class WriteMetroTripsStep(Step):
     """Merges the trips in each population and writes the trips input file for Metropolis-Core."""
 
@@ -488,6 +544,24 @@ class WriteMetroTripsStep(Step):
 
     # TODO. There is an issue if a population has no trip defined (e.g., only `outside_option`
     # alternatives) since this Step will never be executed in this caes.
+    def run(self):
+        trips = merge_populations(
+            self.input_populations["population_trips"], id_columns=("agent_id", "trip_id")
+        )
+        self.output["metro_trips"].write(trips)
+
+
+class WriteExAnteMetroTripsStep(Step):
+    """Merges the trips in each population and writes the trips input file for the ex-ante
+    simulation.
+    """
+
+    input_files = {
+        "population_trips": InputFile(MetroExAnteTripsPopulationFile, all_populations=True)
+    }
+    output_files = {"metro_trips": MetroExAnteTripsFile}
+    priority = 0
+
     def run(self):
         trips = merge_populations(
             self.input_populations["population_trips"], id_columns=("agent_id", "trip_id")

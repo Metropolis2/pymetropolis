@@ -17,15 +17,22 @@ from pymetropolis.metro_pipeline.types import Time
 from pymetropolis.metro_simulation.demand.files import (
     MetroAgentsFile,
     MetroAlternativesFile,
+    MetroExAnteAgentsFile,
+    MetroExAnteAlternativesFile,
+    MetroExAnteTripsFile,
     MetroTripsFile,
 )
 from pymetropolis.metro_simulation.supply.files import MetroEdgesFile, MetroVehicleTypesFile
 
-from .file import MetroParametersFile
+from .file import MetroExAnteParametersFile, MetroParametersFile
 
 
-class WriteMetroParametersStep(ThreadedStep):
-    """Generates the input parameters file for the Metropolis-Core simulation."""
+class AbstractWriteMetroParametersStep(ThreadedStep):
+    """Abstract Step for the generation of Metropolis-Core parameters.
+
+    Only the input files ("agents", "alternatives", "trips", "edges", "vehicle_types") and output
+    file ("parameters") need to be defined.
+    """
 
     period = ListParameter(
         "simulation.period",
@@ -106,14 +113,8 @@ class WriteMetroParametersStep(ThreadedStep):
         ),
     )
 
-    input_files = {
-        "agents": MetroAgentsFile,
-        "alternatives": MetroAlternativesFile,
-        "edges": InputFile(MetroEdgesFile, optional=True),
-        "vehicle_types": InputFile(MetroVehicleTypesFile, optional=True),
-        "trips": InputFile(MetroTripsFile, optional=True),
-    }
-    output_files = {"parameters": MetroParametersFile}
+    def output_directory(self) -> str:
+        raise NotImplementedError
 
     def is_defined(self) -> bool:
         return (
@@ -123,6 +124,11 @@ class WriteMetroParametersStep(ThreadedStep):
         )
 
     def run(self):
+        params = self.get_parameters()
+        params_str = json.dumps(params, indent=2, sort_keys=True)
+        self.output["parameters"].write(params_str)
+
+    def get_parameters(self) -> dict:
         assert self.period is not None
         assert self.recording_interval is not None
         assert not self.spillback or self.max_pending_duration is not None
@@ -145,7 +151,7 @@ class WriteMetroParametersStep(ThreadedStep):
                 "agents": self.input["agents"].relative_path_from(wdir),
                 "alternatives": self.input["alternatives"].relative_path_from(wdir),
             },
-            "output_directory": "output",
+            "output_directory": self.output_directory(),
             "period": period,
             "departure_time_interval": self.departure_time_interval.total_seconds(),
             "learning_model": {"type": "Exponential", "value": self.learning_factor},
@@ -169,5 +175,44 @@ class WriteMetroParametersStep(ThreadedStep):
         backward_wave_speed = self.backward_wave_speed
         if isfinite(backward_wave_speed):
             params["road_network"]["backward_wave_speed"] = backward_wave_speed
-        params_str = json.dumps(params, indent=2, sort_keys=True)
-        self.output["parameters"].write(params_str)
+        return params
+
+
+class WriteMetroParametersStep(AbstractWriteMetroParametersStep):
+    """Generates the input parameters file for the Metropolis-Core simulation."""
+
+    input_files = {
+        "agents": MetroAgentsFile,
+        "alternatives": MetroAlternativesFile,
+        "edges": InputFile(MetroEdgesFile, optional=True),
+        "vehicle_types": InputFile(MetroVehicleTypesFile, optional=True),
+        "trips": InputFile(MetroTripsFile, optional=True),
+    }
+    output_files = {"parameters": MetroParametersFile}
+
+    def output_directory(self) -> str:
+        return "output"
+
+
+class WriteExAnteMetroParametersStep(AbstractWriteMetroParametersStep):
+    """Generates the input parameters file for the ex-ante simulation."""
+
+    # Overwrite the nb_iterations parameter.
+    nb_iterations = IntParameter(
+        "simulation.ex_ante_nb_iterations",
+        default=1,
+        description="Number of iterations for the ex-ante simulation.",
+    )
+    priority = 0
+
+    input_files = {
+        "agents": MetroExAnteAgentsFile,
+        "alternatives": MetroExAnteAlternativesFile,
+        "edges": InputFile(MetroEdgesFile, optional=True),
+        "vehicle_types": InputFile(MetroVehicleTypesFile, optional=True),
+        "trips": InputFile(MetroExAnteTripsFile, optional=True),
+    }
+    output_files = {"parameters": MetroExAnteParametersFile}
+
+    def output_directory(self) -> str:
+        return "ex_ante_output"

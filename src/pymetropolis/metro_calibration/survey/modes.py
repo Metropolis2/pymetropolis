@@ -95,8 +95,9 @@ class ModeClassifierConfigStep(Step):
             tours = tours.with_columns(
                 tour_mode=pl.col("tour_mode").replace(
                     {
-                        "car_driver_mixed": "car_driver_alone",
-                        "car_driver_with_passengers": "car_driver_alone",
+                        "car_driver_alone": "car_driver",
+                        "car_driver_mixed": "car_driver",
+                        "car_driver_with_passengers": "car_driver",
                     }
                 )
             )

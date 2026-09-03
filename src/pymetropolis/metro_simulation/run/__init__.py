@@ -1,6 +1,13 @@
-from .exec import RunSimulationStep
+from .exec import RunExAnteSimulationStep, RunSimulationStep
 from .files import (
     MetroAgentResultsFile,
+    MetroExAnteAgentResultsFile,
+    MetroExAnteExpectedTravelTimeFunctionsFile,
+    MetroExAnteIterationResultsFile,
+    MetroExAnteNextExpectedTravelTimeFunctionsFile,
+    MetroExAnteRouteResultsFile,
+    MetroExAnteSimulatedTravelTimeFunctionsFile,
+    MetroExAnteTripResultsFile,
     MetroExpectedTravelTimeFunctionsFile,
     MetroIterationResultsFile,
     MetroNextExpectedTravelTimeFunctionsFile,
@@ -17,6 +24,13 @@ RUN_FILES = [
     MetroExpectedTravelTimeFunctionsFile,
     MetroNextExpectedTravelTimeFunctionsFile,
     MetroRouteResultsFile,
+    MetroExAnteIterationResultsFile,
+    MetroExAnteTripResultsFile,
+    MetroExAnteAgentResultsFile,
+    MetroExAnteSimulatedTravelTimeFunctionsFile,
+    MetroExAnteExpectedTravelTimeFunctionsFile,
+    MetroExAnteNextExpectedTravelTimeFunctionsFile,
+    MetroExAnteRouteResultsFile,
 ]
 
-RUN_STEPS = [RunSimulationStep]
+RUN_STEPS = [RunSimulationStep, RunExAnteSimulationStep]
