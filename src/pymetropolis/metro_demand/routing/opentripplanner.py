@@ -127,37 +127,6 @@ def get_session() -> requests.Session:
     return _thread_local.session
 
 
-def run_queries(
-    trips: pl.DataFrame,
-    api_url: str,
-    parameters: dict,
-    batch_size: int | None = None,
-    nb_threads: int | None = None,
-) -> pl.DataFrame:
-    import polars as pl
-
-    batch_size = batch_size or len(trips)
-    batch_size = max(batch_size, 1)
-    nb_batches = math.ceil(len(trips) / batch_size)
-    if nb_batches == 1:
-        return run_queries_batch(trips, api_url, parameters, nb_threads)
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        for i in range(nb_batches):
-            df = run_queries_batch(
-                trips[i * batch_size : (i + 1) * batch_size], api_url, parameters, nb_threads
-            )
-            df.write_parquet(Path(tmp_dir) / Path(f"otp_results_{i}.parquet"))
-            del df
-        df = pl.concat(
-            (
-                pl.scan_parquet(Path(tmp_dir) / Path(f"otp_results_{i}.parquet"))
-                for i in range(nb_batches)
-            ),
-            how="vertical",
-        ).collect()
-    return df
-
-
 def run_queries_batch(
     trips: pl.DataFrame, api_url: str, parameters: dict, nb_threads: int | None = None
 ) -> pl.DataFrame:
@@ -331,7 +300,114 @@ def clean_trips_time(
     return trips
 
 
-class TripsOpenTripPlannerStep(ThreadedStep, GTFSStep, PopulationStep):
+class OpenTripPlannerStep(ThreadedStep, GTFSStep):
+    """Abstract Step for all steps querying the OpenTripPlanner server."""
+
+    otp_url = StringParameter(
+        "opentripplanner.url",
+        default="http://0.0.0.0:8080",
+        description="URL from which the OpenTripPlanner API can be accessed.",
+    )
+    batch_size = IntParameter(
+        "opentripplanner.batch_size",
+        description="How many trips should be processed in each batch.",
+        note=(
+            "Default is to process all trips in a single batch. "
+            "Use a lower value if you are running out of memory."
+        ),
+    )
+    walking_speed = FloatParameter(
+        "opentripplanner.walking_speed",
+        default=4.0,
+        description="Walking speed for public-transit trips, in km/h.",
+    )
+    walking_reluctance = FloatParameter(
+        "opentripplanner.multipliers.walk",
+        default=2.0,
+        description="Multiplier for the value of time walking.",
+    )
+    waiting_reluctance = FloatParameter(
+        "opentripplanner.multipliers.wait",
+        default=1.1,
+        description="Multiplier for the value of time waiting.",
+    )
+    bus_reluctance = FloatParameter(
+        "opentripplanner.multipliers.bus",
+        default=1.2,
+        description="Multiplier for the value of time in a bus.",
+    )
+    tram_reluctance = FloatParameter(
+        "opentripplanner.multipliers.tram",
+        default=1.0,
+        description="Multiplier for the value of time in a tramway.",
+    )
+    subway_reluctance = FloatParameter(
+        "opentripplanner.multipliers.subway",
+        default=1.0,
+        description="Multiplier for the value of time in a subway.",
+    )
+    rail_reluctance = FloatParameter(
+        "opentripplanner.multipliers.rail",
+        default=1.0,
+        description="Multiplier for the value of time for rail transport.",
+    )
+    transfer_cost = IntParameter(
+        "opentripplanner.transfer_cost",
+        default=300,
+        description="Penalty for transfers, in seconds equivalent.",
+    )
+
+    def is_defined(self):
+        return self.gtfs_date is not None
+
+    def get_parameters(self):
+        assert self.walking_speed is not None
+        return {
+            "walkSpeed": self.walking_speed / 3.6,
+            "walkReluctance": self.walking_reluctance,
+            "waitReluctance": self.waiting_reluctance,
+            "busReluctance": self.bus_reluctance,
+            "tramReluctance": self.tram_reluctance,
+            "subwayReluctance": self.subway_reluctance,
+            "railReluctance": self.rail_reluctance,
+            "transferCost": self.transfer_cost,
+        }
+
+    def run_queries(self, trips: pl.DataFrame) -> pl.DataFrame:
+        import polars as pl
+
+        assert self.otp_url is not None
+
+        # Add date column.
+        trips = trips.with_columns(date=self.gtfs_date)
+
+        parameters = self.get_parameters()
+        batch_size = self.batch_size or len(trips)
+        batch_size = max(batch_size, 1)
+        nb_batches = math.ceil(len(trips) / batch_size)
+        if nb_batches == 1:
+            return run_queries_batch(trips, self.otp_url, parameters, self.nb_threads)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            for i in range(nb_batches):
+                df = run_queries_batch(
+                    trips[i * batch_size : (i + 1) * batch_size],
+                    self.otp_url,
+                    parameters,
+                    self.nb_threads,
+                )
+                df.write_parquet(Path(tmp_dir) / Path(f"otp_results_{i}.parquet"))
+                del df
+            df = pl.concat(
+                (
+                    pl.scan_parquet(Path(tmp_dir) / Path(f"otp_results_{i}.parquet"))
+                    for i in range(nb_batches)
+                ),
+                how="vertical",
+            ).collect()
+        return df
+
+
+class TripsOpenTripPlannerStep(OpenTripPlannerStep, PopulationStep):
     """Computes the trips' travel time and generalized time by public transit with OpenTripPlanner.
 
     This step requires having access to an OpenTripPlanner API server.
@@ -420,19 +496,6 @@ class TripsOpenTripPlannerStep(ThreadedStep, GTFSStep, PopulationStep):
     ```
     """
 
-    otp_url = StringParameter(
-        "opentripplanner.url",
-        default="http://0.0.0.0:8080",
-        description="URL from which the OpenTripPlanner API can be accessed.",
-    )
-    batch_size = IntParameter(
-        "opentripplanner.batch_size",
-        description="How many trips should be processed in each batch.",
-        note=(
-            "Default is to process all trips in a single batch. "
-            "Use a lower value if you are running out of memory."
-        ),
-    )
     time_type = EnumParameter(
         "opentripplanner.time_type",
         values=["departure", "arrival", "tstar", "custom_departure", "custom_arrival"],
@@ -460,46 +523,6 @@ class TripsOpenTripPlannerStep(ThreadedStep, GTFSStep, PopulationStep):
             "Otherwise, the value is only used as a default for missing departure / arrival time."
         ),
     )
-    walking_speed = FloatParameter(
-        "opentripplanner.walking_speed",
-        default=4.0,
-        description="Walking speed for public-transit trips, in km/h.",
-    )
-    walking_reluctance = FloatParameter(
-        "opentripplanner.multipliers.walk",
-        default=2.0,
-        description="Multiplier for the value of time walking.",
-    )
-    waiting_reluctance = FloatParameter(
-        "opentripplanner.multipliers.wait",
-        default=1.1,
-        description="Multiplier for the value of time waiting.",
-    )
-    bus_reluctance = FloatParameter(
-        "opentripplanner.multipliers.bus",
-        default=1.2,
-        description="Multiplier for the value of time in a bus.",
-    )
-    tram_reluctance = FloatParameter(
-        "opentripplanner.multipliers.tram",
-        default=1.0,
-        description="Multiplier for the value of time in a tramway.",
-    )
-    subway_reluctance = FloatParameter(
-        "opentripplanner.multipliers.subway",
-        default=1.0,
-        description="Multiplier for the value of time in a subway.",
-    )
-    rail_reluctance = FloatParameter(
-        "opentripplanner.multipliers.rail",
-        default=1.0,
-        description="Multiplier for the value of time for rail transport.",
-    )
-    transfer_cost = IntParameter(
-        "opentripplanner.transfer_cost",
-        default=300,
-        description="Penalty for transfers, in seconds equivalent.",
-    )
     input_files = {
         "trips": TripsFile,
         "origins": TripsOriginsFile,
@@ -513,14 +536,12 @@ class TripsOpenTripPlannerStep(ThreadedStep, GTFSStep, PopulationStep):
     output_files = {"costs": TripsPublicTransitItinerariesFile}
 
     def is_defined(self):
-        return self.gtfs_date is not None and self.time_type is not None
+        return super(OpenTripPlannerStep, self).is_defined() and self.time_type is not None
 
     def run(self):
         import polars as pl
 
         assert self.time_type is not None
-        assert self.otp_url is not None
-        assert self.walking_speed is not None
 
         trips = self.input["trips"].read()
         # Note that tstars are read even when not required. This could be optimized although the
@@ -536,8 +557,6 @@ class TripsOpenTripPlannerStep(ThreadedStep, GTFSStep, PopulationStep):
                 second=pl.col("seconds") % 60,
             ).dt.strftime("%H:%M:%S")
         ).drop("seconds")
-        # Add date.
-        trips = trips.with_columns(date=self.gtfs_date)
 
         # Read origin / destination longitude and latitude.
         origins = self.input["origins"].read()
@@ -561,18 +580,5 @@ class TripsOpenTripPlannerStep(ThreadedStep, GTFSStep, PopulationStep):
         )
         trips = trips.join(destinations_df, on="trip_id")
 
-        parameters = {
-            "walkSpeed": self.walking_speed / 3.6,
-            "walkReluctance": self.walking_reluctance,
-            "waitReluctance": self.waiting_reluctance,
-            "busReluctance": self.bus_reluctance,
-            "tramReluctance": self.tram_reluctance,
-            "subwayReluctance": self.subway_reluctance,
-            "railReluctance": self.rail_reluctance,
-            "transferCost": self.transfer_cost,
-        }
-
-        df = run_queries(
-            trips, self.otp_url, parameters, self.batch_size, nb_threads=self.nb_threads
-        )
+        df = self.run_queries(trips)
         self.output["costs"].write(df)

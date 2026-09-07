@@ -26,6 +26,7 @@ New steps:
 - `CongestionTimeComparisonStep`
 - `SurveyedPedestrianODNodesFromCoordinatesStep`
 - `SurveyedTripsPedestrianDistanceStep`
+- `OpenTripPlannerStep`
 
 New files:
 
