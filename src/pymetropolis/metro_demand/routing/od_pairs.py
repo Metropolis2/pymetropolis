@@ -11,7 +11,6 @@ from pymetropolis.metro_network.road_network.files import RoadEdgesCleanFile
 from pymetropolis.metro_pipeline import PopulationStep, Step
 from pymetropolis.metro_pipeline.parameters import ListParameter
 from pymetropolis.metro_pipeline.types import String
-from pymetropolis.metro_spatial import GeoStep
 
 from .files import TripsBicycleNodesFile, TripsPedestrianNodesFile, TripsRoadNodesFile
 
@@ -83,7 +82,21 @@ def identify_nodes(edges: gpd.GeoDataFrame, nodes_gdf: gpd.GeoDataFrame) -> pl.D
     return nodes
 
 
-class PedestrianODNodesFromCoordinatesStep(GeoStep, PopulationStep):
+class StepWithPedestrianForbiddenTypes(Step):
+    """Abstract step to hold the `pedestrian_network.forbidden_types` config parameter."""
+
+    forbidden_types = ListParameter(
+        "pedestrian_network.forbidden_types",
+        inner=String(),
+        default=[],
+        description=(
+            "List of pedestrian edges' types that *cannot* be used as origin / destination edge."
+        ),
+        example='`["trunk", "trunk_link"]`',
+    )
+
+
+class PedestrianODNodesFromCoordinatesStep(StepWithPedestrianForbiddenTypes, PopulationStep):
     """Identifies nodes on the pedestrian network to be used as origins and destinations of the
     trips.
 
@@ -95,15 +108,6 @@ class PedestrianODNodesFromCoordinatesStep(GeoStep, PopulationStep):
     whichever is closer.
     """
 
-    forbidden_types = ListParameter(
-        "pedestrian_network.forbidden_types",
-        inner=String(),
-        default=[],
-        description=(
-            "List of pedestrian edges' types that *cannot* be used as origin / destination edge."
-        ),
-        example='`["trunk", "trunk_link"]`',
-    )
     input_files = {
         "edges": PedestrianEdgesCleanFile,
         "origins": TripsOriginsFile,
@@ -130,7 +134,7 @@ class PedestrianODNodesFromCoordinatesStep(GeoStep, PopulationStep):
         self.output["ods"].write(ods)
 
 
-class BicycleODNodesFromCoordinatesStep(GeoStep, PopulationStep):
+class BicycleODNodesFromCoordinatesStep(PopulationStep):
     """Identifies nodes on the bicycle network to be used as origins and destinations of the
     trips.
 
@@ -191,7 +195,7 @@ class StepWithRoadForbiddenTypes(Step):
     )
 
 
-class RoadODNodesFromCoordinatesStep(GeoStep, StepWithRoadForbiddenTypes, PopulationStep):
+class RoadODNodesFromCoordinatesStep(StepWithRoadForbiddenTypes, PopulationStep):
     """Identifies nodes on the road network to be used as origins and destinations of the trips.
 
     First, this Step finds the nearest edge to the origin / destination coordinates.

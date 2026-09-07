@@ -620,6 +620,97 @@ class SurveyedToursFile(MetroDataFrameFile):
     ]
 
 
+class SurveyedTripsPedestrianNodesFile(MetroDataFrameFile):
+    path = "calibration/survey/trips/pedestrian_nodes.parquet"
+    description = (
+        "Origin and destination nodes on the pedestrian network for each trip in the survey."
+    )
+    schema = [
+        Column(
+            "trip_id",
+            MetroDataType.INT,
+            description="Identifier of the trip.",
+            unique=True,
+            nullable=False,
+        ),
+        Column(
+            "origin_pedestrian_node",
+            MetroDataType.ID,
+            description="Identifier of the origin node on the pedestrian network.",
+            nullable=True,
+        ),
+        Column(
+            "destination_pedestrian_node",
+            MetroDataType.ID,
+            description="Identifier of the destination node on the pedestrian network.",
+            nullable=True,
+        ),
+    ]
+
+
+class SurveyedTripsPedestrianDistancesFile(MetroDataFrameFile):
+    path = "calibration/survey/trips/pedestrian_distances.parquet"
+    description = (
+        "Distance of the shortest path on the pedestrian network for each trip in the survey."
+    )
+    schema = [
+        Column(
+            "trip_id",
+            MetroDataType.INT,
+            description="Identifier of the trip.",
+            unique=True,
+            nullable=False,
+        ),
+        Column(
+            "pedestrian_distance",
+            MetroDataType.FLOAT,
+            description="Distance of the trip on the pedestrian network, in meters.",
+            nullable=True,
+        ),
+    ]
+
+
+class SurveyedTripsPublicTransitItinerariesFile(MetroDataFrameFile):
+    path = "calibration/survey/trips/public_transit_itineraries.parquet"
+    description = "Minimum-cost public-transit itinerary for each trip in the survey."
+    schema = [
+        Column(
+            "trip_id",
+            MetroDataType.INT,
+            description="Identifier of the trip.",
+            unique=True,
+            nullable=False,
+        ),
+        Column(
+            "travel_time",
+            MetroDataType.DURATION,
+            description="Travel time of the trip.",
+            nullable=True,
+        ),
+        Column(
+            "generalized_time",
+            MetroDataType.DURATION,
+            description="Generalized time of the trip (travel time with mode-specific weights).",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "waiting_time",
+            MetroDataType.DURATION,
+            description="Waiting time on the trip.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "legs",
+            MetroDataType.ANY,
+            description="Sequence of legs that define the itinerary of the trip.",
+            nullable=True,
+            optional=True,
+        ),
+    ]
+
+
 class JointTourEstimatorFile(MetroMLEstimatorFile):
     path = "calibration/survey/joint_tour_estimator.joblib"
     description = "ML estimator for the classification of joint tours."

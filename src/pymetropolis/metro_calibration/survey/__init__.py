@@ -11,6 +11,8 @@ from .files import (
     SurveyedSpecialLocationsFile,
     SurveyedToursFile,
     SurveyedTripsFile,
+    SurveyedTripsPedestrianDistancesFile,
+    SurveyedTripsPedestrianNodesFile,
     ToursModeShareComparisonFile,
     ToursModeShareDistancePlotFile,
     ToursModeShareTourCountPlotFile,
@@ -28,6 +30,10 @@ from .modes import (
     ExternalModeClassifierStep,
 )
 from .tours import CleanSurveyToursStep
+from .travel_times import (
+    SurveyedPedestrianODNodesFromCoordinatesStep,
+    SurveyedTripsPedestrianDistancesStep,
+)
 
 SURVEY_FILES = [
     SurveyedHouseholdsFile,
@@ -40,6 +46,8 @@ SURVEY_FILES = [
     SurveyedDetailedZonesFile,
     SurveyedDrawZonesFile,
     SurveyedToursFile,
+    SurveyedTripsPedestrianNodesFile,
+    SurveyedTripsPedestrianDistancesFile,
     JointTourEstimatorFile,
     ModeEstimatorFile,
     ToursModeShareComparisonFile,
@@ -57,4 +65,6 @@ SURVEY_STEPS = [
     EstimateModeClassifierStep,
     ClassifyToursModeStep,
     CompareToursModeSharesStep,
+    SurveyedPedestrianODNodesFromCoordinatesStep,
+    SurveyedTripsPedestrianDistancesStep,
 ]

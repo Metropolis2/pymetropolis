@@ -24,6 +24,8 @@ New steps:
 - `RunExAnteSimulationStep`
 - `CongestionSimulationStep`
 - `CongestionTimeComparisonStep`
+- `SurveyedPedestrianODNodesFromCoordinatesStep`
+- `SurveyedTripsPedestrianDistanceStep`
 
 New files:
 
@@ -48,6 +50,8 @@ New files:
 - `MetroExAnteNextExpectedTravelTimeFunctionsFile`
 - `TomTomCongestionTimesFile`
 - `CongestionTimeComparisonPlotFile`
+- `SurveyedTripsPedestrianNodesFile`
+- `SurveyedTripsPedestrianDistancesFile`
 
 New parameters:
 
