@@ -271,7 +271,14 @@ class CongestionTimeComparisonStep(Step):
         rmse = float(((observed - predicted) ** 2).mean() ** 0.5)
 
         logger.debug(f"Average congested time (observed): {observed.mean()}")
+        logger.debug(
+            f"Congested time (observed): {observed_tt['tomtom_congested_time'].describe()}"
+        )
         logger.debug(f"Average congested time (simulated): {predicted.mean()}")
+        logger.debug(
+            f"Congested time (simulated): {simulated_tt['metropolis_congested_time'].describe()}"
+        )
+        logger.debug(f"RMSE: {rmse:.2f}")
 
         fig = plot_travel_time_comparison(
             observed,
