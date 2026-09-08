@@ -27,6 +27,10 @@ New steps:
 - `SurveyedPedestrianODNodesFromCoordinatesStep`
 - `SurveyedTripsPedestrianDistanceStep`
 - `OpenTripPlannerStep`
+- `SurveyedTripsOpenTripPlannerStep`
+- `SurveyedRoadODNodesFromCoordinatesStep`
+- `SurveyedTripsCarTravelTimesStep`
+- `SurveyedToursTravelTimesStep`
 
 New files:
 
@@ -53,6 +57,10 @@ New files:
 - `CongestionTimeComparisonPlotFile`
 - `SurveyedTripsPedestrianNodesFile`
 - `SurveyedTripsPedestrianDistancesFile`
+- `SurveyedTripsPublicTransitItinerariesFile`
+- `SurveyedTripsRoadNodesFile`
+- `SurveyedTripsCarTravelTimesFile`
+- `SurveyedToursTravelTimesFile`
 
 New parameters:
 

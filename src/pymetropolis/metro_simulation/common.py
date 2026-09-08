@@ -80,6 +80,12 @@ class StepWithModes(Step):
             or "car_ridesharing" in self.modes
         )
 
+    def has_pedestrian_mode(self) -> bool:
+        """Returns `True` if the configuration has at least one pedestrian mode (e.g., walking,
+        bicycle).
+        """
+        return self.modes is not None and ("walking" in self.modes or "bicycle" in self.modes)
+
 
 # Ridesharing passenger count is used for both vehicle types and trips so we create a Step for it.
 class StepWithRidesharingCount(Step):
