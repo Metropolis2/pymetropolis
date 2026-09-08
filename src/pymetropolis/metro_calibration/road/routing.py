@@ -1,9 +1,12 @@
 from pymetropolis.metro_common.routing import compute_all_pairs_dijkstra
 from pymetropolis.metro_common.utils import pl_duration_to_seconds
-from pymetropolis.metro_network.road_network.files import RoadEdgesCleanFile
+from pymetropolis.metro_network.road_network.files import (
+    RoadEdgesCleanFile,
+    RoadEdgesFreeFlowTravelTimeFile,
+)
 from pymetropolis.metro_pipeline import Step
 
-from .files import AllRoadFreeFlowTravelTimesFile, RoadEdgesFreeFlowTravelTimeFile
+from .files import AllRoadFreeFlowTravelTimesFile
 
 
 class AllFreeFlowTravelTimesStep(Step):

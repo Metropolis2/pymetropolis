@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 import tempfile
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from loguru import logger
 
-from pymetropolis.metro_calibration.road.files import RoadEdgesFreeFlowTravelTimeFile
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_demand.routing.files import (
     TripsBicycleCostsFile,
@@ -23,13 +22,14 @@ from pymetropolis.metro_network.bicycle_network.files import (
     BicycleEdgesCostsFile,
 )
 from pymetropolis.metro_network.pedestrian_network.files import PedestrianEdgesCleanFile
-from pymetropolis.metro_network.road_network.files import RoadEdgesCleanFile
+from pymetropolis.metro_network.road_network.files import (
+    RoadEdgesCleanFile,
+    RoadEdgesFreeFlowTravelTimeFile,
+)
 from pymetropolis.metro_pipeline import PopulationStep, Step
 from pymetropolis.metro_pipeline.parameters import BoolParameter, ExecPathParameter
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     import polars as pl
 
 
@@ -184,15 +184,20 @@ class TripsCarFreeFlowTravelTimesStep(RoutingCLIStep, PopulationStep):
 
 
 def trip_routing(
-    trips: pl.DataFrame, edges: pl.DataFrame, routing_exec: Path, with_routes: bool = False
+    trips: pl.DataFrame,
+    edges: pl.DataFrame,
+    routing_exec: Path,
+    with_routes: bool = False,
+    network_conditions: pl.DataFrame | None = None,
 ):
     import polars as pl
 
     queries = trips.select(query_id="trip_id", origin="origin_node", destination="destination_node")
-    with tempfile.TemporaryDirectory() as tmp_directory:
-        prepare_routing(queries, edges, tmp_directory, with_routes)
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_directory = Path(tmp)
+        prepare_routing(queries, edges, tmp_directory, with_routes, network_conditions)
         run_routing(routing_exec, tmp_directory)
-        df = pl.read_parquet(os.path.join(tmp_directory, "output", "ea_results.parquet"))
+        df = pl.read_parquet(tmp_directory / "output" / "ea_results.parquet")
     if with_routes:
         df = df.select(trip_id="query_id", value="arrival_time", route="route")
     else:
@@ -201,18 +206,26 @@ def trip_routing(
 
 
 def prepare_routing(
-    queries: pl.DataFrame, edges: pl.DataFrame, tmp_directory: str, with_routes: bool = False
+    queries: pl.DataFrame,
+    edges: pl.DataFrame,
+    tmp_directory: Path,
+    with_routes: bool = False,
+    network_conditions: pl.DataFrame | None = None,
 ):
     import polars as pl
 
-    queries = queries.select("query_id", "origin", "destination", departure_time=pl.lit(0.0))
-    queries.write_parquet(os.path.join(tmp_directory, "queries.parquet"))
+    if "departure_time" not in queries.columns:
+        queries = queries.with_columns(departure_time=pl.lit(0.0))
+    else:
+        queries = queries.with_columns(
+            departure_time=pl.col("departure_time").dt.total_seconds(fractional=True)
+        )
+    queries = queries.select("query_id", "origin", "destination", "departure_time")
+    queries.write_parquet(tmp_directory / "queries.parquet")
     edges = edges.select("edge_id", "source", "target", "weight")
     # Parallel edges are removed, keeping only the minimum-weight edge.
     edges = edges.sort("weight").unique(subset=["source", "target"], keep="first").sort("edge_id")
-    edges.rename({"weight": "travel_time"}).write_parquet(
-        os.path.join(tmp_directory, "edges.parquet")
-    )
+    edges.rename({"weight": "travel_time"}).write_parquet(tmp_directory / "edges.parquet")
     parameters = {
         "algorithm": "TCH" if with_routes else "Best",
         "output_route": with_routes,
@@ -220,12 +233,15 @@ def prepare_routing(
         "output_directory": "output",
         "saving_format": "Parquet",
     }
-    with open(os.path.join(tmp_directory, "parameters.json"), "w") as f:
+    if network_conditions is not None:
+        network_conditions.write_parquet(tmp_directory / "edge_ttfs.parquet")
+        parameters["input_files"]["edge_ttfs"] = "edge_ttfs.parquet"
+    with open(tmp_directory / "parameters.json", "w") as f:
         json.dump(parameters, f)
 
 
-def run_routing(routing_exec: Path, tmp_directory: str):
-    parameters_filename = os.path.join(tmp_directory, "parameters.json")
+def run_routing(routing_exec: Path, tmp_directory: Path):
+    parameters_filename = tmp_directory / "parameters.json"
     res = subprocess.run([routing_exec, parameters_filename], check=False)
     if res.returncode:
         # The run did not succeed.

@@ -249,6 +249,7 @@ def read_tours(
             "destination_insee_urban_type",
             "destination_insee_aav_type",
             "destination_aav_category",
+            trip_ids="trip_id",
             nb_trips=pl.len(),
             nb_activities=pl.len() - 1,
             modes="trip_mode",

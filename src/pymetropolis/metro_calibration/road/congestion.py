@@ -10,7 +10,7 @@ from loguru import logger
 
 from pymetropolis.common import ThreadedStep
 from pymetropolis.metro_common import MetropyError
-from pymetropolis.metro_network.road_network.files import RoadEdgesCleanFile
+from pymetropolis.metro_network.road_network.files import RoadEdgesCleanFile, RoadEdgesPenaltiesFile
 from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_simulation.parameters.step import StepWithPeriod
 from pymetropolis.metro_simulation.run.exec import AbstractRunSimulationStep
@@ -18,7 +18,6 @@ from pymetropolis.metro_simulation.run.files import MetroExAnteSimulatedTravelTi
 
 from .files import (
     CongestionTimeComparisonPlotFile,
-    RoadEdgesPenaltiesFile,
     TomTomCongestionTimesFile,
     TomTomRoutesFile,
     TomTomRoutesMatchedFile,

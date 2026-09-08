@@ -32,7 +32,7 @@ class SurveyedPersonsFile(MetroDataFrameFile):
 
 
 class SurveyedTripsFile(MetroDataFrameFile):
-    path = "calibration/survey/trips.parquet"
+    path = "calibration/survey/trips/trips.parquet"
     description = (
         "Trips in the survey file. "
         "Variables are documented in the MobiSurvStd documentation for "
@@ -122,6 +122,12 @@ class SurveyedToursFile(MetroDataFrameFile):
             "person_id",
             MetroDataType.ID,
             description="Identifier of the person who did the tour.",
+            nullable=False,
+        ),
+        Column(
+            "trip_ids",
+            MetroDataType.LIST_OF_IDS,
+            description="Identifier of the trips in the tour.",
             nullable=False,
         ),
         Column(
@@ -620,6 +626,42 @@ class SurveyedToursFile(MetroDataFrameFile):
     ]
 
 
+class SurveyedToursTravelTimesFile(MetroDataFrameFile):
+    path = "calibration/survey/tours_travel_times.parquet"
+    description = "Travel times of tours in the survey with all modes."
+    schema = [
+        Column("tour_id", MetroDataType.ID, description="Identifier of the tour.", nullable=False),
+        Column(
+            "travel_time_walking",
+            MetroDataType.DURATION,
+            description="Travel time by walk.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "travel_time_bicycle",
+            MetroDataType.DURATION,
+            description="Travel time by bicycle.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "travel_time_public_transit",
+            MetroDataType.DURATION,
+            description="Travel time by public transit.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "travel_time_car",
+            MetroDataType.DURATION,
+            description="Travel time by car.",
+            nullable=True,
+            optional=True,
+        ),
+    ]
+
+
 class SurveyedTripsPedestrianNodesFile(MetroDataFrameFile):
     path = "calibration/survey/trips/pedestrian_nodes.parquet"
     description = (
@@ -707,6 +749,52 @@ class SurveyedTripsPublicTransitItinerariesFile(MetroDataFrameFile):
             description="Sequence of legs that define the itinerary of the trip.",
             nullable=True,
             optional=True,
+        ),
+    ]
+
+
+class SurveyedTripsRoadNodesFile(MetroDataFrameFile):
+    path = "calibration/survey/trips/road_nodes.parquet"
+    description = "Origin and destination nodes on the road network for each trip in the survey."
+    schema = [
+        Column(
+            "trip_id",
+            MetroDataType.INT,
+            description="Identifier of the trip.",
+            unique=True,
+            nullable=False,
+        ),
+        Column(
+            "origin_road_node",
+            MetroDataType.ID,
+            description="Identifier of the origin node on the road network.",
+            nullable=True,
+        ),
+        Column(
+            "destination_road_node",
+            MetroDataType.ID,
+            description="Identifier of the destination node on the road network.",
+            nullable=True,
+        ),
+    ]
+
+
+class SurveyedTripsCarTravelTimesFile(MetroDataFrameFile):
+    path = "calibration/survey/trips/car_travel_times.parquet"
+    description = "Travel time by car under congested conditions for each trip in the survey."
+    schema = [
+        Column(
+            "trip_id",
+            MetroDataType.INT,
+            description="Identifier of the trip.",
+            unique=True,
+            nullable=False,
+        ),
+        Column(
+            "travel_time",
+            MetroDataType.DURATION,
+            description="Travel time by car under congested conditions.",
+            nullable=True,
         ),
     ]
 

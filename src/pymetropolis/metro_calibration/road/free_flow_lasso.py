@@ -8,13 +8,13 @@ from loguru import logger
 
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_common.ml_models import compute_lasso
+from pymetropolis.metro_network.road_network.files import RoadEdgesFreeFlowTravelTimeFile
 from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import ListParameter
 from pymetropolis.metro_pipeline.types import List, String
 
 from .files import (
     FreeFlowTravelTimeComparisonPlotFile,
-    RoadEdgesFreeFlowTravelTimeFile,
     RoadEdgesPenaltyCoefficientsFile,
     RoadEdgesVariablesFile,
     TomTomRoutesFile,

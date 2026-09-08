@@ -3,8 +3,6 @@ from .files import (
     AllRoadFreeFlowTravelTimesFile,
     CongestionTimeComparisonPlotFile,
     FreeFlowTravelTimeComparisonPlotFile,
-    RoadEdgesFreeFlowTravelTimeFile,
-    RoadEdgesPenaltiesFile,
     RoadEdgesPenaltyCoefficientsFile,
     RoadEdgesVariablesFile,
     TomTomCongestionTimesFile,
@@ -25,8 +23,6 @@ from .variables import RoadEdgesVariablesStep
 ROAD_FILES = [
     RoadEdgesVariablesFile,
     RoadEdgesPenaltyCoefficientsFile,
-    RoadEdgesPenaltiesFile,
-    RoadEdgesFreeFlowTravelTimeFile,
     AllRoadFreeFlowTravelTimesFile,
     TomTomRoutesFile,
     TomTomRoutesMatchedFile,

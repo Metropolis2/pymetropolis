@@ -59,52 +59,6 @@ class RoadEdgesPenaltyCoefficientsFile(MetroDataFrameFile):
     ]
 
 
-class RoadEdgesPenaltiesFile(MetroDataFrameFile):
-    path = "calibration/road/free_flow/edges_penalties.parquet"
-    description = "Free-flow time penalties of each road-network edge."
-    schema = [
-        Column(
-            "edge_id",
-            MetroDataType.ID,
-            description="Identifier of the edge.",
-            unique=True,
-            nullable=False,
-        ),
-        Column(
-            "constant",
-            MetroDataType.FLOAT,
-            description="Constant time penalty of the edge, in seconds.",
-            nullable=True,
-        ),
-        Column(
-            "speed_multiplier",
-            MetroDataType.FLOAT,
-            description="By how much edge speed limit is multiplied to get edge free-flow speed.",
-            nullable=True,
-        ),
-    ]
-
-
-class RoadEdgesFreeFlowTravelTimeFile(MetroDataFrameFile):
-    path = "calibration/road/free_flow/edges_free_flow_travel_time.parquet"
-    description = "Free-flow travel time of each road-network edge."
-    schema = [
-        Column(
-            "edge_id",
-            MetroDataType.ID,
-            description="Identifier of the edge.",
-            unique=True,
-            nullable=False,
-        ),
-        Column(
-            "free_flow_travel_time",
-            MetroDataType.DURATION,
-            description="Free-flow travel time of the edge.",
-            nullable=False,
-        ),
-    ]
-
-
 class AllRoadFreeFlowTravelTimesFile(MetroDataFrameFile):
     path = "calibration/road/free_flow/all_free_flow_travel_times.parquet"
     description = "Free-flow travel time for each pair of nodes on the road network."
