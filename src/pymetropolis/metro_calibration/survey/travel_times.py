@@ -162,12 +162,15 @@ class SurveyedTripsOpenTripPlannerStep(OpenTripPlannerStep):
         )
         # Convert time column to a HH:MM:SS string.
         trips = trips.with_columns(
-            time=pl.time(hour=pl.col("minutes") // 60, minute=pl.col("minutes") % 60).dt.strftime(
-                "%H:%M:%S"
-            )
+            time=pl.time(
+                hour=pl.col("minutes") // 60 % 24, minute=pl.col("minutes") % 60
+            ).dt.strftime("%H:%M:%S")
         )
 
         trips = trips.select("trip_id", *LNG_LAT_COLS, "time", "arrive_by")
+
+        # Drop trips with null values.
+        trips = trips.drop_nulls()
 
         df = self.run_queries(trips)
         self.output["costs"].write(df)

@@ -378,6 +378,9 @@ class OpenTripPlannerStep(ThreadedStep, GTFSStep):
 
         assert self.otp_url is not None
 
+        for col in ("origin_lng", "origin_lat", "destination_lng", "destination_lat"):
+            assert trips[col].null_count() == 0, f"Found null values for column `{col}"
+
         # Add date column.
         trips = trips.with_columns(date=self.gtfs_date)
 
