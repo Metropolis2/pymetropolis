@@ -17,7 +17,7 @@ from pymetropolis.metro_demand.routing.files import (
     TripsPedestrianDistancesFile,
     TripsPedestrianNodesFile,
 )
-from pymetropolis.metro_pipeline import PopulationStep
+from pymetropolis.metro_pipeline import PopulationStep, Step
 from pymetropolis.metro_pipeline.parameters import BoolParameter, EnumParameter, FloatParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 
@@ -55,7 +55,13 @@ class BicyclePreferencesFromPopulationStep(ModePreferencesFromPopulationStep):
         self.output["preferences"].write(df)
 
 
-class BicycleTravelTimesFromDistanceStep(PopulationStep):
+class StepWithBicycleSpeed(Step):
+    bicycle_speed = FloatParameter(
+        "modes.bicycle.speed", description="Constant bicycle speed for all trips, in km/h."
+    )
+
+
+class BicycleTravelTimesFromDistanceStep(StepWithBicycleSpeed, PopulationStep):
     """Computes travel time by bicycle for each trip, from a given distance and a constant speed.
 
     The parameter [`modes.bicycle.distance.type`](parameters.md#modesbicycledistancetype) specifies
@@ -80,9 +86,6 @@ class BicycleTravelTimesFromDistanceStep(PopulationStep):
         "modes.bicycle.distance.type",
         values=["pedestrian"],
         description="How distance of bicycle trips is computed.",
-    )
-    speed = FloatParameter(
-        "modes.bicycle.speed", description="Constant bicycle speed for all trips, in km/h."
     )
     with_snap = BoolParameter(
         "modes.bicycle.distance.with_snap",
@@ -112,7 +115,7 @@ class BicycleTravelTimesFromDistanceStep(PopulationStep):
     output_files = {"tts": BicycleTravelTimesFile}
 
     def is_defined(self):
-        return self.distance_type is not None and self.speed is not None
+        return self.distance_type is not None and self.bicycle_speed is not None
 
     def run(self):
         import polars as pl
@@ -125,11 +128,11 @@ class BicycleTravelTimesFromDistanceStep(PopulationStep):
         df = distances.select(
             "trip_id",
             bicycle_travel_time=pl.duration(
-                seconds=3600 * (pl.col("distance") / 1000) / self.speed
+                seconds=3600 * (pl.col("distance") / 1000) / self.bicycle_speed
             ),
         )
         if self.with_snap:
-            snap_speed = self.snap_speed or self.speed
+            snap_speed = self.snap_speed or self.bicycle_speed
             snap_distances = self.input["snap_distances"].read()
             snap_distances = snap_distances.select(
                 "trip_id",
