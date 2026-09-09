@@ -17,6 +17,10 @@ from .files import (
     SurveyedTripsPedestrianNodesFile,
     SurveyedTripsPublicTransitItinerariesFile,
     SurveyedTripsRoadNodesFile,
+    SurveyedTripsTravelTimeComparisonBicyclePlotFile,
+    SurveyedTripsTravelTimeComparisonCarPlotFile,
+    SurveyedTripsTravelTimeComparisonPublicTransitPlotFile,
+    SurveyedTripsTravelTimeComparisonWalkingPlotFile,
     ToursModeShareComparisonFile,
     ToursModeShareDistancePlotFile,
     ToursModeShareTourCountPlotFile,
@@ -37,11 +41,11 @@ from .tours import CleanSurveyToursStep
 from .travel_times import (
     SurveyedPedestrianODNodesFromCoordinatesStep,
     SurveyedRoadODNodesFromCoordinatesStep,
-    # SurveyedToursTravelTimeComparisonStep,
     SurveyedToursTravelTimesStep,
     SurveyedTripsCarTravelTimesStep,
     SurveyedTripsOpenTripPlannerStep,
     SurveyedTripsPedestrianDistancesStep,
+    SurveyedTripsTravelTimeComparisonStep,
 )
 
 SURVEY_FILES = [
@@ -66,6 +70,10 @@ SURVEY_FILES = [
     ToursModeShareComparisonFile,
     ToursModeShareTourCountPlotFile,
     ToursModeShareDistancePlotFile,
+    SurveyedTripsTravelTimeComparisonCarPlotFile,
+    SurveyedTripsTravelTimeComparisonWalkingPlotFile,
+    SurveyedTripsTravelTimeComparisonBicyclePlotFile,
+    SurveyedTripsTravelTimeComparisonPublicTransitPlotFile,
 ]
 
 SURVEY_STEPS = [
@@ -84,5 +92,5 @@ SURVEY_STEPS = [
     SurveyedRoadODNodesFromCoordinatesStep,
     SurveyedTripsCarTravelTimesStep,
     SurveyedToursTravelTimesStep,
-    # SurveyedToursTravelTimeComparisonStep,
+    SurveyedTripsTravelTimeComparisonStep,
 ]

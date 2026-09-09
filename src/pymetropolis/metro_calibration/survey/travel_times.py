@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from loguru import logger
 
 from pymetropolis.metro_common import MetropyError
+from pymetropolis.metro_common.plots import plot_travel_time_comparison
 from pymetropolis.metro_demand.modes.bicycle import StepWithBicycleSpeed
 from pymetropolis.metro_demand.modes.walking import StepWithWalkingSpeed
 from pymetropolis.metro_demand.routing.od_pairs import (
@@ -32,6 +33,10 @@ from .files import (
     SurveyedTripsPedestrianNodesFile,
     SurveyedTripsPublicTransitItinerariesFile,
     SurveyedTripsRoadNodesFile,
+    SurveyedTripsTravelTimeComparisonBicyclePlotFile,
+    SurveyedTripsTravelTimeComparisonCarPlotFile,
+    SurveyedTripsTravelTimeComparisonPublicTransitPlotFile,
+    SurveyedTripsTravelTimeComparisonWalkingPlotFile,
 )
 
 if TYPE_CHECKING:
@@ -250,7 +255,9 @@ class SurveyedTripsCarTravelTimesStep(RoutingCLIStep):
         assert self.exec_path is not None
 
         edges_gdf = self.input["edges"].read()
-        edges_ttfs = self.input["congestion_conditions"].read()
+        edges_ttfs = (
+            self.input["congestion_conditions"].read().filter(vehicle_id="car_driver_alone")
+        )
         # Add free-flow travel time to edges' weights so that it's use as default for edges not in
         # the congested conditions.
         edges_fftt = self.input["edges_fftt"].read()
@@ -274,10 +281,11 @@ class SurveyedTripsCarTravelTimesStep(RoutingCLIStep):
             origin_node="origin_road_node",
             destination_node="destination_road_node",
         )
+        trips = trips.drop_nulls()
         df = trip_routing(
             trips, edges, self.exec_path, with_routes=False, network_conditions=edges_ttfs
         )
-        df = df.select("trip_id", car_travel_time=pl.duration(seconds="value"))
+        df = df.select("trip_id", travel_time=pl.duration(seconds="value"))
         self.output["tt"].write(df)
 
 
@@ -363,5 +371,81 @@ class SurveyedToursTravelTimesStep(StepWithModes, StepWithWalkingSpeed, StepWith
                 )
                 .list.sum()
             )
-        tours = tours.drop("trip_id")
+        tours = tours.drop("trip_ids")
         self.output["tt"].write(tours)
+
+
+class SurveyedTripsTravelTimeComparisonStep(StepWithWalkingSpeed, StepWithBicycleSpeed):
+    """Compares reported and simulated travel times for the survey trips, for each mode."""
+
+    input_files = {
+        "trips": SurveyedTripsFile,
+        "pedestrian_dist": SurveyedTripsPedestrianDistancesFile,
+        "pt_tt": SurveyedTripsPublicTransitItinerariesFile,
+        "car_tt": SurveyedTripsCarTravelTimesFile,
+    }
+    output_files = {
+        "car": SurveyedTripsTravelTimeComparisonCarPlotFile,
+        "walking": SurveyedTripsTravelTimeComparisonWalkingPlotFile,
+        "bicycle": SurveyedTripsTravelTimeComparisonBicyclePlotFile,
+        "public_transit": SurveyedTripsTravelTimeComparisonPublicTransitPlotFile,
+    }
+
+    def run(self):
+        import polars as pl
+
+        modes = ["car", "public_transit", "walking", "bicycle"]
+
+        trips = self.input["trips"].read()
+        trips = (
+            trips.select(
+                "trip_id",
+                observed_tt=pl.duration(minutes=pl.col("travel_time")),
+                mode=pl.when(pl.col("main_mode_group").cast(pl.String).str.starts_with("car_"))
+                .then(pl.lit("car"))
+                .otherwise(pl.col("main_mode_group").cast(pl.String)),
+            )
+            .filter(pl.col("mode").is_in(modes))
+            .drop_nulls()
+        )
+
+        simulated_tts = dict()
+        dists = self.input["pedestrian_dist"].read()
+        simulated_tts["walking"] = dists.select(
+            "trip_id",
+            simulated_tt=pl.duration(
+                hours=pl.col("pedestrian_distance") / 1000 / self.walking_speed
+            ),
+        )
+        simulated_tts["bicycle"] = dists.select(
+            "trip_id",
+            simulated_tt=pl.duration(
+                hours=pl.col("pedestrian_distance") / 1000 / self.bicycle_speed
+            ),
+        )
+
+        pt_tts = self.input["pt_tt"].read()
+        simulated_tts["public_transit"] = pt_tts.select("trip_id", simulated_tt="generalized_time")
+
+        car_tts = self.input["car_tt"].read()
+        simulated_tts["car"] = car_tts.select("trip_id", simulated_tt="travel_time")
+
+        for mode, sim_df in simulated_tts.items():
+            label = mode.replace("_", " ")
+            df = trips.filter(mode=mode).join(sim_df, on="trip_id", how="inner").drop_nulls()
+            df = df.filter(pl.col("simulated_tt") > 0, pl.col("observed_tt") > 0)
+            if df.height < 2:
+                continue
+            observed = df["observed_tt"].dt.total_seconds().to_numpy()
+            predicted = df["simulated_tt"].dt.total_seconds().to_numpy()
+            rmse = float(((observed - predicted) ** 2).mean() ** 0.5)
+            fig = plot_travel_time_comparison(
+                predicted,
+                observed,
+                rmse,
+                xlabel=f"Simulated travel time ({label})",
+                ylabel=f"Observed travel time ({label})",
+                show_regression=True,
+                outlier_quantile=0.95,
+            )
+            self.output[mode].write(fig)

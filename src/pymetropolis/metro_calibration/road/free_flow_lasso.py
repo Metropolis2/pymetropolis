@@ -8,6 +8,7 @@ from loguru import logger
 
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_common.ml_models import compute_lasso
+from pymetropolis.metro_common.plots import plot_travel_time_comparison
 from pymetropolis.metro_network.road_network.files import RoadEdgesFreeFlowTravelTimeFile
 from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import ListParameter
@@ -20,7 +21,6 @@ from .files import (
     TomTomRoutesFile,
     TomTomRoutesMatchedFile,
 )
-from .plots import plot_travel_time_comparison
 
 if TYPE_CHECKING:
     import polars as pl

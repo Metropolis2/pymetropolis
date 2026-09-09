@@ -662,6 +662,37 @@ class SurveyedToursTravelTimesFile(MetroDataFrameFile):
     ]
 
 
+class SurveyedTripsTravelTimeComparisonCarPlotFile(MetroPlotFile):
+    path = "calibration/survey/graphs/travel_time_comparison_car.png"
+    description = (
+        "Scatter plot comparing observed and simulated travel times for car trips in the survey."
+    )
+
+
+class SurveyedTripsTravelTimeComparisonWalkingPlotFile(MetroPlotFile):
+    path = "calibration/survey/graphs/travel_time_comparison_walking.png"
+    description = (
+        "Scatter plot comparing observed and simulated travel times for walking trips in the "
+        "survey."
+    )
+
+
+class SurveyedTripsTravelTimeComparisonBicyclePlotFile(MetroPlotFile):
+    path = "calibration/survey/graphs/travel_time_comparison_bicycle.png"
+    description = (
+        "Scatter plot comparing observed and simulated travel times for bicycle trips in the "
+        "survey."
+    )
+
+
+class SurveyedTripsTravelTimeComparisonPublicTransitPlotFile(MetroPlotFile):
+    path = "calibration/survey/graphs/travel_time_comparison_public_transit.png"
+    description = (
+        "Scatter plot comparing observed and simulated travel times for public-transit trips in "
+        "the survey."
+    )
+
+
 class SurveyedTripsPedestrianNodesFile(MetroDataFrameFile):
     path = "calibration/survey/trips/pedestrian_nodes.parquet"
     description = (

@@ -31,6 +31,7 @@ New steps:
 - `SurveyedRoadODNodesFromCoordinatesStep`
 - `SurveyedTripsCarTravelTimesStep`
 - `SurveyedToursTravelTimesStep`
+- `SurveyedTripsTravelTimeComparisonStep`
 
 New files:
 
@@ -61,6 +62,10 @@ New files:
 - `SurveyedTripsRoadNodesFile`
 - `SurveyedTripsCarTravelTimesFile`
 - `SurveyedToursTravelTimesFile`
+- `SurveyedTripsTravelTimeComparisonBicyclePlotFile`
+- `SurveyedTripsTravelTimeComparisonCarPlotFile`
+- `SurveyedTripsTravelTimeComparisonPublicTransitPlotFile`
+- `SurveyedTripsTravelTimeComparisonWalkingPlotFile`
 
 New parameters:
 

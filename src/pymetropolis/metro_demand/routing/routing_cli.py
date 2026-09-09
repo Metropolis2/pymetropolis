@@ -234,6 +234,7 @@ def prepare_routing(
         "saving_format": "Parquet",
     }
     if network_conditions is not None:
+        network_conditions = network_conditions.select("edge_id", "departure_time", "travel_time")
         network_conditions.write_parquet(tmp_directory / "edge_ttfs.parquet")
         parameters["input_files"]["edge_ttfs"] = "edge_ttfs.parquet"
     with open(tmp_directory / "parameters.json", "w") as f:
