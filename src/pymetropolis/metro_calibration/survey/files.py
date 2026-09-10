@@ -693,30 +693,48 @@ class SurveyedTripsTravelTimeComparisonPublicTransitPlotFile(MetroPlotFile):
     )
 
 
-class SurveyedTripsPedestrianNodesFile(MetroDataFrameFile):
-    path = "calibration/survey/trips/pedestrian_nodes.parquet"
-    description = (
-        "Origin and destination nodes on the pedestrian network for each trip in the survey."
-    )
+class SurveyedZonesMedoidsFile(MetroGeoDataFrameFile):
+    path = "calibration/survey/zones/medoids.geo.parquet"
+    description = "Medoids for each zone in the survey."
     schema = [
+        Column("zone_id", MetroDataType.ID, description="Identifier of the zone.", nullable=False),
         Column(
-            "trip_id",
+            "index",
             MetroDataType.INT,
-            description="Identifier of the trip.",
-            unique=True,
+            description="Index of the medoid (each zone can have multiple medoids).",
             nullable=False,
         ),
         Column(
-            "origin_pedestrian_node",
-            MetroDataType.ID,
-            description="Identifier of the origin node on the pedestrian network.",
-            nullable=True,
+            "weight",
+            MetroDataType.FLOAT,
+            description="Weight of the medoid cluster among the zones' custers.",
+            nullable=False,
+        ),
+    ]
+
+
+class SurveyedZonesPedestrianNodesFile(MetroDataFrameFile):
+    path = "calibration/survey/zones/pedestrian_nodes.parquet"
+    description = "Origin and destination nodes on the pedestrian network for each zones' medoid."
+    schema = [
+        Column("zone_id", MetroDataType.ID, description="Identifier of the zone.", nullable=False),
+        Column(
+            "index",
+            MetroDataType.INT,
+            description="Index of the medoid (each zone can have multiple medoids).",
+            nullable=False,
         ),
         Column(
-            "destination_pedestrian_node",
-            MetroDataType.ID,
-            description="Identifier of the destination node on the pedestrian network.",
-            nullable=True,
+            "weight",
+            MetroDataType.FLOAT,
+            description="Weight of the medoid cluster among the zones' custers.",
+            nullable=False,
+        ),
+        Column(
+            "node",
+            MetroDataType.INT,
+            description="Identifier of the pedestrian node matching the medoid.",
+            nullable=False,
         ),
     ]
 
@@ -784,28 +802,28 @@ class SurveyedTripsPublicTransitItinerariesFile(MetroDataFrameFile):
     ]
 
 
-class SurveyedTripsRoadNodesFile(MetroDataFrameFile):
-    path = "calibration/survey/trips/road_nodes.parquet"
-    description = "Origin and destination nodes on the road network for each trip in the survey."
+class SurveyedZonesRoadNodesFile(MetroDataFrameFile):
+    path = "calibration/survey/zones/road_nodes.parquet"
+    description = "Origin and destination nodes on the road network for each zones' medoid."
     schema = [
+        Column("zone_id", MetroDataType.ID, description="Identifier of the zone.", nullable=False),
         Column(
-            "trip_id",
+            "index",
             MetroDataType.INT,
-            description="Identifier of the trip.",
-            unique=True,
+            description="Index of the medoid (each zone can have multiple medoids).",
             nullable=False,
         ),
         Column(
-            "origin_road_node",
-            MetroDataType.ID,
-            description="Identifier of the origin node on the road network.",
-            nullable=True,
+            "weight",
+            MetroDataType.FLOAT,
+            description="Weight of the medoid cluster among the zones' custers.",
+            nullable=False,
         ),
         Column(
-            "destination_road_node",
-            MetroDataType.ID,
-            description="Identifier of the destination node on the road network.",
-            nullable=True,
+            "node",
+            MetroDataType.INT,
+            description="Identifier of the road node matching the medoid.",
+            nullable=False,
         ),
     ]
 

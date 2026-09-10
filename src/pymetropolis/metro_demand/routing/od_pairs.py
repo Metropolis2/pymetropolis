@@ -24,18 +24,15 @@ def identify_od_pairs(
 ) -> pl.DataFrame:
     """Identify the origin and destination network node from origin / destination coordinates."""
     import polars as pl
-    from shapely.geometry import Point
 
     assert len(origins_gdf) == len(destinations_gdf)
     # Create source / target point of the edges.
     logger.debug("Creating source / target points")
-    # TODO: Speed-up this with duckdb
-    edges["source_point"] = edges["geometry"].apply(lambda g: Point(g.coords[0]))
-    edges["target_point"] = edges["geometry"].apply(lambda g: Point(g.coords[-1]))
+    edges = create_source_target_points(edges)
     logger.debug("Identifying nearest nodes for origins")
-    origins = identify_nodes(edges, origins_gdf)
+    origins = identify_nodes(edges, origins_gdf, id_col="trip_id")
     logger.debug("Identifying nearest nodes for destinations")
-    destinations = identify_nodes(edges, destinations_gdf)
+    destinations = identify_nodes(edges, destinations_gdf, id_col="trip_id")
     origins = origins.select("trip_id", pl.all().exclude("trip_id").name.prefix("origin_"))
     destinations = destinations.select(
         "trip_id", pl.all().exclude("trip_id").name.prefix("destination_")
@@ -45,7 +42,18 @@ def identify_od_pairs(
     return df
 
 
-def identify_nodes(edges: gpd.GeoDataFrame, nodes_gdf: gpd.GeoDataFrame) -> pl.DataFrame:
+def create_source_target_points(edges: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    from shapely.geometry import Point
+
+    # TODO: Speed-up this with duckdb
+    edges["source_point"] = edges["geometry"].apply(lambda g: Point(g.coords[0]))
+    edges["target_point"] = edges["geometry"].apply(lambda g: Point(g.coords[-1]))
+    return edges
+
+
+def identify_nodes(
+    edges: gpd.GeoDataFrame, nodes_gdf: gpd.GeoDataFrame, id_col: str
+) -> pl.DataFrame:
     """Identify the closest edge for each node in a list."""
     import polars as pl
 
@@ -57,14 +65,14 @@ def identify_nodes(edges: gpd.GeoDataFrame, nodes_gdf: gpd.GeoDataFrame) -> pl.D
         how="left",
     )
     # Duplicate indices occur when there are two edges at the same distance.
-    nodes_gdf.drop_duplicates(subset=["trip_id"], inplace=True)
+    nodes_gdf.drop_duplicates(subset=[id_col], inplace=True)
     # Compute distance to the source / target node of nearest edge.
     nodes_gdf["source_dist"] = nodes_gdf["geometry"].distance(nodes_gdf["source_point"])
     nodes_gdf["target_dist"] = nodes_gdf["geometry"].distance(nodes_gdf["target_point"])
     # Set the nearest node.
     nodes = pl.from_pandas(
         nodes_gdf.loc[
-            :, ["trip_id", "edge_id", "edge_dist", "source", "target", "source_dist", "target_dist"]
+            :, [id_col, "edge_id", "edge_dist", "source", "target", "source_dist", "target_dist"]
         ]
     )
     mask = pl.col("source_dist") > pl.col("target_dist")
@@ -77,7 +85,7 @@ def identify_nodes(edges: gpd.GeoDataFrame, nodes_gdf: gpd.GeoDataFrame) -> pl.D
         node_dist_on_edge=(pl.col("node_dist") ** 2 - pl.col("edge_dist") ** 2).sqrt()
     )
     nodes = nodes.select(
-        "trip_id", "node", "node_dist", "node_dist_on_edge", "edge_dist", edge="edge_id"
+        id_col, "node", "node_dist", "node_dist_on_edge", "edge_dist", edge="edge_id"
     )
     return nodes
 
