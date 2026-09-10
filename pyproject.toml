@@ -41,6 +41,8 @@ dependencies = [
     "scikit-learn>=1.9.0",
     "mobisurvstd>=1.4.1",
     "python-dotenv>=1.2.3",
+    "biogeme>=3.3.5",
+    "scikit-learn-extra>=0.3.0",
 ]
 
 [project.urls]

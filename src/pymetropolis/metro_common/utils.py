@@ -14,19 +14,19 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     import polars as pl
+    import polars.selectors as cs
 
 
-def get_pl_expr(x: str | pl.Expr) -> pl.Expr:
+def get_pl_expr(x: str | pl.Expr | cs.Selector) -> pl.Expr:
     import polars as pl
 
     if isinstance(x, str):
         return pl.col(x)
     else:
-        assert isinstance(x, pl.Expr)
         return x
 
 
-def pl_duration_to_seconds(x: str | pl.Expr) -> pl.Expr:
+def pl_duration_to_seconds(x: str | pl.Expr | cs.Selector) -> pl.Expr:
     expr = get_pl_expr(x)
     return expr.dt.total_seconds(fractional=True)
 

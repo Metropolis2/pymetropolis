@@ -33,6 +33,7 @@ New steps:
 - `SurveyedTripsCarTravelTimesStep`
 - `SurveyedToursTravelTimesStep`
 - `SurveyedTripsTravelTimeComparisonStep`
+- `SurveyEconometricModeChoiceStep`
 
 New files:
 
@@ -68,6 +69,8 @@ New files:
 - `SurveyedTripsTravelTimeComparisonCarPlotFile`
 - `SurveyedTripsTravelTimeComparisonPublicTransitPlotFile`
 - `SurveyedTripsTravelTimeComparisonWalkingPlotFile`
+- `SurveyModeChoiceParametersFile`
+- `SurveyModeChoiceStatsFile`
 
 New parameters:
 
