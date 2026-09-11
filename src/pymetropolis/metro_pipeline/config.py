@@ -448,7 +448,7 @@ class Config:
     def get_unused_keys(self, used_keys: set[str], population: str | None = None) -> set[str]:
         """Returns a set of all keys (flatten) in the configuration that are not in `used_keys`."""
         if population is None:
-            used_keys |= {
+            keys = used_keys | {
                 MAIN_DIR_KEY,
                 SECRETS_KEY,
                 POPULATIONS_KEY,
@@ -458,9 +458,9 @@ class Config:
             }
             d = self.dict
         else:
-            used_keys.add(POP_NAME_KEY)
+            keys = used_keys | {POP_NAME_KEY}
             d = self.extra_populations_dict[population]
-        return get_unused_keys_inner(d, set(), root=None, used_keys=used_keys)
+        return get_unused_keys_inner(d, set(), root=None, used_keys=keys)
 
 
 def get_unused_keys_inner(
