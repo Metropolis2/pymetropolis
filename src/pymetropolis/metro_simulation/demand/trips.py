@@ -351,13 +351,17 @@ class PrepareMetroTripsStep(StepWithModes, StepWithRidesharingCount, PopulationS
             persons = self.input["persons"].read()
             if "has_driving_license" in persons.columns:
                 trips = trips.join(
-                    persons.select("person_id", "has_driving_license"), on="person_id", how="left"
+                    persons.select("person_id", pl.col("has_driving_license").fill_null(False)),
+                    on="person_id",
+                    how="left",
                 )
         if self.input["households"].exists():
             households = self.input["households"].read()
             if "nb_cars" in households.columns:
                 trips = trips.join(
-                    households.select("household_id", has_car=pl.col("nb_cars") > 0),
+                    households.select(
+                        "household_id", has_car=pl.col("nb_cars").gt(0).fill_null(False)
+                    ),
                     on="household_id",
                     how="left",
                 )
