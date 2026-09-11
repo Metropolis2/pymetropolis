@@ -544,7 +544,7 @@ class WriteMetroTripsStep(Step):
     output_files = {"metro_trips": MetroTripsFile}
 
     # TODO. There is an issue if a population has no trip defined (e.g., only `outside_option`
-    # alternatives) since this Step will never be executed in this caes.
+    # alternatives) since this Step will never be executed in this case.
     def run(self):
         trips = merge_populations(
             self.input_populations["population_trips"], id_columns=("agent_id", "trip_id")
