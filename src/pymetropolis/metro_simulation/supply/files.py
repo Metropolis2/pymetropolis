@@ -1,5 +1,58 @@
 from pymetropolis.metro_pipeline.file import Column, MetroDataFrameFile, MetroDataType
 
+VEHICLE_TYPE_SCHEMA = [
+    Column(
+        "vehicle_id",
+        MetroDataType.ID,
+        description="Identifier of the vehicle type.",
+        unique=True,
+        nullable=False,
+    ),
+    Column(
+        "headway",
+        MetroDataType.FLOAT,
+        description="Typical length between two vehicles from head to head, in meters.",
+        nullable=False,
+    ),
+    Column(
+        "pce",
+        MetroDataType.FLOAT,
+        description="Passenger car equivalent of this vehicle type.",
+        nullable=False,
+    ),
+    Column(
+        "speed_function.type",
+        MetroDataType.STRING,
+        description=(
+            "Type of function used to convert from the base edge speed to the vehicle-specific "
+            "edge speed."
+        ),
+        nullable=True,
+        optional=True,
+    ),
+    Column(
+        "speed_function.upper_bound",
+        MetroDataType.FLOAT,
+        description="Maximum speed allowed for this vehicle type (m/s).",
+        nullable=True,
+        optional=True,
+    ),
+    Column(
+        "allowed_edges",
+        MetroDataType.LIST_OF_IDS,
+        description="Identifiers of the edges that this vehicle type is allowed to take.",
+        nullable=True,
+        optional=True,
+    ),
+    Column(
+        "restricted_edges",
+        MetroDataType.LIST_OF_IDS,
+        description="Identifiers of the edges that this vehicle type cannot take.",
+        nullable=True,
+        optional=True,
+    ),
+]
+
 
 class MetroEdgesFile(MetroDataFrameFile):
     path = "run/input/edges.parquet"
@@ -129,55 +182,10 @@ class MetroEdgesFile(MetroDataFrameFile):
 class MetroVehicleTypesFile(MetroDataFrameFile):
     path = "run/input/vehicle_types.parquet"
     description = "Simulated vehicle types, as input to Metropolis-Core."
-    schema = [
-        Column(
-            "vehicle_id",
-            MetroDataType.ID,
-            description="Identifier of the vehicle type.",
-            unique=True,
-            nullable=False,
-        ),
-        Column(
-            "headway",
-            MetroDataType.FLOAT,
-            description="Typical length between two vehicles from head to head, in meters.",
-            nullable=False,
-        ),
-        Column(
-            "pce",
-            MetroDataType.FLOAT,
-            description="Passenger car equivalent of this vehicle type.",
-            nullable=False,
-        ),
-        Column(
-            "speed_function.type",
-            MetroDataType.STRING,
-            description=(
-                "Type of function used to convert from the base edge speed to the vehicle-specific "
-                "edge speed."
-            ),
-            nullable=True,
-            optional=True,
-        ),
-        Column(
-            "speed_function.upper_bound",
-            MetroDataType.FLOAT,
-            description="Maximum speed allowed for this vehicle type (m/s).",
-            nullable=True,
-            optional=True,
-        ),
-        Column(
-            "allowed_edges",
-            MetroDataType.LIST_OF_IDS,
-            description="Identifiers of the edges that this vehicle type is allowed to take.",
-            nullable=True,
-            optional=True,
-        ),
-        Column(
-            "restricted_edges",
-            MetroDataType.LIST_OF_IDS,
-            description="Identifiers of the edges that this vehicle type cannot take.",
-            nullable=True,
-            optional=True,
-        ),
-    ]
+    schema = VEHICLE_TYPE_SCHEMA
+
+
+class MetroExAnteVehicleTypesFile(MetroDataFrameFile):
+    path = "run/ex_ante_input/vehicle_types.parquet"
+    description = "Simulated vehicle types for the ex-ante simulation."
+    schema = VEHICLE_TYPE_SCHEMA

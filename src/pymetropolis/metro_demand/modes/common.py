@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from loguru import logger
 
@@ -10,6 +10,7 @@ from pymetropolis.metro_common.io import read_dataframe
 from pymetropolis.metro_demand.population.files import ToursFile
 from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.metro_pipeline.parameters import PathParameter
+from pymetropolis.modes import StepWithModes
 from pymetropolis.random import FloatDistributionParameter, RandomStep, generate_values
 
 if TYPE_CHECKING:
@@ -44,7 +45,7 @@ def cst_preferences_step_docstring(mode: str):
     return inspect.cleandoc(doc)
 
 
-class PreferencesStep(RandomStep, PopulationStep):
+class PreferencesStep(RandomStep, PopulationStep, StepWithModes):
     """Abstract Step to generate the preference parameters of traveling from exogenous values."""
 
     _mode: ClassVar[str | None] = None
@@ -54,7 +55,11 @@ class PreferencesStep(RandomStep, PopulationStep):
     input_files = {"tours": ToursFile}
 
     def is_defined(self):
-        return self.constant != 0.0 or (self.value_of_time != 0.0 and self._mode is not None)
+        return (
+            (self.constant != 0.0 or (self.value_of_time != 0.0))
+            and self._mode is not None
+            and self.has_mode(self._mode)
+        )
 
     def run(self):
         tours: pl.DataFrame = self.input["tours"].read()
@@ -119,7 +124,7 @@ def preferences_step_docstring(mode: str):
     return inspect.cleandoc(doc)
 
 
-class ModePreferencesFromPopulationStep(PopulationStep):
+class ModePreferencesFromPopulationStep(PopulationStep, StepWithModes):
     """Abstract Step to generate the preference parameters for a given mode from constant values
     over population segments.
     """
@@ -130,7 +135,7 @@ class ModePreferencesFromPopulationStep(PopulationStep):
     input_files = {"tours": ToursFile}
 
     def is_defined(self):
-        return self.pref_file is not None
+        return self.pref_file is not None and self._mode is not None and self.has_mode(self._mode)
 
     def run(self):
         assert self.pref_file is not None

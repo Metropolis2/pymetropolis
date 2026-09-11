@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pymetropolis.metro_pipeline.parameters import FloatParameter, FractionParameter, ListParameter
+from pymetropolis.metro_pipeline.parameters import FloatParameter, FractionParameter
 from pymetropolis.metro_pipeline.steps import Step
-from pymetropolis.metro_pipeline.types import Enum
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -12,8 +11,6 @@ if TYPE_CHECKING:
     import polars as pl
 
     from pymetropolis.metro_pipeline import MetroFile
-
-# TODO: Create Mode class.
 
 
 def merge_populations(
@@ -34,57 +31,6 @@ def merge_populations(
         for population, f in files.items()
     ]
     return pl.concat(dfs, how="vertical")
-
-
-class StepWithModes(Step):
-    modes = ListParameter(
-        "mode_choice.modes",
-        inner=Enum(
-            values=[
-                "car_driver",
-                "car_driver_with_passengers",
-                "car_passenger",
-                "car_ridesharing",
-                "public_transit",
-                "walking",
-                "bicycle",
-                "outside_option",
-            ]
-        ),
-        min_length=1,
-        description="List of modes the agents can used to travel.",
-    )
-
-    def has_mode_choice(self) -> bool:
-        """Returns `True` if the configuration implies a mode choice (i.e., there are at least two
-        modes).
-        """
-        return self.modes is not None and len(self.modes) >= 2
-
-    def has_mode(self, mode: str) -> bool:
-        """Returns `True` if the configuration has a given mode defined."""
-        return self.modes is not None and mode in self.modes
-
-    def has_trip_mode(self) -> bool:
-        """Returns `True` if the configuration has at least one trip-based mode (i.e., different
-        from "outside_option").
-        """
-        return self.modes is not None and any(m != "outside_option" for m in self.modes)
-
-    def has_car_mode(self) -> bool:
-        """Returns `True` if the configuration has at least one car-based mode."""
-        return self.modes is not None and (
-            "car_driver" in self.modes
-            or "car_driver_with_passengers" in self.modes
-            or "car_passenger" in self.modes
-            or "car_ridesharing" in self.modes
-        )
-
-    def has_pedestrian_mode(self) -> bool:
-        """Returns `True` if the configuration has at least one pedestrian mode (e.g., walking,
-        bicycle).
-        """
-        return self.modes is not None and ("walking" in self.modes or "bicycle" in self.modes)
 
 
 # Ridesharing passenger count is used for both vehicle types and trips so we create a Step for it.

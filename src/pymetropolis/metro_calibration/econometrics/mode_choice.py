@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 
+from pymetropolis.metro_calibration.econometrics.files import SurveyModeChoiceResultsFile
 from pymetropolis.metro_calibration.survey.files import (
     SurveyedToursFile,
     SurveyedToursTravelTimesFile,
@@ -15,16 +16,17 @@ from pymetropolis.metro_common.utils import pl_duration_to_seconds
 from pymetropolis.metro_pipeline.parameters import ListParameter, StringParameter
 from pymetropolis.metro_pipeline.types import List, String
 
-from .files import SurveyModeChoiceParametersFile, SurveyModeChoiceStatsFile
-
 if TYPE_CHECKING:
     from pathlib import Path
 
     import pandas as pd
 
 
+# Name of the variable holding the travel time of each alternative.
+TRAVEL_TIME_VARIABLE = "travel_time"
+
 # Variables treated as alternative-varying, read from `{variable}_{mode}` columns.
-ALTERNATIVE_VARYING_VARIABLES = {"travel_time"}
+ALTERNATIVE_VARYING_VARIABLES = {TRAVEL_TIME_VARIABLE}
 
 # Column of `SurveyedToursFile` indicating whether the person holds a driving license.
 DRIVING_LICENSE_COLUMN = "has_driving_license"
@@ -83,10 +85,7 @@ class SurveyEconometricModeChoiceStep(ModeClassifierConfigStep):
     )
 
     input_files = {"tours": SurveyedToursFile, "tours_tt": SurveyedToursTravelTimesFile}
-    output_files = {
-        "parameters": SurveyModeChoiceParametersFile,
-        "stats": SurveyModeChoiceStatsFile,
-    }
+    output_files = {"results": SurveyModeChoiceResultsFile}
 
     def is_defined(self):
         return self.modes is not None and len(self.modes) >= 2
@@ -257,8 +256,18 @@ class SurveyEconometricModeChoiceStep(ModeClassifierConfigStep):
             model_name=type(self).__name__,
         )
 
-        self.output["parameters"].write(json.dumps(params, indent=2, sort_keys=True))
-        self.output["stats"].write(json.dumps(stats, indent=2, sort_keys=True))
+        # The specification is stored next to the estimated values so that a downstream step can
+        # interpret the parameter names (which variables are alternative-varying, which pairs are
+        # interacted, which mode is the reference) without duplicating the config keys.
+        specification = {
+            "modes": sorted(modes),
+            "reference_mode": reference_mode,
+            "variables": case_variables + generic_variables,
+            "interaction_variables": interactions,
+        }
+        results = {"specification": specification, "stats": stats, "parameters": params}
+
+        self.output["results"].write(json.dumps(results, indent=2, sort_keys=True))
 
 
 def estimate_mnl(

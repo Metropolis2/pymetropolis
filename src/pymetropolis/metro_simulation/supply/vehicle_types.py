@@ -5,16 +5,20 @@ from pymetropolis.metro_network.road_network import RoadEdgesCleanFile
 from pymetropolis.metro_pipeline.parameters import FloatParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_simulation.common import StepWithRidesharingCount, StepWithSimulationRatio
-from pymetropolis.metro_simulation.demand.files import MetroTripsFile
+from pymetropolis.metro_simulation.demand.files import MetroExAnteTripsFile, MetroTripsFile
 
-from .files import MetroVehicleTypesFile
+from .files import MetroExAnteVehicleTypesFile, MetroVehicleTypesFile
 
 if TYPE_CHECKING:
     import geopandas as gpd
 
 
-class WriteMetroVehicleTypesStep(StepWithRidesharingCount, StepWithSimulationRatio):
-    """Generates the input vehicle-types file for the Metropolis-Core simulation."""
+class AbstractWriteMetroVehicleTypesStep(StepWithRidesharingCount, StepWithSimulationRatio):
+    """Abstract Step to generate an input vehicle-types file for Metropolis-Core.
+
+    The vehicle types to write are read from the `class.vehicle` column of the simulated trips, so
+    that only the vehicle types actually used are defined.
+    """
 
     car_headway = FloatParameter(
         "vehicle_types.car.headway",
@@ -26,11 +30,6 @@ class WriteMetroVehicleTypesStep(StepWithRidesharingCount, StepWithSimulationRat
         default=1.0,
         description="Passenger car equivalent of a typical car",
     )
-    input_files = {
-        "edges": InputFile(RoadEdgesCleanFile, optional=True),
-        "metro_trips": MetroTripsFile,
-    }
-    output_files = {"metro_vehicle_types": MetroVehicleTypesFile}
 
     def run(self):
         import polars as pl
@@ -94,3 +93,24 @@ class WriteMetroVehicleTypesStep(StepWithRidesharingCount, StepWithSimulationRat
             )
         df = pl.DataFrame(metro_vehicles)
         self.output["metro_vehicle_types"].write(df)
+
+
+class WriteMetroVehicleTypesStep(AbstractWriteMetroVehicleTypesStep):
+    """Generates the input vehicle-types file for the Metropolis-Core simulation."""
+
+    input_files = {
+        "edges": InputFile(RoadEdgesCleanFile, optional=True),
+        "metro_trips": MetroTripsFile,
+    }
+    output_files = {"metro_vehicle_types": MetroVehicleTypesFile}
+
+
+class WriteExAnteMetroVehicleTypesStep(AbstractWriteMetroVehicleTypesStep):
+    """Generates the input vehicle-types file for the ex-ante simulation."""
+
+    input_files = {
+        "edges": InputFile(RoadEdgesCleanFile, optional=True),
+        "metro_trips": MetroExAnteTripsFile,
+    }
+    output_files = {"metro_vehicle_types": MetroExAnteVehicleTypesFile}
+    priority = 0

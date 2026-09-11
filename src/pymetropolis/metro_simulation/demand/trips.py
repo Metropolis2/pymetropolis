@@ -24,11 +24,8 @@ from pymetropolis.metro_demand.routing.files import (
 from pymetropolis.metro_environment.fuel.files import CarFuelFile
 from pymetropolis.metro_pipeline import PopulationStep, Step
 from pymetropolis.metro_pipeline.steps import InputFile
-from pymetropolis.metro_simulation.common import (
-    StepWithModes,
-    StepWithRidesharingCount,
-    merge_populations,
-)
+from pymetropolis.metro_simulation.common import StepWithRidesharingCount, merge_populations
+from pymetropolis.modes import StepWithModes
 
 from .files import (
     MetroExAnteTripsFile,
@@ -177,7 +174,7 @@ def generate_public_transit_trips(
         # This allows to consider different values of time for different modes (walking, waiting,
         # bus, subway, etc.).
         # The mode constant is defined at the tour level so it is added to the utility of the
-        # alternative, not of the trips (see `PrepareMetroAlternativesStep`).
+        # alternative, not of the trips.
         df = (
             df.join(params, on="agent_id", how="left")
             .join(itineraries.select("trip_id", "generalized_time"), on="trip_id", how="left")
@@ -209,7 +206,7 @@ def generate_walking_trips(
     )
     if pref_file is not None and pref_file.exists():
         # The mode constant is defined at the tour level so it is added to the utility of the
-        # alternative, not of the trips (see `PrepareMetroAlternativesStep`).
+        # alternative, not of the trips.
         params: pl.DataFrame = pref_file.read().select(
             agent_id="tour_id", alpha=pl.col("walking_vot") / 3600.0
         )
@@ -239,7 +236,7 @@ def generate_bicycle_trips(
     )
     if pref_file is not None and pref_file.exists():
         # The mode constant is defined at the tour level so it is added to the utility of the
-        # alternative, not of the trips (see `PrepareMetroAlternativesStep`).
+        # alternative, not of the trips.
         params: pl.DataFrame = pref_file.read().select(
             agent_id="tour_id", alpha=pl.col("bicycle_vot") / 3600.0
         )

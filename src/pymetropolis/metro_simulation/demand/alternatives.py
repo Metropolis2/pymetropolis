@@ -11,7 +11,8 @@ from pymetropolis.metro_demand.routing.files import PrimaryCarTripsAccessEgressF
 from pymetropolis.metro_pipeline import PopulationStep, Step
 from pymetropolis.metro_pipeline.parameters import EnumParameter, FloatParameter
 from pymetropolis.metro_pipeline.steps import InputFile
-from pymetropolis.metro_simulation.common import StepWithModes, merge_populations
+from pymetropolis.metro_simulation.common import merge_populations
+from pymetropolis.modes import StepWithModes
 
 from .files import (
     MetroAlternativesFile,

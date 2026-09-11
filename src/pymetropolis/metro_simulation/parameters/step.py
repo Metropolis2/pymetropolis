@@ -23,7 +23,11 @@ from pymetropolis.metro_simulation.demand.files import (
     MetroExAnteTripsFile,
     MetroTripsFile,
 )
-from pymetropolis.metro_simulation.supply.files import MetroEdgesFile, MetroVehicleTypesFile
+from pymetropolis.metro_simulation.supply.files import (
+    MetroEdgesFile,
+    MetroExAnteVehicleTypesFile,
+    MetroVehicleTypesFile,
+)
 
 from .file import MetroExAnteParametersFile, MetroParametersFile
 
@@ -130,6 +134,11 @@ class AbstractWriteMetroParametersStep(StepWithPeriod, ThreadedStep):
         )
 
     def run(self):
+        if self.input["edges"].exists() and not self.input["vehicle_types"].exists():
+            raise MetropyError(
+                "Cannot run the Metropolis-Core simulation when edges are defined but vehicle "
+                "types are not."
+            )
         params = self.get_parameters()
         params_str = json.dumps(params, indent=2, sort_keys=True)
         self.output["parameters"].write(params_str)
@@ -215,7 +224,7 @@ class WriteExAnteMetroParametersStep(AbstractWriteMetroParametersStep):
         "agents": MetroExAnteAgentsFile,
         "alternatives": MetroExAnteAlternativesFile,
         "edges": InputFile(MetroEdgesFile, optional=True),
-        "vehicle_types": InputFile(MetroVehicleTypesFile, optional=True),
+        "vehicle_types": InputFile(MetroExAnteVehicleTypesFile, optional=True),
         "trips": InputFile(MetroExAnteTripsFile, optional=True),
     }
     output_files = {"parameters": MetroExAnteParametersFile}
