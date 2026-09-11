@@ -26,6 +26,12 @@ if TYPE_CHECKING:
 # Variables treated as alternative-varying, read from `{variable}_{mode}` columns.
 ALTERNATIVE_VARYING_VARIABLES = {"travel_time"}
 
+# Column of `SurveyedToursFile` indicating whether the person holds a driving license.
+DRIVING_LICENSE_COLUMN = "has_driving_license"
+
+# Column of `SurveyedToursFile` indicating the number of cars owned.
+CAR_OWNERSHIP_COLUMN = "nb_cars"
+
 
 def generic_variable_mode(mode: str) -> str:
     """Maps `car_*` modes to just `car`."""
@@ -176,18 +182,31 @@ class SurveyEconometricModeChoiceStep(ModeClassifierConfigStep):
             alt_id=pl.col("tour_mode").replace_strict(mode_ids, return_dtype=pl.Int64)
         )
 
-        # An alternative is available for a given tour if all its generic variables are defined
-        # (e.g., a travel time by car could be missing because of a routing failure).
-        tours = tours.with_columns(
-            **{
-                f"avail_{mode}": pl.all_horizontal(
-                    *(pl.col(generic_columns[v][mode]).is_not_null() for v in generic_columns)
-                ).cast(pl.Int8)
-                if generic_columns
-                else pl.lit(1, dtype=pl.Int8)
-                for mode in modes
-            }
-        )
+        # Car-driver modes are restricted to holders of a driving license.
+        has_license_data = DRIVING_LICENSE_COLUMN in tours.columns
+        if not has_license_data and any(mode.startswith("car_driver") for mode in modes):
+            logger.warning(
+                f"`{DRIVING_LICENSE_COLUMN}` is not available in `SurveyedToursFile`: car-driver "
+                "modes will not be restricted to driving-license holders."
+            )
+        # Car modes are restricted to car owners.
+        has_car_ownership_data = CAR_OWNERSHIP_COLUMN in tours.columns
+        if not has_car_ownership_data and any(mode.startswith("car") for mode in modes):
+            logger.warning(
+                f"`{CAR_OWNERSHIP_COLUMN}` is not available in `SurveyedToursFile`: car modes will "
+                "not be restricted to car owners."
+            )
+        avail_exprs = {}
+        for mode in modes:
+            conditions = [pl.col(generic_columns[v][mode]).is_not_null() for v in generic_columns]
+            if has_license_data and mode.startswith("car_driver"):
+                conditions.append(pl.col(DRIVING_LICENSE_COLUMN).fill_null(False))
+            if has_car_ownership_data and mode.startswith("car"):
+                conditions.append(pl.col(CAR_OWNERSHIP_COLUMN).ge(1).fill_null(False))
+            avail_exprs[f"avail_{mode}"] = (
+                pl.all_horizontal(*conditions) if conditions else pl.lit(True)
+            ).cast(pl.Int8)
+        tours = tours.with_columns(**avail_exprs)
         # Fill missing generic variables with 0: irrelevant since the alternative is then marked
         # unavailable, but required so that the utility expression always evaluates to a finite
         # number.
@@ -211,7 +230,7 @@ class SurveyEconometricModeChoiceStep(ModeClassifierConfigStep):
         if n1 < n0:
             logger.warning(
                 f"Dropping {n0 - n1:,} observations ({(n0 - n1) / n0:.2%}) whose chosen mode is "
-                "unavailable (missing generic variable)."
+                "unavailable."
             )
 
         columns = [
