@@ -252,7 +252,7 @@ class SurveyEconometricModeChoiceStep(ModeClassifierConfigStep):
             generic_variables,
             case_variables,
             interactions,
-            out_dir=self.output["parameters"].complete_path.parent,
+            out_dir=self.output["results"].complete_path.parent,
             model_name=type(self).__name__,
         )
 
