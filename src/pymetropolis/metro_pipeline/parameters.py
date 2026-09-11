@@ -92,12 +92,23 @@ class Parameter(Generic[T]):
         # descriptor object shared (by inheritance) across every Step subclass and instance that
         # declares it, so any state stored on `self` would leak between unrelated steps and
         # populations.
-        value = config.resolve_parameter(self.key, population_name, shared=self.shared)
+        value, origin = config.resolve_parameter_with_origin(
+            self.key, population_name, shared=self.shared
+        )
         if value is None:
+            # Set the value to its default, resolving indirection in case the default is of the form
+            # secrets:* or env:*.
             value = config.resolve_indirection(self.default)
+            # A default comes from the code, not from a config file, so it is resolved against the
+            # config being run rather than against whichever base config was last consulted.
+            origin = config
         if value is None:
             return None
-        value = self.validator.resolve(value, config.resolve_path)
+        # Relative paths are resolved against the directory of the config the value was read from,
+        # which is not necessarily `config` itself when it inherits from a base config: a path
+        # written in a base config must resolve to the same absolute path as it did in the base
+        # run.
+        value = self.validator.resolve(value, origin.resolve_path)
         return self.validator.validate(value)
 
 

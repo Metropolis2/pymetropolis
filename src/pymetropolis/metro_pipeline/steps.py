@@ -151,7 +151,7 @@ class Step:
         file_population = population_name if population_name is not None else MAIN_POPULATION_NAME
         all_population_names = [
             *([MAIN_POPULATION_NAME] if config.main_population else []),
-            *config.extra_populations_dict.keys(),
+            *config.population_names,
         ]
         self._input_files = {}
         self._population_input_files = {}
