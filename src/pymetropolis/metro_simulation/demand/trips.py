@@ -83,7 +83,7 @@ def generate_car_trips(
     # Note. This an assumption. In real life, you can be a car driver or passenger without owning a
     # car (e.g., car rental, taxi, ridesharing with someone from another household).
     df = df.filter("has_car")
-    # Car-driver modes are only accesible to driving license holders.
+    # Car-driver modes are only accessible to driving license holders.
     # Note. This assumption does not apply to the "car_ridesharing" mode.
     if "driver" in mode:
         df = df.filter("can_drive")
@@ -411,7 +411,7 @@ class PrepareMetroTripsStep(StepWithModes, StepWithRidesharingCount, PopulationS
                 self.input["linear_schedule"],
             )
             metro_trips = pl.concat((metro_trips, bicycle_trips), how="diagonal")
-        metro_trips = metro_trips.sort("agent_id", "alt_id", "trip_id")
+        metro_trips = metro_trips.drop("has_car", "can_drive").sort("agent_id", "alt_id", "trip_id")
         self.output["metro_trips"].write(metro_trips)
 
     def get_fuel_share(self, mode: str) -> float:
