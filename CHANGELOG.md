@@ -97,6 +97,9 @@ Other changes:
   randomly along the edges within the zone. These steps received new parameters and had some
   existing parameters renamed. They now generate origin / destination coordinates instead of origin
   / destination road nodes.
+- In the simulation, car modes are restricted to car owners (when the `nb_cars` column is defined).
+- In the simulation, car-driver modes are restricted to driving license holders (when the
+  `has_driving_license` column is defined).
 
 Removed steps:
 

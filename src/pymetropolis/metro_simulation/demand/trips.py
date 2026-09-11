@@ -15,7 +15,7 @@ from pymetropolis.metro_demand.modes.files import (
     WalkingTravelTimesFile,
 )
 from pymetropolis.metro_demand.population import TripsFile
-from pymetropolis.metro_demand.population.files import ToursModeFile
+from pymetropolis.metro_demand.population.files import HouseholdsFile, PersonsFile, ToursModeFile
 from pymetropolis.metro_demand.routing.files import (
     NonPrimaryCarTrips,
     PrimaryCarTripsAccessEgressFile,
@@ -43,20 +43,25 @@ if TYPE_CHECKING:
 def clean_trips(trips: pl.DataFrame) -> pl.DataFrame:
     import polars as pl
 
+    if "has_car" not in trips.columns:
+        trips = trips.with_columns(has_car=True)
+    if "has_driving_license" not in trips.columns:
+        trips = trips.with_columns(has_driving_license=True)
+    trips = trips.with_columns(can_drive=pl.col("has_car") & pl.col("has_driving_license"))
     if "destination_activity_duration" not in trips.columns:
         trips = trips.with_columns(destination_activity_duration=pl.lit(None, dtype=pl.Duration))
-    df = trips.select(
+    trips = trips.with_columns(
         "trip_id",
         agent_id="tour_id",
         activity_time=pl_duration_to_seconds("destination_activity_duration").fill_null(0.0),
     ).sort("agent_id", "trip_id")
     # Set activity time to 0 for the last trip of the tour.
-    df = df.with_columns(
+    trips = trips.with_columns(
         activity_time=pl.when(pl.col("trip_id") != pl.col("trip_id").last().over("agent_id"))
         .then("activity_time")
         .otherwise(0.0)
     )
-    return df
+    return trips.select("trip_id", "agent_id", "activity_time", "has_car", "can_drive")
 
 
 @error_context(msg="Cannot generate car trips")
@@ -74,6 +79,14 @@ def generate_car_trips(
 ):
     import polars as pl
 
+    # Car modes are only accessible to car owners.
+    # Note. This an assumption. In real life, you can be a car driver or passenger without owning a
+    # car (e.g., car rental, taxi, ridesharing with someone from another household).
+    df = df.filter("has_car")
+    # Car-driver modes are only accesible to driving license holders.
+    # Note. This assumption does not apply to the "car_ridesharing" mode.
+    if "driver" in mode:
+        df = df.filter("can_drive")
     df = df.with_columns(pl.lit(mode).alias("alt_id"))
     primary_trips: pl.DataFrame = primary_trips_file.read().select(
         "trip_id",
@@ -277,6 +290,8 @@ class PrepareMetroTripsStep(StepWithModes, StepWithRidesharingCount, PopulationS
 
     input_files = {
         "trips": TripsFile,
+        "persons": InputFile(PersonsFile, optional=True),
+        "households": InputFile(HouseholdsFile, optional=True),
         "primary_car_trips": InputFile(
             PrimaryCarTripsAccessEgressFile,
             when=lambda inst: inst.has_car_mode(),
@@ -332,6 +347,20 @@ class PrepareMetroTripsStep(StepWithModes, StepWithRidesharingCount, PopulationS
         import polars as pl
 
         trips = self.input["trips"].read()
+        if self.input["persons"].exists():
+            persons = self.input["persons"].read()
+            if "has_driving_license" in persons.columns:
+                trips = trips.join(
+                    persons.select("person_id", "has_driving_license"), on="person_id", how="left"
+                )
+        if self.input["households"].exists():
+            households = self.input["households"].read()
+            if "nb_cars" in households.columns:
+                trips = trips.join(
+                    households.select("household_id", has_car=pl.col("nb_cars") > 0),
+                    on="household_id",
+                    how="left",
+                )
         df = clean_trips(trips)
         metro_trips = pl.DataFrame()
         for car_mode, vehicle_type in (
