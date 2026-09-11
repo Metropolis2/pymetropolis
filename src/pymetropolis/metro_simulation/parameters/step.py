@@ -3,7 +3,6 @@ from datetime import timedelta
 from math import inf, isfinite
 
 from pymetropolis.common import ThreadedStep
-from pymetropolis.metro_calibration.econometrics.files import SurveyModeChoiceStatsFile
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import (
@@ -194,7 +193,6 @@ class WriteMetroParametersStep(AbstractWriteMetroParametersStep):
         "edges": InputFile(MetroEdgesFile, optional=True),
         "vehicle_types": InputFile(MetroVehicleTypesFile, optional=True),
         "trips": InputFile(MetroTripsFile, optional=True),
-        "tmp": SurveyModeChoiceStatsFile,  # TODO. Remove!
     }
     output_files = {"parameters": MetroParametersFile}
 

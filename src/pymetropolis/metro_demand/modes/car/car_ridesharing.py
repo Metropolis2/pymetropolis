@@ -1,8 +1,3 @@
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
-from pymetropolis.metro_common.io import read_dataframe
 from pymetropolis.metro_demand.modes.common import (
     ModePreferencesFromPopulationStep,
     PreferencesStep,
@@ -16,33 +11,23 @@ from pymetropolis.metro_pipeline import PopulationStep
 
 from .files import CarRidesharingPreferencesFile
 
-if TYPE_CHECKING:
-    import polars as pl
-
 MODE = "car_ridesharing"
 
 
 class CarRidesharingPreferencesStep(PreferencesStep, PopulationStep):
     __doc__ = cst_preferences_step_docstring(MODE)
 
+    _mode = MODE
+
     constant = pref_constant_parameter(MODE)
     value_of_time = pref_value_of_time_parameter(MODE)
     output_files = {"preferences": CarRidesharingPreferencesFile}
 
-    def run(self):
-        persons: pl.DataFrame = self.input["persons"].read()
-        df = self.get_preferences(MODE, persons)
-        self.output["preferences"].write(df)
-
 
 class CarRidesharingPreferencesFromPopulationStep(ModePreferencesFromPopulationStep):
-    __doc__ = preferences_step_docstring("car_ridesharing")
+    __doc__ = preferences_step_docstring(MODE)
 
-    pref_file = pref_file_parameter("car_ridesharing")
+    _mode = MODE
+
+    pref_file = pref_file_parameter(MODE)
     output_files = {"preferences": CarRidesharingPreferencesFile}
-
-    def run(self):
-        persons: pl.DataFrame = self.input["persons"].read()
-        pref = read_dataframe(self.pref_file)
-        df = self.get_person_preferences(persons, pref, "car_ridesharing")
-        self.output["preferences"].write(df)

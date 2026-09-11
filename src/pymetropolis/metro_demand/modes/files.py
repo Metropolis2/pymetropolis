@@ -48,19 +48,19 @@ class OutsideOptionTravelTimesFile(MetroDataFrameFile, PopulationFile):
 
 class PublicTransitPreferencesFile(MetroDataFrameFile, PopulationFile):
     path = "demand/{population}/modes/public_transit/preferences.parquet"
-    description = "Preferences to travel by public transit, for each person."
+    description = "Preferences to travel by public transit, for each tour."
     schema = [
         Column(
-            "person_id",
+            "tour_id",
             MetroDataType.ID,
-            description="Identifier of the person.",
+            description="Identifier of the tour.",
             unique=True,
             nullable=False,
         ),
         Column(
             "public_transit_cst",
             MetroDataType.FLOAT,
-            description="Penalty for each trip in public transit (€).",
+            description="Penalty for each tour in public transit (€).",
             nullable=True,
         ),
         Column(
@@ -74,19 +74,19 @@ class PublicTransitPreferencesFile(MetroDataFrameFile, PopulationFile):
 
 class WalkingPreferencesFile(MetroDataFrameFile, PopulationFile):
     path = "demand/{population}/modes/walking/preferences.parquet"
-    description = "Preferences to travel by walk, for each person."
+    description = "Preferences to travel by walk, for each tour."
     schema = [
         Column(
-            "person_id",
+            "tour_id",
             MetroDataType.ID,
-            description="Identifier of the person.",
+            description="Identifier of the tour.",
             unique=True,
             nullable=False,
         ),
         Column(
             "walking_cst",
             MetroDataType.FLOAT,
-            description="Penalty for each walking trip (€).",
+            description="Penalty for each walking tour (€).",
             nullable=True,
         ),
         Column(
@@ -120,19 +120,19 @@ class WalkingTravelTimesFile(MetroDataFrameFile, PopulationFile):
 
 class BicyclePreferencesFile(MetroDataFrameFile, PopulationFile):
     path = "demand/{population}/modes/bicycle/preferences.parquet"
-    description = "Preferences to travel by bicycle, for each person."
+    description = "Preferences to travel by bicycle, for each tour."
     schema = [
         Column(
-            "person_id",
+            "tour_id",
             MetroDataType.ID,
-            description="Identifier of the person.",
+            description="Identifier of the tour.",
             unique=True,
             nullable=False,
         ),
         Column(
             "bicycle_cst",
             MetroDataType.FLOAT,
-            description="Penalty for each bicycle trip (€).",
+            description="Penalty for each bicycle tour (€).",
             nullable=True,
         ),
         Column(

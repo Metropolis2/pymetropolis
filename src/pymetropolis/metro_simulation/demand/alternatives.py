@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from pymetropolis.metro_common.errors import MetropyError, error_context
 from pymetropolis.metro_common.utils import pl_duration_to_seconds
-from pymetropolis.metro_demand.modes import OutsideOptionPreferencesFile
+from pymetropolis.metro_demand.modes import MODE_PREFERENCES_FILES, OutsideOptionPreferencesFile
 from pymetropolis.metro_demand.population import UniformDrawsFile
 from pymetropolis.metro_demand.population.files import TripsFile
 from pymetropolis.metro_demand.routing.files import PrimaryCarTripsAccessEgressFile
@@ -24,6 +24,8 @@ from .files import (
 
 if TYPE_CHECKING:
     import polars as pl
+
+    from pymetropolis.metro_pipeline.file import MetroDataFrameFile
 
 
 @error_context(msg="Cannot generate departure-time columns of alternatives")
@@ -57,7 +59,6 @@ def generate_departure_time_columns(
 def generate_outside_option_alts(pref_file: OutsideOptionPreferencesFile):
     import polars as pl
 
-    # TODO. Manage outside option constant at the person vs tour level.
     df: pl.DataFrame = pref_file.read()
     df = (
         df.rename({"tour_id": "agent_id"})
@@ -67,6 +68,28 @@ def generate_outside_option_alts(pref_file: OutsideOptionPreferencesFile):
         .drop("outside_option_cst")
     )
     return df
+
+
+@error_context(msg="Cannot generate the mode constants of alternatives")
+def add_mode_constants(alts: pl.DataFrame, pref_files: dict[str, MetroDataFrameFile]):
+    """Adds the tour-level mode constant to the utility of each (tour, mode) alternative.
+
+    The constant is a penalty of traveling by that mode during the whole tour, so it is added once
+    per alternative.
+    """
+    import polars as pl
+
+    constants = pl.DataFrame()
+    for mode, pref_file in pref_files.items():
+        if pref_file is None or not pref_file.exists():
+            continue
+        df: pl.DataFrame = pref_file.read().select(
+            agent_id="tour_id", alt_id=pl.lit(mode), constant_utility=-pl.col(f"{mode}_cst")
+        )
+        constants = pl.concat((constants, df), how="vertical")
+    if constants.is_empty():
+        return alts
+    return alts.join(constants, on=["agent_id", "alt_id"], how="left")
 
 
 def get_origin_delay(input_trips: pl.DataFrame, primary_car_trips: pl.DataFrame):
@@ -119,6 +142,15 @@ class PrepareMetroAlternativesStep(StepWithModes, PopulationStep):
             when_doc="if the outside-option mode is defined",
         ),
         "primary_car_trips": InputFile(PrimaryCarTripsAccessEgressFile, optional=True),
+        **{
+            f"{mode}_preferences": InputFile(
+                pref_file,
+                optional=True,
+                when=lambda inst, mode=mode: inst.has_mode(mode),
+                when_doc=f'if the "{mode}" mode is defined',
+            )
+            for mode, pref_file in MODE_PREFERENCES_FILES.items()
+        },
     }
     output_files = {"metro_alternatives": MetroAlternativesPopulationFile}
 
@@ -147,6 +179,14 @@ class PrepareMetroAlternativesStep(StepWithModes, PopulationStep):
             if primary_car_trips is not None:
                 origin_delays = get_origin_delay(input_trips, primary_car_trips)
                 alts = alts.join(origin_delays, on=["agent_id", "alt_id"], how="left")
+            alts = add_mode_constants(
+                alts,
+                {
+                    mode: self.input[f"{mode}_preferences"]
+                    for mode in MODE_PREFERENCES_FILES
+                    if self.has_mode(mode)
+                },
+            )
         if self.has_mode("outside_option"):
             outside_option_alts = generate_outside_option_alts(
                 self.input["outside_option_preferences"]

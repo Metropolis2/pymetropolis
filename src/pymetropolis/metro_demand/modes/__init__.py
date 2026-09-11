@@ -3,7 +3,7 @@ from .bicycle import (
     BicyclePreferencesStep,
     BicycleTravelTimesFromDistanceStep,
 )
-from .car import CAR_FILES, CAR_STEPS
+from .car import CAR_FILES, CAR_PREFERENCES_FILES, CAR_STEPS
 from .files import (
     BicyclePreferencesFile,
     BicycleTravelTimesFile,
@@ -34,6 +34,16 @@ WALKING_FILES = [WalkingPreferencesFile, WalkingTravelTimesFile]
 BICYCLE_FILES = [BicyclePreferencesFile, BicycleTravelTimesFile]
 
 MODES_FILES = CAR_FILES + PT_FILES + WALKING_FILES + OUTSIDE_FILES + BICYCLE_FILES
+
+# Preferences file of each trip-based mode, i.e., the modes whose constant and value of time are
+# defined for each tour (the outside option is excluded: it has no trip and its own preferences
+# file is read directly by `PrepareMetroAlternativesStep`).
+MODE_PREFERENCES_FILES = {
+    **CAR_PREFERENCES_FILES,
+    "public_transit": PublicTransitPreferencesFile,
+    "walking": WalkingPreferencesFile,
+    "bicycle": BicyclePreferencesFile,
+}
 
 PT_STEPS = [
     PublicTransitPreferencesStep,
