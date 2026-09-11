@@ -367,7 +367,7 @@ class SurveyedTripsOpenTripPlannerStep(OpenTripPlannerStep):
             trips = trips.with_columns(pl.Series(medians).alias(col))
         # Note. The waiting_time and legs are not saved due to the difficulty of aggregating
         # multiple trips.
-        trips = trips.sort("id")
+        trips = trips.sort("trip_id")
         self.output["costs"].write(trips)
 
 
