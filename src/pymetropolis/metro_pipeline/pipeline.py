@@ -86,6 +86,10 @@ class MetroPipeline:
                     )
                     steps[step]["outputs"] = set(step.output.values())
         self.steps = steps
+        # Every Step is instantiated by now, so every input data file has been hashed. Saved here
+        # rather than at the end of `__init__` because `check_files_to_delete` below asks for a
+        # confirmation and exits if it is denied, which would throw away the hashing work.
+        self.config.digest_cache.save()
         self.config.check_unused_keys(used_keys)
         self.check_target_step_defined(target_step, step_classes)
         self.set_feasible()

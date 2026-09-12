@@ -100,14 +100,13 @@ class Parameter(Generic[T]):
             # secrets:* or env:*.
             value = config.resolve_indirection(self.default)
             # A default comes from the code, not from a config file, so it is resolved against the
-            # config being run rather than against whichever base config was last consulted.
+            # config being run rather than against whichever parent config was last consulted.
             origin = config
         if value is None:
             return None
         # Relative paths are resolved against the directory of the config the value was read from,
-        # which is not necessarily `config` itself when it inherits from a base config: a path
-        # written in a base config must resolve to the same absolute path as it did in the base
-        # run.
+        # which is not necessarily `config` itself when it inherits from a parent config: a path
+        # written in a parent config points to a file next to *that* config.
         value = self.validator.resolve(value, origin.resolve_path)
         return self.validator.validate(value)
 

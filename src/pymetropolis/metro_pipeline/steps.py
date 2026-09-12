@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Self
 from pymetropolis.metro_common.errors import MetropyError, error_context
 
 from .file import MetroFile, PopulationFile
-from .parameters import ExecPathParameter, Parameter, PathParameter
+from .parameters import ExecPathParameter, Parameter
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -79,7 +79,6 @@ class Step:
     _output_files: dict[str, MetroFile]
     _update_file_path: Path
     _config_dict: dict[str, Any]
-    _data_files: dict[str, Path]
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
@@ -130,7 +129,6 @@ class Step:
         for the main / default population (defined directly in the main config).
         """
         self._config_dict = dict()
-        self._data_files = dict()
         for param_name, param_obj in self.__class__._iter_params():
             value = param_obj.from_config(config, population_name)
             setattr(self, param_name, value)
@@ -138,16 +136,16 @@ class Step:
                 # For ExecPathParameter, we do not save the parameter value in `_config_dict` so
                 # that running the pipeline on a different computer (where the exec path is usually
                 # different) does not trigger a re-run of the simulations.
-                self._config_dict[param_name] = value
-            if isinstance(param_obj, PathParameter):
-                # Store path parameters so we can check whether they are tempered with.
-                # Note. Executable files (metropolis_cli and routing_cli) are excluded from this
-                # check since they use the ExecPathParameter class.
                 # This means that switching to a new Metropolis-Core version will not trigger the
                 # re-execution of the steps.
                 # This also allows to switch Operating System without having to re-run steps (the
                 # executables have different hashes over different OSs).
-                self._data_files[param_name] = value
+                #
+                # A parameter holding a path is stored as a digest of the content of the file (or
+                # directory) it points to, rather than as the path itself: this is what detects a
+                # data file which was edited in place, ignores a data file which was merely moved,
+                # and keeps `config_hash` identical from one machine to another.
+                self._config_dict[param_name] = config.digest_cache.digest_value(value)
         file_population = population_name if population_name is not None else MAIN_POPULATION_NAME
         all_population_names = [
             *([MAIN_POPULATION_NAME] if config.main_population else []),
@@ -284,7 +282,7 @@ class Step:
         A step needs to be executed again if:
         - The update file does not exist (the step has never be run).
         - Any configuration variable has been modified.
-        - Any InputFile has been modified.
+        - Any input data file has been modified.
         - Any input MetroFile has been modified.
         - Any output MetroFile has been deleted / modified.
         """
@@ -292,17 +290,6 @@ class Step:
         if update_dict is None:
             # Step has never been executed or the update file has been removed.
             return True
-        # Check that the input data files have not been modified.
-        for k, v in self._data_files.items():
-            if v is None:
-                continue
-            if not v.exists() and update_dict.get(f"data_file_{k}_mtime") is not None:
-                # A file that was previously read no longer exists.
-                return True
-            # TODO: Handle data directories.
-            if v.stat().st_mtime != update_dict.get(f"data_file_{k}_mtime"):
-                # The file exists but was updated since the last run (or did not exist before).
-                return True
         # Check that the input / output MetroFiles have not been modified.
         for k, f in self._iter_flat_files():
             if not f.exists():
@@ -341,11 +328,6 @@ class Step:
     def save_update_dict(self):
         """Saves a dictionary representing the update file of this step."""
         update_dict = dict()
-        for k, v in self._data_files.items():
-            if v is None or not v.exists():
-                # Input file is not specified.
-                continue
-            update_dict[f"data_file_{k}_mtime"] = v.stat().st_mtime
         for k, f in self._iter_flat_files():
             if not f.exists():
                 continue
