@@ -83,9 +83,9 @@ class CreateToursStep(PopulationStep):
                     "first_purpose": pl.col("origin_purpose_group").first(),
                     "last_purpose": pl.col("destination_purpose_group").last(),
                     # Exclude the last purpose (should be home).
-                    "purposes": pl.col("destination_purpose_group").head(-1),
+                    "purposes": pl.col("destination_purpose_group").head(pl.len() - 1),
                     # Exclude the last duration (duration at home).
-                    "durations": pl.col("destination_activity_duration").head(-1),
+                    "durations": pl.col("destination_activity_duration").head(pl.len() - 1),
                     "first_departure_time": pl.col("departure_time").first(),
                     "last_arrival_time": pl.col("arrival_time").last(),
                     "first_activity_start": pl.col("arrival_time").first(),
@@ -184,7 +184,7 @@ class CreateToursStep(PopulationStep):
                         "nb_persons": "nb_persons",
                         "nb_majors": "nb_majors",
                         "nb_minors": "nb_minors",
-                        "nb_driving_license": "nb_driving_licenses",
+                        "nb_driving_licenses": "nb_driving_licenses",
                         "minor_ratio": pl.col("nb_minors") / pl.col("nb_persons"),
                         "car_ratio": pl.col("nb_cars") / pl.col("nb_persons"),
                         "driving_license_ratio": pl.col("nb_cars")
