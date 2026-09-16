@@ -106,6 +106,7 @@ Other changes:
 - Raise an error when the OpenTripPlanner URL is unreachable (before trying to make any request).
 - Raise an error when `gtfs.date` is outside the range of dates for which the OpenTripPlanner
   server has loaded active GTFS services (before trying to make any request).
+- Fix OpenTripPlanner queries not stopping on interrupt (Ctrl+C).
 
 Removed steps:
 

@@ -39,7 +39,7 @@ if TYPE_CHECKING:
     from pymetropolis.metro_common.time import MetroTime
 
 MAX_TRIES = 3
-OTP_HEALTHCHECK_TIMEOUT = 10  # seconds
+OTP_QUERY_TIMEOUT = 30  # seconds
 
 HEADERS = {"Content-Type": "application/json", "OTPTimeout": "10000"}
 
@@ -136,7 +136,8 @@ def run_queries_batch(
 
     logger.debug("Running new batch")
     t0 = time.time()
-    with ThreadPoolExecutor(max_workers=nb_threads) as executor:
+    executor = ThreadPoolExecutor(max_workers=nb_threads)
+    try:
         futures = [
             executor.submit(get_least_cost_itinerary, row, api_url, parameters)
             for row in trips.iter_rows(named=True)
@@ -146,6 +147,13 @@ def run_queries_batch(
             as_completed(futures), total=len(futures), desc="Processing batch", smoothing=0.01
         ):
             results.append(future.result())
+    except KeyboardInterrupt:
+        raise
+    finally:
+        # `cancel_futures=True` drops queued-but-not-yet-started queries instead of running the
+        # whole remaining batch; queries already in progress still have to finish (or time out)
+        # before `wait=True` returns.
+        executor.shutdown(wait=True, cancel_futures=True)
     df = pl.from_records(
         results,
         orient="row",
@@ -195,10 +203,7 @@ def check_otp_server(api_url: str) -> None:
     session = get_session()
     try:
         req = session.post(
-            api_url,
-            headers=HEADERS,
-            json={"query": "{ __typename }"},
-            timeout=OTP_HEALTHCHECK_TIMEOUT,
+            api_url, headers=HEADERS, json={"query": "{ __typename }"}, timeout=OTP_QUERY_TIMEOUT
         )
         req.raise_for_status()
     except (RequestException, ValueError) as e:
@@ -220,7 +225,7 @@ def check_gtfs_service_date(api_url: str, gtfs_date: date) -> None:
             api_url,
             headers=HEADERS,
             json={"query": "{ serviceTimeRange { start end } }"},
-            timeout=OTP_HEALTHCHECK_TIMEOUT,
+            timeout=OTP_QUERY_TIMEOUT,
         )
         req.raise_for_status()
         time_range = req.json()["data"]["serviceTimeRange"]
@@ -256,7 +261,12 @@ def get_least_cost_itinerary(row: dict, api_url: str, parameters: dict, nb_tries
     session = get_session()
     try:
         t0 = time.time()
-        req = session.post(api_url, headers=HEADERS, json={"query": query, "variables": variables})
+        req = session.post(
+            api_url,
+            headers=HEADERS,
+            json={"query": query, "variables": variables},
+            timeout=OTP_QUERY_TIMEOUT,
+        )
         query_time = time.time() - t0
         req.raise_for_status()
         data = req.json()
