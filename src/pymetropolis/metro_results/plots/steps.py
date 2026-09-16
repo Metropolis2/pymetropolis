@@ -11,6 +11,7 @@ from pymetropolis.metro_simulation.run import (
     MetroExpectedTravelTimeFunctionsFile,
     MetroSimulatedTravelTimeFunctionsFile,
 )
+from pymetropolis.modes import CarDriverAloneVehicle
 
 from .files import (
     ExpectedRoadNetworkCongestionFunctionPlotFile,
@@ -167,7 +168,7 @@ class RoadNetworkCongestionFunctionPlotsStep(Step):
             fig, ax = plt.subplots()
             # TODO. Which vehicle type to select?
             # For now, we take car driver alone.
-            df = df.filter(vehicle_id="car_driver_alone")
+            df = df.filter(vehicle_id=repr(CarDriverAloneVehicle))
             # Compute total free-flow travel time ON THE PRIMARY EDGES ONLY.
             tot_fftt = (
                 edges_fftt.join(df, on=pl.col("edge_id").cast(pl.String), how="semi")[

@@ -25,7 +25,7 @@ from pymetropolis.metro_network.road_network.files import (
 from pymetropolis.metro_pipeline.parameters import IntParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_simulation.run.files import MetroExAnteSimulatedTravelTimeFunctionsFile
-from pymetropolis.modes import StepWithModes
+from pymetropolis.modes import CarDriverAloneVehicle, StepWithModes
 from pymetropolis.random import RandomStep
 
 from .files import (
@@ -371,7 +371,9 @@ class SurveyedTripsCarTravelTimesStep(RoutingCLIStep):
 
         edges_gdf = self.input["edges"].read()
         edges_ttfs = (
-            self.input["congestion_conditions"].read().filter(vehicle_id="car_driver_alone")
+            self.input["congestion_conditions"]
+            .read()
+            .filter(vehicle_id=repr(CarDriverAloneVehicle))
         )
         # Add free-flow travel time to edges' weights so that it's use as default for edges not in
         # the congested conditions.

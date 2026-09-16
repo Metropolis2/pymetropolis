@@ -16,6 +16,7 @@ from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_simulation.parameters.step import StepWithPeriod
 from pymetropolis.metro_simulation.run.exec import AbstractRunSimulationStep
 from pymetropolis.metro_simulation.run.files import MetroExAnteSimulatedTravelTimeFunctionsFile
+from pymetropolis.modes import CarDriverAloneVehicle
 
 from .files import (
     CongestionTimeComparisonPlotFile,
@@ -26,11 +27,6 @@ from .files import (
 
 if TYPE_CHECKING:
     import polars as pl
-
-# Vehicle type assigned to every replayed TomTom route: TomTom probes are single, unoccupied
-# vehicles, so they are modeled as solo car drivers.
-# In particular, this means that they cannot take HOV lanes.
-CAR_VEHICLE_ID = "car_driver_alone"
 
 
 def prepare_trips(
@@ -115,12 +111,12 @@ def write_congestion_inputs(
             "class.type": pl.lit("Road"),
             "class.origin": pl.col("origin"),
             "class.destination": pl.col("destination"),
-            "class.vehicle": pl.lit(CAR_VEHICLE_ID),
+            "class.vehicle": pl.lit(repr(CarDriverAloneVehicle)),
             "class.route": pl.col("path"),
         },
     )
     # headway is mandatory but not used with `only_computed_decisions`
-    vehicles = pl.DataFrame([{"vehicle_id": CAR_VEHICLE_ID, "headway": 1.0}])
+    vehicles = pl.DataFrame([{"vehicle_id": repr(CarDriverAloneVehicle), "headway": 1.0}])
 
     agents.write_parquet(tmp_dir / "agents.parquet")
     alts.write_parquet(tmp_dir / "alts.parquet")

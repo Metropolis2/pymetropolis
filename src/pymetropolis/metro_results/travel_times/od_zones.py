@@ -23,6 +23,7 @@ from pymetropolis.metro_pipeline.parameters import ListParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_pipeline.types import Int, Time
 from pymetropolis.metro_simulation.run.files import MetroNextExpectedTravelTimeFunctionsFile
+from pymetropolis.modes import CarDriverAloneVehicle
 
 from .files import (
     ZoneODLevel1CongestedTravelTimesFile,
@@ -201,7 +202,7 @@ class ZonesODCongestedTravelTimesStep(RoutingCLIStep):
             # slow down the queries).
             edge_ttfs = edge_ttfs.filter(pl.col("departure_time") >= self.time_window[0].seconds())
         edge_ttfs = (
-            edge_ttfs.filter(pl.col("vehicle_id") == "car_driver_alone")
+            edge_ttfs.filter(pl.col("vehicle_id") == repr(CarDriverAloneVehicle))
             .select("edge_id", "departure_time", "travel_time")
             .join(edges.select("edge_id"), on="edge_id", how="semi")
         )
