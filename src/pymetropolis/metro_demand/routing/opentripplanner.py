@@ -39,6 +39,7 @@ if TYPE_CHECKING:
     from pymetropolis.metro_common.time import MetroTime
 
 MAX_TRIES = 3
+OTP_HEALTHCHECK_TIMEOUT = 10  # seconds
 
 HEADERS = {"Content-Type": "application/json", "OTPTimeout": "10000"}
 
@@ -185,6 +186,26 @@ def run_queries_batch(
         ),
     ).drop("query_time")
     return df
+
+
+def check_otp_server(api_url: str) -> None:
+    """Raise a MetropyError if no OpenTripPlanner server responds at `api_url`."""
+    from requests.exceptions import RequestException
+
+    session = get_session()
+    try:
+        req = session.post(
+            api_url,
+            headers=HEADERS,
+            json={"query": "{ __typename }"},
+            timeout=OTP_HEALTHCHECK_TIMEOUT,
+        )
+        req.raise_for_status()
+    except (RequestException, ValueError) as e:
+        raise MetropyError(
+            f"OpenTripPlanner server not available at `{api_url}`. Make sure the OTP server "
+            "is running and accessible from this URL before running this step."
+        ) from e
 
 
 def get_least_cost_itinerary(row: dict, api_url: str, parameters: dict, nb_tries: int = 0):
@@ -377,6 +398,7 @@ class OpenTripPlannerStep(ThreadedStep, GTFSStep):
         import polars as pl
 
         assert self.otp_url is not None
+        check_otp_server(self.otp_url)
 
         for col in ("origin_lng", "origin_lat", "destination_lng", "destination_lat"):
             assert trips[col].null_count() == 0, f"Found null values for column `{col}"
