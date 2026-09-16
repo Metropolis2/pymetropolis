@@ -10,11 +10,12 @@ from pymetropolis.metro_calibration.survey.files import (
     SurveyedToursFile,
     SurveyedToursTravelTimesFile,
 )
-from pymetropolis.metro_calibration.survey.modes import ModeClassifierConfigStep
+from pymetropolis.metro_calibration.survey.modes import filter_survey_tours
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_common.utils import pl_duration_to_seconds
 from pymetropolis.metro_pipeline.parameters import ListParameter, StringParameter
 from pymetropolis.metro_pipeline.types import List, String
+from pymetropolis.modes import StepWithModes
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -40,13 +41,9 @@ def generic_variable_mode(mode: str) -> str:
     return "car" if "car" in mode else mode
 
 
-class SurveyEconometricModeChoiceStep(ModeClassifierConfigStep):
+class SurveyEconometricModeChoiceStep(StepWithModes):
     """Estimates a Multinomial Logit model of tour-level mode choice from the surveyed tours,
     using [biogeme](https://biogeme.epfl.ch/).
-
-    Tours are filtered and cleaned the same way as for `ModeClassifierConfigStep` (restricted to
-    `mode_classifier.modes`, car-driver modes optionally grouped, tours outside the survey
-    perimeter or with an undefined mode dropped).
     """
 
     variables = ListParameter(
@@ -98,7 +95,7 @@ class SurveyEconometricModeChoiceStep(ModeClassifierConfigStep):
         assert self.variables is not None
         assert self.interaction_variables is not None
 
-        tours = self.filter_survey_tours(self.input["tours"].read())
+        tours = filter_survey_tours(self.modes, self.input["tours"].read())
         tours_tt = self.input["tours_tt"].read()
         tours = tours.join(tours_tt, on="tour_id", how="left")
 
@@ -112,9 +109,7 @@ class SurveyEconometricModeChoiceStep(ModeClassifierConfigStep):
                     f"`mode_classifier.modes` (`{modes}`)."
                 )
         else:
-            reference_mode = self.modes[0]
-        if self.group_car_driver_modes and reference_mode.startswith("car_driver_"):
-            reference_mode = "car_driver"
+            reference_mode = repr(self.modes[0])
 
         variables = self.variables
         interactions = self.interaction_variables

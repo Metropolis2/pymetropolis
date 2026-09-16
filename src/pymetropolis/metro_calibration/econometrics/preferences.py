@@ -10,7 +10,7 @@ from pymetropolis.metro_demand.modes import MODE_PREFERENCES_FILES
 from pymetropolis.metro_demand.population.files import ToursFile
 from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.metro_pipeline.parameters import BoolParameter, FloatParameter, StringParameter
-from pymetropolis.modes import StepWithModes
+from pymetropolis.modes import CarDriver, MetaMode, StepWithModes, mode_from_str
 
 from .files import SurveyModeChoiceResultsFile
 from .mode_choice import ALTERNATIVE_VARYING_VARIABLES, TRAVEL_TIME_VARIABLE
@@ -18,15 +18,8 @@ from .mode_choice import ALTERNATIVE_VARYING_VARIABLES, TRAVEL_TIME_VARIABLE
 if TYPE_CHECKING:
     import polars as pl
 
-# Prefix of the mode names that can fall back to the coefficients estimated for `car_driver` when
-# `mode_classifier.group_car_driver_modes` grouped all car-driver modes together.
-CAR_MODE_PREFIX = "car"
 
-# Mode whose coefficients are used by a car mode that was not estimated on its own.
-GROUPED_CAR_MODE = "car_driver"
-
-
-def resolve_estimated_mode(mode: str, spec: dict[str, Any]) -> str:
+def resolve_estimated_mode(mode: MetaMode, spec: dict[str, Any]) -> MetaMode:
     """Returns the name of the alternative of the estimated model to be used for `mode`.
 
     A mode estimated on its own uses its own coefficients. A car mode that was not estimated on its
@@ -34,16 +27,16 @@ def resolve_estimated_mode(mode: str, spec: dict[str, Any]) -> str:
     coefficients of the grouped `car_driver` alternative.
     """
     modes = spec["modes"]
-    if mode in modes:
+    if repr(mode) in modes:
         return mode
-    if mode.startswith(CAR_MODE_PREFIX) and GROUPED_CAR_MODE in modes:
+    if mode.is_car_based() and "car_driver" in modes:
         logger.info(
-            f"Mode `{mode}` was not estimated in the mode-choice model: using the coefficients of "
-            f"`{GROUPED_CAR_MODE}`."
+            f"Mode `{mode!r}` was not estimated in the mode-choice model: using the coefficients "
+            "of `car_driver`."
         )
-        return GROUPED_CAR_MODE
+        return CarDriver
     raise MetropyError(
-        f"Mode `{mode}` is not an alternative of the estimated mode-choice model "
+        f"Mode `{mode!r}` is not an alternative of the estimated mode-choice model "
         f"(`{', '.join(modes)}`). Either add it to `mode_classifier.modes` or generate its "
         "preferences from another source."
     )
@@ -60,27 +53,27 @@ def _variable_expr(variable: str):
     return pl.col(variable).cast(pl.Float64).fill_null(0.0)
 
 
-def _constant_terms(spec: dict[str, Any], mode: str) -> list[tuple[str, list[str]]]:
+def _constant_terms(spec: dict[str, Any], mode: MetaMode) -> list[tuple[str, list[str]]]:
     """Returns the `(coefficient name, interacted variables)` pairs entering the constant of
     `mode`.
     """
-    terms: list[tuple[str, list[str]]] = [(f"ASC_{mode}", [])]
-    terms.extend((f"B_{v}_{mode}", [v]) for v in spec["variables"] if not _is_generic(v))
+    terms: list[tuple[str, list[str]]] = [(f"ASC_{mode!r}", [])]
+    terms.extend((f"B_{v}_{mode!r}", [v]) for v in spec["variables"] if not _is_generic(v))
     terms.extend(
-        (f"B_{v1}_x_{v2}_{mode}", [v1, v2])
+        (f"B_{v1}_x_{v2}_{mode!r}", [v1, v2])
         for v1, v2 in spec["interaction_variables"]
         if not _is_generic(v1) and not _is_generic(v2)
     )
     return terms
 
 
-def _value_of_time_terms(spec: dict[str, Any], mode: str) -> list[tuple[str, list[str]]]:
+def _value_of_time_terms(spec: dict[str, Any], mode: MetaMode) -> list[tuple[str, list[str]]]:
     """Returns the `(coefficient name, interacted variables)` pairs entering the value of time of
     `mode`.
     """
     terms: list[tuple[str, list[str]]] = []
     if TRAVEL_TIME_VARIABLE in spec["variables"]:
-        terms.append((f"B_{TRAVEL_TIME_VARIABLE}_{mode}", []))
+        terms.append((f"B_{TRAVEL_TIME_VARIABLE}_{mode!r}", []))
     for v1, v2 in spec["interaction_variables"]:
         if v1 != TRAVEL_TIME_VARIABLE and v2 != TRAVEL_TIME_VARIABLE:
             continue
@@ -89,7 +82,7 @@ def _value_of_time_terms(spec: dict[str, Any], mode: str) -> list[tuple[str, lis
             raise MetropyError(
                 "Pymetropolis cannot handle quadratic utility functions of travel time."
             )
-        name = f"B_{v1}_x_{v2}_{mode}"
+        name = f"B_{v1}_x_{v2}_{mode!r}"
         other = v2 if v1 == TRAVEL_TIME_VARIABLE else v1
         if _is_generic(other):
             logger.warning(
@@ -120,7 +113,7 @@ def _utility_expr(terms: list[tuple[str, list[str]]], params: dict[str, dict[str
     return -expr
 
 
-def get_utility_scale(vot: pl.Series, reference_value_of_time: float, mode: str) -> float:
+def get_utility_scale(vot: pl.Series, reference_value_of_time: float, mode: MetaMode) -> float:
     """Returns the marginal utility of money (utils per euro) implied by
     `reference_value_of_time` (€/h) being the *average* value of time of `mode` in the population.
 
@@ -130,14 +123,14 @@ def get_utility_scale(vot: pl.Series, reference_value_of_time: float, mode: str)
     mean_vot: float = vot.mean()  # ty: ignore[invalid-assignment]
     if mean_vot <= 0.0:
         raise MetropyError(
-            f"The average value of time of mode `{mode}` in the population is not positive "
+            f"The average value of time of mode `{mode!r}` in the population is not positive "
             f"({mean_vot:.4f} utils/h), so it cannot be used to convert the utilities to euros."
         )
     return mean_vot / reference_value_of_time
 
 
 def compute_mode_preferences(
-    tours: pl.DataFrame, spec: dict[str, Any], params: dict[str, dict[str, float]], mode: str
+    tours: pl.DataFrame, spec: dict[str, Any], params: dict[str, dict[str, float]], mode: MetaMode
 ) -> pl.DataFrame:
     """Computes the constant and the value of time of `mode`, for each tour of `tours`, from the
     coefficients of the estimated mode-choice model.
@@ -166,14 +159,14 @@ def compute_mode_preferences(
         if nb_nulls:
             logger.warning(
                 f"Variable `{variable}` is null for {nb_nulls:,} tours "
-                f"({nb_nulls / len(tours):.2%}): the corresponding terms of the `{mode}` "
+                f"({nb_nulls / len(tours):.2%}): the corresponding terms of the `{mode!r}` "
                 "preferences are set to zero."
             )
 
     return tours.select(
         "tour_id",
-        _utility_expr(cst_terms, params).alias(f"{mode}_cst"),
-        _utility_expr(vot_terms, params).alias(f"{mode}_vot"),
+        _utility_expr(cst_terms, params).alias(f"{mode!r}_cst"),
+        _utility_expr(vot_terms, params).alias(f"{mode!r}_vot"),
     )
 
 
@@ -226,7 +219,7 @@ class ModePreferencesFromEconometricsStep(StepWithModes, PopulationStep):
     )
 
     input_files = {"tours": ToursFile, "results": SurveyModeChoiceResultsFile}
-    output_files = dict(MODE_PREFERENCES_FILES)
+    output_files = {repr(m): pref_file for m, pref_file in MODE_PREFERENCES_FILES.items()}
 
     def is_defined(self):
         return bool(self.from_econometrics) and self.has_trip_mode()
@@ -241,23 +234,23 @@ class ModePreferencesFromEconometricsStep(StepWithModes, PopulationStep):
         spec = results["specification"]
         params = results["parameters"]
 
-        modes = [mode for mode in self.modes if mode in MODE_PREFERENCES_FILES]
-        mode_prefs = dict()
+        modes: list[MetaMode] = [mode for mode in self.modes if mode in MODE_PREFERENCES_FILES]
+        mode_prefs: dict[MetaMode, pl.DataFrame] = dict()
         for mode in modes:
             mode_prefs[mode] = compute_mode_preferences(tours, spec, params, mode)
 
         if self.reference_vot is not None and self.reference_vot_mode is not None:
-            ref_mode = self.reference_vot_mode
+            ref_mode = mode_from_str(self.reference_vot_mode)
             if ref_mode not in mode_prefs:
                 raise MetropyError(
                     f"`mode_preferences.reference_value_of_time_mode` (`{ref_mode}`) must be one "
-                    f"of the simulated trip-based modes (`{', '.join(modes)}`)."
+                    f"of the simulated trip-based modes (`{', '.join(map(str, modes))}`)."
                 )
             # The scale is set so that the average VOT in the population (among all tours) for
             # the reference mode is `mode_preferences.reference_value_of_time`.
             # At this point, the VOT is in (minus) utils.
             scale = get_utility_scale(
-                mode_prefs[ref_mode][f"{ref_mode}_vot"], self.reference_vot, ref_mode
+                mode_prefs[ref_mode][f"{ref_mode!r}_vot"], self.reference_vot, ref_mode
             )
             logger.debug(
                 f"Marginal utility of money implied by the estimated model: {scale:.4g} /€."
@@ -272,5 +265,5 @@ class ModePreferencesFromEconometricsStep(StepWithModes, PopulationStep):
             )
 
         for mode in modes:
-            df = mode_prefs[mode].with_columns(pl.col(f"{mode}_cst", f"{mode}_vot") / scale)
-            self.output[mode].write(df)
+            df = mode_prefs[mode].with_columns(pl.col(f"{mode!r}_cst", f"{mode!r}_vot") / scale)
+            self.output[repr(mode)].write(df)

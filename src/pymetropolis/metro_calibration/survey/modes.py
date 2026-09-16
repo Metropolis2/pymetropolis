@@ -9,15 +9,11 @@ from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_common.ml_models import estimate_model, get_X, sample_classes, test_models
 from pymetropolis.metro_demand.population.files import ToursFile, ToursModeFile
 from pymetropolis.metro_pipeline import PopulationStep, Step
-from pymetropolis.metro_pipeline.parameters import (
-    BoolParameter,
-    ListParameter,
-    PathParameter,
-    StringParameter,
-)
+from pymetropolis.metro_pipeline.parameters import ListParameter, PathParameter, StringParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_pipeline.types import String
 from pymetropolis.metro_spatial.simulation_area.file import SimulationAreaFile
+from pymetropolis.modes import MetaMode, StepWithModes
 from pymetropolis.random import RandomStep
 
 from .files import (
@@ -62,52 +58,24 @@ class ExternalModeClassifierStep(Step):
         self.output["estimator"].write(estimator)
 
 
-class ModeClassifierConfigStep(Step):
-    """Shared survey tour-mode filtering/grouping config for the mode classifier and its
-    calibration comparison."""
+def filter_survey_tours(modes: list[MetaMode], tours: pl.DataFrame) -> pl.DataFrame:
+    """Restricts survey tours to `modes` and drops tours with a null `tour_mode`."""
+    import polars as pl
 
-    modes = ListParameter(
-        "mode_classifier.modes",
-        inner=String(),
-        description="Valid modes to be used in the model.",
-        note="If not specified, all modes are used.",
-    )
-    group_car_driver_modes = BoolParameter(
-        "mode_classifier.group_car_driver_modes",
-        default=False,
-        description="If `true`, all car-driver modes are grouped in a single category.",
-    )
+    mode_reprs = [repr(m) for m in modes]
+    n0 = len(tours)
+    tours = tours.filter(pl.col("tour_mode").is_in(mode_reprs))
+    n1 = len(tours)
+    if n1 < n0:
+        s = (n0 - n1) / n0
+        logger.warning(f"Dropping {n0 - n1:,} observations ({s:.2%}) with invalid modes.")
 
-    def filter_survey_tours(self, tours: pl.DataFrame) -> pl.DataFrame:
-        """Restricts survey tours to `self.modes` (if set), groups car-driver modes together (if
-        `self.group_car_driver_modes`), and drops tours with a null `tour_mode`."""
-        import polars as pl
+    tours = tours.filter(pl.col("outside_perimeter").not_())
 
-        if self.modes is not None:
-            n0 = len(tours)
-            tours = tours.filter(pl.col("tour_mode").is_in(self.modes))
-            n1 = len(tours)
-            if n1 < n0:
-                s = (n0 - n1) / n0
-                logger.warning(f"Dropping {n0 - n1:,} observations ({s:.2%}) with invalid modes.")
-
-        if self.group_car_driver_modes:
-            tours = tours.with_columns(
-                tour_mode=pl.col("tour_mode").replace(
-                    {
-                        "car_driver_alone": "car_driver",
-                        "car_driver_mixed": "car_driver",
-                        "car_driver_with_passengers": "car_driver",
-                    }
-                )
-            )
-
-        tours = tours.filter(pl.col("outside_perimeter").not_())
-
-        return tours.drop_nulls("tour_mode")
+    return tours.drop_nulls("tour_mode")
 
 
-class EstimateModeClassifierStep(RandomStep, ThreadedStep, ModeClassifierConfigStep):
+class EstimateModeClassifierStep(RandomStep, ThreadedStep, StepWithModes):
     """Estimates a Machine Learning model to predict tour-level modes."""
 
     features = ListParameter(
@@ -126,15 +94,16 @@ class EstimateModeClassifierStep(RandomStep, ThreadedStep, ModeClassifierConfigS
     output_files = {"estimator": ModeEstimatorFile}
 
     def is_defined(self):
-        return self.features is not None
+        return self.modes is not None and self.features is not None
 
     def run(self):
 
         assert self.features is not None
+        assert self.modes is not None
 
         tours = self.input["tours"].read()
 
-        tours = self.filter_survey_tours(tours)
+        tours = filter_survey_tours(self.modes, tours)
 
         X = get_X(tours, self.features)
         # The estimator is fitted on the mode names themselves (not on encoded values) so that
@@ -242,7 +211,7 @@ def plot_mode_share_comparison(
     return fig
 
 
-class CompareToursModeSharesStep(PopulationStep, ModeClassifierConfigStep):
+class CompareToursModeSharesStep(PopulationStep, StepWithModes):
     """Compares survey and ex-ante tour mode shares, by tour count and by distance."""
 
     # TODO. This Step is only valid if the survey area is similar to the simulation area.
@@ -260,12 +229,17 @@ class CompareToursModeSharesStep(PopulationStep, ModeClassifierConfigStep):
         "distance_plot": ToursModeShareDistancePlotFile,
     }
 
+    def is_defined(self):
+        return self.modes is not None
+
     def run(self):
         import json
 
         import polars as pl
 
-        survey = self.filter_survey_tours(self.input["survey_tours"].read())
+        assert self.modes is not None
+
+        survey = filter_survey_tours(self.modes, self.input["survey_tours"].read())
         sim = self.input["sim_tours"].read().join(self.input["sim_modes"].read(), on="tour_id")
 
         if self.input["survey_zones"].exists():

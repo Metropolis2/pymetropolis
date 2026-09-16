@@ -25,7 +25,7 @@ from pymetropolis.metro_environment.fuel.files import CarFuelFile
 from pymetropolis.metro_pipeline import PopulationStep, Step
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_simulation.common import StepWithRidesharingCount, merge_populations
-from pymetropolis.modes import StepWithModes
+from pymetropolis.modes import CAR_MODES, CarMode, StepWithModes
 
 from .files import (
     MetroExAnteTripsFile,
@@ -47,7 +47,6 @@ def clean_trips(trips: pl.DataFrame) -> pl.DataFrame:
         trips = trips.with_columns(has_car=True)
     if "has_driving_license" not in trips.columns:
         trips = trips.with_columns(has_driving_license=True)
-    trips = trips.with_columns(can_drive=pl.col("has_car") & pl.col("has_driving_license"))
     if "destination_activity_duration" not in trips.columns:
         trips = trips.with_columns(destination_activity_duration=pl.lit(None, dtype=pl.Duration))
     trips = trips.with_columns(
@@ -61,13 +60,12 @@ def clean_trips(trips: pl.DataFrame) -> pl.DataFrame:
         .then("activity_time")
         .otherwise(0.0)
     )
-    return trips.select("trip_id", "agent_id", "activity_time", "has_car", "can_drive")
+    return trips.select("trip_id", "agent_id", "activity_time", "has_car", "has_driving_license")
 
 
 @error_context(msg="Cannot generate car trips")
 def generate_car_trips(
-    mode: str,
-    vehicle_type: str,
+    mode: CarMode,
     df: pl.DataFrame,
     primary_trips_file: PrimaryCarTripsAccessEgressFile,
     secondary_trips_file: NonPrimaryCarTrips,
@@ -84,17 +82,16 @@ def generate_car_trips(
     # car (e.g., car rental, taxi, ridesharing with someone from another household).
     df = df.filter("has_car")
     # Car-driver modes are only accessible to driving license holders.
-    # Note. This assumption does not apply to the "car_ridesharing" mode.
-    if "driver" in mode:
-        df = df.filter("can_drive")
-    df = df.with_columns(pl.lit(mode).alias("alt_id"))
+    if mode.requires_driving_license():
+        df = df.filter("has_driving_license")
+    df = df.with_columns(pl.lit(repr(mode)).alias("alt_id"))
     primary_trips: pl.DataFrame = primary_trips_file.read().select(
         "trip_id",
         pl.col("access_node").cast(pl.String).alias("class.origin"),
         pl.col("egress_node").cast(pl.String).alias("class.destination"),
         "access_time",
         "egress_time",
-        pl.lit(vehicle_type).alias("class.vehicle"),
+        pl.lit(repr(mode.vehicle())).alias("class.vehicle"),
     )
     df = df.join(primary_trips, on="trip_id", how="left")
     secondary_trips: pl.DataFrame = secondary_trips_file.read().select(
@@ -122,7 +119,7 @@ def generate_car_trips(
         # The mode constant is defined at the tour level so it is only added at the alternative
         # level.
         params: pl.DataFrame = pref_file.read().select(
-            agent_id="tour_id", alpha=pl.col(f"{mode}_vot") / 3600.0
+            agent_id="tour_id", alpha=pl.col(f"{mode!r}_vot") / 3600.0
         )
         df = df.join(params, on="agent_id", how="left")
         # Decrease utility by the access and egress time's value of time.
@@ -326,11 +323,11 @@ class PrepareMetroTripsStep(StepWithModes, StepWithRidesharingCount, PopulationS
             when_doc=r'if any "car\_\*" mode is defined',
         ),
         **{
-            f"{mode}_preferences": InputFile(
+            f"{mode!r}_preferences": InputFile(
                 pref_file,
                 optional=True,
-                when=lambda inst, mode=mode: inst.has_mode(mode),
-                when_doc=f'if the "{mode}" mode is defined',
+                when=lambda inst, mode=mode: inst.has_mode_class(mode),
+                when_doc=f'if the "{mode!r}" mode is defined',
             )
             for mode, pref_file in MODE_PREFERENCES_FILES.items()
         },
@@ -338,13 +335,15 @@ class PrepareMetroTripsStep(StepWithModes, StepWithRidesharingCount, PopulationS
     output_files = {"metro_trips": MetroTripsPopulationFile}
 
     def is_defined(self) -> bool:
-        if self.modes is None:
+        if not self.has_any_mode():
             return False
         # If there is no "trip mode", this step cannot be run (there is no trip to generate).
         return self.has_trip_mode()
 
     def run(self):
         import polars as pl
+
+        assert self.ridesharing_passenger_count is not None
 
         trips = self.input["trips"].read()
         if self.input["persons"].exists():
@@ -367,21 +366,15 @@ class PrepareMetroTripsStep(StepWithModes, StepWithRidesharingCount, PopulationS
                 )
         df = clean_trips(trips)
         metro_trips = pl.DataFrame()
-        for car_mode, vehicle_type in (
-            ("car_driver", "car_driver_alone"),
-            ("car_driver_with_passengers", "car_driver_multi"),
-            ("car_passenger", "car_passenger"),
-            ("car_ridesharing", "car_ridesharing"),
-        ):
-            if self.has_mode(car_mode):
-                fuel_share = self.get_fuel_share(car_mode)
+        for car_mode in CAR_MODES:
+            if self.has_mode_class(car_mode):
+                fuel_share = car_mode.get_fuel_share(self.ridesharing_passenger_count)
                 car_trips = generate_car_trips(
                     car_mode,
-                    vehicle_type,
                     df=df,
                     primary_trips_file=self.input["primary_car_trips"],
                     secondary_trips_file=self.input["secondary_car_trips"],
-                    pref_file=self.input[f"{car_mode}_preferences"],
+                    pref_file=self.input[f"{car_mode!r}_preferences"],
                     tstars_file=self.input["tstars"],
                     schedule_pref_file=self.input["linear_schedule"],
                     fuel_file=self.input["car_fuel"],
@@ -415,24 +408,10 @@ class PrepareMetroTripsStep(StepWithModes, StepWithRidesharingCount, PopulationS
                 self.input["linear_schedule"],
             )
             metro_trips = pl.concat((metro_trips, bicycle_trips), how="diagonal")
-        metro_trips = metro_trips.drop("has_car", "can_drive").sort("agent_id", "alt_id", "trip_id")
+        metro_trips = metro_trips.drop("has_car", "has_driving_license").sort(
+            "agent_id", "alt_id", "trip_id"
+        )
         self.output["metro_trips"].write(metro_trips)
-
-    def get_fuel_share(self, mode: str) -> float:
-        """Returns the share of fuel cost that is paid by the individual, given the mode."""
-        if mode == "car_driver":
-            return 1.0
-        elif mode == "car_ridesharing":
-            assert self.ridesharing_passenger_count is not None
-            return 1 / (1 + self.ridesharing_passenger_count)
-        elif mode == "car_driver_with_passengers":
-            # TODO. Make this configurable.
-            return 1.0
-        elif mode == "car_passenger":
-            # TODO. Make this configurable.
-            return 0.0
-        else:
-            return 0.0
 
 
 class PrepareExAnteMetroTripsStep(StepWithModes, StepWithRidesharingCount, PopulationStep):
@@ -483,16 +462,10 @@ class PrepareExAnteMetroTripsStep(StepWithModes, StepWithRidesharingCount, Popul
         trips: pl.DataFrame = self.input["trips"].read()
         df = clean_trips(trips)
         metro_trips = pl.DataFrame()
-        for car_mode, vehicle_type in (
-            ("car_driver", "car_driver_alone"),
-            ("car_driver_with_passengers", "car_driver_multi"),
-            ("car_passenger", "car_passenger"),
-            ("car_ridesharing", "car_ridesharing"),
-        ):
-            if self.has_mode(car_mode):
+        for car_mode in CAR_MODES:
+            if self.has_mode_class(car_mode):
                 car_trips = generate_car_trips(
                     car_mode,
-                    vehicle_type,
                     df=df,
                     primary_trips_file=self.input["primary_car_trips"],
                     secondary_trips_file=self.input["secondary_car_trips"],

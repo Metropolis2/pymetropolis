@@ -45,6 +45,7 @@ class StepWithRidesharingCount(Step):
             "more persons) and decrease congestion generated (more persons are traveling in each "
             "car)."
         ),
+        lower_bound=0.0,
     )
 
 

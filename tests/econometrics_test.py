@@ -7,6 +7,7 @@ from pymetropolis.metro_calibration.econometrics.preferences import (
     resolve_estimated_mode,
 )
 from pymetropolis.metro_common import MetropyError
+from pymetropolis.modes import Bicycle, CarDriver, CarRidesharing, PublicTransit, Walking
 
 # A model estimated on 3 alternatives, with `walking` as the reference mode, one case variable
 # (`woman`), one alternative-varying variable (`travel_time`), one alternative-varying interaction
@@ -44,7 +45,7 @@ def get_tours():
 
 def test_constant_and_value_of_time():
     """The preferences are the opposite of the estimated utilities, in utils."""
-    df = compute_mode_preferences(get_tours(), SPEC, PARAMS, "public_transit")
+    df = compute_mode_preferences(get_tours(), SPEC, PARAMS, PublicTransit)
     assert df["tour_id"].to_list() == [1, 2, 3]
     # Woman, with a work purpose: 1.0 + 0.25 - 0.6.
     # Man, with a work purpose: 1.0.
@@ -57,7 +58,7 @@ def test_constant_and_value_of_time():
 def test_estimation_reference_mode_has_a_zero_constant():
     """The reference mode of the estimated model has no constant and no case-variable
     coefficient, so its constant is zero for every tour."""
-    df = compute_mode_preferences(get_tours(), SPEC, PARAMS, "walking")
+    df = compute_mode_preferences(get_tours(), SPEC, PARAMS, Walking)
     assert df["walking_cst"].to_list() == [0.0, 0.0, 0.0]
     # Its value of time is estimated, though.
     assert df["walking_vot"].to_list() == pytest.approx([4.0, 6.0, 6.0])
@@ -66,7 +67,7 @@ def test_estimation_reference_mode_has_a_zero_constant():
 def test_null_variables_are_ignored():
     """A null variable contributes zero, like a false / zero value: the third tour (null `woman`)
     gets the same preferences as the second one (`woman` is false), all else equal."""
-    df = compute_mode_preferences(get_tours(), SPEC, PARAMS, "public_transit")
+    df = compute_mode_preferences(get_tours(), SPEC, PARAMS, PublicTransit)
     assert df["public_transit_cst"].to_list()[2] == pytest.approx(
         df["public_transit_cst"].to_list()[1]
     )
@@ -78,45 +79,45 @@ def test_null_variables_are_ignored():
 def test_missing_variable_raises():
     tours = get_tours().drop("has_work_purpose")
     with pytest.raises(MetropyError):
-        compute_mode_preferences(tours, SPEC, PARAMS, "car_driver")
+        compute_mode_preferences(tours, SPEC, PARAMS, CarDriver)
 
 
 def test_missing_variable_of_an_unused_coefficient_is_allowed():
     """`walking` is the reference mode of the estimated model, so the `woman` x `has_work_purpose`
     coefficient does not exist for it and the variables of that term are not needed."""
     tours = get_tours().drop("has_work_purpose")
-    df = compute_mode_preferences(tours, SPEC, PARAMS, "walking")
+    df = compute_mode_preferences(tours, SPEC, PARAMS, Walking)
     assert df["walking_cst"].to_list() == [0.0, 0.0, 0.0]
 
 
 def test_quadratic_travel_time_raises():
     spec = {**SPEC, "interaction_variables": [["travel_time", "travel_time"]]}
     with pytest.raises(MetropyError):
-        compute_mode_preferences(get_tours(), spec, PARAMS, "walking")
+        compute_mode_preferences(get_tours(), spec, PARAMS, Walking)
 
 
 def test_car_modes_fall_back_to_the_grouped_car_driver_mode():
-    assert resolve_estimated_mode("car_ridesharing", SPEC) == "car_driver"
-    car_driver = compute_mode_preferences(get_tours(), SPEC, PARAMS, "car_driver")
-    ridesharing = compute_mode_preferences(get_tours(), SPEC, PARAMS, "car_ridesharing")
+    assert resolve_estimated_mode(CarRidesharing, SPEC) == CarDriver
+    car_driver = compute_mode_preferences(get_tours(), SPEC, PARAMS, CarDriver)
+    ridesharing = compute_mode_preferences(get_tours(), SPEC, PARAMS, CarRidesharing)
     assert ridesharing["car_ridesharing_cst"].to_list() == car_driver["car_driver_cst"].to_list()
     assert ridesharing["car_ridesharing_vot"].to_list() == car_driver["car_driver_vot"].to_list()
 
 
 def test_non_car_mode_without_coefficients_raises():
     with pytest.raises(MetropyError):
-        resolve_estimated_mode("bicycle", SPEC)
+        resolve_estimated_mode(Bicycle, SPEC)
 
 
 def test_utility_scale_matches_the_average_value_of_time():
     """Dividing by the scale turns the utils into euros, such that the *average* value of time of
     the reference mode in the population is the requested one."""
     reference_vot = 20.0
-    df = compute_mode_preferences(get_tours(), SPEC, PARAMS, "car_driver")
+    df = compute_mode_preferences(get_tours(), SPEC, PARAMS, CarDriver)
     # Value of time of each tour, in utils per hour: 5.0 for the woman, 4.0 for the two others.
     assert df["car_driver_vot"].to_list() == pytest.approx([5.0, 4.0, 4.0])
 
-    scale = get_utility_scale(df["car_driver_vot"], reference_vot, "car_driver")
+    scale = get_utility_scale(df["car_driver_vot"], reference_vot, CarDriver)
     assert scale == pytest.approx((5.0 + 4.0 + 4.0) / 3 / reference_vot)
 
     euros = df.with_columns(pl.col("car_driver_cst", "car_driver_vot") / scale)
@@ -134,6 +135,6 @@ def test_utility_scale_requires_a_positive_average_value_of_time():
     """A travel-time coefficient that is not negative (i.e., a value of time that is not positive)
     cannot be used to convert the utilities to euros."""
     params = {**PARAMS, "B_travel_time_car_driver": {"value": 1.0}}
-    df = compute_mode_preferences(get_tours(), SPEC, params, "car_driver")
+    df = compute_mode_preferences(get_tours(), SPEC, params, CarDriver)
     with pytest.raises(MetropyError):
-        get_utility_scale(df["car_driver_vot"], 20.0, "car_driver")
+        get_utility_scale(df["car_driver_vot"], 20.0, CarDriver)

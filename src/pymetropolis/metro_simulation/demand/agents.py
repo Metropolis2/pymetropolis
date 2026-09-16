@@ -46,7 +46,7 @@ class PrepareMetroAgentsStep(StepWithModes, PopulationStep):
     output_files = {"agents": MetroAgentsPopulationFile}
 
     def is_defined(self) -> bool:
-        return self.modes is not None and (
+        return self.has_any_mode() and (
             not self.has_mode_choice() or self.mode_choice_model is not None
         )
 

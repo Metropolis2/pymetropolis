@@ -126,7 +126,7 @@ def read_tours(
         "leg_euclidean_distance_km",
         # When there is no info, it is assumed that people are travelling alone in the car.
         mode=pl.when(pl.col("nb_persons_in_vehicle").fill_null(1).eq(1), mode_group="car_driver")
-        .then(pl.lit("car_driver_alone"))
+        .then(pl.lit("car_driver"))
         .when(mode_group="car_driver")
         .then(pl.lit("car_driver_with_passengers"))
         .otherwise(pl.col("mode_group").cast(pl.String)),
@@ -206,12 +206,11 @@ def read_tours(
     trip_legs = trip_legs.with_columns(
         trip_mode=pl.when(
             pl.col("nb_legs")
-            == pl.col("car_driver_alone_count")
+            == pl.col("car_driver_count")
             + pl.col("car_driver_with_passengers_count")
             + pl.col("car_passenger_count")
             + pl.col("walking_count"),
-            (pl.col("car_driver_alone_count") > 0)
-            | (pl.col("car_driver_with_passengers_count") > 0),
+            (pl.col("car_driver_count") > 0) | (pl.col("car_driver_with_passengers_count") > 0),
             pl.col("car_passenger_count") > 0,
             pl.col("walking_distance").fill_null(0.0) < 0.5,
         )
@@ -377,11 +376,10 @@ def read_tours(
             tour_mode=pl.when(pl.col("tmp_modes").list.n_unique() == 1)
             .then(pl.col("tmp_modes").list.first())
             .when(
-                pl.col("tmp_modes")
-                .list.eval(pl.element().str.starts_with("car_driver_"))
-                .list.all()
+                pl.col("tmp_modes").list.eval(pl.element().str.starts_with("car_driver")).list.all()
             )
-            .then(pl.lit("car_driver_mixed"))
+            # Note. Combination of driver alone and driver with passengers.
+            .then(pl.lit("car_driver_with_passengers"))
             .when(
                 pl.col("tmp_modes").list.contains("public_transit")
                 & pl.col("tmp_modes").list.contains("park_and_ride")

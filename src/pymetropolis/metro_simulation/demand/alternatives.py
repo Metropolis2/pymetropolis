@@ -12,7 +12,7 @@ from pymetropolis.metro_pipeline import PopulationStep, Step
 from pymetropolis.metro_pipeline.parameters import EnumParameter, FloatParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_simulation.common import merge_populations
-from pymetropolis.modes import StepWithModes
+from pymetropolis.modes import MetaMode, OutsideOption, StepWithModes
 
 from .files import (
     MetroAlternativesFile,
@@ -72,7 +72,7 @@ def generate_outside_option_alts(pref_file: OutsideOptionPreferencesFile):
 
 
 @error_context(msg="Cannot generate the mode constants of alternatives")
-def add_mode_constants(alts: pl.DataFrame, pref_files: dict[str, MetroDataFrameFile]):
+def add_mode_constants(alts: pl.DataFrame, pref_files: dict[MetaMode, MetroDataFrameFile]):
     """Adds the tour-level mode constant to the utility of each (tour, mode) alternative.
 
     The constant is a penalty of traveling by that mode during the whole tour, so it is added once
@@ -85,7 +85,7 @@ def add_mode_constants(alts: pl.DataFrame, pref_files: dict[str, MetroDataFrameF
         if pref_file is None or not pref_file.exists():
             continue
         df: pl.DataFrame = pref_file.read().select(
-            agent_id="tour_id", alt_id=pl.lit(mode), constant_utility=-pl.col(f"{mode}_cst")
+            agent_id="tour_id", alt_id=pl.lit(repr(mode)), constant_utility=-pl.col(f"{mode!r}_cst")
         )
         constants = pl.concat((constants, df), how="vertical")
     if constants.is_empty():
@@ -139,16 +139,16 @@ class PrepareMetroAlternativesStep(StepWithModes, PopulationStep):
         ),
         "outside_option_preferences": InputFile(
             OutsideOptionPreferencesFile,
-            when=lambda inst: inst.has_mode("outside_option"),
+            when=lambda inst: inst.has_mode_class(OutsideOption),
             when_doc="if the outside-option mode is defined",
         ),
         "primary_car_trips": InputFile(PrimaryCarTripsAccessEgressFile, optional=True),
         **{
-            f"{mode}_preferences": InputFile(
+            f"{mode!r}_preferences": InputFile(
                 pref_file,
                 optional=True,
-                when=lambda inst, mode=mode: inst.has_mode(mode),
-                when_doc=f'if the "{mode}" mode is defined',
+                when=lambda inst, mode=mode: inst.has_mode_class(mode),
+                when_doc=f'if the "{mode!r}" mode is defined',
             )
             for mode, pref_file in MODE_PREFERENCES_FILES.items()
         },
@@ -156,7 +156,7 @@ class PrepareMetroAlternativesStep(StepWithModes, PopulationStep):
     output_files = {"metro_alternatives": MetroAlternativesPopulationFile}
 
     def is_defined(self) -> bool:
-        if self.modes is None or len(self.modes) == 0:
+        if not self.has_any_mode():
             return False
         # Step is NOT defined if there is a trip mode but the departure-time choice model is not
         # defined.
@@ -183,12 +183,12 @@ class PrepareMetroAlternativesStep(StepWithModes, PopulationStep):
             alts = add_mode_constants(
                 alts,
                 {
-                    mode: self.input[f"{mode}_preferences"]
+                    mode: self.input[f"{mode!r}_preferences"]
                     for mode in MODE_PREFERENCES_FILES
-                    if self.has_mode(mode)
+                    if self.has_mode_class(mode)
                 },
             )
-        if self.has_mode("outside_option"):
+        if self.has_mode_class(OutsideOption):
             outside_option_alts = generate_outside_option_alts(
                 self.input["outside_option_preferences"]
             )

@@ -6,6 +6,7 @@ from pymetropolis.metro_pipeline.parameters import FloatParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_simulation.common import StepWithRidesharingCount, StepWithSimulationRatio
 from pymetropolis.metro_simulation.demand.files import MetroExAnteTripsFile, MetroTripsFile
+from pymetropolis.modes import METRO_VEHICLES
 
 from .files import MetroExAnteVehicleTypesFile, MetroVehicleTypesFile
 
@@ -49,48 +50,35 @@ class AbstractWriteMetroVehicleTypesStep(StepWithRidesharingCount, StepWithSimul
         if not self.input["edges"].exists():
             # At this point, vehicle-based trips were defined but there is no road network.
             # This should never happen in practice.
-            # Note. This is an actual issue only if "car_driver_alone" is simulated, but it's best
-            # to raise an error in any case.
             raise MetropyError("Cannot write vehicle types when there is no road network.")
 
+        # TODO. Maybe `hov_lanes` should be a column in its own file?
+        edges_gdf: gpd.GeoDataFrame = self.input["edges"].read()
+        edges = pl.from_pandas(edges_gdf.loc[:, ["edge_id", "hov_lanes"]])
+        hov_edges = (
+            edges.filter(pl.col("hov_lanes") > 0)
+            .select(pl.concat_str(pl.col("edge_id").cast(pl.String), pl.lit("-hov")))
+            .to_series()
+            .sort()
+            .to_list()
+        )
+
         metro_vehicles = list()
-        headway = self.car_headway / self.simulation_ratio
-        pce = self.car_pce / self.simulation_ratio
-        if "car_driver_alone" in vehicles:
-            v = {"vehicle_id": "car_driver_alone", "headway": headway, "pce": pce}
-            # TODO. Maybe `hov_lanes` should be a column in its own file?
-            edges_gdf: gpd.GeoDataFrame = self.input["edges"].read()
-            edges = pl.from_pandas(edges_gdf.loc[:, ["edge_id", "hov_lanes"]])
-            hov_edges = (
-                edges.filter(pl.col("hov_lanes") > 0)
-                .select(pl.concat_str(pl.col("edge_id").cast(pl.String), pl.lit("-hov")))
-                .to_series()
-                .sort()
-                .to_list()
-            )
-            if hov_edges:
+        car_headway = self.car_headway / self.simulation_ratio
+        car_pce = self.car_pce / self.simulation_ratio
+        for vehicle in METRO_VEHICLES:
+            if repr(vehicle) not in vehicles:
+                continue
+            congestion_share = vehicle.get_congestion_share(self.ridesharing_passenger_count)
+            if vehicle.is_car():
+                headway = car_headway * congestion_share
+                pce = car_pce * congestion_share
+            else:
+                raise MetropyError(f"Vehicle {vehicle} is not a car.")
+            v = {"vehicle_id": repr(vehicle), "headway": headway, "pce": pce}
+            if hov_edges and not vehicle.can_take_hov_edges():
                 v["restricted_edges"] = hov_edges
             metro_vehicles.append(v)
-        if "car_driver_multi" in vehicles:
-            metro_vehicles.append(
-                {"vehicle_id": "car_driver_multi", "headway": headway, "pce": pce}
-            )
-        if "car_passenger" in vehicles:
-            metro_vehicles.append({"vehicle_id": "car_passenger", "headway": 0.0, "pce": 0.0})
-        if "car_ridesharing" in vehicles:
-            c = self.ridesharing_passenger_count
-            if c < 0.0:
-                raise MetropyError(
-                    "Number of passenger count for ridesharing is negative "
-                    f"(`ridesharing_passenger_count` = {c})"
-                )
-            metro_vehicles.append(
-                {
-                    "vehicle_id": "car_ridesharing",
-                    "headway": headway / (c + 1),
-                    "pce": pce / (c + 1),
-                }
-            )
         df = pl.DataFrame(metro_vehicles)
         self.output["metro_vehicle_types"].write(df)
 

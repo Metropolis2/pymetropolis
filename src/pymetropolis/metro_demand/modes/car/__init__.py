@@ -1,3 +1,5 @@
+from pymetropolis.modes import CarDriver, CarDriverWithPassengers, CarPassenger, CarRidesharing
+
 from .car_driver import CarDriverPreferencesFromPopulationStep, CarDriverPreferencesStep
 from .car_driver_with_passengers import (
     CarDriverWithPassengersPreferencesFromPopulationStep,
@@ -16,10 +18,10 @@ from .files import (
 )
 
 CAR_PREFERENCES_FILES = {
-    "car_driver": CarDriverPreferencesFile,
-    "car_driver_with_passengers": CarDriverWithPassengersPreferencesFile,
-    "car_passenger": CarPassengerPreferencesFile,
-    "car_ridesharing": CarRidesharingPreferencesFile,
+    CarDriver: CarDriverPreferencesFile,
+    CarDriverWithPassengers: CarDriverWithPassengersPreferencesFile,
+    CarPassenger: CarPassengerPreferencesFile,
+    CarRidesharing: CarRidesharingPreferencesFile,
 }
 
 CAR_FILES = list(CAR_PREFERENCES_FILES.values())
