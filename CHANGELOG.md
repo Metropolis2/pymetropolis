@@ -78,6 +78,7 @@ New parameters:
 
 - `road_network.capacity_multipliers.traffic_signal`
 - `road_network.capacity_multipliers.roundabout`
+- `ridesharing.subsidy`
 
 Other changes:
 
@@ -102,6 +103,7 @@ Other changes:
   `has_driving_license` column is defined).
 - Check for input data files modifications is now done by file hash rather than path name and
   modification time (with hash cashing for speed).
+- Raise an error when the OpenTripPlanner URL is unreachable (before trying to make any request).
 
 Removed steps:
 
