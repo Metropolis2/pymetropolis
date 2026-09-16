@@ -7,18 +7,18 @@ random_seed = 13081996
 path = "data/surveys/"
 bulk = true
 
-[mode_classifier]
-model = "gradient_boosting"
+[mode_choice]
 modes = [
     "walking",
-    "car_driver_alone",
-    "car_driver_mixed",
+    "car_driver",
     "car_driver_with_passengers",
     "car_passenger",
     "public_transit",
     "bicycle",
 ]
-group_car_driver_modes = true
+
+[mode_classifier]
+model = "gradient_boosting"
 features = [
     # Tour-level variables.
     # "nb_trips",
@@ -28,16 +28,16 @@ features = [
     "total_activity_duration",
     "total_distance",
     "has_work_purpose",
-    # "has_education_purpose",
-    # "has_shopping_purpose",
-    # "has_task_purpose",
-    # "has_leisure_purpose",
-    # "has_escort_purpose",
+    "has_education_purpose",
+    "has_shopping_purpose",
+    "has_task_purpose",
+    "has_leisure_purpose",
+    "has_escort_purpose",
     # "has_other_purpose",
     # "lowest_density",
-    "highest_density",
-    # "lowest_urban_type",
-    # "highest_urban_type",
+    # "highest_density",
+    "lowest_urban_type",
+    "highest_urban_type",
     # "lowest_functional_area_type",
     # "highest_functional_area_type",
     # "lowest_functional_area_category",
@@ -48,7 +48,7 @@ features = [
     # "home_functional_area_type",
     # "home_functional_area_category",
     # "nb_cars",
-    # "nb_bicycles",
+    "nb_bicycles",
     # "nb_persons",
     # "nb_majors",
     # "nb_minors",
@@ -56,20 +56,20 @@ features = [
     # "nb_major_women",
     # "nb_men",
     # "nb_major_men",
-    # "nb_driving_licenses",
+    "nb_driving_licenses",
     # "household_type",
     # "minor_ratio",
     "car_ratio",
     "driving_license_ratio",
     # Person-level variables.
-    # "woman",
+    "woman",
     "age",
     # "oldest_age_diff",
     # "education_level",
     # "professional_activity",
     # "socioprofessional_class",
     "has_driving_license",
-    # "has_public_transit_subscription",
+    "has_public_transit_subscription",
     # "nb_tours",
 ]
 
