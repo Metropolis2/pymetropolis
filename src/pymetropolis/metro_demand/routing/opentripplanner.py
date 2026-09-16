@@ -5,7 +5,7 @@ import tempfile
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -208,6 +208,36 @@ def check_otp_server(api_url: str) -> None:
         ) from e
 
 
+def check_gtfs_service_date(api_url: str, gtfs_date: date) -> None:
+    """Raise a MetropyError if `gtfs_date` is outside the range of dates for which the
+    OpenTripPlanner server has loaded active GTFS services.
+    """
+    from requests.exceptions import RequestException
+
+    session = get_session()
+    try:
+        req = session.post(
+            api_url,
+            headers=HEADERS,
+            json={"query": "{ serviceTimeRange { start end } }"},
+            timeout=OTP_HEALTHCHECK_TIMEOUT,
+        )
+        req.raise_for_status()
+        time_range = req.json()["data"]["serviceTimeRange"]
+        start = datetime.fromtimestamp(time_range["start"], tz=UTC).date()
+        end = datetime.fromtimestamp(time_range["end"], tz=UTC).date()
+    except (RequestException, ValueError, KeyError, TypeError) as e:
+        raise MetropyError(
+            f"Failed to retrieve OpenTripPlanner's GTFS service time range from `{api_url}`."
+        ) from e
+    if not (start <= gtfs_date <= end):
+        raise MetropyError(
+            f"The `gtfs.date` parameter (`{gtfs_date}`) is outside the range of dates for which "
+            f"the OpenTripPlanner server has active GTFS services (`{start}` to `{end}`). Make "
+            "sure `gtfs.date` matches the GTFS file(s) loaded by the OpenTripPlanner server."
+        )
+
+
 def get_least_cost_itinerary(row: dict, api_url: str, parameters: dict, nb_tries: int = 0):
     from requests.exceptions import RequestException
 
@@ -399,6 +429,8 @@ class OpenTripPlannerStep(ThreadedStep, GTFSStep):
 
         assert self.otp_url is not None
         check_otp_server(self.otp_url)
+        assert self.gtfs_date is not None
+        check_gtfs_service_date(self.otp_url, self.gtfs_date)
 
         for col in ("origin_lng", "origin_lat", "destination_lng", "destination_lat"):
             assert trips[col].null_count() == 0, f"Found null values for column `{col}"

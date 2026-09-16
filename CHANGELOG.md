@@ -104,6 +104,8 @@ Other changes:
 - Check for input data files modifications is now done by file hash rather than path name and
   modification time (with hash cashing for speed).
 - Raise an error when the OpenTripPlanner URL is unreachable (before trying to make any request).
+- Raise an error when `gtfs.date` is outside the range of dates for which the OpenTripPlanner
+  server has loaded active GTFS services (before trying to make any request).
 
 Removed steps:
 
