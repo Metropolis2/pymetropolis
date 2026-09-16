@@ -1,7 +1,6 @@
 import importlib.util
 import sys
 import time
-from collections import defaultdict
 from enum import Enum
 
 import click
@@ -13,21 +12,14 @@ from pymetropolis.metro_common import MetropyError
 
 from .config import Config
 from .file import MetroFile
+from .graph import file_key, instantiate_step_graph, resolve_feasible_graph
+from .reuse import compute_source_config
 from .steps import Step
 
 UP_TO_DATE_COLOR = (120, 120, 120)
 INVALIDATED_COLOR = (230, 160, 0)
 OUTDATED_COLOR = (220, 40, 40)
-
-
-def _file_key(f: MetroFile) -> str:
-    """Sort key giving a stable, run-independent order for MetroFiles.
-
-    `MetroFile.__hash__` is based on the class and the resolved path, so iterating a `set` of them
-    yields an order that depends on `PYTHONHASHSEED`; sorting on the (unique) resolved path instead
-    makes the order reproducible across runs.
-    """
-    return str(f.get_path())
+REUSE_COLOR = (100, 170, 220)
 
 
 class StepStatus(Enum):
@@ -57,43 +49,43 @@ class MetroPipeline:
     needed_files: set[MetroFile]
     config: Config
     target_step: Step | None = None
+    # The Config whose `main_directory` holds the authoritative copy of each Step's output: either
+    # `self.config` itself, or (only possible when `self.config.parent_config` is set) an ancestor
+    # config whose own run is still fresh and resolves that Step identically. See `reuse.py`.
+    # Does not (yet) change what is actually executed or read from disk.
+    source_config: dict[Step, Config]
 
     def __init__(
         self, config: Config, step_classes: list[type[Step]], target_step: str | None = None
     ) -> None:
         self.config = config
         step_classes = self.load_custom_steps(step_classes)
-        steps = defaultdict(dict)
-        all_output_files = set()
         used_keys = set()
         for step_class in step_classes:
             assert issubclass(step_class, Step), f"Not a valid Step: {step_class}"
             # Keep track of all keys used.
             for _, p in step_class._iter_params():
                 used_keys.add(str(p))
-            # Instantiate the step with the config.
-            # Multiple steps are returned for PopulationStep when multiple populations are defined
-            # in the config.
-            step_insts = self.config.instantiate_step(step_class)
-            for step in step_insts:
-                all_output_files.update(step.output.values())
-                if step.is_defined() and step.output:
-                    steps[step]["required_inputs"] = set(
-                        step._iter_resolved_input_files(required=True)
-                    )
-                    steps[step]["optional_inputs"] = set(
-                        step._iter_resolved_input_files(required=False)
-                    )
-                    steps[step]["outputs"] = set(step.output.values())
-        self.steps = steps
+        # Instantiate every step against the config. Multiple steps are returned for
+        # PopulationStep when multiple populations are defined in the config.
+        self.steps, all_output_files = instantiate_step_graph(self.config, step_classes)
         # Every Step is instantiated by now, so every input data file has been hashed. Saved here
         # rather than at the end of `__init__` because `check_files_to_delete` below asks for a
         # confirmation and exits if it is denied, which would throw away the hashing work.
         self.config.digest_cache.save()
         self.config.check_unused_keys(used_keys)
+        # Must run against the not-yet-feasibility-filtered `self.steps`, so that a target step
+        # which turns out infeasible is diagnosed by `check_target_step_files` below (which lists
+        # the specific missing input file) rather than reported as "unknown" here.
         self.check_target_step_defined(target_step, step_classes)
-        self.set_feasible()
-        self.solve_conflicts()
+        self.generated_files, self.primary_input_files = resolve_feasible_graph(self.steps)
+        self.check_target_step_files()
+        if self.config.parent_config is None:
+            self.source_config = {step: self.config for step in self.steps}
+        else:
+            self.source_config = compute_source_config(
+                self.config, step_classes, self.steps, self.generated_files
+            )
         self.compute_needed_files()
         self.check_files_to_delete(all_output_files)
 
@@ -142,7 +134,7 @@ class MetroPipeline:
 
     def check_files_to_delete(self, all_output_files: set[MetroFile]):
         to_delete_files = list()
-        for ofile in sorted(all_output_files, key=_file_key):
+        for ofile in sorted(all_output_files, key=file_key):
             f = ofile.from_dir(self.config.main_directory)
             if ofile not in self.generated_files and f.exists():
                 to_delete_files.append(f)
@@ -184,33 +176,6 @@ class MetroPipeline:
         ):
             self.target_input_files.add(f)
 
-    def set_feasible(self):
-        self.generated_files = defaultdict(set)
-        self.primary_input_files = set()
-        remaining = set(self.steps.keys())
-        while True:
-            # `remaining` and the output file sets below are iterated in sorted order so that the
-            # insertion order of `generated_files` (which drives `find_next_conflict`) does not
-            # depend on object ids / hash randomization.
-            steps_to_add = [
-                s
-                for s in sorted(remaining, key=str)
-                if self.steps[s]["required_inputs"].issubset(self.generated_files)
-            ]
-            if not steps_to_add:
-                break
-            remaining -= set(steps_to_add)
-            for s in steps_to_add:
-                if s.is_primary():
-                    for f in self.steps[s]["required_inputs"] | self.steps[s]["optional_inputs"]:
-                        self.primary_input_files.add(f)
-                for f in sorted(self.steps[s]["outputs"], key=_file_key):
-                    self.generated_files[f].add(s)
-        # Remove unfeasible steps from the step list.
-        for s in remaining:
-            self.steps.pop(s)
-        self.check_target_step_files()
-
     def compute_needed_files(self):
         """Computes `needed_files`, the transitive closure of `primary_input_files` and
         `target_input_files`.
@@ -248,28 +213,6 @@ class MetroPipeline:
                     )
             if errors:
                 sys.exit()
-
-    def find_next_conflict(self) -> set[Step] | None:
-        for ofile, steps in self.generated_files.items():
-            if len(steps) >= 2:
-                steps_str = ", ".join(sorted(map(str, steps)))
-                logger.debug(f"Multiple steps are generating file {ofile}: {steps_str}")
-                return steps
-
-    def solve_conflicts(self):
-        while True:
-            conflict = self.find_next_conflict()
-            if conflict is None:
-                break
-            to_remove_steps = sorted(self.least_priority_steps(conflict), key=str)
-            steps_str = ", ".join(map(str, to_remove_steps))
-            if len(to_remove_steps) > 1:
-                logger.debug(f"Steps {steps_str} are discarded.")
-            else:
-                logger.debug(f"Step {steps_str} is discarded.")
-            for s in to_remove_steps:
-                self.steps.pop(s)
-                self.set_feasible()
 
     def find_sequence(self) -> list[tuple[Step, StepStatus]]:
         sequence = list()
@@ -332,15 +275,6 @@ class MetroPipeline:
         assert self.target_step is None or any(map(lambda x: x[0] == self.target_step, sequence))
         return sequence
 
-    def least_priority_steps(self, conflict: set[Step]) -> set[Step]:
-        """Returns the Steps with the least priority from a set of Steps.
-
-        An ordering needs to be defined for the Step type (functions __lt__ and __eq__).
-        """
-        assert len(conflict) > 1
-        ordered_steps = list(sorted(conflict))
-        return set(ordered_steps[:-1])
-
     def run(self, dry_run: bool = False, step_by_step: bool = False):
         sequence = self.find_sequence()
         if not sequence:
@@ -376,6 +310,12 @@ class MetroPipeline:
                     color = OUTDATED_COLOR
                     tag = "outdated"
             dep_str = colored(f"{i + 1}. {step} [{tag}]", color, attrs=attrs)
+            source = self.source_config.get(step)
+            if source is not None and source is not self.config:
+                # Informational only for now: the step above still runs into `self.config`'s own
+                # `main_directory`, it is not actually read from `source` yet.
+                config_name = source.main_path.name if source.main_path else ""
+                dep_str += colored(f" (from: {config_name})", REUSE_COLOR)
             s += dep_str + "\n"
         print(s)
         # TODO: Plot a graph of the pipeline.
