@@ -49,6 +49,14 @@ class StepWithRidesharingCount(Step):
     )
 
 
+class StepWithRidesharingSubsidy(Step):
+    ridesharing_subsidy = FloatParameter(
+        "ridesharing.subsidy",
+        default=0.0,
+        description="Monetary subsidy added to the utility of ridesharing (€ per trip).",
+    )
+
+
 class StepWithSimulationRatio(Step):
     simulation_ratio = FractionParameter(
         "simulation_ratio",

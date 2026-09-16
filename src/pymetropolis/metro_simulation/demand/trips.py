@@ -24,7 +24,11 @@ from pymetropolis.metro_demand.routing.files import (
 from pymetropolis.metro_environment.fuel.files import CarFuelFile
 from pymetropolis.metro_pipeline import PopulationStep, Step
 from pymetropolis.metro_pipeline.steps import InputFile
-from pymetropolis.metro_simulation.common import StepWithRidesharingCount, merge_populations
+from pymetropolis.metro_simulation.common import (
+    StepWithRidesharingCount,
+    StepWithRidesharingSubsidy,
+    merge_populations,
+)
 from pymetropolis.modes import CAR_MODES, CarMode, StepWithModes
 
 from .files import (
@@ -63,6 +67,20 @@ def clean_trips(trips: pl.DataFrame) -> pl.DataFrame:
     return trips.select("trip_id", "agent_id", "activity_time", "has_car", "has_driving_license")
 
 
+def add_ridesharing_subsidy(df: pl.DataFrame, mode: CarMode, subsidy: float) -> pl.DataFrame:
+    """Adds the ridesharing subsidy to the utility of each trip, for modes that involve sharing a
+    car with someone else.
+    """
+    import polars as pl
+
+    if subsidy == 0.0 or not mode.vehicle().has_passenger():
+        return df
+    if "constant_utility" not in df.columns:
+        # Create the `constant_utility` column if it does not exist yet.
+        df = df.with_columns(constant_utility=0.0)
+    return df.with_columns(constant_utility=pl.col("constant_utility").fill_null(0.0) + subsidy)
+
+
 @error_context(msg="Cannot generate car trips")
 def generate_car_trips(
     mode: CarMode,
@@ -74,6 +92,7 @@ def generate_car_trips(
     schedule_pref_file: LinearScheduleFile | None = None,
     fuel_file: CarFuelFile | None = None,
     fuel_share: float | None = None,
+    subsidy: float = 0.0,
 ):
     import polars as pl
 
@@ -145,6 +164,7 @@ def generate_car_trips(
             )
             .drop("fuel_cost")
         )
+    df = add_ridesharing_subsidy(df, mode, subsidy)
     df = df.drop("activity_time", "access_time_sec", "egress_time_sec")
     return df
 
@@ -282,7 +302,9 @@ def add_schedule_preferences(
     return df
 
 
-class PrepareMetroTripsStep(StepWithModes, StepWithRidesharingCount, PopulationStep):
+class PrepareMetroTripsStep(
+    StepWithModes, StepWithRidesharingCount, StepWithRidesharingSubsidy, PopulationStep
+):
     """Prepares the trips for the Metropolis-Core simulation."""
 
     input_files = {
@@ -379,6 +401,7 @@ class PrepareMetroTripsStep(StepWithModes, StepWithRidesharingCount, PopulationS
                     schedule_pref_file=self.input["linear_schedule"],
                     fuel_file=self.input["car_fuel"],
                     fuel_share=fuel_share,
+                    subsidy=self.ridesharing_subsidy,
                 )
                 metro_trips = pl.concat((metro_trips, car_trips), how="diagonal")
         if self.has_mode("public_transit"):
