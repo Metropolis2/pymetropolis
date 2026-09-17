@@ -204,14 +204,16 @@ Project Link: [https://github.com/Metropolis2/pymetropolis](https://github.com/M
 
 Direct contributors to Pymetropolis are listed in the `AUTHORS` file.
 
+Moreover, the calibration methodologies implemented in Pymetropolis benefited from the work of
+Kokouvi Joseph Djafon.
+
+**Funding**
+
 Lucas Javaudin benefited from funding by Energy4Climate Interdisciplinary Center (E4C) of IP Paris,
 which is in part supported by 3rd Programme d’Investissements d’Avenir [ANR-18-EUR-0006-02].
 
 Other contributors were funded through research grants held by Nicolas Coulombel, André de Palma,
 and Nathalie Picard.
-
-Moreover, the calibration methodologies implemented in Pymetropolis benefited from the work of
-Kokouvi Joseph Djafon.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
