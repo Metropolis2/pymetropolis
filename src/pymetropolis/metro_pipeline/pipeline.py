@@ -153,14 +153,12 @@ class MetroPipeline:
             if ofile not in self.generated_files and f.exists():
                 to_delete_files.append(f)
         if to_delete_files:
-            msg = "The following file(s) are not used anymore and will be removed:\n- "
+            msg = "The following file(s) are not used anymore:\n- "
             msg += "\n- ".join(str(f.get_path()) for f in to_delete_files)
             logger.warning(msg)
-            if click.confirm("Continue?"):
+            if click.confirm("Do you want to remove them?"):
                 for f in to_delete_files:
                     f.remove()
-            else:
-                sys.exit()
 
     def find_target_step(self, target_step: str | None, step_classes: list[type[Step]]):
         if target_step is None:
