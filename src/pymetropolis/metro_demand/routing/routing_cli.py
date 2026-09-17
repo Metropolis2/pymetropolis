@@ -192,7 +192,9 @@ def trip_routing(
 ):
     import polars as pl
 
-    queries = trips.select(query_id="trip_id", origin="origin_node", destination="destination_node")
+    queries = trips.with_columns(
+        query_id="trip_id", origin="origin_node", destination="destination_node"
+    )
     with tempfile.TemporaryDirectory() as tmp:
         tmp_directory = Path(tmp)
         prepare_routing(queries, edges, tmp_directory, with_routes, network_conditions)

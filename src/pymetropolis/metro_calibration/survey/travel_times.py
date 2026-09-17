@@ -417,7 +417,9 @@ class SurveyedTripsCarTravelTimesStep(RoutingCLIStep):
         results = trip_routing(
             node_pairs, edges, self.exec_path, with_routes=False, network_conditions=edges_ttfs
         )
-        node_pairs = node_pairs.join(results, on="trip_id")
+        node_pairs = node_pairs.join(results, on="trip_id").with_columns(
+            travel_time=pl.col("value") - pl.col("departure_time")
+        )
         # Compute a single travel time for each OD pair / departure time from the weighted median.
         travel_times = node_pairs["value"].to_numpy().reshape(-1, pairs_per_zone)
         weights = node_pairs["weight"].to_numpy().reshape(-1, pairs_per_zone)
