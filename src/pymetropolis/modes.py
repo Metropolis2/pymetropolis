@@ -130,6 +130,11 @@ class CarMode(RoadMode):
         return True
 
     @classmethod
+    def requires_car(cls) -> bool:
+        """Whether this mode requires a car to be taken."""
+        return True
+
+    @classmethod
     def requires_driving_license(cls) -> bool:
         """Whether this mode requires a driving license to be taken."""
         return False

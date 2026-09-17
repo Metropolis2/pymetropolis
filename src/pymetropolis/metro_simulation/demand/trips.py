@@ -96,10 +96,9 @@ def generate_car_trips(
 ):
     import polars as pl
 
-    # Car modes are only accessible to car owners.
-    # Note. This an assumption. In real life, you can be a car driver or passenger without owning a
-    # car (e.g., car rental, taxi, ridesharing with someone from another household).
-    df = df.filter("has_car")
+    # Some car modes are restricted to owners of cars.
+    if mode.requires_car():
+        df = df.filter("has_car")
     # Car-driver modes are only accessible to driving license holders.
     if mode.requires_driving_license():
         df = df.filter("has_driving_license")

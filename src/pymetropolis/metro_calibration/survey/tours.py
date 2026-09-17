@@ -354,12 +354,13 @@ def read_tours(
     )
 
     # Find main mode at the tour level.
-    # To reduce the occurence of "mixed", we discard the walking mode if total walking distance is
+    # To reduce the occurrence of "mixed", we discard the walking mode if total walking distance is
     # smaller than 1km.
     tours = (
         tours.with_columns(
             tmp_modes=pl.when(
-                pl.col("modes").list.len() >= 2,
+                pl.col("modes").list.n_unique() >= 2,
+                pl.col("modes").list.contains("walking"),
                 pl.col("distances")
                 .list.gather(
                     pl.col("modes").list.eval(
@@ -391,6 +392,7 @@ def read_tours(
         .drop("tmp_modes")
     )
     # At this point, `tour_mode` = NULL when some trip-level modes are unknown.
+    breakpoint()
 
     matching_cols = [
         "household_id",

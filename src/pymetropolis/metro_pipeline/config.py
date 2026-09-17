@@ -249,7 +249,10 @@ class Config:
         # populations come first, in its own order, so that declaring an extra population in a
         # derived config appends it instead of reordering the parent run's populations (step
         # instantiation order and `merge_populations` id prefixes then stay stable).
-        names = self.parent_config.population_names if self.parent_config is not None else []
+        # Copied rather than aliased: `self.parent_config.population_names` must not be mutated by
+        # the `.append` below, or the parent `Config` object would end up appearing to declare a
+        # population that is really only declared by this (derived) config.
+        names = list(self.parent_config.population_names) if self.parent_config is not None else []
         for name in self.extra_populations_dict:
             if name not in names:
                 names.append(name)

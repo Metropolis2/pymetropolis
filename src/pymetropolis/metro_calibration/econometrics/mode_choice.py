@@ -15,7 +15,7 @@ from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_common.utils import pl_duration_to_seconds
 from pymetropolis.metro_pipeline.parameters import ListParameter, StringParameter
 from pymetropolis.metro_pipeline.types import List, String
-from pymetropolis.modes import StepWithModes
+from pymetropolis.modes import CarMode, MetaMode, StepWithModes, mode_from_str
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -36,9 +36,19 @@ DRIVING_LICENSE_COLUMN = "has_driving_license"
 CAR_OWNERSHIP_COLUMN = "nb_cars"
 
 
-def generic_variable_mode(mode: str) -> str:
-    """Maps `car_*` modes to just `car`."""
-    return "car" if "car" in mode else mode
+def generic_variable_mode(mode: MetaMode) -> str:
+    """Return the mode as a string, mapping all car-based modes to "car"."""
+    return "car" if mode.is_car_based() else repr(mode)
+
+
+def requires_driving_license(mode: MetaMode) -> bool:
+    """Returns true if the mode should be restricted to holders of driving license."""
+    return isinstance(mode, CarMode) and mode.requires_driving_license()
+
+
+def requires_car(mode: MetaMode) -> bool:
+    """Returns true if the mode should be restricted to car owners."""
+    return isinstance(mode, CarMode) and mode.requires_car()
 
 
 class SurveyEconometricModeChoiceStep(StepWithModes):
@@ -85,7 +95,7 @@ class SurveyEconometricModeChoiceStep(StepWithModes):
     output_files = {"results": SurveyModeChoiceResultsFile}
 
     def is_defined(self):
-        return self.modes is not None and len(self.modes) >= 2
+        return self.has_mode_choice()
 
     def run(self):
         import polars as pl
@@ -99,17 +109,17 @@ class SurveyEconometricModeChoiceStep(StepWithModes):
         tours_tt = self.input["tours_tt"].read()
         tours = tours.join(tours_tt, on="tour_id", how="left")
 
-        modes = list(tours["tour_mode"].unique())
+        modes = [mode_from_str(m) for m in tours["tour_mode"].unique()]
 
         if self.reference_mode is not None:
-            reference_mode = self.reference_mode
+            reference_mode = mode_from_str(self.reference_mode)
             if reference_mode not in modes:
                 raise MetropyError(
                     f"`mode_choice_estimation.reference_mode` (`{reference_mode}`) must be one of "
-                    f"`mode_classifier.modes` (`{modes}`)."
+                    f"`{modes}`."
                 )
         else:
-            reference_mode = repr(self.modes[0])
+            reference_mode = self.modes[0]
 
         variables = self.variables
         interactions = self.interaction_variables
@@ -121,7 +131,7 @@ class SurveyEconometricModeChoiceStep(StepWithModes):
         all_generic_variables = sorted({*generic_variables, *interaction_generic_variables})
 
         generic_columns = {
-            variable: {mode: f"{variable}_{generic_variable_mode(mode)}" for mode in modes}
+            variable: {repr(mode): f"{variable}_{generic_variable_mode(mode)}" for mode in modes}
             for variable in all_generic_variables
         }
         missing_generic = sorted(
@@ -171,33 +181,35 @@ class SurveyEconometricModeChoiceStep(StepWithModes):
                 "survey weight or case variable."
             )
 
-        mode_ids = {mode: i for i, mode in enumerate(modes)}
+        mode_ids = {repr(mode): i for i, mode in enumerate(modes)}
         tours = tours.with_columns(
             alt_id=pl.col("tour_mode").replace_strict(mode_ids, return_dtype=pl.Int64)
         )
 
         # Car-driver modes are restricted to holders of a driving license.
         has_license_data = DRIVING_LICENSE_COLUMN in tours.columns
-        if not has_license_data and any(mode.startswith("car_driver") for mode in modes):
+        if not has_license_data and any(requires_driving_license(mode) for mode in modes):
             logger.warning(
                 f"`{DRIVING_LICENSE_COLUMN}` is not available in `SurveyedToursFile`: car-driver "
                 "modes will not be restricted to driving-license holders."
             )
         # Car modes are restricted to car owners.
         has_car_ownership_data = CAR_OWNERSHIP_COLUMN in tours.columns
-        if not has_car_ownership_data and any(mode.startswith("car") for mode in modes):
+        if not has_car_ownership_data and any(requires_car(mode) for mode in modes):
             logger.warning(
                 f"`{CAR_OWNERSHIP_COLUMN}` is not available in `SurveyedToursFile`: car modes will "
                 "not be restricted to car owners."
             )
         avail_exprs = {}
         for mode in modes:
-            conditions = [pl.col(generic_columns[v][mode]).is_not_null() for v in generic_columns]
-            if has_license_data and mode.startswith("car_driver"):
+            conditions = [
+                pl.col(generic_columns[v][repr(mode)]).is_not_null() for v in generic_columns
+            ]
+            if has_license_data and isinstance(mode, CarMode) and mode.requires_driving_license():
                 conditions.append(pl.col(DRIVING_LICENSE_COLUMN).fill_null(False))
-            if has_car_ownership_data and mode.startswith("car"):
+            if has_car_ownership_data and isinstance(mode, CarMode) and mode.requires_car():
                 conditions.append(pl.col(CAR_OWNERSHIP_COLUMN).ge(1).fill_null(False))
-            avail_exprs[f"avail_{mode}"] = (
+            avail_exprs[f"avail_{mode!r}"] = (
                 pl.all_horizontal(*conditions) if conditions else pl.lit(True)
             ).cast(pl.Int8)
         tours = tours.with_columns(**avail_exprs)
@@ -214,12 +226,12 @@ class SurveyEconometricModeChoiceStep(StepWithModes):
 
         # Drop tours whose chosen mode is unavailable.
         tours = tours.with_columns(
-            chosen_avail=pl.concat_list([pl.col(f"avail_{mode}") for mode in modes]).list.get(
+            chosen_avail=pl.concat_list([pl.col(f"avail_{mode!r}") for mode in modes]).list.get(
                 "alt_id"
             )
         )
         n0 = len(tours)
-        tours = tours.filter(pl.col("chosen_avail") == 1)
+        tours = tours.filter(chosen_avail=1)
         n1 = len(tours)
         if n1 < n0:
             logger.warning(
@@ -230,7 +242,7 @@ class SurveyEconometricModeChoiceStep(StepWithModes):
         columns = [
             "alt_id",
             "weight",
-            *(f"avail_{mode}" for mode in modes),
+            *(f"avail_{mode!r}" for mode in modes),
             *case_variables,
             *interaction_case_columns,
             *sorted({col for cols in generic_columns.values() for col in cols.values()}),
@@ -242,7 +254,7 @@ class SurveyEconometricModeChoiceStep(StepWithModes):
         params, stats = estimate_mnl(
             df,
             mode_ids,
-            reference_mode,
+            repr(reference_mode),
             generic_columns,
             generic_variables,
             case_variables,
@@ -255,8 +267,8 @@ class SurveyEconometricModeChoiceStep(StepWithModes):
         # interpret the parameter names (which variables are alternative-varying, which pairs are
         # interacted, which mode is the reference) without duplicating the config keys.
         specification = {
-            "modes": sorted(modes),
-            "reference_mode": reference_mode,
+            "modes": sorted(map(repr, modes)),
+            "reference_mode": repr(reference_mode),
             "variables": case_variables + generic_variables,
             "interaction_variables": interactions,
         }
