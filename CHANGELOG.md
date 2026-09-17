@@ -79,6 +79,11 @@ New parameters:
 - `road_network.capacity_multipliers.traffic_signal`
 - `road_network.capacity_multipliers.roundabout`
 - `ridesharing.subsidy`
+- `parent_config`
+
+New features:
+
+- Configs can now inherit from other configs through the `parent_config` parameter.
 
 Other changes:
 
