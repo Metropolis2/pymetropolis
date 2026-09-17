@@ -392,7 +392,6 @@ def read_tours(
         .drop("tmp_modes")
     )
     # At this point, `tour_mode` = NULL when some trip-level modes are unknown.
-    breakpoint()
 
     matching_cols = [
         "household_id",
