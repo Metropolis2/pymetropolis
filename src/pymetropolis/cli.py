@@ -9,6 +9,8 @@ import pymetropolis
 from pymetropolis.metro_common import logger as metro_logger
 
 from .metro_pipeline import Config, MetroPipeline
+from .metro_pipeline.dot import RENDER_EXTENSIONS, SOURCE_EXTENSIONS
+from .metro_pipeline.types import PathType
 from .schema import STEPS
 
 
@@ -29,6 +31,18 @@ def app(
         help="Run steps one at a time, asking for a confirmation between each step.",
     ),
     step: Annotated[str | None, typer.Option(help="Explicitly ask for a step to be run.")] = None,
+    graph: Annotated[
+        Path | None,
+        typer.Option(
+            help=(
+                "Save a graph of the steps to run, with their dependencies, to this file. "
+                "The format is given by the extension "
+                f"({', '.join(RENDER_EXTENSIONS + SOURCE_EXTENSIONS)}). "
+                "Rendering requires the Graphviz `dot` executable, except for "
+                f"{', '.join(SOURCE_EXTENSIONS)}."
+            )
+        ),
+    ] = None,
     version: Annotated[
         bool | None,
         typer.Option(
@@ -47,6 +61,10 @@ def app(
     if envfile:
         load_dotenv(envfile)
         logger.debug(f"Successfully read environment variables from {envfile}.")
+    if graph is not None:
+        # Validated before the (slow) pipeline instantiation, so that a wrong extension fails
+        # immediately instead of after the config is parsed and the input files are hashed.
+        PathType(extensions=RENDER_EXTENSIONS + SOURCE_EXTENSIONS).validate(graph)
     config = Config.from_toml(config)
     pipeline = MetroPipeline(config, STEPS, target_step=step)
-    pipeline.run(dry_run, step_by_step)
+    pipeline.run(dry_run, step_by_step, graph_path=graph)

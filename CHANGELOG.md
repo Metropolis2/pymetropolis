@@ -84,6 +84,8 @@ New parameters:
 New features:
 
 - Configs can now inherit from other configs through the `parent_config` parameter.
+- Use the `--graph <path>` CLI option to output a graph of the Steps to be run and the dependencies
+  between them.
 
 Other changes:
 

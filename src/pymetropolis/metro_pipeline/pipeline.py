@@ -2,6 +2,7 @@ import importlib.util
 import sys
 import time
 from enum import Enum
+from pathlib import Path
 
 import click
 import humanize
@@ -11,6 +12,7 @@ from termcolor import colored
 from pymetropolis.metro_common import MetropyError
 
 from .config import Config
+from .dot import build_dot, render_dot
 from .file import MetroFile
 from .graph import file_key, instantiate_step_graph, rebase_step_graph, resolve_feasible_graph
 from .reuse import compute_source_config
@@ -290,15 +292,39 @@ class MetroPipeline:
         assert self.target_step is None or any(map(lambda x: x[0] == self.target_step, sequence))
         return sequence
 
-    def run(self, dry_run: bool = False, step_by_step: bool = False):
+    def run(
+        self, dry_run: bool = False, step_by_step: bool = False, graph_path: Path | None = None
+    ):
         sequence = self.find_sequence()
         if not sequence:
             logger.error("No Step to run.")
             return
+        # Written before the steps are run, so that an unrenderable graph fails the run
+        # immediately rather than after hours of simulation.
+        if graph_path is not None:
+            self.write_graph(sequence, graph_path)
         if dry_run:
             self.print_sequence(sequence)
         else:
             self.run_sequence(sequence, step_by_step=step_by_step)
+
+    def write_graph(self, sequence: list[tuple[Step, StepStatus]], path: Path):
+        """Saves a graph of the Steps to run, with their dependencies, to `path`."""
+        reused = dict()
+        for step, _ in sequence:
+            source = self.source_config.get(step)
+            if source is not None and source is not self.config:
+                # The step actually reads/writes under `source`'s `main_directory`, not
+                # `self.config`'s own (see `graph.rebase_step_graph`).
+                reused[step] = source.main_path.name if source.main_path else ""
+        source_dot = build_dot(
+            [(step, status.name) for step, status in sequence],
+            self.steps,
+            self.generated_files,
+            reused=reused,
+        )
+        render_dot(source_dot, path)
+        logger.success(f"Pipeline graph saved to `{path}`")
 
     def print_sequence(self, sequence: list[tuple[Step, StepStatus]]):
         legend = ", ".join(
@@ -333,7 +359,6 @@ class MetroPipeline:
                 dep_str += colored(f" (from: {config_name})", REUSE_COLOR)
             s += dep_str + "\n"
         print(s)
-        # TODO: Plot a graph of the pipeline.
 
     def run_sequence(self, sequence: list[tuple[Step, StepStatus]], step_by_step: bool = False):
         to_run_steps = list(filter(lambda x: x[1] != StepStatus.UP_TO_DATE, sequence))
