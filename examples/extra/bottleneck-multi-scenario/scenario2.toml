@@ -1,0 +1,11 @@
+main_directory = "scenario2/"
+
+parent_config = "scenario1.toml"
+
+[modes]
+[modes.car_driver]
+alpha = 20
+
+[departure_time.linear_schedule]
+beta = 10
+gamma = 14
