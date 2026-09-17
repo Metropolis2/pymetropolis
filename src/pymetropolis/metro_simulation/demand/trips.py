@@ -512,6 +512,9 @@ class PrepareExAnteMetroTripsStep(StepWithModes, StepWithRidesharingCount, Popul
         )
         # In the ex-ante simulation, 1 agent = 1 trip.
         metro_trips = metro_trips.with_columns(agent_id="trip_id")
+        metro_trips = metro_trips.drop("has_car", "has_driving_license").sort(
+            "agent_id", "alt_id", "trip_id"
+        )
         self.output["metro_trips"].write(metro_trips)
 
 
