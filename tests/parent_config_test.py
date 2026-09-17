@@ -352,6 +352,20 @@ def test_population_names_list_parent_populations_first():
         assert config.population_names == ["trucks", "bikes"]
 
 
+def test_derived_populations_do_not_leak_into_parent_config_object():
+    """A derived config's own extra populations must not appear on `config.parent_config` itself:
+    `population_names` is computed by extending a copy of the parent's list, not the parent's own
+    list in place.
+    """
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp = Path(tmp_dir)
+        _write_toml(tmp / "derived" / "trucks.toml", 'population_name = "trucks"\n')
+        config = _parent_and_derived(tmp, "", 'extra_populations = ["trucks.toml"]\n')
+        assert config.population_names == ["trucks"]
+        assert config.parent_config is not None
+        assert config.parent_config.population_names == []
+
+
 def test_duplicate_population_name_within_one_config_still_rejected():
     """Re-declaring a population is only an override *across* configs, never within one."""
     with tempfile.TemporaryDirectory() as tmp_dir:

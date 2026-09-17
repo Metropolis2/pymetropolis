@@ -143,6 +143,73 @@ def build_step_graph(config: Config, step_classes: list[type[Step]]) -> StepGrap
     return StepGraph(steps=steps, generated_files=generated_files)
 
 
+def rebase_step_graph(
+    steps: dict[Step, dict[str, set[MetroFile]]],
+    generated_files: dict[MetroFile, set[Step]],
+    source_config: dict[Step, Config],
+    own_config: Config,
+) -> set[MetroFile]:
+    """Mutates every Step of `steps` in place so that a Step whose `source_config` differs from
+    `own_config` reads/writes at that other Config's `main_directory` instead: rebases its own
+    output files and update-file path (via `MetroFile.from_dir`, the same primitive used to
+    resolve them against `own_config` in the first place), and every other Step's stored
+    reference to those files, so a Step downstream of a rebased one still reads the right
+    physical file. `steps`/`generated_files` are then rebuilt from the updated per-Step file
+    dicts (`MetroFile.__eq__`/`__hash__` are value-based on `type` + `complete_path`, so once
+    every reference to a given file is rebased consistently, they compare equal wherever they
+    show up), so the pipeline's DAG wiring (`find_sequence`, `compute_needed_files`, ...) sees
+    the rebased identities too.
+
+    Returns the recomputed `primary_input_files`: the caller's own copy (from
+    `resolve_feasible_graph`, computed before this rebase) would otherwise reference stale,
+    pre-rebase file objects that no longer compare equal to anything in the rebuilt
+    `generated_files`.
+    """
+    # Snapshot which Step produces each file, before anything below is mutated.
+    producer_of: dict[MetroFile, Step] = {f: next(iter(s)) for f, s in generated_files.items()}
+
+    def _rebase(f: MetroFile, target: Config) -> MetroFile:
+        return type(f).from_dir(target.main_directory)
+
+    def _producer_target(f: MetroFile) -> Config:
+        producer = producer_of.get(f)
+        return own_config if producer is None else source_config.get(producer, own_config)
+
+    # 1. Rebase every reused Step's own declared outputs and its update-file path.
+    for step, source in source_config.items():
+        if source is own_config:
+            continue
+        step._output_files = {k: _rebase(f, source) for k, f in step._output_files.items()}
+        step._update_file_path = source.main_directory / "update_files" / f"{step}.json"
+
+    # 2. Point every consumer's stored input reference at its producer's (possibly rebased)
+    #    location, so the consumer actually reads the right physical file when it runs.
+    for step in steps:
+        for key, f in step._input_files.items():
+            target = _producer_target(f)
+            if target is not own_config:
+                step._input_files[key] = _rebase(f, target)
+        for pop_files in step._population_input_files.values():
+            for population, f in pop_files.items():
+                target = _producer_target(f)
+                if target is not own_config:
+                    pop_files[population] = _rebase(f, target)
+
+    # 3. Rebuild the bookkeeping views from the now-updated per-Step file dicts.
+    primary_input_files: set[MetroFile] = set()
+    for step, spec in steps.items():
+        spec["required_inputs"] = set(step._iter_resolved_input_files(required=True))
+        spec["optional_inputs"] = set(step._iter_resolved_input_files(required=False))
+        spec["outputs"] = set(step.output.values())
+        if step.is_primary():
+            primary_input_files |= spec["required_inputs"] | spec["optional_inputs"]
+    generated_files.clear()
+    for step, spec in steps.items():
+        for f in spec["outputs"]:
+            generated_files.setdefault(f, set()).add(step)
+    return primary_input_files
+
+
 def topological_order(
     steps: dict[Step, dict[str, set[MetroFile]]], generated_files: dict[MetroFile, set[Step]]
 ) -> list[Step]:

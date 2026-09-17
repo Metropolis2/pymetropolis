@@ -12,7 +12,7 @@ from pymetropolis.metro_common import MetropyError
 
 from .config import Config
 from .file import MetroFile
-from .graph import file_key, instantiate_step_graph, resolve_feasible_graph
+from .graph import file_key, instantiate_step_graph, rebase_step_graph, resolve_feasible_graph
 from .reuse import compute_source_config
 from .steps import Step
 
@@ -49,10 +49,11 @@ class MetroPipeline:
     needed_files: set[MetroFile]
     config: Config
     target_step: Step | None = None
-    # The Config whose `main_directory` holds the authoritative copy of each Step's output: either
-    # `self.config` itself, or (only possible when `self.config.parent_config` is set) an ancestor
-    # config whose own run is still fresh and resolves that Step identically. See `reuse.py`.
-    # Does not (yet) change what is actually executed or read from disk.
+    # The Config whose `main_directory` canonically owns each Step's output: either `self.config`
+    # itself, or (only possible when `self.config.parent_config` is set) an ancestor config
+    # resolving that Step identically. See `reuse.py`. `self.steps`' file dicts are rebased against
+    # this (see `graph.rebase_step_graph`), so a Step is actually read/written there, not
+    # necessarily under `self.config.main_directory`.
     source_config: dict[Step, Config]
 
     def __init__(
@@ -77,7 +78,7 @@ class MetroPipeline:
         # Must run against the not-yet-feasibility-filtered `self.steps`, so that a target step
         # which turns out infeasible is diagnosed by `check_target_step_files` below (which lists
         # the specific missing input file) rather than reported as "unknown" here.
-        self.check_target_step_defined(target_step, step_classes)
+        self.find_target_step(target_step, step_classes)
         self.generated_files, self.primary_input_files = resolve_feasible_graph(self.steps)
         self.check_target_step_files()
         if self.config.parent_config is None:
@@ -86,6 +87,17 @@ class MetroPipeline:
             self.source_config = compute_source_config(
                 self.config, step_classes, self.steps, self.generated_files
             )
+        # Repoints a Step whose output canonically belongs to an ancestor config at that config's
+        # `main_directory`, so that running an outdated such Step writes there instead of into
+        # `self.config`'s own directory. This rebuilds `self.generated_files` and returns the
+        # correspondingly rebuilt `primary_input_files` in place of the one `resolve_feasible_graph`
+        # computed above, which would otherwise reference stale, pre-rebase file objects.
+        self.primary_input_files = rebase_step_graph(
+            self.steps, self.generated_files, self.source_config, self.config
+        )
+        # Only now: the file identities `set_target_input_files` reads off `self.steps[...]` would
+        # otherwise be the stale, pre-rebase ones.
+        self.set_target_input_files()
         self.compute_needed_files()
         self.check_files_to_delete(all_output_files)
 
@@ -148,7 +160,7 @@ class MetroPipeline:
             else:
                 sys.exit()
 
-    def check_target_step_defined(self, target_step: str | None, step_classes: list[type[Step]]):
+    def find_target_step(self, target_step: str | None, step_classes: list[type[Step]]):
         if target_step is None:
             return
         # Try to find the target step in all the step classes.
@@ -169,7 +181,10 @@ class MetroPipeline:
                 f"Step {target_step} is not properly defined (missing configuration parameter?)"
             )
             sys.exit()
-        # Read the target input files (needed for later).
+
+    def set_target_input_files(self):
+        if self.target_step is None:
+            return
         for f in (
             self.steps[self.target_step]["required_inputs"]
             | self.steps[self.target_step]["optional_inputs"]
@@ -312,8 +327,8 @@ class MetroPipeline:
             dep_str = colored(f"{i + 1}. {step} [{tag}]", color, attrs=attrs)
             source = self.source_config.get(step)
             if source is not None and source is not self.config:
-                # Informational only for now: the step above still runs into `self.config`'s own
-                # `main_directory`, it is not actually read from `source` yet.
+                # The step above actually reads/writes under `source`'s `main_directory`, not
+                # `self.config`'s own (see `graph.rebase_step_graph`).
                 config_name = source.main_path.name if source.main_path else ""
                 dep_str += colored(f" (from: {config_name})", REUSE_COLOR)
             s += dep_str + "\n"
