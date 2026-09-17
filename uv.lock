@@ -310,7 +310,7 @@ wheels = [
 
 [[package]]
 name = "biogeme-optimization"
-version = "0.0.13"
+version = "0.0.12"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "dominate" },
@@ -323,9 +323,9 @@ dependencies = [
     { name = "tabulate" },
     { name = "tomlkit" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7f/e0/0690f36e1b45b9606d65c7ce8ed3a07007fba512736a434e534120cebc72/biogeme_optimization-0.0.13.tar.gz", hash = "sha256:f37e580bd9760a72635c311ade9adf3c1f24a0df9ac7a2c7ad57d103242559e8", size = 87053, upload-time = "2026-09-14T07:19:25.485Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9c/0f/d2944f4af4bd342ffb9144d8fcbced767004116525dae801c7d5b02135cc/biogeme_optimization-0.0.12.tar.gz", hash = "sha256:ae66d758b5a2191044632544585ddd170ca8a10112f9d17894a8fb63e93d1caf", size = 73090, upload-time = "2026-09-12T08:28:10.83Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/02/d6/a203833a11f1e917647eb91ccbf2f5e82bdc4c6d6c61dd1254fff2709a2a/biogeme_optimization-0.0.13-py3-none-any.whl", hash = "sha256:2a79d7b75947256e040dd599162cd141c701cf70120548b6ea2b56cb6ea5d5ae", size = 100828, upload-time = "2026-09-14T07:19:23.845Z" },
+    { url = "https://files.pythonhosted.org/packages/7b/d1/730621ac07ff0e4496222994cece3eea9fed542a18addcc768bd4db54b2e/biogeme_optimization-0.0.12-py3-none-any.whl", hash = "sha256:1653e88bbfefa4c4a5815e26176cd9e6f7601d8442026f940cb6f497d7ce08ae", size = 73523, upload-time = "2026-09-12T08:28:09.674Z" },
 ]
 
 [[package]]
@@ -2672,6 +2672,7 @@ source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
     { name = "biogeme" },
+    { name = "biogeme-optimization" },
     { name = "click" },
     { name = "duckdb" },
     { name = "geopandas" },
@@ -2713,6 +2714,7 @@ dev = [
 requires-dist = [
     { name = "aiohttp", specifier = ">=3.14.3" },
     { name = "biogeme", specifier = ">=3.3.5" },
+    { name = "biogeme-optimization", specifier = "<0.0.13" },
     { name = "click", specifier = ">=8.4.1" },
     { name = "duckdb", specifier = ">=1.5.1" },
     { name = "geopandas", specifier = ">=1.1.1" },

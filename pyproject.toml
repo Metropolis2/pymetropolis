@@ -43,6 +43,7 @@ dependencies = [
     "python-dotenv>=1.2.3",
     "biogeme>=3.3.5",
     "scikit-learn-extra>=0.3.0",
+    "biogeme-optimization<0.0.13",
 ]
 
 [project.urls]
