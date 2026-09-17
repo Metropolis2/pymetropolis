@@ -1,3 +1,8 @@
-Pymetropolis is developed and maintained by:
+Main developer:
 
-- Lucas Javaudin [lucas@lucasjavaudin.com]: main developer
+- Lucas Javaudin [lucas@lucasjavaudin.com]
+
+Contributors:
+
+- Viery Naoussi: computation of travel time matrices
+- Martin Briand: bug fix
