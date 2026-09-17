@@ -258,8 +258,9 @@ def read_tours(
             destination_lats="destination_lat",
             first_purpose=pl.col("origin_purpose_group").first(),
             last_purpose=pl.col("destination_purpose_group").last(),
-            purposes=pl.col("destination_purpose_group"),
-            durations=pl.col("destination_activity_duration"),
+            # Drop last purpose / activity duration (should be home).
+            purposes=pl.col("destination_purpose_group").head(pl.len() - 1),
+            durations=pl.col("destination_activity_duration").head(pl.len() - 1),
             first_departure_time=pl.col("departure_time").first(),
             last_arrival_time=pl.col("arrival_time").last(),
             first_activity_start=pl.col("arrival_time").first(),
@@ -268,11 +269,6 @@ def read_tours(
             distances=pl.col("trip_euclidean_distance_km") * 1000,  # Convert to meters.
             trip_weekday=pl.col("trip_weekday").first(),  # They should be unique.
             outside_perimeter=pl.col("trip_perimeter").ne("internal").any(),
-        )
-        .with_columns(
-            # Drop last purpose / activity duration (should be home).
-            pl.col("purposes").list.slice(0, pl.len() - 1),
-            pl.col("durations").list.slice(0, pl.len() - 1),
         )
         .with_columns(
             total_tour_duration=pl.col("last_arrival_time") - pl.col("first_departure_time"),
