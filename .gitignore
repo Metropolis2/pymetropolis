@@ -13,6 +13,9 @@ wheels/
 examples/**/data/
 examples/**/output*/
 examples/**/extras/
+examples/extra/bottleneck-multi-scenario/scenario1/
+examples/extra/bottleneck-multi-scenario/scenario2/
+examples/extra/bottleneck-multi-scenario/scenario3/
 examples/perso
 execs/
 qgis/
