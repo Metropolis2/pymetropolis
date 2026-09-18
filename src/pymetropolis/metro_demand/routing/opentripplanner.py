@@ -26,7 +26,7 @@ from pymetropolis.metro_demand.routing.files import (
     TripsPublicTransitItinerariesFile,
 )
 from pymetropolis.metro_network.public_transit import GTFSStep
-from pymetropolis.metro_pipeline import PopulationStep
+from pymetropolis.metro_pipeline import PopulationStep, Step
 from pymetropolis.metro_pipeline.parameters import (
     EnumParameter,
     FloatParameter,
@@ -41,7 +41,6 @@ if TYPE_CHECKING:
     import polars as pl
     import requests
 
-    from pymetropolis.metro_common.time import MetroTime
 
 MAX_TRIES = 3
 OTP_QUERY_TIMEOUT = 30  # seconds
@@ -319,61 +318,6 @@ def clean_leg(leg: dict):
     return result
 
 
-def clean_trips_time(
-    trips: pl.DataFrame, tstars: pl.DataFrame | None, time_type: str, time: MetroTime | None
-):
-    """Add `time` and `arrive_by` column to trips."""
-    import polars as pl
-
-    if time_type in ("departure", "arrival"):
-        col_name = f"{time_type}_time"
-        if col_name not in trips.columns:
-            trips = trips.with_columns(pl.lit(None, dtype=pl.Duration).alias(col_name))
-        trips = trips.select(
-            "trip_id", seconds=pl.col(col_name).dt.total_seconds(), arrive_by=time_type == "arrival"
-        )
-    elif time_type == "tstar":
-        if tstars is None:
-            raise MetropyError('tstars should be given when `time_type` is `"tstar"`')
-        trips = (
-            trips.select("trip_id")
-            .join(
-                tstars.select("trip_id", seconds=pl.col("tstar").dt.total_seconds()),
-                on="trip_id",
-                how="left",
-            )
-            .with_columns(arrive_by=True)
-        )
-    else:
-        trips = trips.select(
-            "trip_id", seconds=pl.lit(None, dtype=pl.Int64), arrive_by=time_type == "custom_arrival"
-        )
-    if trips["seconds"].is_null().any():
-        if time is None:
-            c = trips["seconds"].null_count()
-            raise MetropyError(
-                f"Departure / arrival time is undefined for {c:,} trips but the "
-                "`opentripplanner.time` parameter is not set."
-            )
-        if "custom" not in time_type:
-            s = trips["seconds"].null_count() / len(trips)
-            logger.warning(
-                f"{s:.1%} trips have NULL values for departure / arrival time, using default "
-                "value for them"
-            )
-        # Fill null values for time column with the given time parameter.
-        trips = trips.with_columns(pl.col("seconds").fill_null(round(time.seconds())))
-    # Convert seconds column to a HH:MM:SS string.
-    trips = trips.with_columns(
-        time=pl.time(
-            hour=pl.col("seconds") // 3600 % 24,
-            minute=pl.col("seconds") // 60 % 60,
-            second=pl.col("seconds") % 60,
-        ).dt.strftime("%H:%M:%S")
-    ).drop("seconds")
-    return trips
-
-
 def read_lng_lat(gdf: gpd.GeoDataFrame, prefix: str = "") -> pl.DataFrame:
     import polars as pl
 
@@ -496,7 +440,98 @@ class OpenTripPlannerStep(ThreadedStep, GTFSStep):
         return df
 
 
-class TripsOpenTripPlannerStep(OpenTripPlannerStep, PopulationStep):
+class AbstractPublicTransitTimeStep(Step):
+    time_type = EnumParameter(
+        "opentripplanner.time_type",
+        values=["departure", "arrival", "tstar", "custom_departure", "custom_arrival"],
+        description="How the departure / arrival time of the requests is defined.",
+        note=(
+            "If `\"departure\"`, trips' departure times are read from the trips' ex-ante departure "
+            "times. "
+            "If `\"arrival\"`, trips' arrival times are read from the trips' ex-ante arrival "
+            "times. "
+            "If `\"tstar\"`, trips' arrival times are read from the trips' desired arrival times. "
+            'If `"custom_departure"`, the departure times are equal to the value of '
+            "`opentripplanner.time` for all trips. "
+            'If `"custom_arrival"`, the arrival times are equal to the value of '
+            "`opentripplanner.time` for all trips. "
+        ),
+    )
+    time = TimeParameter(
+        "opentripplanner.time",
+        description="Departure / arrival time of the requests.",
+        note=(
+            'If `time_type` is `"custom_departure"`, this is the departure time used for all '
+            "requests. "
+            'If `time_type` is `"custom_arrival"`, this is the arrival time used for all '
+            "requests. "
+            "Otherwise, the value is only used as a default for missing departure / arrival time."
+        ),
+    )
+
+    def is_defined(self):
+        return self.time_type is not None
+
+    def clean_trips_time(self, trips: pl.DataFrame, tstars: pl.DataFrame | None):
+        """Add `time` and `arrive_by` column to trips."""
+        import polars as pl
+
+        assert self.time_type is not None
+
+        if self.time_type in ("departure", "arrival"):
+            col_name = f"{self.time_type}_time"
+            if col_name not in trips.columns:
+                trips = trips.with_columns(pl.lit(None, dtype=pl.Duration).alias(col_name))
+            trips = trips.select(
+                "trip_id",
+                seconds=pl.col(col_name).dt.total_seconds(),
+                arrive_by=self.time_type == "arrival",
+            )
+        elif self.time_type == "tstar":
+            if tstars is None:
+                raise MetropyError('tstars should be given when `time_type` is `"tstar"`')
+            trips = (
+                trips.select("trip_id")
+                .join(
+                    tstars.select("trip_id", seconds=pl.col("tstar").dt.total_seconds()),
+                    on="trip_id",
+                    how="left",
+                )
+                .with_columns(arrive_by=True)
+            )
+        else:
+            trips = trips.select(
+                "trip_id",
+                seconds=pl.lit(None, dtype=pl.Int64),
+                arrive_by=self.time_type == "custom_arrival",
+            )
+        if trips["seconds"].is_null().any():
+            if self.time is None:
+                c = trips["seconds"].null_count()
+                raise MetropyError(
+                    f"Departure / arrival time is undefined for {c:,} trips but the "
+                    "`opentripplanner.time` parameter is not set."
+                )
+            if "custom" not in self.time_type:
+                s = trips["seconds"].null_count() / len(trips)
+                logger.warning(
+                    f"{s:.1%} trips have NULL values for departure / arrival time, using default "
+                    "value for them"
+                )
+            # Fill null values for time column with the given time parameter.
+            trips = trips.with_columns(pl.col("seconds").fill_null(round(self.time.seconds())))
+        # Convert seconds column to a HH:MM:SS string.
+        trips = trips.with_columns(
+            time=pl.time(
+                hour=pl.col("seconds") // 3600 % 24,
+                minute=pl.col("seconds") // 60 % 60,
+                second=pl.col("seconds") % 60,
+            ).dt.strftime("%H:%M:%S")
+        ).drop("seconds")
+        return trips
+
+
+class TripsOpenTripPlannerStep(OpenTripPlannerStep, AbstractPublicTransitTimeStep, PopulationStep):
     """Computes the trips' travel time and generalized time by public transit with OpenTripPlanner.
 
     This step requires having access to an OpenTripPlanner API server.
@@ -585,33 +620,6 @@ class TripsOpenTripPlannerStep(OpenTripPlannerStep, PopulationStep):
     ```
     """
 
-    time_type = EnumParameter(
-        "opentripplanner.time_type",
-        values=["departure", "arrival", "tstar", "custom_departure", "custom_arrival"],
-        description="How the departure / arrival time of the requests is defined.",
-        note=(
-            "If `\"departure\"`, trips' departure times are read from the trips' ex-ante departure "
-            "times. "
-            "If `\"arrival\"`, trips' arrival times are read from the trips' ex-ante arrival "
-            "times. "
-            "If `\"tstar\"`, trips' arrival times are read from the trips' desired arrival times. "
-            'If `"custom_departure"`, the departure times are equal to the value of '
-            "`opentripplanner.time` for all trips. "
-            'If `"custom_arrival"`, the arrival times are equal to the value of '
-            "`opentripplanner.time` for all trips. "
-        ),
-    )
-    time = TimeParameter(
-        "opentripplanner.time",
-        description="Departure / arrival time of the requests.",
-        note=(
-            'If `time_type` is `"custom_departure"`, this is the departure time used for all '
-            "requests. "
-            'If `time_type` is `"custom_arrival"`, this is the arrival time used for all '
-            "requests. "
-            "Otherwise, the value is only used as a default for missing departure / arrival time."
-        ),
-    )
     input_files = {
         "trips": TripsFile,
         "origins": TripsOriginsFile,
@@ -625,17 +633,16 @@ class TripsOpenTripPlannerStep(OpenTripPlannerStep, PopulationStep):
     output_files = {"costs": TripsPublicTransitItinerariesFile}
 
     def is_defined(self):
-        return super(OpenTripPlannerStep, self).is_defined() and self.time_type is not None
+        return (
+            super(OpenTripPlannerStep, self).is_defined()
+            and super(AbstractPublicTransitTimeStep, self).is_defined()
+        )
 
     def run(self):
-        assert self.time_type is not None
-
         trips = self.input["trips"].read()
         # Note that tstars are read even when not required. This could be optimized although the
         # impact is probably very small.
-        trips = clean_trips_time(
-            trips, self.input["tstars"].read_if_exists(), self.time_type, self.time
-        )
+        trips = self.clean_trips_time(trips, self.input["tstars"].read_if_exists())
 
         # Read origin / destination longitude and latitude.
         origins = self.input["origins"].read()
@@ -649,40 +656,15 @@ class TripsOpenTripPlannerStep(OpenTripPlannerStep, PopulationStep):
         self.output["costs"].write(df)
 
 
-class ParkAndRideTripsOpenTripPlannerStep(OpenTripPlannerStep, PopulationStep):
+class ParkAndRideTripsOpenTripPlannerStep(
+    OpenTripPlannerStep, AbstractPublicTransitTimeStep, PopulationStep
+):
     """Computes the travel time and generalized time for the public-transit parts of P+R trips with
     OpenTripPlanner.
 
     Check [`TripsOpenTripPlannerStep`](steps.md#tripsopentripplannerstep) for additional details.
     """
 
-    time_type = EnumParameter(
-        "opentripplanner.time_type",
-        values=["departure", "arrival", "tstar", "custom_departure", "custom_arrival"],
-        description="How the departure / arrival time of the requests is defined.",
-        note=(
-            "If `\"departure\"`, trips' departure times are read from the trips' ex-ante departure "
-            "times. "
-            "If `\"arrival\"`, trips' arrival times are read from the trips' ex-ante arrival "
-            "times. "
-            "If `\"tstar\"`, trips' arrival times are read from the trips' desired arrival times. "
-            'If `"custom_departure"`, the departure times are equal to the value of '
-            "`opentripplanner.time` for all trips. "
-            'If `"custom_arrival"`, the arrival times are equal to the value of '
-            "`opentripplanner.time` for all trips. "
-        ),
-    )
-    time = TimeParameter(
-        "opentripplanner.time",
-        description="Departure / arrival time of the requests.",
-        note=(
-            'If `time_type` is `"custom_departure"`, this is the departure time used for all '
-            "requests. "
-            'If `time_type` is `"custom_arrival"`, this is the arrival time used for all '
-            "requests. "
-            "Otherwise, the value is only used as a default for missing departure / arrival time."
-        ),
-    )
     input_files = {
         "trips": TripsFile,
         "origins": TripsOriginsFile,
@@ -697,10 +679,12 @@ class ParkAndRideTripsOpenTripPlannerStep(OpenTripPlannerStep, PopulationStep):
     output_files = {"costs": ParkAndRideTripsPublicTransitItinerariesFile}
 
     def is_defined(self):
-        return super(OpenTripPlannerStep, self).is_defined() and self.time_type is not None
+        return (
+            super(OpenTripPlannerStep, self).is_defined()
+            and super(AbstractPublicTransitTimeStep, self).is_defined()
+        )
 
     def run(self):
-        assert self.time_type is not None
 
         # PFR. I think that the tstar option cannot work for P+R trips (for the trip back, we don't
         # know the car travel time so we don't know the actual arrival time at destination). So
@@ -708,9 +692,7 @@ class ParkAndRideTripsOpenTripPlannerStep(OpenTripPlannerStep, PopulationStep):
         # docstring). If you want to implement another solution (e.g., use free-flow car travel time
         # in this case), we cannot discuss it! How did you do in metropy?
         trips = self.input["trips"].read()
-        trips = clean_trips_time(
-            trips, self.input["tstars"].read_if_exists(), self.time_type, self.time
-        )
+        trips = self.clean_trips_time(trips, self.input["tstars"].read_if_exists())
         trips = trips.with_columns(date=self.gtfs_date)
 
         # PFR. Adapt this code to get the actual origin / destination that we want (with P+R

@@ -210,6 +210,23 @@ class CarRidesharing(metaclass=CarMode):
         return CarRidesharingVehicle
 
 
+# PFR. This is where the ParkAndRide mode is defined. I made two important assumptions:
+# - ParkAndRide is available only to driving license holders
+# - ParkAndRide agents are using the CarDriverAloneVehicle -> they cannot take HOV lane, they
+#   congestion (unlike car passengers)
+class ParkAndRide(metaclass=CarMode):
+    _name = "park and ride"
+    _repr = "park_and_ride"
+
+    @classmethod
+    def requires_driving_license(cls) -> bool:
+        return True
+
+    @classmethod
+    def vehicle(cls) -> MetaVehicle:
+        return CarDriverAloneVehicle
+
+
 class PublicTransit(metaclass=MetaMode):
     _name = "public transit"
     _repr = "public_transit"
@@ -244,7 +261,14 @@ class OutsideOption(metaclass=MetaMode):
 
 CAR_MODES: list[CarMode] = [CarDriver, CarDriverWithPassengers, CarPassenger, CarRidesharing]
 
-METRO_MODES: list[MetaMode] = [*CAR_MODES, PublicTransit, Walking, Bicycle, OutsideOption]
+METRO_MODES: list[MetaMode] = [
+    *CAR_MODES,
+    PublicTransit,
+    Walking,
+    Bicycle,
+    ParkAndRide,
+    OutsideOption,
+]
 
 METRO_VEHICLES: list[MetaVehicle] = [
     CarDriverAloneVehicle,

@@ -1,4 +1,5 @@
-from pymetropolis.modes import Bicycle, PublicTransit, Walking
+from pymetropolis.metro_demand.modes.park_and_ride.files import ParkAndRidePreferencesFile
+from pymetropolis.modes import Bicycle, ParkAndRide, PublicTransit, Walking
 
 from .bicycle import (
     BicyclePreferencesFromPopulationStep,
@@ -45,6 +46,7 @@ MODES_FILES = (
 # file is read directly by `PrepareMetroAlternativesStep`).
 MODE_PREFERENCES_FILES = {
     **CAR_PREFERENCES_FILES,
+    ParkAndRide: ParkAndRidePreferencesFile,
     PublicTransit: PublicTransitPreferencesFile,
     Walking: WalkingPreferencesFile,
     Bicycle: BicyclePreferencesFile,
