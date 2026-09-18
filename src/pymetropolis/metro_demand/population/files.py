@@ -712,6 +712,34 @@ class ToursFile(MetroDataFrameFile, PopulationFile):
             nullable=False,
         ),
         Column(
+            "origin_lngs",
+            MetroDataType.LIST_OF_FLOATS,
+            description="Longitude at origin for each trip of the tour.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "origin_lats",
+            MetroDataType.LIST_OF_FLOATS,
+            description="Latitude at origin for each trip of the tour.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "destination_lngs",
+            MetroDataType.LIST_OF_FLOATS,
+            description="Longitude at destination for each trip of the tour.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "destination_lats",
+            MetroDataType.LIST_OF_FLOATS,
+            description="Latitude at destination for each trip of the tour.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
             "first_purpose",
             MetroDataType.STRING,
             description="Purpose of the first activity in the tour.",
@@ -947,6 +975,7 @@ class ToursFile(MetroDataFrameFile, PopulationFile):
             MetroDataType.UINT,
             description="Number of persons living in the household.",
             nullable=True,
+            optional=True,
         ),
         Column(
             "nb_majors",
@@ -1102,4 +1131,13 @@ class JointToursFile(MetroDataFrameFile, PopulationFile):
             description="Whether the tour is done jointly with another household member.",
             nullable=False,
         ),
+    ]
+
+
+class ToursModeFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/tours/modes.parquet"
+    description = "Ex-ante mode for each tour."
+    schema = [
+        Column("tour_id", MetroDataType.ID, description="Identifier of the tour.", nullable=False),
+        Column("mode", MetroDataType.STRING, description="Predicted mode ex-ante.", nullable=False),
     ]

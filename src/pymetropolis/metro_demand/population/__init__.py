@@ -12,6 +12,7 @@ from .files import (
     JointToursFile,
     PersonsFile,
     ToursFile,
+    ToursModeFile,
     TripsDestinationsFile,
     TripsDistancesFile,
     TripsFile,
@@ -22,7 +23,7 @@ from .files import (
 )
 from .generic import (
     ActivitiesLocationsFromTripsLocationsStep,
-    GenericPopulationStep,
+    ImportTripCoordinatesStep,
     PopulationFromTripCoordinatesStep,
 )
 from .tours import CreateToursStep
@@ -44,11 +45,12 @@ POPULATION_FILES = [
     ActivitiesLocationsFile,
     ToursFile,
     JointToursFile,
+    ToursModeFile,
     HouseholdsHomesUrbanTypeFile,
     TripsUrbanTypeFile,
 ]
 POPULATION_STEPS = [
-    GenericPopulationStep,
+    ImportTripCoordinatesStep,
     PopulationFromTripCoordinatesStep,
     UniformDrawsStep,
     EqasimImportStep,

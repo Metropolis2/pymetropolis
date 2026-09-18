@@ -3,6 +3,7 @@ from pymetropolis.metro_pipeline.file import (
     MetroDataFrameFile,
     MetroDataType,
     MetroGeoDataFrameFile,
+    MetroPlotFile,
 )
 
 
@@ -55,52 +56,6 @@ class RoadEdgesPenaltyCoefficientsFile(MetroDataFrameFile):
             nullable=True,
         ),
         Column("penalty", MetroDataType.FLOAT, description="Value of the penalty.", nullable=False),
-    ]
-
-
-class RoadEdgesPenaltiesFile(MetroDataFrameFile):
-    path = "calibration/road/free_flow/edges_penalties.parquet"
-    description = "Free-flow time penalties of each road-network edge."
-    schema = [
-        Column(
-            "edge_id",
-            MetroDataType.ID,
-            description="Identifier of the edge.",
-            unique=True,
-            nullable=False,
-        ),
-        Column(
-            "constant",
-            MetroDataType.FLOAT,
-            description="Constant time penalty of the edge, in seconds.",
-            nullable=True,
-        ),
-        Column(
-            "speed_multiplier",
-            MetroDataType.FLOAT,
-            description="By how much edge speed limit is multiplied to get edge free-flow speed.",
-            nullable=True,
-        ),
-    ]
-
-
-class RoadEdgesFreeFlowTravelTimeFile(MetroDataFrameFile):
-    path = "calibration/road/free_flow/edges_free_flow_travel_time.parquet"
-    description = "Free-flow travel time of each road-network edge."
-    schema = [
-        Column(
-            "edge_id",
-            MetroDataType.ID,
-            description="Identifier of the edge.",
-            unique=True,
-            nullable=False,
-        ),
-        Column(
-            "free_flow_travel_time",
-            MetroDataType.DURATION,
-            description="Free-flow travel time of the edge.",
-            nullable=False,
-        ),
     ]
 
 
@@ -179,6 +134,14 @@ class TomTomRoutesFile(MetroGeoDataFrameFile):
     ]
 
 
+class FreeFlowTravelTimeComparisonPlotFile(MetroPlotFile):
+    path = "calibration/road/free_flow/travel_time_comparison.png"
+    description = (
+        "Scatter plot comparing TomTom-observed and Metropolis-simulated free-flow travel "
+        "times at the OD level."
+    )
+
+
 class TomTomRoutesMatchedFile(MetroDataFrameFile):
     path = "calibration/road/tomtom_routes_matched.parquet"
     description = "Results of the routing requests from TomTom API after map matching."
@@ -212,6 +175,44 @@ class TomTomRoutesMatchedFile(MetroDataFrameFile):
             "path",
             MetroDataType.LIST_OF_IDS,
             description="Sequence of road network ids that compose the path.",
+            nullable=False,
+        ),
+    ]
+
+
+class CongestionTimeComparisonPlotFile(MetroPlotFile):
+    path = "calibration/road/congestion_time_comparison.png"
+    description = (
+        "Scatter plot comparing TomTom-observed and Metropolis-simulated congested "
+        "times at the OD level."
+    )
+
+
+class TomTomCongestionTimesFile(MetroDataFrameFile):
+    path = "calibration/road/tomtom_congestion_times.parquet"
+    description = (
+        "Metropolis-simulated travel time and congested time of each map-matched TomTom route."
+    )
+    schema = [
+        Column(
+            "tomtom_id",
+            MetroDataType.ID,
+            description="Identifier of the request.",
+            unique=True,
+            nullable=False,
+        ),
+        Column(
+            "travel_time",
+            MetroDataType.DURATION,
+            description="Simulated travel time on the route.",
+            nullable=False,
+        ),
+        Column(
+            "congested_time",
+            MetroDataType.DURATION,
+            description=(
+                "Simulated congested time on the route (travel time minus free-flow time)."
+            ),
             nullable=False,
         ),
     ]

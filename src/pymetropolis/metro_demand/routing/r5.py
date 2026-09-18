@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import datetime
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from loguru import logger
@@ -25,6 +24,8 @@ from pymetropolis.metro_pipeline.parameters import (
 from pymetropolis.metro_spatial import OSMStep
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     import geopandas as gpd
     import polars as pl
 

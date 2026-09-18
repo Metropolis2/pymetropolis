@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from loguru import logger
@@ -15,6 +14,8 @@ from pymetropolis.metro_spatial.simulation_area.file import SimulationAreaFile
 from .files import RoadEdgesRawFile
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     import polars as pl
     import pyproj
     from osmium.osm import Node, Way

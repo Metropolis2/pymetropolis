@@ -8,17 +8,17 @@ from loguru import logger
 from pymetropolis.metro_common.errors import MetropyError
 from pymetropolis.metro_common.io import read_dataframe
 from pymetropolis.metro_network.road_network.common import default_edge_values_validator
-from pymetropolis.metro_network.road_network.files import RoadEdgesCleanFile, RoadEdgesUrbanFlagFile
+from pymetropolis.metro_network.road_network.files import (
+    RoadEdgesCleanFile,
+    RoadEdgesFreeFlowTravelTimeFile,
+    RoadEdgesPenaltiesFile,
+    RoadEdgesUrbanFlagFile,
+)
 from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import CustomParameter, FloatParameter, PathParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 
-from .files import (
-    RoadEdgesFreeFlowTravelTimeFile,
-    RoadEdgesPenaltiesFile,
-    RoadEdgesPenaltyCoefficientsFile,
-    RoadEdgesVariablesFile,
-)
+from .files import RoadEdgesPenaltyCoefficientsFile, RoadEdgesVariablesFile
 
 if TYPE_CHECKING:
     import geopandas as gpd
@@ -123,8 +123,7 @@ road = 0.9
     def run(self):
         import polars as pl
 
-        edges: gpd.GeoDataFrame = self.input["clean_edges"].read()
-        df = pl.from_pandas(edges.drop("geometry"))
+        df: pl.DataFrame = self.input["clean_edges"].read_as_df()  # ty: ignore[unresolved-attribute]
         for col, param in zip(
             ("constant", "speed_multiplier"), (self.penalties, self.speed_multiplier)
         ):
@@ -319,7 +318,9 @@ class EdgePenaltiesFromCoefficientsStep(Step):
         df = check_bounds(df, "additive", self.additive_lb, self.additive_ub)
         df = check_bounds(df, "multiplicative", self.multiplicative_lb, self.multiplicative_ub)
 
-        df = df.select("edge_id", constant="additive", speed_multiplier="multiplicative")
+        df = df.select(
+            "edge_id", constant="additive", speed_multiplier=1.0 / pl.col("multiplicative")
+        )
         self.output["edges_penalties"].write(df)
 
 

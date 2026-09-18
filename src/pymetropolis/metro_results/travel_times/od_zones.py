@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 import json
-import os
 import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from loguru import logger
 
-from pymetropolis.metro_calibration.road.files import RoadEdgesFreeFlowTravelTimeFile
 from pymetropolis.metro_demand.routing.files import (
     ZonesLevel1RoadNodeFile,
     ZonesLevel2RoadNodeFile,
@@ -17,11 +15,15 @@ from pymetropolis.metro_demand.routing.files import (
     ZonesLevel5RoadNodeFile,
 )
 from pymetropolis.metro_demand.routing.routing_cli import RoutingCLIStep, run_routing, trip_routing
-from pymetropolis.metro_network.road_network.files import RoadEdgesCleanFile
+from pymetropolis.metro_network.road_network.files import (
+    RoadEdgesCleanFile,
+    RoadEdgesFreeFlowTravelTimeFile,
+)
 from pymetropolis.metro_pipeline.parameters import ListParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_pipeline.types import Int, Time
 from pymetropolis.metro_simulation.run.files import MetroNextExpectedTravelTimeFunctionsFile
+from pymetropolis.modes import CarDriverAloneVehicle
 
 from .files import (
     ZoneODLevel1CongestedTravelTimesFile,
@@ -200,7 +202,7 @@ class ZonesODCongestedTravelTimesStep(RoutingCLIStep):
             # slow down the queries).
             edge_ttfs = edge_ttfs.filter(pl.col("departure_time") >= self.time_window[0].seconds())
         edge_ttfs = (
-            edge_ttfs.filter(pl.col("vehicle_id") == "car_driver_alone")
+            edge_ttfs.filter(pl.col("vehicle_id") == repr(CarDriverAloneVehicle))
             .select("edge_id", "departure_time", "travel_time")
             .join(edges.select("edge_id"), on="edge_id", how="semi")
         )
@@ -208,11 +210,10 @@ class ZonesODCongestedTravelTimesStep(RoutingCLIStep):
         for zone in self.zones:
             zones_df = self.input[f"zone{zone}_road_node"].read().select("zone_id", "road_node")
             pairs, trips = read_trips(zones_df)
-            with tempfile.TemporaryDirectory() as tmp_directory:
+            with tempfile.TemporaryDirectory() as tmp:
+                tmp_directory = Path(tmp)
                 processing_routing(trips, edges, self.exec_path, edge_ttfs, tmp_directory)
-                df = pl.read_parquet(
-                    os.path.join(tmp_directory, "output", "profile_results.parquet")
-                )
+                df = pl.read_parquet(tmp_directory / "output" / "profile_results.parquet")
             if self.time_window is not None:
                 # A null departure_time means the travel time is constant over the whole
                 # simulated period (the route was never affected by congestion).
@@ -269,7 +270,7 @@ def processing_routing(
     edges: pl.DataFrame,
     routing_exec_path: Path,
     edge_ttfs: pl.DataFrame,
-    tmp_directory: str,
+    tmp_directory: Path,
 ):
     """Runs the routing executable in "Intersect" mode (temporal profile) for a
     set of OD queries.
@@ -290,15 +291,13 @@ def processing_routing(
         destination="destination_node",
         departure_time=pl.lit(None, dtype=pl.Float64),
     )
-    queries.write_parquet(os.path.join(tmp_directory, "queries.parquet"))
+    queries.write_parquet(tmp_directory / "queries.parquet")
 
     edges = edges.select("edge_id", "source", "target", "weight")
     edges = edges.sort("weight").unique(subset=["source", "target"], keep="first").sort("edge_id")
-    edges.rename({"weight": "travel_time"}).write_parquet(
-        os.path.join(tmp_directory, "edges.parquet")
-    )
+    edges.rename({"weight": "travel_time"}).write_parquet(tmp_directory / "edges.parquet")
 
-    edge_ttfs.write_parquet(os.path.join(tmp_directory, "edge_ttfs.parquet"))
+    edge_ttfs.write_parquet(tmp_directory / "edge_ttfs.parquet")
 
     parameters = {
         "algorithm": "Intersect",
@@ -311,6 +310,6 @@ def processing_routing(
         "output_directory": "output",
         "saving_format": "Parquet",
     }
-    with open(os.path.join(tmp_directory, "parameters.json"), "w") as f:
+    with open(tmp_directory / "parameters.json", "w") as f:
         json.dump(parameters, f)
     run_routing(routing_exec_path, tmp_directory)

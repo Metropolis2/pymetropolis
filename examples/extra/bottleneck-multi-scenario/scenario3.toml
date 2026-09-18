@@ -1,0 +1,6 @@
+main_directory = "scenario3/"
+
+parent_config = "scenario2.toml"
+
+[departure_time_choice]
+mu = 2

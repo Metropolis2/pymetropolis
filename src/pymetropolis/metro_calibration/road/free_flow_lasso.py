@@ -6,20 +6,30 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 
-from pymetropolis.metro_calibration.road.files import (
+from pymetropolis.metro_common import MetropyError
+from pymetropolis.metro_common.ml_models import compute_lasso
+from pymetropolis.metro_common.plots import plot_travel_time_comparison
+from pymetropolis.metro_network.road_network.files import RoadEdgesFreeFlowTravelTimeFile
+from pymetropolis.metro_pipeline import Step
+from pymetropolis.metro_pipeline.parameters import ListParameter
+from pymetropolis.metro_pipeline.types import List, String
+
+from .files import (
+    FreeFlowTravelTimeComparisonPlotFile,
     RoadEdgesPenaltyCoefficientsFile,
     RoadEdgesVariablesFile,
     TomTomRoutesFile,
     TomTomRoutesMatchedFile,
 )
-from pymetropolis.metro_common import MetropyError
-from pymetropolis.metro_common.ml_models import compute_lasso
-from pymetropolis.metro_pipeline import Step
-from pymetropolis.metro_pipeline.parameters import ListParameter
-from pymetropolis.metro_pipeline.types import List, String
 
 if TYPE_CHECKING:
     import polars as pl
+
+
+def sum_edge_values_along_path(path: pl.Expr, edge_ids: pl.Series, values: pl.Series) -> pl.Expr:
+    import polars as pl
+
+    return path.list.eval(pl.element().replace_strict(edge_ids, values)).list.sum()
 
 
 def compute_regression_variables(
@@ -37,11 +47,9 @@ def compute_regression_variables(
         "tomtom_id",
         "path",
         cst=pl.col("path").list.len(),
-        tt_cst=pl.col("path")
-        .list.eval(
-            pl.element().replace_strict(variables["edge_id"], variables["base_free_flow_tt"])
-        )
-        .list.sum(),
+        tt_cst=sum_edge_values_along_path(
+            pl.col("path"), variables["edge_id"], variables["base_free_flow_tt"]
+        ),
     )
     # Check that all variables are available.
     all_vars = (
@@ -130,7 +138,16 @@ def coefs_to_df(coefs: dict[str, float]) -> pl.DataFrame:
         var1 = m.group(2)
         var2 = m.group(3)
         data.append((ptype, var1, var2, value))
-    df = pl.DataFrame(data, schema=["type", "variable1", "variable2", "penalty"], orient="row")
+    df = pl.DataFrame(
+        data,
+        schema={
+            "type": pl.String,
+            "variable1": pl.String,
+            "variable2": pl.String,
+            "penalty": pl.Float64,
+        },
+        orient="row",
+    )
     return df
 
 
@@ -224,3 +241,50 @@ class FreeFlowLassoStep(Step):
 
         df = coefs_to_df(coefs)
         self.output["coefs"].write(df)
+
+
+class FreeFlowTravelTimeComparisonStep(Step):
+    """Compares TomTom-observed and Metropolis-simulated free-flow travel times, by OD."""
+
+    input_files = {
+        "edges_fftt": RoadEdgesFreeFlowTravelTimeFile,
+        "routes": TomTomRoutesFile,
+        "matched_routes": TomTomRoutesMatchedFile,
+    }
+    output_files = {"comparison_plot": FreeFlowTravelTimeComparisonPlotFile}
+
+    def run(self):
+        import polars as pl
+
+        edges_fftt = self.input["edges_fftt"].read()
+        routes = self.input["routes"].read()
+        matched_routes = self.input["matched_routes"].scan()
+
+        edges_fftt = edges_fftt.with_columns(
+            free_flow_travel_time=pl.col("free_flow_travel_time").dt.total_seconds(fractional=True)
+        )
+
+        metropolis_tt = matched_routes.select(
+            "tomtom_id",
+            metropolis_tt=sum_edge_values_along_path(
+                pl.col("path"), edges_fftt["edge_id"], edges_fftt["free_flow_travel_time"]
+            ),
+        ).collect()
+
+        observed_tt = pl.from_pandas(routes.loc[:, ["tomtom_id", "tt_no_traffic"]]).with_columns(
+            tomtom_tt=pl.col("tt_no_traffic").dt.total_seconds(fractional=True)
+        )
+
+        df = metropolis_tt.join(observed_tt, on="tomtom_id", how="inner")
+        observed = df["tomtom_tt"].to_numpy()
+        predicted = df["metropolis_tt"].to_numpy()
+        rmse = float(((observed - predicted) ** 2).mean() ** 0.5)
+
+        fig = plot_travel_time_comparison(
+            observed,
+            predicted,
+            rmse,
+            xlabel="TomTom free-flow travel time",
+            ylabel="Metropolis free-flow travel time",
+        )
+        self.output["comparison_plot"].write(fig)

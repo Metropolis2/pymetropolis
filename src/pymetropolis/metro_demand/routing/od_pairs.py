@@ -46,10 +46,13 @@ def identify_od_pairs(
     import polars as pl
 
     assert len(origins_gdf) == len(destinations_gdf)
+    # Create source / target point of the edges.
+    logger.debug("Creating source / target points")
+    edges = create_source_target_points(edges)
     logger.debug("Identifying nearest nodes for origins")
-    origins = identify_nodes(edges, origins_gdf)
+    origins = identify_nodes(edges, origins_gdf, id_col="trip_id")
     logger.debug("Identifying nearest nodes for destinations")
-    destinations = identify_nodes(edges, destinations_gdf)
+    destinations = identify_nodes(edges, destinations_gdf, id_col="trip_id")
     origins = origins.select("trip_id", pl.all().exclude("trip_id").name.prefix("origin_"))
     destinations = destinations.select(
         "trip_id", pl.all().exclude("trip_id").name.prefix("destination_")
@@ -59,8 +62,17 @@ def identify_od_pairs(
     return df
 
 
+def create_source_target_points(edges: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    from shapely.geometry import Point
+
+    # TODO: Speed-up this with duckdb
+    edges["source_point"] = edges["geometry"].apply(lambda g: Point(g.coords[0]))
+    edges["target_point"] = edges["geometry"].apply(lambda g: Point(g.coords[-1]))
+    return edges
+
+
 def identify_nodes(
-    edges: gpd.GeoDataFrame, nodes_gdf: gpd.GeoDataFrame, id_col: str = "trip_id"
+    edges: gpd.GeoDataFrame, nodes_gdf: gpd.GeoDataFrame, id_col: str
 ) -> pl.DataFrame:
     """Identify the closest edge for each node in a list."""
     import polars as pl
@@ -98,7 +110,21 @@ def identify_nodes(
     return nodes
 
 
-class PedestrianODNodesFromCoordinatesStep(PopulationStep):
+class StepWithPedestrianForbiddenTypes(Step):
+    """Abstract step to hold the `pedestrian_network.forbidden_types` config parameter."""
+
+    forbidden_types = ListParameter(
+        "pedestrian_network.forbidden_types",
+        inner=String(),
+        default=[],
+        description=(
+            "List of pedestrian edges' types that *cannot* be used as origin / destination edge."
+        ),
+        example='`["trunk", "trunk_link"]`',
+    )
+
+
+class PedestrianODNodesFromCoordinatesStep(StepWithPedestrianForbiddenTypes, PopulationStep):
     """Identifies nodes on the pedestrian network to be used as origins and destinations of the
     trips.
 
@@ -110,15 +136,6 @@ class PedestrianODNodesFromCoordinatesStep(PopulationStep):
     whichever is closer.
     """
 
-    forbidden_types = ListParameter(
-        "pedestrian_network.forbidden_types",
-        inner=String(),
-        default=[],
-        description=(
-            "List of pedestrian edges' types that *cannot* be used as origin / destination edge."
-        ),
-        example='`["trunk", "trunk_link"]`',
-    )
     input_files = {
         "edges": PedestrianEdgesCleanFile,
         "origins": TripsOriginsFile,
@@ -192,7 +209,7 @@ class BicycleODNodesFromCoordinatesStep(PopulationStep):
         self.output["ods"].write(ods)
 
 
-class GenericRoadNodesStep(Step):
+class StepWithRoadForbiddenTypes(Step):
     """Abstract class to make the `road_network.forbidden_types` parameter reusable."""
 
     forbidden_types = ListParameter(
@@ -206,7 +223,7 @@ class GenericRoadNodesStep(Step):
     )
 
 
-class RoadODNodesFromCoordinatesStep(GenericRoadNodesStep, PopulationStep):
+class RoadODNodesFromCoordinatesStep(StepWithRoadForbiddenTypes, PopulationStep):
     """Identifies nodes on the road network to be used as origins and destinations of the trips.
 
     First, this Step finds the nearest edge to the origin / destination coordinates.
@@ -242,7 +259,7 @@ class RoadODNodesFromCoordinatesStep(GenericRoadNodesStep, PopulationStep):
         self.output["ods"].write(ods)
 
 
-class ParkAndRideRoadODNodesFromCoordinatesStep(GenericRoadNodesStep, PopulationStep):
+class ParkAndRideRoadODNodesFromCoordinatesStep(StepWithRoadForbiddenTypes, PopulationStep):
     """For each park-and-ride facility, identifies the node of the road network to be used as
     origin / destination for the car parts of park-and-ride trips.
 

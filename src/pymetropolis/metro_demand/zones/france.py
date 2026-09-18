@@ -3,6 +3,7 @@ from pymetropolis.metro_demand.population.files import (
     TripsDestinationsFile,
     TripsOriginsFile,
 )
+from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import BoolParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_spatial import GeoStep
@@ -12,7 +13,24 @@ from pymetropolis.metro_spatial.simulation_area.file import SimulationAreaFile
 from .file import ZonesLevel1File, ZonesLevel2File, ZonesLevel3File, ZonesLevel4File
 
 
-class FrenchZonesStep(IRISStep, AdminExpressStep, GeoStep):
+class AbstractFrenchZonesStep(Step):
+    """Abstract Step with the `zones.france` parameter indicating whether the simulation is in
+    France and can use the French zoning system.
+    """
+
+    enabled = BoolParameter(
+        "zones.france",
+        default=False,
+        description=(
+            "Whether the French zoning system should be used to defined the simulation's zones."
+        ),
+    )
+
+    def is_defined(self) -> bool:
+        return self.enabled is True
+
+
+class FrenchZonesStep(AbstractFrenchZonesStep, IRISStep, AdminExpressStep, GeoStep):
     """Reads zones from France data.
 
     The French zoning system uses multiple levels of geographic zones:
@@ -26,13 +44,6 @@ class FrenchZonesStep(IRISStep, AdminExpressStep, GeoStep):
     [`CustomZonesLevel5Step`](steps.md#customzoneslevel5step).
     """
 
-    enabled = BoolParameter(
-        "zones.france",
-        default=False,
-        description=(
-            "Whether the French zoning system should be used to defined the simulation's zones."
-        ),
-    )
     input_files = {
         "area": SimulationAreaFile,
         "origins": InputFile(TripsOriginsFile, optional=True, all_populations=True),
@@ -45,9 +56,6 @@ class FrenchZonesStep(IRISStep, AdminExpressStep, GeoStep):
         "zones3": ZonesLevel3File,
         "zones4": ZonesLevel4File,
     }
-
-    def is_defined(self) -> bool:
-        return self.enabled is True
 
     def run(self):
         import geopandas as gpd

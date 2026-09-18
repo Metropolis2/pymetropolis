@@ -31,6 +31,7 @@ def read_tours(
     # Clean household-level variables.
     households = households.select(
         "household_id",
+        "survey_name",
         "nb_cars",
         "nb_motorcycles",
         "nb_bicycles",
@@ -94,6 +95,10 @@ def read_tours(
         "person_id",
         "household_id",
         "home_sequence_index",
+        "origin_lng",
+        "origin_lat",
+        "destination_lng",
+        "destination_lat",
         pl.col("origin_purpose_group").cast(pl.String),
         pl.col("destination_purpose_group").cast(pl.String),
         pl.col("origin_insee_density").cast(pl.String).cast(pl.Enum(DENSITY_CATS)),
@@ -121,7 +126,7 @@ def read_tours(
         "leg_euclidean_distance_km",
         # When there is no info, it is assumed that people are travelling alone in the car.
         mode=pl.when(pl.col("nb_persons_in_vehicle").fill_null(1).eq(1), mode_group="car_driver")
-        .then(pl.lit("car_driver_alone"))
+        .then(pl.lit("car_driver"))
         .when(mode_group="car_driver")
         .then(pl.lit("car_driver_with_passengers"))
         .otherwise(pl.col("mode_group").cast(pl.String)),
@@ -201,12 +206,11 @@ def read_tours(
     trip_legs = trip_legs.with_columns(
         trip_mode=pl.when(
             pl.col("nb_legs")
-            == pl.col("car_driver_alone_count")
+            == pl.col("car_driver_count")
             + pl.col("car_driver_with_passengers_count")
             + pl.col("car_passenger_count")
             + pl.col("walking_count"),
-            (pl.col("car_driver_alone_count") > 0)
-            | (pl.col("car_driver_with_passengers_count") > 0),
+            (pl.col("car_driver_count") > 0) | (pl.col("car_driver_with_passengers_count") > 0),
             pl.col("car_passenger_count") > 0,
             pl.col("walking_distance").fill_null(0.0) < 0.5,
         )
@@ -244,13 +248,19 @@ def read_tours(
             "destination_insee_urban_type",
             "destination_insee_aav_type",
             "destination_aav_category",
+            trip_ids="trip_id",
             nb_trips=pl.len(),
             nb_activities=pl.len() - 1,
             modes="trip_mode",
+            origin_lngs="origin_lng",
+            origin_lats="origin_lat",
+            destination_lngs="destination_lng",
+            destination_lats="destination_lat",
             first_purpose=pl.col("origin_purpose_group").first(),
             last_purpose=pl.col("destination_purpose_group").last(),
-            purposes=pl.col("destination_purpose_group"),
-            durations=pl.col("destination_activity_duration"),
+            # Drop last purpose / activity duration (should be home).
+            purposes=pl.col("destination_purpose_group").head(pl.len() - 1),
+            durations=pl.col("destination_activity_duration").head(pl.len() - 1),
             first_departure_time=pl.col("departure_time").first(),
             last_arrival_time=pl.col("arrival_time").last(),
             first_activity_start=pl.col("arrival_time").first(),
@@ -259,11 +269,6 @@ def read_tours(
             distances=pl.col("trip_euclidean_distance_km") * 1000,  # Convert to meters.
             trip_weekday=pl.col("trip_weekday").first(),  # They should be unique.
             outside_perimeter=pl.col("trip_perimeter").ne("internal").any(),
-        )
-        .with_columns(
-            # Drop last purpose / activity duration (should be home).
-            pl.col("purposes").list.slice(0, pl.len() - 1),
-            pl.col("durations").list.slice(0, pl.len() - 1),
         )
         .with_columns(
             total_tour_duration=pl.col("last_arrival_time") - pl.col("first_departure_time"),
@@ -345,18 +350,42 @@ def read_tours(
     )
 
     # Find main mode at the tour level.
-    tours = tours.with_columns(
-        tour_mode=pl.when(pl.col("modes").list.n_unique() == 1)
-        .then(pl.col("modes").list.first())
-        .when(pl.col("modes").list.eval(pl.element().str.starts_with("car_driver_")).list.any())
-        .then(pl.lit("car_driver_mixed"))
-        .when(
-            pl.col("modes").list.contains("public_transit")
-            & pl.col("modes").list.contains("park_and_ride")
+    # To reduce the occurrence of "mixed", we discard the walking mode if total walking distance is
+    # smaller than 1km.
+    tours = (
+        tours.with_columns(
+            tmp_modes=pl.when(
+                pl.col("modes").list.n_unique() >= 2,
+                pl.col("modes").list.contains("walking"),
+                pl.col("distances")
+                .list.gather(
+                    pl.col("modes").list.eval(
+                        pl.int_range(pl.len()).filter(pl.element() == "walking")
+                    )
+                )
+                .list.sum()
+                < 1000,
+            )
+            .then(pl.col("modes").list.filter(pl.element() != "walking"))
+            .otherwise("modes")
         )
-        .then(pl.lit("park_and_ride"))
-        .when(pl.col("modes").list.contains(None).not_())
-        .then(pl.lit("mixed"))
+        .with_columns(
+            tour_mode=pl.when(pl.col("tmp_modes").list.n_unique() == 1)
+            .then(pl.col("tmp_modes").list.first())
+            .when(
+                pl.col("tmp_modes").list.eval(pl.element().str.starts_with("car_driver")).list.all()
+            )
+            # Note. Combination of driver alone and driver with passengers.
+            .then(pl.lit("car_driver_with_passengers"))
+            .when(
+                pl.col("tmp_modes").list.contains("public_transit")
+                & pl.col("tmp_modes").list.contains("park_and_ride")
+            )
+            .then(pl.lit("park_and_ride"))
+            .when(pl.col("tmp_modes").list.contains(None).not_())
+            .then(pl.lit("mixed"))
+        )
+        .drop("tmp_modes")
     )
     # At this point, `tour_mode` = NULL when some trip-level modes are unknown.
 
@@ -390,7 +419,7 @@ def read_tours(
     # Create tour_id column.
     tours = tours.with_columns(
         tour_id=pl.concat_str("person_id", pl.lit("-"), "home_sequence_index")
-    ).drop("household_id", "person_id", "home_sequence_index")
+    ).drop("home_sequence_index")
 
     return tours
 

@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 
-from pymetropolis.metro_demand.routing.od_pairs import GenericRoadNodesStep
+from pymetropolis.metro_demand.routing.od_pairs import StepWithRoadForbiddenTypes
 from pymetropolis.metro_demand.zones.file import (
     ZonesLevel1File,
     ZonesLevel2File,
@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     import polars as pl
 
 
-class ZonesBaseModel(GeoStep, GenericRoadNodesStep):
+class ZonesBaseModel(GeoStep, StepWithRoadForbiddenTypes):
     threshold = FloatParameter(
         "zones.weiszfeld.threshold",
         default=1e-6,

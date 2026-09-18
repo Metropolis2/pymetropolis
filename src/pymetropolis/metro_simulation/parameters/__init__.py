@@ -1,6 +1,6 @@
-from .file import MetroParametersFile
-from .step import WriteMetroParametersStep
+from .file import MetroExAnteParametersFile, MetroParametersFile
+from .step import WriteExAnteMetroParametersStep, WriteMetroParametersStep
 
-PARAMETERS_FILES = [MetroParametersFile]
+PARAMETERS_FILES = [MetroParametersFile, MetroExAnteParametersFile]
 
-PARAMETERS_STEPS = [WriteMetroParametersStep]
+PARAMETERS_STEPS = [WriteMetroParametersStep, WriteExAnteMetroParametersStep]

@@ -1,5 +1,6 @@
 from .files import (
     JointTourEstimatorFile,
+    ModeEstimatorFile,
     SurveyedCarsFile,
     SurveyedDetailedZonesFile,
     SurveyedDrawZonesFile,
@@ -9,11 +10,45 @@ from .files import (
     SurveyedPersonsFile,
     SurveyedSpecialLocationsFile,
     SurveyedToursFile,
+    SurveyedToursTravelTimesFile,
+    SurveyedTripsCarTravelTimesFile,
     SurveyedTripsFile,
+    SurveyedTripsPedestrianDistancesFile,
+    SurveyedTripsPublicTransitItinerariesFile,
+    SurveyedTripsTravelTimeComparisonBicyclePlotFile,
+    SurveyedTripsTravelTimeComparisonCarPlotFile,
+    SurveyedTripsTravelTimeComparisonPublicTransitPlotFile,
+    SurveyedTripsTravelTimeComparisonWalkingPlotFile,
+    SurveyedZonesMedoidsFile,
+    SurveyedZonesPedestrianNodesFile,
+    SurveyedZonesRoadNodesFile,
+    ToursModeShareComparisonFile,
+    ToursModeShareDistancePlotFile,
+    ToursModeShareTourCountPlotFile,
 )
-from .joint_travel import ClassifyJointToursStep, EstimateJointToursClassifierStep
+from .joint_travel import (
+    ClassifyJointToursStep,
+    EstimateJointToursClassifierStep,
+    ExternalJointToursClassifierStep,
+)
 from .mobisurvstd import MobiSurvStdImportStep
+from .modes import (
+    ClassifyToursModeStep,
+    CompareToursModeSharesStep,
+    EstimateModeClassifierStep,
+    ExternalModeClassifierStep,
+)
 from .tours import CleanSurveyToursStep
+from .travel_times import (
+    SurveyedPedestrianODNodesFromMedoidsStep,
+    SurveyedRoadODNodesFromMedoidsStep,
+    SurveyedToursTravelTimesStep,
+    SurveyedTripsCarTravelTimesStep,
+    SurveyedTripsOpenTripPlannerStep,
+    SurveyedTripsPedestrianDistancesStep,
+    SurveyedTripsTravelTimeComparisonStep,
+    SurveyedZoneMedoidsStep,
+)
 
 SURVEY_FILES = [
     SurveyedHouseholdsFile,
@@ -26,12 +61,40 @@ SURVEY_FILES = [
     SurveyedDetailedZonesFile,
     SurveyedDrawZonesFile,
     SurveyedToursFile,
+    SurveyedZonesMedoidsFile,
+    SurveyedZonesPedestrianNodesFile,
+    SurveyedTripsPedestrianDistancesFile,
+    SurveyedTripsPublicTransitItinerariesFile,
+    SurveyedZonesRoadNodesFile,
+    SurveyedTripsCarTravelTimesFile,
+    SurveyedToursTravelTimesFile,
     JointTourEstimatorFile,
+    ModeEstimatorFile,
+    ToursModeShareComparisonFile,
+    ToursModeShareTourCountPlotFile,
+    ToursModeShareDistancePlotFile,
+    SurveyedTripsTravelTimeComparisonCarPlotFile,
+    SurveyedTripsTravelTimeComparisonWalkingPlotFile,
+    SurveyedTripsTravelTimeComparisonBicyclePlotFile,
+    SurveyedTripsTravelTimeComparisonPublicTransitPlotFile,
 ]
 
 SURVEY_STEPS = [
     MobiSurvStdImportStep,
     CleanSurveyToursStep,
+    ExternalJointToursClassifierStep,
     EstimateJointToursClassifierStep,
     ClassifyJointToursStep,
+    ExternalModeClassifierStep,
+    EstimateModeClassifierStep,
+    ClassifyToursModeStep,
+    CompareToursModeSharesStep,
+    SurveyedZoneMedoidsStep,
+    SurveyedPedestrianODNodesFromMedoidsStep,
+    SurveyedTripsPedestrianDistancesStep,
+    SurveyedTripsOpenTripPlannerStep,
+    SurveyedRoadODNodesFromMedoidsStep,
+    SurveyedTripsCarTravelTimesStep,
+    SurveyedToursTravelTimesStep,
+    SurveyedTripsTravelTimeComparisonStep,
 ]

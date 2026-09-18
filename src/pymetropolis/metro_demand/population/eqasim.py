@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from loguru import logger
@@ -24,6 +23,8 @@ from .files import (
 )
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     import geopandas as gpd
     import polars as pl
     from shapely.geometry import MultiPolygon, Polygon

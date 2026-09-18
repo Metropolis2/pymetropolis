@@ -4,7 +4,6 @@ import os
 import shutil
 import tempfile
 from contextlib import contextmanager
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from loguru import logger
@@ -12,20 +11,37 @@ from loguru import logger
 from .errors import MetropyError
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     import polars as pl
+    import polars.selectors as cs
 
 
-def get_pl_expr(x: str | pl.Expr) -> pl.Expr:
+def get_pl_expr(x: str | pl.Expr | cs.Selector) -> pl.Expr:
     import polars as pl
 
     if isinstance(x, str):
         return pl.col(x)
     else:
-        assert isinstance(x, pl.Expr)
         return x
 
 
-def pl_duration_to_seconds(x: str | pl.Expr) -> pl.Expr:
+def get_columns_if_exist(
+    exprs: dict[str, str | pl.Expr], columns: list[str]
+) -> dict[str, str | pl.Expr]:
+    """Given a sequence of polars Expressions, returns only those that can be evaluated with the
+    available columns.
+    """
+    valid_exprs = dict()
+    columns_set = set(columns)
+    for name, expr in exprs.items():
+        required_columns = get_pl_expr(expr).meta.root_names()
+        if all(col in columns_set for col in required_columns):
+            valid_exprs[name] = expr
+    return valid_exprs
+
+
+def pl_duration_to_seconds(x: str | pl.Expr | cs.Selector) -> pl.Expr:
     expr = get_pl_expr(x)
     return expr.dt.total_seconds(fractional=True)
 

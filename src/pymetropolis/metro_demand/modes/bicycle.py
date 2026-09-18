@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from pymetropolis.metro_common import MetropyError
-from pymetropolis.metro_common.io import read_dataframe
 from pymetropolis.metro_demand.modes.common import (
     ModePreferencesFromPopulationStep,
     PreferencesStep,
@@ -17,14 +14,11 @@ from pymetropolis.metro_demand.routing.files import (
     TripsPedestrianDistancesFile,
     TripsPedestrianNodesFile,
 )
-from pymetropolis.metro_pipeline import PopulationStep
+from pymetropolis.metro_pipeline import PopulationStep, Step
 from pymetropolis.metro_pipeline.parameters import BoolParameter, EnumParameter, FloatParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 
 from .files import BicyclePreferencesFile, BicycleTravelTimesFile
-
-if TYPE_CHECKING:
-    import polars as pl
 
 MODE = "bicycle"
 
@@ -32,30 +26,29 @@ MODE = "bicycle"
 class BicyclePreferencesStep(PreferencesStep, PopulationStep):
     __doc__ = cst_preferences_step_docstring(MODE)
 
+    _mode = MODE
+
     constant = pref_constant_parameter(MODE)
     value_of_time = pref_value_of_time_parameter(MODE)
     output_files = {"preferences": BicyclePreferencesFile}
-
-    def run(self):
-        persons: pl.DataFrame = self.input["persons"].read()
-        df = self.get_preferences(MODE, persons)
-        self.output["preferences"].write(df)
 
 
 class BicyclePreferencesFromPopulationStep(ModePreferencesFromPopulationStep):
     __doc__ = preferences_step_docstring(MODE)
 
+    _mode = MODE
+
     pref_file = pref_file_parameter(MODE)
     output_files = {"preferences": BicyclePreferencesFile}
 
-    def run(self):
-        persons: pl.DataFrame = self.input["persons"].read()
-        pref = read_dataframe(self.pref_file)
-        df = self.get_person_preferences(persons, pref, MODE)
-        self.output["preferences"].write(df)
+
+class StepWithBicycleSpeed(Step):
+    bicycle_speed = FloatParameter(
+        "modes.bicycle.speed", description="Constant bicycle speed for all trips, in km/h."
+    )
 
 
-class BicycleTravelTimesFromDistanceStep(PopulationStep):
+class BicycleTravelTimesFromDistanceStep(StepWithBicycleSpeed, PopulationStep):
     """Computes travel time by bicycle for each trip, from a given distance and a constant speed.
 
     The parameter [`modes.bicycle.distance.type`](parameters.md#modesbicycledistancetype) specifies
@@ -80,9 +73,6 @@ class BicycleTravelTimesFromDistanceStep(PopulationStep):
         "modes.bicycle.distance.type",
         values=["pedestrian"],
         description="How distance of bicycle trips is computed.",
-    )
-    speed = FloatParameter(
-        "modes.bicycle.speed", description="Constant bicycle speed for all trips, in km/h."
     )
     with_snap = BoolParameter(
         "modes.bicycle.distance.with_snap",
@@ -112,7 +102,7 @@ class BicycleTravelTimesFromDistanceStep(PopulationStep):
     output_files = {"tts": BicycleTravelTimesFile}
 
     def is_defined(self):
-        return self.distance_type is not None and self.speed is not None
+        return self.distance_type is not None and self.bicycle_speed is not None
 
     def run(self):
         import polars as pl
@@ -125,11 +115,11 @@ class BicycleTravelTimesFromDistanceStep(PopulationStep):
         df = distances.select(
             "trip_id",
             bicycle_travel_time=pl.duration(
-                seconds=3600 * (pl.col("distance") / 1000) / self.speed
+                seconds=3600 * (pl.col("distance") / 1000) / self.bicycle_speed
             ),
         )
         if self.with_snap:
-            snap_speed = self.snap_speed or self.speed
+            snap_speed = self.snap_speed or self.bicycle_speed
             snap_distances = self.input["snap_distances"].read()
             snap_distances = snap_distances.select(
                 "trip_id",

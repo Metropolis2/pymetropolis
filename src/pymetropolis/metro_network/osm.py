@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from loguru import logger
@@ -8,6 +7,8 @@ from loguru import logger
 from pymetropolis.metro_common import MetropyError
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     import geopandas as gpd
     import polars as pl
     import pyproj

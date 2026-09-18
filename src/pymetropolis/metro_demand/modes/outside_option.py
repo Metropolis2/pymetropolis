@@ -2,6 +2,7 @@ from loguru import logger
 
 from pymetropolis.metro_common.utils import pl_duration_to_seconds
 from pymetropolis.metro_demand.population import TripsFile
+from pymetropolis.metro_demand.population.files import ToursFile
 from pymetropolis.metro_demand.routing.files import TripsCarFreeFlowTravelTimesFile
 from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.metro_pipeline.parameters import FloatParameter
@@ -35,7 +36,7 @@ class OutsideOptionPreferencesStep(RandomStep, PopulationStep):
         note="This is usually not relevant as the outside option does not imply traveling.",
     )
     input_files = {
-        "trips": TripsFile,
+        "tours": ToursFile,
         "outside_option_travel_times": InputFile(OutsideOptionTravelTimesFile, optional=True),
     }
     output_files = {"outside_option_preferences": OutsideOptionPreferencesFile}
@@ -46,10 +47,11 @@ class OutsideOptionPreferencesStep(RandomStep, PopulationStep):
     def run(self):
         import polars as pl
 
-        trips = self.input["trips"].read()
-        df = trips.select("tour_id").unique().sort("tour_id")
+        tours = self.input["tours"].read()
         rng = self.get_rng(str(self))
-        df = df.select("tour_id", outside_option_cst=generate_values(self.constant, len(df), rng))
+        df = tours.select(
+            "tour_id", outside_option_cst=generate_values(self.constant, len(tours), rng)
+        )
         if self.input["outside_option_travel_times"].exists():
             tts: pl.DataFrame = self.input["outside_option_travel_times"].read()
             alpha = self.value_of_time

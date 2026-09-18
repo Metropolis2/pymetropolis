@@ -12,8 +12,8 @@ right_to_left = false
 default_speed_limit = 120
 capacities = 16_000
 
-[node_od_matrix]
-each = 10_000
+[od_matrix]
+trips_per_pair = 10_000
 
 [mode_choice]
 modes = ["car_driver"]

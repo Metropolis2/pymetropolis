@@ -41,6 +41,20 @@ class MetroAgentsPopulationFile(MetroDataFrameFile, PopulationFile):
     ]
 
 
+class MetroExAnteAgentsPopulationFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/metro_input/ex_ante_agents.parquet"
+    description = "Simulated agents in the population for the ex-ante simulation."
+    schema = [
+        Column(
+            "agent_id",
+            MetroDataType.ID,
+            description="Identifier of the agent.",
+            unique=True,
+            nullable=False,
+        )
+    ]
+
+
 class MetroAgentsFile(MetroDataFrameFile):
     path = "run/input/agents.parquet"
     description = "Simulated agents, as input to Metropolis-Core."
@@ -73,6 +87,20 @@ class MetroAgentsFile(MetroDataFrameFile):
             nullable=True,
             optional=True,
         ),
+    ]
+
+
+class MetroExAnteAgentsFile(MetroDataFrameFile):
+    path = "run/ex_ante_input/agents.parquet"
+    description = "Simulated agents in the ex-ante simulation, as input to Metropolis-Core."
+    schema = [
+        Column(
+            "agent_id",
+            MetroDataType.ID,
+            description="Identifier of the agent.",
+            unique=True,
+            nullable=False,
+        )
     ]
 
 
@@ -170,6 +198,44 @@ class MetroAlternativesPopulationFile(MetroDataFrameFile, PopulationFile):
     ]
 
 
+class MetroExAnteAlternativesPopulationFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/metro_input/ex_ante_alts.parquet"
+    description = "Simulated alternatives in the population for the ex-ante simulation."
+    schema = [
+        Column(
+            "agent_id", MetroDataType.ID, description="Identifier of the agent.", nullable=False
+        ),
+        Column(
+            "alt_id", MetroDataType.ID, description="Identifier of the alternative.", nullable=False
+        ),
+        Column(
+            "origin_delay",
+            MetroDataType.FLOAT,
+            description=(
+                "Extra delay between the chosen departure time and the actual first trip start, "
+                "in seconds."
+            ),
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "dt_choice.type",
+            MetroDataType.STRING,
+            description=(
+                "Whether departure time is exogenous, random discrete, or random continuous."
+            ),
+            nullable=True,
+        ),
+        Column(
+            "dt_choice.departure_time",
+            MetroDataType.FLOAT,
+            description="Departure time, when exogenous, in seconds after midnight.",
+            nullable=True,
+            optional=True,
+        ),
+    ]
+
+
 class MetroAlternativesFile(MetroDataFrameFile):
     path = "run/input/alts.parquet"
     description = "Simulated alternatives, as input to Metropolis-Core"
@@ -258,6 +324,44 @@ class MetroAlternativesFile(MetroDataFrameFile):
             "constant_utility",
             MetroDataType.FLOAT,
             description="Constant utility added to the alternative.",
+            nullable=True,
+            optional=True,
+        ),
+    ]
+
+
+class MetroExAnteAlternativesFile(MetroDataFrameFile):
+    path = "run/ex_ante_input/alts.parquet"
+    description = "Simulated alternatives in the ex-ante simulation, as input to Metropolis-Core."
+    schema = [
+        Column(
+            "agent_id", MetroDataType.ID, description="Identifier of the agent.", nullable=False
+        ),
+        Column(
+            "alt_id", MetroDataType.ID, description="Identifier of the alternative.", nullable=False
+        ),
+        Column(
+            "origin_delay",
+            MetroDataType.FLOAT,
+            description=(
+                "Extra delay between the chosen departure time and the actual first trip start, "
+                "in seconds."
+            ),
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "dt_choice.type",
+            MetroDataType.STRING,
+            description=(
+                "Whether departure time is exogenous, random discrete, or random continuous."
+            ),
+            nullable=True,
+        ),
+        Column(
+            "dt_choice.departure_time",
+            MetroDataType.FLOAT,
+            description="Departure time, when exogenous, in seconds after midnight.",
             nullable=True,
             optional=True,
         ),
@@ -372,6 +476,58 @@ class MetroTripsPopulationFile(MetroDataFrameFile, PopulationFile):
     ]
 
 
+class MetroExAnteTripsPopulationFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/metro_input/ex_ante_trips.parquet"
+    description = "Simulated trips in the population for the ex-ante simulation."
+    schema = [
+        Column(
+            "agent_id", MetroDataType.ID, description="Identifier of the agent.", nullable=False
+        ),
+        Column(
+            "alt_id", MetroDataType.ID, description="Identifier of the alternative.", nullable=False
+        ),
+        Column("trip_id", MetroDataType.ID, description="Identifier of the trip.", nullable=False),
+        Column("class.type", MetroDataType.STRING, description="Type of trip.", nullable=False),
+        Column(
+            "class.origin",
+            MetroDataType.ID,
+            description="Identifier of the origin node of the trip.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "class.destination",
+            MetroDataType.ID,
+            description="Identifier of the destination node of the trip.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "class.vehicle",
+            MetroDataType.ID,
+            description="Identifier of the vehicle type of the trip.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "class.travel_time",
+            MetroDataType.FLOAT,
+            description="Exogenous travel time of the trip, in seconds.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "stopping_time",
+            MetroDataType.FLOAT,
+            description=(
+                "Time spent at the end of the trip, before the next trip starts, in seconds."
+            ),
+            nullable=True,
+            optional=True,
+        ),
+    ]
+
+
 class MetroTripsFile(MetroDataFrameFile):
     path = "run/input/trips.parquet"
     description = "Simulated trips, as input to Metropolis-Core."
@@ -474,6 +630,58 @@ class MetroTripsFile(MetroDataFrameFile):
             "schedule_utility.delta",
             MetroDataType.FLOAT,
             description="Length of the desired arrival-time window, in seconds.",
+            nullable=True,
+            optional=True,
+        ),
+    ]
+
+
+class MetroExAnteTripsFile(MetroDataFrameFile):
+    path = "run/ex_ante_input/trips.parquet"
+    description = "Simulated trips in the ex-ante simulation, as input to Metropolis-Core."
+    schema = [
+        Column(
+            "agent_id", MetroDataType.ID, description="Identifier of the agent.", nullable=False
+        ),
+        Column(
+            "alt_id", MetroDataType.ID, description="Identifier of the alternative.", nullable=False
+        ),
+        Column("trip_id", MetroDataType.ID, description="Identifier of the trip.", nullable=False),
+        Column("class.type", MetroDataType.STRING, description="Type of trip.", nullable=False),
+        Column(
+            "class.origin",
+            MetroDataType.ID,
+            description="Identifier of the origin node of the trip.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "class.destination",
+            MetroDataType.ID,
+            description="Identifier of the destination node of the trip.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "class.vehicle",
+            MetroDataType.ID,
+            description="Identifier of the vehicle type of the trip.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "class.travel_time",
+            MetroDataType.FLOAT,
+            description="Exogenous travel time of the trip, in seconds.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "stopping_time",
+            MetroDataType.FLOAT,
+            description=(
+                "Time spent at the end of the trip, before the next trip starts, in seconds."
+            ),
             nullable=True,
             optional=True,
         ),

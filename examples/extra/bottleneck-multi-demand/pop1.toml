@@ -1,7 +1,7 @@
 population_name = "pop1"
 
-[node_od_matrix]
-each = 5_000
+[od_matrix]
+trips_per_pair = 5_000
 
 [mode_choice]
 modes = ["car_driver"]

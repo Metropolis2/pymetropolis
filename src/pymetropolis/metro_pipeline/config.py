@@ -1,14 +1,20 @@
+from __future__ import annotations
+
 import os
 import tomllib
 from pathlib import Path
 from tomllib import TOMLDecodeError
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
 from pymetropolis.metro_common import MetropyError
 
+from .digests import DigestCache
 from .steps import MAIN_POPULATION_NAME, PopulationStep, Step
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 # Top-level configuration key used to specify the main directory location.
 MAIN_DIR_KEY = "main_directory"
@@ -23,6 +29,8 @@ POP_NAME_KEY = "population_name"
 MAIN_POPULATION_KEY = "main_population"
 # Top-level configuration key used to specify Python files defining custom Step classes.
 CUSTOM_STEPS_KEY = "custom_steps"
+# Top-level configuration key used to specify a config file whose values are inherited.
+PARENT_CONFIG_KEY = "parent_config"
 
 
 def parse_toml(path: Path) -> dict:
@@ -41,15 +49,36 @@ class Config:
     main_directory: Path
     main_path: Path | None
     dict: dict[str, Any]
+    # The extra populations declared by *this* config only, never the inherited ones: a value read
+    # from here is attributed to `self`, so holding a parent config's populations would resolve
+    # their relative paths against the wrong directory. Use `population_names` for the effective
+    # list.
     extra_populations_dict: dict[str, dict]
     secrets: dict[str, Any]
     main_population: bool
     custom_step_paths: list[Path]
+    # The config this one inherits its values from, if any.
+    parent_config: Config | None
+    # Effective names of the extra populations, across the whole chain of parent configs.
+    population_names: list[str]
+    # Content digests of the input data files read by the Steps.
+    digest_cache: DigestCache
 
-    def __init__(self, d: dict, main_path: Path | None = None):
+    def __init__(
+        self, d: dict, main_path: Path | None = None, _parent_chain: list[Path] | None = None
+    ):
         self.dict = d
-        self.main_path = main_path
+        # Normalized, so that the values of a config resolve to the exact same paths however that
+        # config was reached: directly, or as the parent config of another one (whose own directory
+        # would otherwise leak into the resolved paths, e.g. `derived/../parent/data.csv`). This
+        # keeps `parent_directories` readable and makes the `main_directory` comparison in
+        # `check_main_directory` reliable.
+        self.main_path = main_path.resolve() if main_path is not None else None
+        # Must come first: every other step below may consult the parent config.
+        self.read_parent_config(_parent_chain)
         self.check_main_directory()
+        # After `check_main_directory`, which creates `main_directory/update_files/`.
+        self.digest_cache = DigestCache(self.main_directory / "update_files" / "digest_cache.json")
         self.read_secrets()
         self.read_main_population()
         self.read_extra_populations()
@@ -65,12 +94,69 @@ class Config:
         inst = cls(input_dict, path)
         return inst
 
+    def read_parent_config(self, parent_chain: list[Path] | None = None):
+        """Reads the config file this config inherits its values from, if one is declared.
+
+        The parent config is loaded as a full, standalone `Config` rather than merged into
+        `self.dict`, so that each config of the chain resolves *its own* values: relative paths
+        against its own directory, `"secret:"` indirections against its own secrets file. A
+        relative path written in a parent config must point to the same file whether that config is
+        run directly or inherited from, which a merged dict could not guarantee.
+
+        A relative path is resolved against the directory of this config file.
+
+        `parent_chain` holds the resolved paths of the configs currently being loaded, so that a
+        cycle (`a.toml` -> `b.toml` -> `a.toml`) is reported instead of recursing forever.
+        """
+        self.parent_config = None
+        parent_def = self.dict.get(PARENT_CONFIG_KEY)
+        if parent_def is None:
+            return
+        if not isinstance(parent_def, str):
+            raise MetropyError(
+                f"Config value `{PARENT_CONFIG_KEY}` should be a path, got `{parent_def}`"
+            )
+        # `self.main_path` is already normalized; `path` is not (it may contain "..").
+        path = self.resolve_path(parent_def).resolve()
+        chain = parent_chain or []
+        if self.main_path is not None:
+            chain.append(self.main_path)
+        if path in chain:
+            chain_str = " -> ".join(str(p) for p in (*chain, path))
+            raise MetropyError(f"Cyclic `{PARENT_CONFIG_KEY}` chain: {chain_str}")
+        # Note. Building the parent Config runs its own `check_main_directory`, which creates its
+        # `main_directory` (and `update_files/`) if needed. This is idempotent and harmless.
+        self.parent_config = Config(parse_toml(path), path, _parent_chain=chain)
+
+    def chain(self) -> Iterator[Config]:
+        """Yields `self`, then its parent config, then that config's parent config, and so on.
+
+        Configs are yielded nearest first, i.e. in decreasing order of priority.
+        """
+        config: Config | None = self
+        while config is not None:
+            yield config
+            config = config.parent_config
+
+    @property
+    def parent_directories(self) -> list[Path]:
+        """The `main_directory` of each parent config of the chain, nearest first.
+
+        Empty when this config does not inherit from any other config.
+        """
+        return [config.main_directory for config in self.chain() if config is not self]
+
     def check_main_directory(self):
         """Asserts that `main_directory` is properly defined and that the directory exists.
 
         If the directory does not exist, creates it.
 
         A relative `main_directory` is resolved against the directory of the main config file.
+
+        Unlike every other value, `main_directory` is *not* inherited from a parent config: it must
+        be declared by each config and must differ from the `main_directory` of every config it
+        inherits from, otherwise a derived run would overwrite the parent run's output files and
+        caches.
         """
         main_dir = self.dict.get(MAIN_DIR_KEY)
         if main_dir is None:
@@ -78,6 +164,19 @@ class Config:
         if not isinstance(main_dir, str):
             raise MetropyError(f"Config value `{MAIN_DIR_KEY}` should be a path, got `{main_dir}`")
         path = self.resolve_path(main_dir)
+        # Checked before creating the directory, so that an invalid config creates nothing.
+        # Paths are resolved for the comparison so that two different ways of spelling the same
+        # directory are caught; `self.main_directory` itself is kept as-is.
+        for parent_config in self.chain():
+            if parent_config is self:
+                continue
+            if path.resolve() == parent_config.main_directory.resolve():
+                raise MetropyError(
+                    f"`{MAIN_DIR_KEY}` (`{path}`) is identical to the `{MAIN_DIR_KEY}` of the "
+                    f"parent config `{parent_config.main_path}`: a config inheriting from another "
+                    "config must write to its own directory, otherwise it would overwrite the "
+                    "parent run's output files and caches"
+                )
         path.mkdir(exist_ok=True, parents=True)
         self.main_directory = path
         # Also create the update_files/ directory if needed.
@@ -111,15 +210,21 @@ class Config:
         """Reads the configuration files for the extra populations, if they are defined.
 
         Paths are resolved relative to the main config file.
+
+        The populations declared by a parent config are inherited. A population re-declared by this
+        config (i.e. with the same `population_name` as one of the parent config's) *overrides* the
+        parent config's declaration, key by key, instead of being rejected as a duplicate: the
+        duplicate-name check below is therefore local to this config.
         """
-        populations = self.dict.get(POPULATIONS_KEY)
+        populations = self.dict.get(POPULATIONS_KEY, [])
+        if not isinstance(populations, list):
+            raise MetropyError(
+                f"Invalid `{POPULATIONS_KEY}` parameter: list of path expected, got `{populations}`"
+            )
         self.extra_populations_dict = dict()
         used_names = set()
         if self.main_population:
             used_names.add(MAIN_POPULATION_NAME)
-        if not populations:
-            # Not population defined, or only a "standard" population.
-            return
         for pop_config in populations:
             if not isinstance(pop_config, str):
                 raise MetropyError(f"Invalid population config file: Not a path: `{pop_config}`")
@@ -140,12 +245,25 @@ class Config:
                 raise MetropyError(f'Population names cannot contain the "-" character ({name})')
             used_names.add(name)
             self.extra_populations_dict[name] = pop_dict
+        # Effective population names, across the whole chain of parent configs. The parent config's
+        # populations come first, in its own order, so that declaring an extra population in a
+        # derived config appends it instead of reordering the parent run's populations (step
+        # instantiation order and `merge_populations` id prefixes then stay stable).
+        # Copied rather than aliased: `self.parent_config.population_names` must not be mutated by
+        # the `.append` below, or the parent `Config` object would end up appearing to declare a
+        # population that is really only declared by this (derived) config.
+        names = list(self.parent_config.population_names) if self.parent_config is not None else []
+        for name in self.extra_populations_dict:
+            if name not in names:
+                names.append(name)
+        self.population_names = names
 
     def read_main_population(self):
         """Reads whether the main / default population (defined directly in the main config)
-        should be used. Defaults to `True`.
+        should be used. Defaults to the parent config's value, or to `True`.
         """
-        value = self.dict.get(MAIN_POPULATION_KEY, True)
+        default = self.parent_config.main_population if self.parent_config is not None else True
+        value = self.dict.get(MAIN_POPULATION_KEY, default)
         if not isinstance(value, bool):
             raise MetropyError(f"`{MAIN_POPULATION_KEY}` parameter should be a boolean: `{value}`")
         self.main_population = value
@@ -154,50 +272,120 @@ class Config:
         """Reads the paths to the Python files defining custom Step classes, if any are defined.
 
         Paths are resolved relative to the main config file.
+
+        The files declared by a parent config are kept, *before* this config's own files:
+        `MetroPipeline.load_custom_steps` lets a Step defined in a later file override a Step of
+        the same name defined in an earlier one, so a derived config can redefine one of the parent
+        config's custom Steps.
         """
-        custom_steps = self.dict.get(CUSTOM_STEPS_KEY)
-        self.custom_step_paths = list()
-        if not custom_steps:
-            return
+        custom_steps = self.dict.get(CUSTOM_STEPS_KEY, [])
+        if not isinstance(custom_steps, list):
+            raise MetropyError(
+                f"Invalid `{CUSTOM_STEPS_KEY}` parameter: list of path expected, got "
+                f"`{custom_steps}`"
+            )
+        # The parent config's paths were already validated when it was read.
+        paths = self.parent_config.custom_step_paths if self.parent_config is not None else []
         for custom_step in custom_steps:
             if not isinstance(custom_step, str):
                 raise MetropyError(f"Invalid custom step file: Not a path: `{custom_step}`")
             path = self.resolve_path(custom_step)
             if not path.is_file():
                 raise MetropyError(f"Custom step file does not exist: `{path}`")
-            self.custom_step_paths.append(path)
+            paths.append(path)
+        # Drop duplicates (a derived config may restate one of the parent config's files), keeping
+        # the last occurrence so that the order declared by this config wins. Without this, the
+        # same file would be loaded twice, under two different synthetic module names, and would
+        # be reported as overriding itself.
+        deduplicated: dict[Path, Path] = dict()
+        for path in paths:
+            deduplicated.pop(path.resolve(), None)
+            deduplicated[path.resolve()] = path
+        self.custom_step_paths = list(deduplicated.values())
 
     def instantiate_step(self, step_class: type[Step]) -> list[Step]:
         steps = list()
         if not issubclass(step_class, PopulationStep) or self.main_population:
             steps.append(step_class(self))
         if issubclass(step_class, PopulationStep):
-            for pop_name in self.extra_populations_dict.keys():
+            for pop_name in self.population_names:
                 steps.append(step_class.for_population(self, pop_name))
         return steps
+
+    def _lookup_parameter(
+        self, key: list[str], population_name: str | None = None, shared: bool = False
+    ) -> tuple[Any, Config] | None:
+        """Finds the config of the chain defining `key`; returns the raw value and that config.
+
+        Values are inherited along the chain of parent configs, so the lookup is done in two passes,
+        the population config files first and the main config files second. This way, a
+        population-specific value always takes precedence over a main-config value, whichever
+        config of the chain each of them comes from: the selected value is the one that a deep
+        merge of the whole chain would give.
+
+        1. If `population_name` is given, that population's own config file, in each config of the
+           chain. A non-`shared` parameter stops there and is never read from a main config.
+        2. The main config file of each config of the chain.
+
+        Returns `None` if the key is not defined by any config of the chain.
+        """
+        if population_name is not None:
+            if population_name not in self.population_names:
+                raise MetropyError(f"Unknown population: `{population_name}`")
+            for config in self.chain():
+                pop_dict = config.extra_populations_dict.get(population_name)
+                if pop_dict is None:
+                    # That config of the chain does not declare this population.
+                    continue
+                value = self._resolve_from_dict(pop_dict, key)
+                if value is not None:
+                    return value, config
+            if not shared:
+                # A parameter which is not shared across populations is never read from a main
+                # config when it is resolved for an extra population.
+                return None
+        for config in self.chain():
+            value = self._resolve_from_dict(config.dict, key)
+            if value is not None:
+                return value, config
+        return None
 
     def resolve_parameter(
         self, key: list[str], population_name: str | None = None, shared: bool = False
     ):
-        """Returns the value associated to the given key in the config.
+        """Returns the value associated to the given key in the config (see `_lookup_parameter`).
 
-        If `population_name` is given, the key is first looked up in that population's own config
-        file. If it is not defined there, it is only read from the main config when `shared` is
-        `True`, i.e., the parameter is declared as being shared across populations.
-
-        The resolved value is passed through `resolve_indirection` (so `"secret:"` / `"env:"`
-        values are handled).
+        The value is passed through `resolve_indirection` (so `"secret:"` / `"env:"` values are
+        handled).
 
         Returns None if the value is not defined.
         """
-        value = None
-        if population_name is not None:
-            value = self._resolve_from_dict(self.extra_populations_dict[population_name], key)
-            if value is None and not shared:
-                return None
-        if value is None:
-            value = self._resolve_from_dict(self.dict, key)
-        return self.resolve_indirection(value)
+        value, _ = self.resolve_parameter_with_origin(key, population_name, shared=shared)
+        return value
+
+    def resolve_parameter_with_origin(
+        self, key: list[str], population_name: str | None = None, shared: bool = False
+    ) -> tuple[Any, Config]:
+        """Same as `resolve_parameter`, also returning the config the value was written in.
+
+        `Parameter.from_config` needs that config to resolve the value's relative paths against
+        *its* directory: a path written in a parent config must point to the file next to *that*
+        config, not to a file next to the config being run.
+
+        The origin config is also the one resolving the `"secret:"` indirections, so that a secret
+        used by a parent config is read from the secrets file of *that* config.
+
+        Returns `(None, self)` if the value is not defined, so that callers can use the returned
+        config unconditionally.
+        """
+        found = self._lookup_parameter(key, population_name, shared=shared)
+        if found is None:
+            return None, self
+        value, origin = found
+        # Note. The lookup above tests the *raw* value, so a key which is defined but whose
+        # `"secret:"` indirection cannot be resolved yields None here instead of falling back to
+        # the parent config: a value which is declared but invalid must be reported, not inherited.
+        return origin.resolve_indirection(value), origin
 
     def resolve_indirection(self, value: Any) -> Any:
         """Resolves a `"secret:skey"` / `"env:var"` string indirection to its actual value.
@@ -250,6 +438,9 @@ class Config:
             for k in sorted(unused_keys):
                 logger.warning(f"- {k}")
         # Extra populations.
+        # Note. Only the populations declared by *this* config are checked (not
+        # `population_names`): a parent config's keys were already checked when that config was run,
+        # and `get_unused_keys` reads `extra_populations_dict`, which does not hold them anyway.
         for pop_name in self.extra_populations_dict.keys():
             unused_keys = self.get_unused_keys(used_keys, population=pop_name)
             if unused_keys:
@@ -263,18 +454,19 @@ class Config:
     def get_unused_keys(self, used_keys: set[str], population: str | None = None) -> set[str]:
         """Returns a set of all keys (flatten) in the configuration that are not in `used_keys`."""
         if population is None:
-            used_keys |= {
+            keys = used_keys | {
                 MAIN_DIR_KEY,
                 SECRETS_KEY,
                 POPULATIONS_KEY,
                 MAIN_POPULATION_KEY,
                 CUSTOM_STEPS_KEY,
+                PARENT_CONFIG_KEY,
             }
             d = self.dict
         else:
-            used_keys.add(POP_NAME_KEY)
+            keys = used_keys | {POP_NAME_KEY}
             d = self.extra_populations_dict[population]
-        return get_unused_keys_inner(d, set(), root=None, used_keys=used_keys)
+        return get_unused_keys_inner(d, set(), root=None, used_keys=keys)
 
 
 def get_unused_keys_inner(

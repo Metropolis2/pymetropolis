@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from loguru import logger
@@ -14,6 +13,8 @@ from pymetropolis.metro_spatial.simulation_area.file import SimulationAreaFile
 from .file import UrbanAreasFile
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     import pyproj
 
 

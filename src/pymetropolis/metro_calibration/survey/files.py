@@ -5,6 +5,9 @@ from pymetropolis.metro_pipeline.file import (
     MetroDataType,
     MetroGeoDataFrameFile,
     MetroMLEstimatorFile,
+    MetroPlotFile,
+    MetroTxtFile,
+    PopulationFile,
 )
 
 
@@ -29,7 +32,7 @@ class SurveyedPersonsFile(MetroDataFrameFile):
 
 
 class SurveyedTripsFile(MetroDataFrameFile):
-    path = "calibration/survey/trips.parquet"
+    path = "calibration/survey/trips/trips.parquet"
     description = (
         "Trips in the survey file. "
         "Variables are documented in the MobiSurvStd documentation for "
@@ -104,6 +107,30 @@ class SurveyedToursFile(MetroDataFrameFile):
     schema = [
         Column("tour_id", MetroDataType.ID, description="Identifier of the tour.", nullable=False),
         Column(
+            "survey_name",
+            MetroDataType.STRING,
+            description="Name of the survey the tour comes from.",
+            nullable=True,
+        ),
+        Column(
+            "household_id",
+            MetroDataType.ID,
+            description="Identifier of the household of the person who did the tour.",
+            nullable=False,
+        ),
+        Column(
+            "person_id",
+            MetroDataType.ID,
+            description="Identifier of the person who did the tour.",
+            nullable=False,
+        ),
+        Column(
+            "trip_ids",
+            MetroDataType.LIST_OF_IDS,
+            description="Identifier of the trips in the tour.",
+            nullable=False,
+        ),
+        Column(
             "nb_trips",
             MetroDataType.UINT,
             description="Number of trips in the tour.",
@@ -119,6 +146,34 @@ class SurveyedToursFile(MetroDataFrameFile):
             "modes",
             MetroDataType.LIST_OF_STRINGS,
             description="Main mode taken for each trip of the tour.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "origin_lngs",
+            MetroDataType.LIST_OF_FLOATS,
+            description="Longitude at origin for each trip of the tour.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "origin_lats",
+            MetroDataType.LIST_OF_FLOATS,
+            description="Latitude at origin for each trip of the tour.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "destination_lngs",
+            MetroDataType.LIST_OF_FLOATS,
+            description="Longitude at destination for each trip of the tour.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "destination_lats",
+            MetroDataType.LIST_OF_FLOATS,
+            description="Latitude at destination for each trip of the tour.",
             nullable=True,
             optional=True,
         ),
@@ -571,6 +626,251 @@ class SurveyedToursFile(MetroDataFrameFile):
     ]
 
 
+class SurveyedToursTravelTimesFile(MetroDataFrameFile):
+    path = "calibration/survey/tours_travel_times.parquet"
+    description = "Travel times of tours in the survey with all modes."
+    schema = [
+        Column("tour_id", MetroDataType.ID, description="Identifier of the tour.", nullable=False),
+        Column(
+            "travel_time_walking",
+            MetroDataType.DURATION,
+            description="Travel time by walk.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "travel_time_bicycle",
+            MetroDataType.DURATION,
+            description="Travel time by bicycle.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "travel_time_public_transit",
+            MetroDataType.DURATION,
+            description="Travel time by public transit.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "travel_time_car",
+            MetroDataType.DURATION,
+            description="Travel time by car.",
+            nullable=True,
+            optional=True,
+        ),
+    ]
+
+
+class SurveyedTripsTravelTimeComparisonCarPlotFile(MetroPlotFile):
+    path = "calibration/survey/graphs/travel_time_comparison_car.png"
+    description = (
+        "Scatter plot comparing observed and simulated travel times for car trips in the survey."
+    )
+
+
+class SurveyedTripsTravelTimeComparisonWalkingPlotFile(MetroPlotFile):
+    path = "calibration/survey/graphs/travel_time_comparison_walking.png"
+    description = (
+        "Scatter plot comparing observed and simulated travel times for walking trips in the "
+        "survey."
+    )
+
+
+class SurveyedTripsTravelTimeComparisonBicyclePlotFile(MetroPlotFile):
+    path = "calibration/survey/graphs/travel_time_comparison_bicycle.png"
+    description = (
+        "Scatter plot comparing observed and simulated travel times for bicycle trips in the "
+        "survey."
+    )
+
+
+class SurveyedTripsTravelTimeComparisonPublicTransitPlotFile(MetroPlotFile):
+    path = "calibration/survey/graphs/travel_time_comparison_public_transit.png"
+    description = (
+        "Scatter plot comparing observed and simulated travel times for public-transit trips in "
+        "the survey."
+    )
+
+
+class SurveyedZonesMedoidsFile(MetroGeoDataFrameFile):
+    path = "calibration/survey/zones/medoids.geo.parquet"
+    description = "Medoids for each zone in the survey."
+    schema = [
+        Column("zone_id", MetroDataType.ID, description="Identifier of the zone.", nullable=False),
+        Column(
+            "index",
+            MetroDataType.INT,
+            description="Index of the medoid (each zone can have multiple medoids).",
+            nullable=False,
+        ),
+        Column(
+            "weight",
+            MetroDataType.FLOAT,
+            description="Weight of the medoid cluster among the zones' custers.",
+            nullable=False,
+        ),
+    ]
+
+
+class SurveyedZonesPedestrianNodesFile(MetroDataFrameFile):
+    path = "calibration/survey/zones/pedestrian_nodes.parquet"
+    description = "Origin and destination nodes on the pedestrian network for each zones' medoid."
+    schema = [
+        Column("zone_id", MetroDataType.ID, description="Identifier of the zone.", nullable=False),
+        Column(
+            "index",
+            MetroDataType.INT,
+            description="Index of the medoid (each zone can have multiple medoids).",
+            nullable=False,
+        ),
+        Column(
+            "weight",
+            MetroDataType.FLOAT,
+            description="Weight of the medoid cluster among the zones' custers.",
+            nullable=False,
+        ),
+        Column(
+            "node",
+            MetroDataType.INT,
+            description="Identifier of the pedestrian node matching the medoid.",
+            nullable=False,
+        ),
+    ]
+
+
+class SurveyedTripsPedestrianDistancesFile(MetroDataFrameFile):
+    path = "calibration/survey/trips/pedestrian_distances.parquet"
+    description = (
+        "Distance of the shortest path on the pedestrian network for each trip in the survey."
+    )
+    schema = [
+        Column(
+            "trip_id",
+            MetroDataType.INT,
+            description="Identifier of the trip.",
+            unique=True,
+            nullable=False,
+        ),
+        Column(
+            "pedestrian_distance",
+            MetroDataType.FLOAT,
+            description="Distance of the trip on the pedestrian network, in meters.",
+            nullable=True,
+        ),
+    ]
+
+
+class SurveyedTripsPublicTransitItinerariesFile(MetroDataFrameFile):
+    path = "calibration/survey/trips/public_transit_itineraries.parquet"
+    description = "Minimum-cost public-transit itinerary for each trip in the survey."
+    schema = [
+        Column(
+            "trip_id",
+            MetroDataType.INT,
+            description="Identifier of the trip.",
+            unique=True,
+            nullable=False,
+        ),
+        Column(
+            "travel_time",
+            MetroDataType.DURATION,
+            description="Travel time of the trip.",
+            nullable=True,
+        ),
+        Column(
+            "generalized_time",
+            MetroDataType.DURATION,
+            description="Generalized time of the trip (travel time with mode-specific weights).",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "waiting_time",
+            MetroDataType.DURATION,
+            description="Waiting time on the trip.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "legs",
+            MetroDataType.ANY,
+            description="Sequence of legs that define the itinerary of the trip.",
+            nullable=True,
+            optional=True,
+        ),
+    ]
+
+
+class SurveyedZonesRoadNodesFile(MetroDataFrameFile):
+    path = "calibration/survey/zones/road_nodes.parquet"
+    description = "Origin and destination nodes on the road network for each zones' medoid."
+    schema = [
+        Column("zone_id", MetroDataType.ID, description="Identifier of the zone.", nullable=False),
+        Column(
+            "index",
+            MetroDataType.INT,
+            description="Index of the medoid (each zone can have multiple medoids).",
+            nullable=False,
+        ),
+        Column(
+            "weight",
+            MetroDataType.FLOAT,
+            description="Weight of the medoid cluster among the zones' custers.",
+            nullable=False,
+        ),
+        Column(
+            "node",
+            MetroDataType.INT,
+            description="Identifier of the road node matching the medoid.",
+            nullable=False,
+        ),
+    ]
+
+
+class SurveyedTripsCarTravelTimesFile(MetroDataFrameFile):
+    path = "calibration/survey/trips/car_travel_times.parquet"
+    description = "Travel time by car under congested conditions for each trip in the survey."
+    schema = [
+        Column(
+            "trip_id",
+            MetroDataType.INT,
+            description="Identifier of the trip.",
+            unique=True,
+            nullable=False,
+        ),
+        Column(
+            "travel_time",
+            MetroDataType.DURATION,
+            description="Travel time by car under congested conditions.",
+            nullable=True,
+        ),
+    ]
+
+
 class JointTourEstimatorFile(MetroMLEstimatorFile):
     path = "calibration/survey/joint_tour_estimator.joblib"
     description = "ML estimator for the classification of joint tours."
+
+
+class ModeEstimatorFile(MetroMLEstimatorFile):
+    path = "calibration/survey/mode_estimator.joblib"
+    description = "ML estimator for the classification of tours' mode."
+
+
+class ToursModeShareComparisonFile(MetroTxtFile, PopulationFile):
+    path = "calibration/survey/{population}/mode_share_comparison.json"
+    description = (
+        "JSON file comparing, by tour count and by distance, the mode shares observed in the "
+        "survey and the ex-ante mode shares predicted for the simulated population."
+    )
+
+
+class ToursModeShareTourCountPlotFile(MetroPlotFile, PopulationFile):
+    path = "calibration/survey/{population}/mode_share_tour_count.png"
+    description = "Comparison of survey vs. ex-ante mode shares, by tour count."
+
+
+class ToursModeShareDistancePlotFile(MetroPlotFile, PopulationFile):
+    path = "calibration/survey/{population}/mode_share_distance.png"
+    description = "Comparison of survey vs. ex-ante mode shares, by tour distance."

@@ -46,6 +46,9 @@ features.
 - [`bottleneck-custom-steps/`](extra/bottleneck-custom-steps/): the Bottleneck case study
   reproduced with custom Steps, demonstrating how to extend or override the pipeline with your own
   code (`custom_steps`).
+- [`bottleneck-multi-scenario/`](extra/bottleneck-multi-scenario/): three Bottleneck scenarios
+  chained with `parent_config`, each overriding only a few keys from the previous one and reusing
+  every Step whose config and inputs are unchanged.
 - [`france/config-joint-tours.toml`](extra/france/config-joint-tours.toml): trains a joint-tours
   classifier from an aggregation of French mobility surveys, imported with
   [MobiSurvStd](https://github.com/Metropolis2/mobisurvstd).

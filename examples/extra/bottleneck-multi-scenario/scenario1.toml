@@ -1,0 +1,38 @@
+main_directory = "scenario1/"
+
+random_seed = 123454321
+
+[grid_network]
+nb_rows = 1
+nb_columns = 2
+length = 1000
+right_to_left = false
+
+[road_network]
+default_speed_limit = 120
+capacities = 16_000
+
+[od_matrix]
+trips_per_pair = 10_000
+
+[mode_choice]
+modes = ["car_driver"]
+
+[modes]
+[modes.car_driver]
+alpha = 10
+
+[departure_time_choice]
+model = "ContinuousLogit"
+mu = 1
+
+[departure_time.linear_schedule]
+beta = 5
+gamma = 7
+tstar = 07:30:00
+
+[simulation]
+period = [07:00:00, 08:00:00]
+recording_interval = 60
+learning_factor = 0.1
+nb_iterations = 200

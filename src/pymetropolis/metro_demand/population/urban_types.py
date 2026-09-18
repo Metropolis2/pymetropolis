@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from pymetropolis.metro_demand.zones.france import AbstractFrenchZonesStep
 from pymetropolis.metro_pipeline import PopulationStep
 
 from .common import DENSITY_CATS, FNC_AREA_CAT_CATS, FNC_AREA_TYPE_CATS, URBAN_TYPE_CATS
@@ -40,7 +41,7 @@ def get_insee_data() -> pl.DataFrame:
     return insee_data
 
 
-class FrenchHouseholdsUrbanTypeStep(PopulationStep):
+class FrenchHouseholdsUrbanTypeStep(AbstractFrenchZonesStep, PopulationStep):
     """Add urban type attributes to households' home, based on INSEE municipalities attributes, for
     France only.
     """
@@ -71,7 +72,7 @@ class FrenchHouseholdsUrbanTypeStep(PopulationStep):
         self.output["home_urban_types"].write(df)
 
 
-class FrenchTripsUrbanTypeStep(PopulationStep):
+class FrenchTripsUrbanTypeStep(AbstractFrenchZonesStep, PopulationStep):
     """Add urban type attributes to trips' origin / destination, based on INSEE municipalities
     attributes, for France only.
     """

@@ -3,9 +3,16 @@ from pymetropolis.metro_demand.population import TripsFile, UniformDrawsFile
 from pymetropolis.metro_pipeline import PopulationStep, Step
 from pymetropolis.metro_pipeline.parameters import EnumParameter, FloatParameter
 from pymetropolis.metro_pipeline.steps import InputFile
-from pymetropolis.metro_simulation.common import StepWithModes, merge_populations
+from pymetropolis.metro_simulation.common import merge_populations
+from pymetropolis.modes import StepWithModes
 
-from .files import MetroAgentsFile, MetroAgentsPopulationFile
+from .files import (
+    MetroAgentsFile,
+    MetroAgentsPopulationFile,
+    MetroExAnteAgentsFile,
+    MetroExAnteAgentsPopulationFile,
+    MetroExAnteAlternativesPopulationFile,
+)
 
 
 class PrepareMetroAgentsStep(StepWithModes, PopulationStep):
@@ -39,7 +46,7 @@ class PrepareMetroAgentsStep(StepWithModes, PopulationStep):
     output_files = {"agents": MetroAgentsPopulationFile}
 
     def is_defined(self) -> bool:
-        return self.modes is not None and (
+        return self.has_any_mode() and (
             not self.has_mode_choice() or self.mode_choice_model is not None
         )
 
@@ -72,11 +79,46 @@ class PrepareMetroAgentsStep(StepWithModes, PopulationStep):
         self.output["agents"].write(agents)
 
 
+class PrepareExAnteMetroAgentsStep(StepWithModes, PopulationStep):
+    """Prepares the input agents for the Metropolis-Core simulation with modes and departure times
+    fixed to their ex-ante values.
+
+    Each trip corresponds to one agent in the simulation.
+
+    Trips with no ex-ante departure time are removed.
+    """
+
+    input_files = {"alts": MetroExAnteAlternativesPopulationFile}
+    output_files = {"agents": MetroExAnteAgentsPopulationFile}
+    priority = 0
+
+    def run(self):
+        alts = self.input["alts"].read()
+        agents = alts.select("agent_id").unique(maintain_order=True)
+        self.output["agents"].write(agents)
+
+
 class WriteMetroAgentsStep(Step):
     """Merges the agents in each population and writes the agents input file for Metropolis-Core."""
 
     input_files = {"population_agents": InputFile(MetroAgentsPopulationFile, all_populations=True)}
     output_files = {"metro_agents": MetroAgentsFile}
+
+    def run(self):
+        agents = merge_populations(self.input_populations["population_agents"])
+        self.output["metro_agents"].write(agents)
+
+
+class WriteExAnteMetroAgentsStep(Step):
+    """Merges the agents in each population and writes the agents input file for the ex-ante
+    simulation.
+    """
+
+    input_files = {
+        "population_agents": InputFile(MetroExAnteAgentsPopulationFile, all_populations=True)
+    }
+    output_files = {"metro_agents": MetroExAnteAgentsFile}
+    priority = 0
 
     def run(self):
         agents = merge_populations(self.input_populations["population_agents"])

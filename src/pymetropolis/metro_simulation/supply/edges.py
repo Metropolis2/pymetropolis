@@ -1,12 +1,14 @@
 from typing import TYPE_CHECKING
 
-from pymetropolis.metro_calibration.road import RoadEdgesPenaltiesFile
 from pymetropolis.metro_common.utils import pl_duration_to_seconds
 from pymetropolis.metro_network.road_network import RoadEdgesCapacitiesFile, RoadEdgesCleanFile
-from pymetropolis.metro_network.road_network.files import RoadEdgesPrimaryFlagFile
+from pymetropolis.metro_network.road_network.files import (
+    RoadEdgesPenaltiesFile,
+    RoadEdgesPrimaryFlagFile,
+)
 from pymetropolis.metro_pipeline.steps import InputFile, Step
 
-from .files import MetroEdgesFile, MetroVehicleTypesFile
+from .files import MetroEdgesFile
 
 if TYPE_CHECKING:
     import geopandas as gpd
@@ -20,9 +22,6 @@ class WriteMetroEdgesStep(Step):
         "capacities": InputFile(RoadEdgesCapacitiesFile, optional=True),
         "penalties": InputFile(RoadEdgesPenaltiesFile, optional=True),
         "primary_flags": InputFile(RoadEdgesPrimaryFlagFile, optional=True),
-        # MetroVehicleTypesFile is added as a dependency so that Edges are written only if vehicle
-        # types are properly defined (Metropolis-Core cannot run with only edges).
-        "vehicle_types": MetroVehicleTypesFile,
     }
     output_files = {"metro_edges": MetroEdgesFile}
 

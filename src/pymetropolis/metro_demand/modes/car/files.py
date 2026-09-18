@@ -8,19 +8,19 @@ from pymetropolis.metro_pipeline.file import (
 
 class CarDriverPreferencesFile(MetroDataFrameFile, PopulationFile):
     path = "demand/{population}/modes/car/car_driver_preferences.parquet"
-    description = "Preferences to travel as a car driver, for each person."
+    description = "Preferences to travel as a car driver, for each tour."
     schema = [
         Column(
-            "person_id",
+            "tour_id",
             MetroDataType.ID,
-            description="Identifier of the person",
+            description="Identifier of the tour.",
             unique=True,
             nullable=False,
         ),
         Column(
             "car_driver_cst",
             MetroDataType.FLOAT,
-            description="Penalty for each trip as a car driver (€).",
+            description="Penalty for each tour as a car driver (€).",
             nullable=True,
         ),
         Column(
@@ -34,19 +34,19 @@ class CarDriverPreferencesFile(MetroDataFrameFile, PopulationFile):
 
 class CarDriverWithPassengersPreferencesFile(MetroDataFrameFile, PopulationFile):
     path = "demand/{population}/modes/car/car_driver_with_passengers_preferences.parquet"
-    description = "Preferences to travel as a car driver with passengers, for each person."
+    description = "Preferences to travel as a car driver with passengers, for each tour."
     schema = [
         Column(
-            "person_id",
+            "tour_id",
             MetroDataType.ID,
-            description="Identifier of the person",
+            description="Identifier of the tour.",
             unique=True,
             nullable=False,
         ),
         Column(
             "car_driver_with_passengers_cst",
             MetroDataType.FLOAT,
-            description="Penalty for each trip as a car driver with passengers (€).",
+            description="Penalty for each tour as a car driver with passengers (€).",
             nullable=True,
         ),
         Column(
@@ -60,19 +60,19 @@ class CarDriverWithPassengersPreferencesFile(MetroDataFrameFile, PopulationFile)
 
 class CarPassengerPreferencesFile(MetroDataFrameFile, PopulationFile):
     path = "demand/{population}/modes/car/car_passenger_preferences.parquet"
-    description = "Preferences to travel as a car passenger, for each person."
+    description = "Preferences to travel as a car passenger, for each tour."
     schema = [
         Column(
-            "person_id",
+            "tour_id",
             MetroDataType.ID,
-            description="Identifier of the person",
+            description="Identifier of the tour.",
             unique=True,
             nullable=False,
         ),
         Column(
             "car_passenger_cst",
             MetroDataType.FLOAT,
-            description="Penalty for each trip as a car passenger (€).",
+            description="Penalty for each tour as a car passenger (€).",
             nullable=True,
         ),
         Column(
@@ -86,19 +86,19 @@ class CarPassengerPreferencesFile(MetroDataFrameFile, PopulationFile):
 
 class CarRidesharingPreferencesFile(MetroDataFrameFile, PopulationFile):
     path = "demand/{population}/modes/car/car_ridesharing_preferences.parquet"
-    description = "Preferences to travel by car ridesharing (driver or passenger), for each person."
+    description = "Preferences to travel by car ridesharing (driver or passenger), for each tour."
     schema = [
         Column(
-            "person_id",
+            "tour_id",
             MetroDataType.ID,
-            description="Identifier of the person",
+            description="Identifier of the tour.",
             unique=True,
             nullable=False,
         ),
         Column(
             "car_ridesharing_cst",
             MetroDataType.FLOAT,
-            description="Penalty for each trip by car ridesharing (€).",
+            description="Penalty for each tour by car ridesharing (€).",
             nullable=True,
         ),
         Column(

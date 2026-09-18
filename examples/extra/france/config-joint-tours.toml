@@ -1,4 +1,4 @@
-main_directory = "output-joint_tours/"
+main_directory = "output-joint-tours/"
 
 random_seed = 13081996
 
@@ -8,6 +8,7 @@ path = "data/surveys/"
 bulk = true
 
 [joint_travel]
+model = "random_forest"
 features = [
     "nb_activities",
     "total_activity_duration",

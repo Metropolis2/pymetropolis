@@ -5,7 +5,7 @@ import tempfile
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -14,7 +14,6 @@ from loguru import logger
 
 from pymetropolis.common import ThreadedStep
 from pymetropolis.metro_common import MetropyError
-from pymetropolis.metro_common.time import MetroTime
 from pymetropolis.metro_demand.departure_time.files import TstarsFile
 from pymetropolis.metro_demand.modes.park_and_ride.files import ParkAndRideStopsFile
 from pymetropolis.metro_demand.population.files import (
@@ -42,7 +41,10 @@ if TYPE_CHECKING:
     import polars as pl
     import requests
 
+    from pymetropolis.metro_common.time import MetroTime
+
 MAX_TRIES = 3
+OTP_QUERY_TIMEOUT = 30  # seconds
 
 HEADERS = {"Content-Type": "application/json", "OTPTimeout": "10000"}
 
@@ -131,37 +133,6 @@ def get_session() -> requests.Session:
     return _thread_local.session
 
 
-def run_queries(
-    trips: pl.DataFrame,
-    api_url: str,
-    parameters: dict,
-    batch_size: int | None = None,
-    nb_threads: int | None = None,
-) -> pl.DataFrame:
-    import polars as pl
-
-    batch_size = batch_size or len(trips)
-    batch_size = max(batch_size, 1)
-    nb_batches = math.ceil(len(trips) / batch_size)
-    if nb_batches == 1:
-        return run_queries_batch(trips, api_url, parameters, nb_threads)
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        for i in range(nb_batches):
-            df = run_queries_batch(
-                trips[i * batch_size : (i + 1) * batch_size], api_url, parameters, nb_threads
-            )
-            df.write_parquet(Path(tmp_dir) / Path(f"otp_results_{i}.parquet"))
-            del df
-        df = pl.concat(
-            (
-                pl.scan_parquet(Path(tmp_dir) / Path(f"otp_results_{i}.parquet"))
-                for i in range(nb_batches)
-            ),
-            how="vertical",
-        ).collect()
-    return df
-
-
 def run_queries_batch(
     trips: pl.DataFrame, api_url: str, parameters: dict, nb_threads: int | None = None
 ) -> pl.DataFrame:
@@ -170,7 +141,8 @@ def run_queries_batch(
 
     logger.debug("Running new batch")
     t0 = time.time()
-    with ThreadPoolExecutor(max_workers=nb_threads) as executor:
+    executor = ThreadPoolExecutor(max_workers=nb_threads)
+    try:
         futures = [
             executor.submit(get_least_cost_itinerary, row, api_url, parameters)
             for row in trips.iter_rows(named=True)
@@ -180,6 +152,13 @@ def run_queries_batch(
             as_completed(futures), total=len(futures), desc="Processing batch", smoothing=0.01
         ):
             results.append(future.result())
+    except KeyboardInterrupt:
+        raise
+    finally:
+        # `cancel_futures=True` drops queued-but-not-yet-started queries instead of running the
+        # whole remaining batch; queries already in progress still have to finish (or time out)
+        # before `wait=True` returns.
+        executor.shutdown(wait=True, cancel_futures=True)
     df = pl.from_records(
         results,
         orient="row",
@@ -218,8 +197,55 @@ def run_queries_batch(
                 travel_time=pl.duration(seconds=pl.element().struct.field("travel_time"))
             )
         ),
-    )
+    ).drop("query_time")
     return df
+
+
+def check_otp_server(api_url: str) -> None:
+    """Raise a MetropyError if no OpenTripPlanner server responds at `api_url`."""
+    from requests.exceptions import RequestException
+
+    session = get_session()
+    try:
+        req = session.post(
+            api_url, headers=HEADERS, json={"query": "{ __typename }"}, timeout=OTP_QUERY_TIMEOUT
+        )
+        req.raise_for_status()
+    except (RequestException, ValueError) as e:
+        raise MetropyError(
+            f"OpenTripPlanner server not available at `{api_url}`. Make sure the OTP server "
+            "is running and accessible from this URL before running this step."
+        ) from e
+
+
+def check_gtfs_service_date(api_url: str, gtfs_date: date) -> None:
+    """Raise a MetropyError if `gtfs_date` is outside the range of dates for which the
+    OpenTripPlanner server has loaded active GTFS services.
+    """
+    from requests.exceptions import RequestException
+
+    session = get_session()
+    try:
+        req = session.post(
+            api_url,
+            headers=HEADERS,
+            json={"query": "{ serviceTimeRange { start end } }"},
+            timeout=OTP_QUERY_TIMEOUT,
+        )
+        req.raise_for_status()
+        time_range = req.json()["data"]["serviceTimeRange"]
+        start = datetime.fromtimestamp(time_range["start"], tz=UTC).date()
+        end = datetime.fromtimestamp(time_range["end"], tz=UTC).date()
+    except (RequestException, ValueError, KeyError, TypeError) as e:
+        raise MetropyError(
+            f"Failed to retrieve OpenTripPlanner's GTFS service time range from `{api_url}`."
+        ) from e
+    if not (start <= gtfs_date <= end):
+        raise MetropyError(
+            f"The `gtfs.date` parameter (`{gtfs_date}`) is outside the range of dates for which "
+            f"the OpenTripPlanner server has active GTFS services (`{start}` to `{end}`). Make "
+            "sure `gtfs.date` matches the GTFS file(s) loaded by the OpenTripPlanner server."
+        )
 
 
 def get_least_cost_itinerary(row: dict, api_url: str, parameters: dict, nb_tries: int = 0):
@@ -240,7 +266,12 @@ def get_least_cost_itinerary(row: dict, api_url: str, parameters: dict, nb_tries
     session = get_session()
     try:
         t0 = time.time()
-        req = session.post(api_url, headers=HEADERS, json={"query": query, "variables": variables})
+        req = session.post(
+            api_url,
+            headers=HEADERS,
+            json={"query": query, "variables": variables},
+            timeout=OTP_QUERY_TIMEOUT,
+        )
         query_time = time.time() - t0
         req.raise_for_status()
         data = req.json()
@@ -352,8 +383,8 @@ def read_lng_lat(gdf: gpd.GeoDataFrame, prefix: str = "") -> pl.DataFrame:
     )
 
 
-class GenericOpenTripPlannerStep(ThreadedStep, GTFSStep):
-    """Generic Step for OpenTripPlanner computation."""
+class OpenTripPlannerStep(ThreadedStep, GTFSStep):
+    """Abstract Step for all steps querying the OpenTripPlanner server."""
 
     otp_url = StringParameter(
         "opentripplanner.url",
@@ -366,33 +397,6 @@ class GenericOpenTripPlannerStep(ThreadedStep, GTFSStep):
         note=(
             "Default is to process all trips in a single batch. "
             "Use a lower value if you are running out of memory."
-        ),
-    )
-    time_type = EnumParameter(
-        "opentripplanner.time_type",
-        values=["departure", "arrival", "tstar", "custom_departure", "custom_arrival"],
-        description="How the departure / arrival time of the requests is defined.",
-        note=(
-            "If `\"departure\"`, trips' departure times are read from the trips' ex-ante departure "
-            "times. "
-            "If `\"arrival\"`, trips' arrival times are read from the trips' ex-ante arrival "
-            "times. "
-            "If `\"tstar\"`, trips' arrival times are read from the trips' desired arrival times. "
-            'If `"custom_departure"`, the departure times are equal to the value of '
-            "`opentripplanner.time` for all trips. "
-            'If `"custom_arrival"`, the arrival times are equal to the value of '
-            "`opentripplanner.time` for all trips. "
-        ),
-    )
-    time = TimeParameter(
-        "opentripplanner.time",
-        description="Departure / arrival time of the requests.",
-        note=(
-            'If `time_type` is `"custom_departure"`, this is the departure time used for all '
-            "requests. "
-            'If `time_type` is `"custom_arrival"`, this is the arrival time used for all '
-            "requests. "
-            "Otherwise, the value is only used as a default for missing departure / arrival time."
         ),
     )
     walking_speed = FloatParameter(
@@ -436,8 +440,63 @@ class GenericOpenTripPlannerStep(ThreadedStep, GTFSStep):
         description="Penalty for transfers, in seconds equivalent.",
     )
 
+    def is_defined(self):
+        return self.gtfs_date is not None
 
-class TripsOpenTripPlannerStep(GenericOpenTripPlannerStep, PopulationStep):
+    def get_parameters(self):
+        assert self.walking_speed is not None
+        return {
+            "walkSpeed": self.walking_speed / 3.6,
+            "walkReluctance": self.walking_reluctance,
+            "waitReluctance": self.waiting_reluctance,
+            "busReluctance": self.bus_reluctance,
+            "tramReluctance": self.tram_reluctance,
+            "subwayReluctance": self.subway_reluctance,
+            "railReluctance": self.rail_reluctance,
+            "transferCost": self.transfer_cost,
+        }
+
+    def run_queries(self, trips: pl.DataFrame) -> pl.DataFrame:
+        import polars as pl
+
+        assert self.otp_url is not None
+        check_otp_server(self.otp_url)
+        assert self.gtfs_date is not None
+        check_gtfs_service_date(self.otp_url, self.gtfs_date)
+
+        for col in ("origin_lng", "origin_lat", "destination_lng", "destination_lat"):
+            assert trips[col].null_count() == 0, f"Found null values for column `{col}"
+
+        # Add date column.
+        trips = trips.with_columns(date=self.gtfs_date)
+
+        parameters = self.get_parameters()
+        batch_size = self.batch_size or len(trips)
+        batch_size = max(batch_size, 1)
+        nb_batches = math.ceil(len(trips) / batch_size)
+        if nb_batches == 1:
+            return run_queries_batch(trips, self.otp_url, parameters, self.nb_threads)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            for i in range(nb_batches):
+                df = run_queries_batch(
+                    trips[i * batch_size : (i + 1) * batch_size],
+                    self.otp_url,
+                    parameters,
+                    self.nb_threads,
+                )
+                df.write_parquet(Path(tmp_dir) / Path(f"otp_results_{i}.parquet"))
+                del df
+            df = pl.concat(
+                (
+                    pl.scan_parquet(Path(tmp_dir) / Path(f"otp_results_{i}.parquet"))
+                    for i in range(nb_batches)
+                ),
+                how="vertical",
+            ).collect()
+        return df
+
+
+class TripsOpenTripPlannerStep(OpenTripPlannerStep, PopulationStep):
     """Computes the trips' travel time and generalized time by public transit with OpenTripPlanner.
 
     This step requires having access to an OpenTripPlanner API server.
@@ -526,6 +585,33 @@ class TripsOpenTripPlannerStep(GenericOpenTripPlannerStep, PopulationStep):
     ```
     """
 
+    time_type = EnumParameter(
+        "opentripplanner.time_type",
+        values=["departure", "arrival", "tstar", "custom_departure", "custom_arrival"],
+        description="How the departure / arrival time of the requests is defined.",
+        note=(
+            "If `\"departure\"`, trips' departure times are read from the trips' ex-ante departure "
+            "times. "
+            "If `\"arrival\"`, trips' arrival times are read from the trips' ex-ante arrival "
+            "times. "
+            "If `\"tstar\"`, trips' arrival times are read from the trips' desired arrival times. "
+            'If `"custom_departure"`, the departure times are equal to the value of '
+            "`opentripplanner.time` for all trips. "
+            'If `"custom_arrival"`, the arrival times are equal to the value of '
+            "`opentripplanner.time` for all trips. "
+        ),
+    )
+    time = TimeParameter(
+        "opentripplanner.time",
+        description="Departure / arrival time of the requests.",
+        note=(
+            'If `time_type` is `"custom_departure"`, this is the departure time used for all '
+            "requests. "
+            'If `time_type` is `"custom_arrival"`, this is the arrival time used for all '
+            "requests. "
+            "Otherwise, the value is only used as a default for missing departure / arrival time."
+        ),
+    )
     input_files = {
         "trips": TripsFile,
         "origins": TripsOriginsFile,
@@ -539,13 +625,10 @@ class TripsOpenTripPlannerStep(GenericOpenTripPlannerStep, PopulationStep):
     output_files = {"costs": TripsPublicTransitItinerariesFile}
 
     def is_defined(self):
-        return self.gtfs_date is not None and self.time_type is not None
+        return super(OpenTripPlannerStep, self).is_defined() and self.time_type is not None
 
     def run(self):
-
         assert self.time_type is not None
-        assert self.otp_url is not None
-        assert self.walking_speed is not None
 
         trips = self.input["trips"].read()
         # Note that tstars are read even when not required. This could be optimized although the
@@ -553,8 +636,6 @@ class TripsOpenTripPlannerStep(GenericOpenTripPlannerStep, PopulationStep):
         trips = clean_trips_time(
             trips, self.input["tstars"].read_if_exists(), self.time_type, self.time
         )
-        # Add date.
-        trips = trips.with_columns(date=self.gtfs_date)
 
         # Read origin / destination longitude and latitude.
         origins = self.input["origins"].read()
@@ -564,30 +645,44 @@ class TripsOpenTripPlannerStep(GenericOpenTripPlannerStep, PopulationStep):
         destinations_df = read_lng_lat(destinations, "destination_")
         trips = trips.join(destinations_df, on="trip_id")
 
-        parameters = {
-            "walkSpeed": self.walking_speed / 3.6,
-            "walkReluctance": self.walking_reluctance,
-            "waitReluctance": self.waiting_reluctance,
-            "busReluctance": self.bus_reluctance,
-            "tramReluctance": self.tram_reluctance,
-            "subwayReluctance": self.subway_reluctance,
-            "railReluctance": self.rail_reluctance,
-            "transferCost": self.transfer_cost,
-        }
-
-        df = run_queries(
-            trips, self.otp_url, parameters, self.batch_size, nb_threads=self.nb_threads
-        )
+        df = self.run_queries(trips)
         self.output["costs"].write(df)
 
 
-class ParkAndRideTripsOpenTripPlannerStep(GenericOpenTripPlannerStep, PopulationStep):
+class ParkAndRideTripsOpenTripPlannerStep(OpenTripPlannerStep, PopulationStep):
     """Computes the travel time and generalized time for the public-transit parts of P+R trips with
     OpenTripPlanner.
 
     Check [`TripsOpenTripPlannerStep`](steps.md#tripsopentripplannerstep) for additional details.
     """
 
+    time_type = EnumParameter(
+        "opentripplanner.time_type",
+        values=["departure", "arrival", "tstar", "custom_departure", "custom_arrival"],
+        description="How the departure / arrival time of the requests is defined.",
+        note=(
+            "If `\"departure\"`, trips' departure times are read from the trips' ex-ante departure "
+            "times. "
+            "If `\"arrival\"`, trips' arrival times are read from the trips' ex-ante arrival "
+            "times. "
+            "If `\"tstar\"`, trips' arrival times are read from the trips' desired arrival times. "
+            'If `"custom_departure"`, the departure times are equal to the value of '
+            "`opentripplanner.time` for all trips. "
+            'If `"custom_arrival"`, the arrival times are equal to the value of '
+            "`opentripplanner.time` for all trips. "
+        ),
+    )
+    time = TimeParameter(
+        "opentripplanner.time",
+        description="Departure / arrival time of the requests.",
+        note=(
+            'If `time_type` is `"custom_departure"`, this is the departure time used for all '
+            "requests. "
+            'If `time_type` is `"custom_arrival"`, this is the arrival time used for all '
+            "requests. "
+            "Otherwise, the value is only used as a default for missing departure / arrival time."
+        ),
+    )
     input_files = {
         "trips": TripsFile,
         "origins": TripsOriginsFile,
@@ -602,13 +697,10 @@ class ParkAndRideTripsOpenTripPlannerStep(GenericOpenTripPlannerStep, Population
     output_files = {"costs": ParkAndRideTripsPublicTransitItinerariesFile}
 
     def is_defined(self):
-        return self.gtfs_date is not None and self.time_type is not None
+        return super(OpenTripPlannerStep, self).is_defined() and self.time_type is not None
 
     def run(self):
-
         assert self.time_type is not None
-        assert self.otp_url is not None
-        assert self.walking_speed is not None
 
         # PFR. I think that the tstar option cannot work for P+R trips (for the trip back, we don't
         # know the car travel time so we don't know the actual arrival time at destination). So
@@ -631,18 +723,5 @@ class ParkAndRideTripsOpenTripPlannerStep(GenericOpenTripPlannerStep, Population
         destinations_df = read_lng_lat(destinations, "destination_")
         trips = trips.join(destinations_df, on="trip_id")
 
-        parameters = {
-            "walkSpeed": self.walking_speed / 3.6,
-            "walkReluctance": self.walking_reluctance,
-            "waitReluctance": self.waiting_reluctance,
-            "busReluctance": self.bus_reluctance,
-            "tramReluctance": self.tram_reluctance,
-            "subwayReluctance": self.subway_reluctance,
-            "railReluctance": self.rail_reluctance,
-            "transferCost": self.transfer_cost,
-        }
-
-        df = run_queries(
-            trips, self.otp_url, parameters, self.batch_size, nb_threads=self.nb_threads
-        )
+        df = self.run_queries(trips)
         self.output["costs"].write(df)
