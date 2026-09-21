@@ -53,6 +53,8 @@ def clean_trips(trips: pl.DataFrame) -> pl.DataFrame:
         trips = trips.with_columns(has_driving_license=True)
     if "destination_activity_duration" not in trips.columns:
         trips = trips.with_columns(destination_activity_duration=pl.lit(None, dtype=pl.Duration))
+    if "joint_tour" not in trips.columns:
+        trips = trips.with_columns(joint_tour=False)
     trips = trips.with_columns(
         "trip_id",
         agent_id="tour_id",
@@ -64,7 +66,9 @@ def clean_trips(trips: pl.DataFrame) -> pl.DataFrame:
         .then("activity_time")
         .otherwise(0.0)
     )
-    return trips.select("trip_id", "agent_id", "activity_time", "has_car", "has_driving_license")
+    return trips.select(
+        "trip_id", "agent_id", "activity_time", "has_car", "has_driving_license", "joint_tour"
+    )
 
 
 def add_ridesharing_subsidy(df: pl.DataFrame, mode: CarMode, subsidy: float) -> pl.DataFrame:
@@ -102,6 +106,9 @@ def generate_car_trips(
     # Car-driver modes are only accessible to driving license holders.
     if mode.requires_driving_license():
         df = df.filter("has_driving_license")
+    # Car modes without passenger are not feasible for joint tours.
+    if not mode.vehicle().has_passenger():
+        df = df.filter(pl.col("joint_tour").not_())
     df = df.with_columns(pl.lit(repr(mode)).alias("alt_id"))
     primary_trips: pl.DataFrame = primary_trips_file.read().select(
         "trip_id",
@@ -385,6 +392,9 @@ class PrepareMetroTripsStep(
                     on="household_id",
                     how="left",
                 )
+        if self.input["joint_tours"].exists():
+            joint_tours = self.input["joint_tours"].read()
+            trips = trips.join(joint_tours, on="tour_id", how="left")
         df = clean_trips(trips)
         metro_trips = pl.DataFrame()
         for car_mode in CAR_MODES:

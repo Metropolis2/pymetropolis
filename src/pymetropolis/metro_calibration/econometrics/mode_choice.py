@@ -200,6 +200,7 @@ class SurveyEconometricModeChoiceStep(StepWithModes):
                 f"`{CAR_OWNERSHIP_COLUMN}` is not available in `SurveyedToursFile`: car modes will "
                 "not be restricted to car owners."
             )
+        joint_tour_variable = "joint_tour" in self.variables
         avail_exprs = {}
         for mode in modes:
             conditions = [
@@ -209,10 +210,24 @@ class SurveyEconometricModeChoiceStep(StepWithModes):
                 conditions.append(pl.col(DRIVING_LICENSE_COLUMN).fill_null(False))
             if has_car_ownership_data and isinstance(mode, CarMode) and mode.requires_car():
                 conditions.append(pl.col(CAR_OWNERSHIP_COLUMN).ge(1).fill_null(False))
+            if (
+                joint_tour_variable
+                and isinstance(mode, CarMode)
+                and not mode.vehicle().has_passenger()
+            ):
+                # Car modes with no passenger are not available for joint tours.
+                conditions.append(pl.col("joint_tour").not_())
+            # TODO. Check if useful.
+            if repr(mode) == "walking":
+                conditions.append(pl.col("total_distance") < 5000)
+            if repr(mode) == "bicycle":
+                conditions.append(pl.col("total_distance") < 15000)
             avail_exprs[f"avail_{mode!r}"] = (
                 pl.all_horizontal(*conditions) if conditions else pl.lit(True)
             ).cast(pl.Int8)
         tours = tours.with_columns(**avail_exprs)
+        # TODO. Check if useful.
+        tours = tours.filter(pl.col("total_distance") > 1000)
         # Fill missing generic variables with 0: irrelevant since the alternative is then marked
         # unavailable, but required so that the utility expression always evaluates to a finite
         # number.
