@@ -11,8 +11,6 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from loguru import logger
-
 if TYPE_CHECKING:
     from .config import Config
     from .file import MetroFile
@@ -101,8 +99,8 @@ def compute_feasible(
 def find_next_conflict(generated_files: dict[MetroFile, set[Step]]) -> set[Step] | None:
     for ofile, steps in generated_files.items():
         if len(steps) >= 2:
-            steps_str = ", ".join(sorted(map(str, steps)))
-            logger.debug(f"Multiple steps are generating file {ofile}: {steps_str}")
+            # steps_str = ", ".join(sorted(map(str, steps)))
+            # logger.debug(f"Multiple steps are generating file {ofile}: {steps_str}")
             return steps
     return None
 
