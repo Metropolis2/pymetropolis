@@ -374,7 +374,7 @@ class MetroGeoDataFrameFile(MetroFile):
     @error_context(msg="Cannot save GeoDataFrame {}", fmt_args=[0])
     def write(self, gdf: gpd.GeoDataFrame):
         gdf = self.validate(gdf)
-        gdf.to_parquet(self.complete_path)
+        gdf.to_parquet(self.complete_path, geometry_encoding="geoarrow")
 
     def read(self) -> gpd.GeoDataFrame:
         import geopandas as gpd
