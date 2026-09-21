@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 from loguru import logger
 
 from pymetropolis.metro_common import MetropyError
-from pymetropolis.metro_demand.modes import MODE_PREFERENCES_FILES
+from pymetropolis.metro_demand.modes import MODE_PREFERENCES_FILES, ModeChoiceMuFile
 from pymetropolis.metro_demand.population.files import ToursFile
 from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.metro_pipeline.parameters import BoolParameter, FloatParameter, StringParameter
@@ -219,7 +219,10 @@ class ModePreferencesFromEconometricsStep(StepWithModes, PopulationStep):
     )
 
     input_files = {"tours": ToursFile, "results": SurveyModeChoiceResultsFile}
-    output_files = {repr(m): pref_file for m, pref_file in MODE_PREFERENCES_FILES.items()}
+    output_files = {
+        "mu": ModeChoiceMuFile,
+        **{repr(m): pref_file for m, pref_file in MODE_PREFERENCES_FILES.items()},
+    }
 
     def is_defined(self):
         return bool(self.from_econometrics) and self.has_trip_mode()
@@ -267,3 +270,7 @@ class ModePreferencesFromEconometricsStep(StepWithModes, PopulationStep):
         for mode in modes:
             df = mode_prefs[mode].with_columns(pl.col(f"{mode!r}_cst", f"{mode!r}_vot") / scale)
             self.output[repr(mode)].write(df)
+
+        # Save utility scale as mode-choice mu.
+        df = tours.select("tour_id", mode_choice_mu=1 / scale)
+        self.output["mu"].write(df)

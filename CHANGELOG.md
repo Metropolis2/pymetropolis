@@ -36,6 +36,8 @@ New steps:
 - `SurveyEconometricModeChoiceStep`
 - `ModePreferencesFromEconometricsStep`
 - `WriteExAnteMetroVehicleTypesStep`
+- `ModeChoiceMuStep`
+- `ModeChoiceMuFromPopulationStep`
 
 New files:
 
@@ -73,6 +75,7 @@ New files:
 - `SurveyedTripsTravelTimeComparisonWalkingPlotFile`
 - `SurveyModeChoiceResultsFile`
 - `MetroExAnteVehicleTypesFile`
+- `ModeChoiceMuFile`
 
 New parameters:
 

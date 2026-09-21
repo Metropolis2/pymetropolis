@@ -6,6 +6,25 @@ from pymetropolis.metro_pipeline.file import (
 )
 
 
+class ModeChoiceMuFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/mode_choice_error_scales.parquet"
+    description = "Error scale of the mode choice model for each tour."
+    schema = [
+        Column(
+            "tour_id",
+            MetroDataType.ID,
+            description="Identifier of the tour.",
+            nullable=False,
+            unique=True,
+        ),
+        Column(
+            "mode_choice_mu",
+            MetroDataType.FLOAT,
+            description="Error scale of the mode choice model, in euro.",
+        ),
+    ]
+
+
 class OutsideOptionPreferencesFile(MetroDataFrameFile, PopulationFile):
     path = "demand/{population}/modes/outside_option/preferences.parquet"
     description = "Utility of the outside option alternative, for each tour."
