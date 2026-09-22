@@ -15,7 +15,12 @@ from pymetropolis.metro_demand.modes.files import (
     WalkingTravelTimesFile,
 )
 from pymetropolis.metro_demand.population import TripsFile
-from pymetropolis.metro_demand.population.files import HouseholdsFile, PersonsFile, ToursModeFile
+from pymetropolis.metro_demand.population.files import (
+    HouseholdsFile,
+    JointToursFile,
+    PersonsFile,
+    ToursModeFile,
+)
 from pymetropolis.metro_demand.routing.files import (
     NonPrimaryCarTrips,
     PrimaryCarTripsAccessEgressFile,
@@ -350,6 +355,7 @@ class PrepareMetroTripsStep(
             when=lambda inst: inst.has_car_mode(),
             when_doc=r'if any "car\_\*" mode is defined',
         ),
+        "joint_tours": InputFile(JointToursFile, optional=True),
         **{
             f"{mode!r}_preferences": InputFile(
                 pref_file,
@@ -440,9 +446,9 @@ class PrepareMetroTripsStep(
                 self.input["linear_schedule"],
             )
             metro_trips = pl.concat((metro_trips, bicycle_trips), how="diagonal")
-        metro_trips = metro_trips.drop("has_car", "has_driving_license").sort(
-            "agent_id", "alt_id", "trip_id"
-        )
+        metro_trips = metro_trips.drop(
+            "has_car", "has_driving_license", "joint_tour", strict=False
+        ).sort("agent_id", "alt_id", "trip_id")
         self.output["metro_trips"].write(metro_trips)
 
 
