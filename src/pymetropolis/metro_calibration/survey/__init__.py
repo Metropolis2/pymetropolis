@@ -1,6 +1,10 @@
 from .files import (
     JointTourEstimatorFile,
+    JointTourFeatureImportanceFile,
+    JointTourFeatureImportancePlotFile,
     ModeEstimatorFile,
+    ModeFeatureImportanceFile,
+    ModeFeatureImportancePlotFile,
     SurveyedCarsFile,
     SurveyedDetailedZonesFile,
     SurveyedDrawZonesFile,
@@ -30,6 +34,7 @@ from .joint_travel import (
     ClassifyJointToursStep,
     EstimateJointToursClassifierStep,
     ExternalJointToursClassifierStep,
+    JointToursFeatureImportanceStep,
 )
 from .mobisurvstd import MobiSurvStdImportStep
 from .modes import (
@@ -37,6 +42,7 @@ from .modes import (
     CompareToursModeSharesStep,
     EstimateModeClassifierStep,
     ExternalModeClassifierStep,
+    ModeFeatureImportanceStep,
 )
 from .tours import CleanSurveyToursStep
 from .travel_times import (
@@ -69,7 +75,11 @@ SURVEY_FILES = [
     SurveyedTripsCarTravelTimesFile,
     SurveyedToursTravelTimesFile,
     JointTourEstimatorFile,
+    JointTourFeatureImportanceFile,
+    JointTourFeatureImportancePlotFile,
     ModeEstimatorFile,
+    ModeFeatureImportanceFile,
+    ModeFeatureImportancePlotFile,
     ToursModeShareComparisonFile,
     ToursModeShareTourCountPlotFile,
     ToursModeShareDistancePlotFile,
@@ -84,9 +94,11 @@ SURVEY_STEPS = [
     CleanSurveyToursStep,
     ExternalJointToursClassifierStep,
     EstimateJointToursClassifierStep,
+    JointToursFeatureImportanceStep,
     ClassifyJointToursStep,
     ExternalModeClassifierStep,
     EstimateModeClassifierStep,
+    ModeFeatureImportanceStep,
     ClassifyToursModeStep,
     CompareToursModeSharesStep,
     SurveyedZoneMedoidsStep,

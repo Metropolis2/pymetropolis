@@ -38,10 +38,16 @@ New steps:
 - `WriteExAnteMetroVehicleTypesStep`
 - `ModeChoiceMuStep`
 - `ModeChoiceMuFromPopulationStep`
+- `JointToursFeatureImportanceStep`
+- `ModeFeatureImportanceStep`
 
 New files:
 
 - `ModeEstimatorFile`
+- `JointTourFeatureImportanceFile`
+- `JointTourFeatureImportancePlotFile`
+- `ModeFeatureImportanceFile`
+- `ModeFeatureImportancePlotFile`
 - `ToursModeFile`
 - `FreeFlowTravelTimeComparisonPlotFile`
 - `ToursModeShareComparisonFile`
@@ -79,6 +85,10 @@ New files:
 
 New parameters:
 
+- `joint_travel.feature_importance`
+- `joint_travel.nb_plotted_features`
+- `mode_classifier.feature_importance`
+- `mode_classifier.nb_plotted_features`
 - `road_network.capacity_multipliers.traffic_signal`
 - `road_network.capacity_multipliers.roundabout`
 - `ridesharing.subsidy`

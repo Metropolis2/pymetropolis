@@ -6,10 +6,23 @@ from loguru import logger
 
 from pymetropolis.common import ThreadedStep
 from pymetropolis.metro_common import MetropyError
-from pymetropolis.metro_common.ml_models import estimate_model, get_X, sample_classes, test_models
+from pymetropolis.metro_common.ml_models import (
+    compute_feature_importance,
+    estimate_model,
+    get_X,
+    sample_classes,
+    test_models,
+)
+from pymetropolis.metro_common.plots import plot_feature_importance
 from pymetropolis.metro_demand.population.files import ToursFile, ToursModeFile
 from pymetropolis.metro_pipeline import PopulationStep, Step
-from pymetropolis.metro_pipeline.parameters import ListParameter, PathParameter, StringParameter
+from pymetropolis.metro_pipeline.parameters import (
+    BoolParameter,
+    IntParameter,
+    ListParameter,
+    PathParameter,
+    StringParameter,
+)
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_pipeline.types import String
 from pymetropolis.metro_spatial.simulation_area.file import SimulationAreaFile
@@ -18,6 +31,8 @@ from pymetropolis.random import RandomStep
 
 from .files import (
     ModeEstimatorFile,
+    ModeFeatureImportanceFile,
+    ModeFeatureImportancePlotFile,
     SurveyedDrawZonesFile,
     SurveyedToursFile,
     ToursModeShareComparisonFile,
@@ -129,6 +144,69 @@ class EstimateModeClassifierStep(RandomStep, ThreadedStep, StepWithModes):
         )
 
         self.output["estimator"].write(estimator)
+
+
+class ModeFeatureImportanceStep(RandomStep, ThreadedStep, StepWithModes):
+    """Computes the permutation feature importance of the tour-mode classifier."""
+
+    feature_importance = BoolParameter(
+        "mode_classifier.feature_importance",
+        default=False,
+        description=(
+            "Whether to compute a feature importance analysis of the tour-mode classifier."
+        ),
+    )
+
+    nb_plotted_features = IntParameter(
+        "mode_classifier.nb_plotted_features",
+        lower_bound=1,
+        description="Number of features to show in the feature importance plot.",
+        note=(
+            "Only the most important features are shown. "
+            "Default is to show all the features. "
+            "This does not affect `ModeFeatureImportanceFile`, which always includes all the "
+            "features."
+        ),
+    )
+
+    input_files = {"tours": SurveyedToursFile, "estimator": ModeEstimatorFile}
+    output_files = {"importance": ModeFeatureImportanceFile, "plot": ModeFeatureImportancePlotFile}
+
+    def is_defined(self):
+        return self.modes is not None and bool(self.feature_importance)
+
+    def run(self):
+        assert self.modes is not None
+
+        tours = filter_survey_tours(self.modes, self.input["tours"].read())
+        estimator = self.input["estimator"].read()
+
+        # The features are read from the estimator (and not from `mode_classifier.features`) so
+        # that the analysis always describes the estimator actually stored on disk, including one
+        # imported by `ExternalModeClassifierStep`.
+        features = estimator.feature_names_in_
+
+        X = get_X(tours, features)
+        y = tours["tour_mode"].to_pandas()
+        # Same grouping as for the estimation: the tours of a same household must all be assigned
+        # to the same cross-validation fold.
+        groups = tours["household_id"].to_numpy()
+
+        df = compute_feature_importance(
+            X, y, groups, estimator, self.random_seed, self.nb_threads or -1
+        )
+
+        logger.info("Feature importance of the tour-mode classifier (decrease in Brier score):")
+        for feature, importance, std in df.head(10).iter_rows():
+            logger.info(f"  {feature}: {importance:.4f} (+/- {std:.4f})")
+
+        self.output["importance"].write(df)
+        fig = plot_feature_importance(
+            df,
+            "Decrease in Brier score when the feature is shuffled",
+            max_features=self.nb_plotted_features,
+        )
+        self.output["plot"].write(fig)
 
 
 class ClassifyToursModeStep(RandomStep, PopulationStep):
