@@ -1,6 +1,10 @@
-import json
+from __future__ import annotations
 
-from pymetropolis.metro_demand.population.files import TripsDistancesFile
+import json
+from typing import TYPE_CHECKING
+
+from pymetropolis.metro_common import MetropyError
+from pymetropolis.metro_demand.population.files import JointToursFile, TripsDistancesFile, TripsFile
 from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.metro_pipeline.steps import InputFile, Step
 from pymetropolis.metro_results.demand.files import TourResultsFile, TripResultsFile
@@ -9,6 +13,62 @@ from pymetropolis.metro_simulation.run import MetroIterationResultsFile
 from pymetropolis.metro_simulation.supply.files import MetroVehicleTypesFile
 
 from .files import AggregateOutputFile, IterationResultsFile
+
+if TYPE_CHECKING:
+    import polars as pl
+
+
+def vehicle_kilometers(trip_results: pl.DataFrame, simulation_ratio: float) -> dict:
+    """Computes vehicle-kilometers (total, weighted by PCE, by mode).
+
+    `trip_results` must have columns `mode`, `route_length` and `pce`.
+    """
+    import polars as pl
+
+    results = dict()
+    results["total"] = trip_results.select(
+        pl.col("route_length").sum() / simulation_ratio / 1e3
+    ).item()
+    # Note. We don't divide by the simulation ratio when computing veh km weighted by PCE since
+    # the PCE already account for the simulation ratio.
+    results["total_weighted_by_pce"] = trip_results.select(
+        (pl.col("route_length") * pl.col("pce")).sum() / 1e3
+    ).item()
+    veh_km_by_mode = (
+        trip_results.group_by("mode")
+        .agg(veh_km=pl.col("route_length").sum() / simulation_ratio / 1e3)
+        .filter(pl.col("veh_km") > 0.0)
+        .sort("mode")
+    )
+    results["by_mode"] = dict(zip(veh_km_by_mode["mode"], veh_km_by_mode["veh_km"]))
+    return results
+
+
+def mode_shares(trip_results: pl.DataFrame, tour_results: pl.DataFrame | None) -> dict:
+    """Computes mode shares by trip count, by trip Euclidean distance (if `trip_results` has an
+    `od_distance` column) and by tour count (if `tour_results` is not None).
+    """
+    import polars as pl
+
+    results = dict()
+    trip_count_shares = trip_results["mode"].value_counts(normalize=True).sort("mode")
+    results["trip_count"] = dict(zip(trip_count_shares["mode"], trip_count_shares["proportion"]))
+    if "od_distance" in trip_results.columns:
+        trip_length_shares = (
+            trip_results.group_by("mode")
+            .agg(pl.col("od_distance").sum())
+            .with_columns(proportion=pl.col("od_distance") / pl.col("od_distance").sum())
+            .sort("mode")
+        )
+        results["trip_euclidean_distance"] = dict(
+            zip(trip_length_shares["mode"], trip_length_shares["proportion"])
+        )
+    if tour_results is not None:
+        tour_count_shares = tour_results["mode"].value_counts(normalize=True).sort("mode")
+        results["tour_count"] = dict(
+            zip(tour_count_shares["mode"], tour_count_shares["proportion"])
+        )
+    return results
 
 
 class AggregateResultsStep(StepWithSimulationRatio, PopulationStep):
@@ -21,6 +81,9 @@ class AggregateResultsStep(StepWithSimulationRatio, PopulationStep):
 
     - vehicle-kilometers (total, weighted by PCE, by mode)
     - mode shares (by trip count, by trip Euclidean distance, by tour count)
+
+    If the joint tours are available, vehicle-kilometers and mode shares are also computed
+    separately for joint and non-joint tours.
     """
 
     input_files = {
@@ -28,66 +91,63 @@ class AggregateResultsStep(StepWithSimulationRatio, PopulationStep):
         "trip_results": TripResultsFile,
         "trips_distances": InputFile(TripsDistancesFile, optional=True),
         "tour_results": InputFile(TourResultsFile, optional=True),
+        "joint_tours": InputFile(JointToursFile, optional=True),
+        "trips": InputFile(TripsFile, optional=True),
     }
     output_files = {"output": AggregateOutputFile}
 
     def run(self):
         import polars as pl
 
-        results = dict()
+        assert self.simulation_ratio is not None
 
         trip_results = self.input["trip_results"].read()
         vehicles = self.input["metro_input_vehicles"].read()
         trips_distances = self.input["trips_distances"].read_if_exists()
         tour_results = self.input["tour_results"].read_if_exists()
+        joint_tours = self.input["joint_tours"].read_if_exists()
 
-        # Compute vehicle-kilometers.
-        results["vehicle_kilometers"] = dict()
         # Merge with vehicles to get PCE.
         trip_results = trip_results.join(vehicles, on="vehicle_id", how="left")
-        results["vehicle_kilometers"]["total"] = (
-            trip_results["route_length"].sum() / self.simulation_ratio / 1e3
-        )
-        # Note. We don't divide by the simulation ratio when computing veh km weighted by PCE since
-        # the PCE already account for the simulation ratio.
-        results["vehicle_kilometers"]["total_weighted_by_pce"] = trip_results.select(
-            (pl.col("route_length") * pl.col("pce")).sum() / 1e3
-        ).item()
-        veh_km_by_mode = (
-            trip_results.group_by("mode")
-            .agg(veh_km=pl.col("route_length").sum() / self.simulation_ratio / 1e3)
-            .filter(pl.col("veh_km") > 0.0)
-            .sort("mode")
-        )
-        results["vehicle_kilometers"]["by_mode"] = {
-            mode: veh_km for mode, veh_km in zip(veh_km_by_mode["mode"], veh_km_by_mode["veh_km"])
+        if trips_distances is not None:
+            trip_results = trip_results.join(trips_distances, on="trip_id", how="left")
+
+        results = {
+            "vehicle_kilometers": vehicle_kilometers(trip_results, self.simulation_ratio),
+            "mode_shares": mode_shares(trip_results, tour_results),
         }
 
-        # Compute mode shares.
-        results["mode_shares"] = dict()
-        trip_count_shares = trip_results["mode"].value_counts(normalize=True).sort("mode")
-        results["mode_shares"]["trip_count"] = {
-            mode: share
-            for mode, share in zip(trip_count_shares["mode"], trip_count_shares["proportion"])
-        }
-        if trips_distances is not None:
-            trip_results = trip_results.join(trips_distances, on="trip_id")
-            trip_length_shares = (
-                trip_results.group_by("mode")
-                .agg(pl.col("od_distance").sum())
-                .with_columns(proportion=pl.col("od_distance") / pl.col("od_distance").sum())
-                .sort("mode")
+        if joint_tours is not None:
+            trips = self.input["trips"].read_if_exists()
+            if trips is None:
+                raise MetropyError("The TripsFile is required to compute joint-tour results.")
+            # Ids in the results are strings while ids in the input files might be integers.
+            joint_tours = joint_tours.select(
+                pl.col("tour_id").cast(pl.String), pl.col("joint_tour")
             )
-            results["mode_shares"]["trip_euclidean_distance"] = {
-                mode: share
-                for mode, share in zip(trip_length_shares["mode"], trip_length_shares["proportion"])
-            }
-        if tour_results is not None:
-            tour_count_shares = tour_results["mode"].value_counts(normalize=True).sort("mode")
-            results["mode_shares"]["tour_count"] = {
-                mode: share
-                for mode, share in zip(tour_count_shares["mode"], tour_count_shares["proportion"])
-            }
+            trips = trips.select(pl.col("trip_id", "tour_id").cast(pl.String)).join(
+                joint_tours, on="tour_id", how="left"
+            )
+            trip_results = trip_results.with_columns(pl.col("trip_id").cast(pl.String)).join(
+                trips.select("trip_id", "joint_tour"), on="trip_id", how="left"
+            )
+            if tour_results is not None:
+                tour_results = tour_results.with_columns(pl.col("tour_id").cast(pl.String)).join(
+                    joint_tours, on="tour_id", how="left"
+                )
+            for key, is_joint in (("joint_tours", True), ("non_joint_tours", False)):
+                # Tours missing from the joint-tours file are considered as non-joint.
+                trip_filter = pl.col("joint_tour").fill_null(False) == is_joint
+                subset_trip_results = trip_results.filter(trip_filter)
+                subset_tour_results = (
+                    tour_results.filter(trip_filter) if tour_results is not None else None
+                )
+                results[key] = {
+                    "vehicle_kilometers": vehicle_kilometers(
+                        subset_trip_results, self.simulation_ratio
+                    ),
+                    "mode_shares": mode_shares(subset_trip_results, subset_tour_results),
+                }
 
         # Save as JSON.
         results_str = json.dumps(results, indent=2, sort_keys=True)

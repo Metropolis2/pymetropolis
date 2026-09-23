@@ -102,6 +102,7 @@ New features:
 - Use the `--graph <path>` CLI option to output a graph of the Steps to be run and the dependencies
   between them.
 - Add mode shares by tour count to `AggregateOutputFile`.
+- Add results by joint vs solo tours to `AggregateOutputFile`.
 
 Other changes:
 
