@@ -96,6 +96,10 @@ New parameters:
 - `ridesharing.subsidy`
 - `parent_config`
 
+New columns:
+
+- `tour_id` in `TripResultsFile`
+
 New features:
 
 - Configs can now inherit from other configs through the `parent_config` parameter.

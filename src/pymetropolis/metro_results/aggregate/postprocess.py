@@ -3,8 +3,7 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from pymetropolis.metro_common import MetropyError
-from pymetropolis.metro_demand.population.files import JointToursFile, TripsDistancesFile, TripsFile
+from pymetropolis.metro_demand.population.files import JointToursFile, TripsDistancesFile
 from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.metro_pipeline.steps import InputFile, Step
 from pymetropolis.metro_results.demand.files import TourResultsFile, TripResultsFile
@@ -92,7 +91,6 @@ class AggregateResultsStep(StepWithSimulationRatio, PopulationStep):
         "trips_distances": InputFile(TripsDistancesFile, optional=True),
         "tour_results": InputFile(TourResultsFile, optional=True),
         "joint_tours": InputFile(JointToursFile, optional=True),
-        "trips": InputFile(TripsFile, optional=True),
     }
     output_files = {"output": AggregateOutputFile}
 
@@ -118,18 +116,12 @@ class AggregateResultsStep(StepWithSimulationRatio, PopulationStep):
         }
 
         if joint_tours is not None:
-            trips = self.input["trips"].read_if_exists()
-            if trips is None:
-                raise MetropyError("The TripsFile is required to compute joint-tour results.")
-            # Ids in the results are strings while ids in the input files might be integers.
+            # Ids in the results are strings while ids in the joint-tours file might be integers.
             joint_tours = joint_tours.select(
                 pl.col("tour_id").cast(pl.String), pl.col("joint_tour")
             )
-            trips = trips.select(pl.col("trip_id", "tour_id").cast(pl.String)).join(
+            trip_results = trip_results.with_columns(pl.col("tour_id").cast(pl.String)).join(
                 joint_tours, on="tour_id", how="left"
-            )
-            trip_results = trip_results.with_columns(pl.col("trip_id").cast(pl.String)).join(
-                trips.select("trip_id", "joint_tour"), on="trip_id", how="left"
             )
             if tour_results is not None:
                 tour_results = tour_results.with_columns(pl.col("tour_id").cast(pl.String)).join(

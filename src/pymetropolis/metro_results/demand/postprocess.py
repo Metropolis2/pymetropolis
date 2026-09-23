@@ -49,6 +49,7 @@ class TripResultsStep(PopulationStep):
         ).with_columns(pl.col("agent_id").str.strip_prefix(prefix))
         df = df.select(
             trip_id=pl.col("trip_id").str.strip_prefix(prefix),
+            tour_id=pl.col("agent_id").str.strip_prefix(prefix),
             mode="selected_alt_id",
             # TODO. Replace this with something more robust when the Mode class is created.
             is_road=pl.col("selected_alt_id").str.starts_with("car_"),
@@ -306,11 +307,7 @@ class TourResultsStep(PopulationStep):
     for results at the tour level.
     """
 
-    input_files = {
-        "trips": TripsFile,
-        "trip_results": TripResultsFile,
-        "metro_agent_results": MetroAgentResultsFile,
-    }
+    input_files = {"trip_results": TripResultsFile, "metro_agent_results": MetroAgentResultsFile}
     output_files = {"tour_results": TourResultsFile}
 
     def run(self):
@@ -331,16 +328,9 @@ class TourResultsStep(PopulationStep):
             )
             .collect()
         )
-        # Ids in the results are strings (population prefix removed), while ids in the trips file
-        # might be integers.
-        trips: pl.LazyFrame = (
-            self.input["trips"].scan().select(pl.col("trip_id", "tour_id").cast(pl.String))
-        )
         tour_trips: pl.DataFrame = (
             self.input["trip_results"]
             .scan()
-            .with_columns(pl.col("trip_id").cast(pl.String))
-            .join(trips, on="trip_id", how="left")
             .group_by("tour_id")
             .agg(
                 tour_departure_time=pl.col("departure_time").min(),

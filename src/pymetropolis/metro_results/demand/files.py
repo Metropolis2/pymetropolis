@@ -68,6 +68,12 @@ class TripResultsFile(MetroDataFrameFile, PopulationFile):
     description = "Clean results for each trip in the population."
     schema = [
         Column("trip_id", MetroDataType.ID, description="Identifier of the trip.", nullable=False),
+        Column(
+            "tour_id",
+            MetroDataType.ID,
+            description="Identifier of the tour this trip is part of.",
+            nullable=False,
+        ),
         Column("mode", MetroDataType.STRING, description="Mode used for the trip.", nullable=False),
         Column(
             "vehicle_id",
