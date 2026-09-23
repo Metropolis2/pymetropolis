@@ -111,10 +111,14 @@ class TripResultsStep(PopulationStep):
                 df.lazy()
                 .join(secondary_trips, on="trip_id", how="left")
                 .with_columns(
-                    route_free_flow_travel_time="free_flow_travel_time",
-                    global_free_flow_travel_time="free_flow_travel_time",
-                    route_length="path_length",
-                    nb_edges=pl.col("path").list.len(),
+                    route_free_flow_travel_time=pl.col("route_free_flow_travel_time").fill_null(
+                        pl.col("free_flow_travel_time")
+                    ),
+                    global_free_flow_travel_time=pl.col("global_free_flow_travel_time").fill_null(
+                        pl.col("free_flow_travel_time")
+                    ),
+                    route_length=pl.col("route_length").fill_null(pl.col("path_length")),
+                    nb_edges=pl.col("nb_edges").fill_null(pl.col("path").list.len()),
                 )
                 .drop("free_flow_travel_time", "path", "path_length")
                 .collect()

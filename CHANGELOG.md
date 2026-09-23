@@ -132,6 +132,11 @@ Removed steps:
 
 - `GenericPopulationStep` (should no longer be needed with the changes to OD matrix steps)
 
+Fixes:
+
+- Fix a bug where road-specific results in `TripResultsFile` were NULLs when secondary car trips
+  exist
+
 ## [0.12.0] – 2026-08-25
 
 New steps:
