@@ -6,6 +6,63 @@ from pymetropolis.metro_pipeline.file import (
 )
 
 
+class TourResultsFile(MetroDataFrameFile, PopulationFile):
+    path = "results/{population}/tour_results.parquet"
+    description = "Clean results for each tour in the population."
+    schema = [
+        Column("tour_id", MetroDataType.ID, description="Identifier of the tour.", nullable=False),
+        Column("mode", MetroDataType.STRING, description="Mode used for the trip.", nullable=False),
+        Column(
+            "tour_departure_time",
+            MetroDataType.DURATION,
+            description="Departure time of the tour (departure time of first trip).",
+            nullable=True,
+        ),
+        Column(
+            "tour_arrival_time",
+            MetroDataType.DURATION,
+            description="Arrival time of the tour (arrival time of last trip).",
+            nullable=True,
+        ),
+        Column(
+            "total_travel_time",
+            MetroDataType.DURATION,
+            description="Total travel time of the tour.",
+            nullable=True,
+        ),
+        Column(
+            "total_utility",
+            MetroDataType.FLOAT,
+            description="Total utility of the tour, including the alternative-specific constant.",
+            nullable=True,
+        ),
+        Column(
+            "total_travel_utility",
+            MetroDataType.FLOAT,
+            description="Total travel utility of the tour.",
+            nullable=True,
+        ),
+        Column(
+            "total_schedule_utility",
+            MetroDataType.FLOAT,
+            description="Total schedule utility of the tour.",
+            nullable=True,
+        ),
+        Column(
+            "mode_expected_utility",
+            MetroDataType.FLOAT,
+            description="Expected utility of the tour for the chosen mode.",
+            nullable=False,
+        ),
+        Column(
+            "expected_utility",
+            MetroDataType.FLOAT,
+            description="Expected utility of the tour, before mode choice.",
+            nullable=False,
+        ),
+    ]
+
+
 class TripResultsFile(MetroDataFrameFile, PopulationFile):
     path = "results/{population}/trip_results.parquet"
     description = "Clean results for each trip in the population."

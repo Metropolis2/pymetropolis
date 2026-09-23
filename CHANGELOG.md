@@ -40,6 +40,7 @@ New steps:
 - `ModeChoiceMuFromPopulationStep`
 - `JointToursFeatureImportanceStep`
 - `ModeFeatureImportanceStep`
+- `TourResultsStep`
 
 New files:
 
@@ -82,6 +83,7 @@ New files:
 - `SurveyModeChoiceResultsFile`
 - `MetroExAnteVehicleTypesFile`
 - `ModeChoiceMuFile`
+- `TourResultsFile`
 
 New parameters:
 

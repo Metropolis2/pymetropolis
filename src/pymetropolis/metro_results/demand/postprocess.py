@@ -11,7 +11,7 @@ from pymetropolis.metro_simulation.demand.files import MetroTripsPopulationFile
 from pymetropolis.metro_simulation.run import MetroAgentResultsFile, MetroTripResultsFile
 from pymetropolis.metro_simulation.run.files import MetroRouteResultsFile
 
-from .files import ActivityResultsFile, RouteResultsFile, TripResultsFile
+from .files import ActivityResultsFile, RouteResultsFile, TourResultsFile, TripResultsFile
 
 
 class TripResultsStep(PopulationStep):
@@ -299,3 +299,59 @@ class ActivityResultsStep(PopulationStep):
         )
         activities = activities.sort("person_id", "start_time")
         self.output["activity_results"].write(activities)
+
+
+class TourResultsStep(PopulationStep):
+    """Reads the trip-level results and the Metropolis-Core agent results and produces a clean file
+    for results at the tour level.
+    """
+
+    input_files = {
+        "trips": TripsFile,
+        "trip_results": TripResultsFile,
+        "metro_agent_results": MetroAgentResultsFile,
+    }
+    output_files = {"tour_results": TourResultsFile}
+
+    def run(self):
+        import polars as pl
+
+        prefix = f"{self.population_name}-"
+        # In the main simulation, 1 agent = 1 tour.
+        agent_results: pl.DataFrame = (
+            self.input["metro_agent_results"]
+            .scan()
+            .filter(pl.col("agent_id").str.starts_with(prefix))
+            .select(
+                tour_id=pl.col("agent_id").str.strip_prefix(prefix),
+                mode="selected_alt_id",
+                total_utility="utility",
+                mode_expected_utility="alt_expected_utility",
+                expected_utility="expected_utility",
+            )
+            .collect()
+        )
+        # Ids in the results are strings (population prefix removed), while ids in the trips file
+        # might be integers.
+        trips: pl.LazyFrame = (
+            self.input["trips"].scan().select(pl.col("trip_id", "tour_id").cast(pl.String))
+        )
+        tour_trips: pl.DataFrame = (
+            self.input["trip_results"]
+            .scan()
+            .with_columns(pl.col("trip_id").cast(pl.String))
+            .join(trips, on="trip_id", how="left")
+            .group_by("tour_id")
+            .agg(
+                tour_departure_time=pl.col("departure_time").min(),
+                tour_arrival_time=pl.col("arrival_time").max(),
+                total_travel_time=pl.col("travel_time").sum(),
+                total_travel_utility=pl.col("travel_utility").sum(),
+                total_schedule_utility=pl.col("schedule_utility").sum(),
+            )
+            .collect()
+        )
+        # Left join so that tours without any trip (e.g., outside option) are kept, with null
+        # trip-based values.
+        df = agent_results.join(tour_trips, on="tour_id", how="left").sort("tour_id")
+        self.output["tour_results"].write(df)
