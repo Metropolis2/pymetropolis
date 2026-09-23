@@ -3,7 +3,7 @@ import json
 from pymetropolis.metro_demand.population.files import TripsDistancesFile
 from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.metro_pipeline.steps import InputFile, Step
-from pymetropolis.metro_results.demand.files import TripResultsFile
+from pymetropolis.metro_results.demand.files import TourResultsFile, TripResultsFile
 from pymetropolis.metro_simulation.common import StepWithSimulationRatio
 from pymetropolis.metro_simulation.run import MetroIterationResultsFile
 from pymetropolis.metro_simulation.supply.files import MetroVehicleTypesFile
@@ -20,13 +20,14 @@ class AggregateResultsStep(StepWithSimulationRatio, PopulationStep):
     Currently available output:
 
     - vehicle-kilometers (total, weighted by PCE, by mode)
-    - mode shares (by trip count, by trip Euclidean distance)
+    - mode shares (by trip count, by trip Euclidean distance, by tour count)
     """
 
     input_files = {
         "metro_input_vehicles": MetroVehicleTypesFile,
         "trip_results": TripResultsFile,
         "trips_distances": InputFile(TripsDistancesFile, optional=True),
+        "tour_results": InputFile(TourResultsFile, optional=True),
     }
     output_files = {"output": AggregateOutputFile}
 
@@ -38,6 +39,7 @@ class AggregateResultsStep(StepWithSimulationRatio, PopulationStep):
         trip_results = self.input["trip_results"].read()
         vehicles = self.input["metro_input_vehicles"].read()
         trips_distances = self.input["trips_distances"].read_if_exists()
+        tour_results = self.input["tour_results"].read_if_exists()
 
         # Compute vehicle-kilometers.
         results["vehicle_kilometers"] = dict()
@@ -79,6 +81,12 @@ class AggregateResultsStep(StepWithSimulationRatio, PopulationStep):
             results["mode_shares"]["trip_euclidean_distance"] = {
                 mode: share
                 for mode, share in zip(trip_length_shares["mode"], trip_length_shares["proportion"])
+            }
+        if tour_results is not None:
+            tour_count_shares = tour_results["mode"].value_counts(normalize=True).sort("mode")
+            results["mode_shares"]["tour_count"] = {
+                mode: share
+                for mode, share in zip(tour_count_shares["mode"], tour_count_shares["proportion"])
             }
 
         # Save as JSON.
