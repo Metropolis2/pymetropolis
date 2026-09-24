@@ -1,11 +1,19 @@
+"""Import of the bicycle network from OpenStreetMap data, using DuckDB."""
+
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
-from loguru import logger
-
-from pymetropolis.metro_network.osm import OpenStreetMapNetworkImport
+from pymetropolis.metro_network.osm import (
+    DIRECTION_NODE_COLUMN,
+    OpenStreetMapNetworkImport,
+    directed_speed_and_lanes,
+    directional_node_features,
+    sql_list,
+    sql_literal,
+    sql_mapping,
+)
 from pymetropolis.metro_pipeline.parameters import BoolParameter, FloatParameter, ListParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_pipeline.types import String
@@ -15,411 +23,259 @@ from pymetropolis.metro_spatial.simulation_area.file import SimulationAreaFile
 from .files import BicycleEdgesRawFile
 
 if TYPE_CHECKING:
-    import polars as pl
-    from osmium.osm import Node, Way
     from shapely.geometry import MultiPolygon, Polygon
 
 # Directed features of the ways.
 FEATURES = ("speed_limit", "lanes", "give_way", "stop", "traffic_signals", "type")
 
+# Node features (`highway=*` tag of the nodes) which are identified on the edges.
+NODE_FEATURES = ("give_way", "stop", "traffic_signals")
+
+# Valid values of the tags used to identify the cycleway type (other values are set to NULL).
+VALID_TAG_VALUES = {
+    "bicycle": ("yes", "designated", "use_sidepath", "discouraged", "dismount", "permissive"),
+    "segregated": ("yes", "no"),
+    "cycleway": (
+        "no",
+        "crossing",
+        "lane",
+        "opposite",
+        "shared_lane",
+        "separate",
+        "share_busway",
+        "opposite_lane",
+        "track",
+        "link",
+    ),
+    "cycleway_left": (
+        "no",
+        "lane",
+        "separate",
+        "opposite_lane",
+        "shared_lane",
+        "share_busway",
+        "opposite",
+        "track",
+        "opposite_share_busway",
+        "opposite_track",
+    ),
+    "cycleway_right": (
+        "no",
+        "lane",
+        "separate",
+        "share_busway",
+        "shared_lane",
+        "track",
+        "opposite",
+        "opposite_lane",
+    ),
+    "cycleway_both": ("no", "separate", "lane", "shared_lane", "share_busway", "track"),
+    "oneway_bicycle": ("no", "yes"),
+}
+
+# Columns of `cycleways.csv` used to identify the cycleway type of the ways.
+DEFINITION_KEYS = (
+    "category",
+    "bicycle",
+    "segregated",
+    "cycleway",
+    "cycleway_left",
+    "cycleway_left_oneway",
+    "cycleway_right",
+    "cycleway_right_oneway",
+    "cycleway_both",
+    "oneway",
+    "oneway_bicycle",
+)
+
+TRACKTYPE_QUALITY = {"grade1": 7, "grade2": 5, "grade3": 4, "grade4": 3, "grade5": 2}
+
+SMOOTHNESS_QUALITY = {
+    "excellent": 10,
+    "good": 8,
+    "intermediate": 7,
+    "bad": 5,
+    "very_bad": 3,
+    "horrible": 2,
+    "very_horrible": 1,
+    "impassable": 0,
+}
+
+SURFACE_QUALITY = {
+    "asphalt": 10,
+    "paved": 8,
+    "concrete": 8,
+    "concrete:plates": 8,
+    "concrete:lanes": 7,
+    "paving_stones": 6,
+    "compacted": 6,
+    "wood": 6,
+    "metal": 6,
+    "unpaved": 5,
+    "grass_paver": 4,
+    "ground": 4,
+    "sett": 4,
+    "fine_gravel": 4,
+    "cobblestone": 4,
+    "unhewn_cobblestone": 4,
+    "gravel": 4,
+    "earth": 3,
+    "dirt": 3,
+    "mud": 3,
+    "woodchips": 2,
+    "grass": 2,
+    "pebblestone": 2,
+    "sand": 1,
+}
+
+
+def valid_value(col: str, key: str | None = None) -> str:
+    """Returns a SQL expression equal to the column value if it is valid, NULL otherwise."""
+    return f"CASE WHEN {col} IN {sql_list(VALID_TAG_VALUES[key or col])} THEN {col} END"
+
 
 class OSMBicycleNetworkImport(OpenStreetMapNetworkImport):
-    def extra_way_filter(self, way: Way) -> bool:
-        """Returns True if the candidate way has valid bicycle access."""
-        return "bicycle" not in way.tags or way.tags["bicycle"] not in ("no", "private")
+    def extra_way_filter(self) -> str:
+        """Ways with no bicycle access are excluded."""
+        return "coalesce(tags['bicycle'] NOT IN ('no', 'private'), true)"
 
-    def way_data(self, way: Way) -> dict[str, Any]:
-        """Returns a dictionary with the relevant OpenStreetMap data to extract from a valid way."""
+    def way_columns(self) -> dict[str, str]:
+        return {
+            **super().way_columns(),
+            "bicycle_tag": "tags['bicycle']",
+            "segregated_tag": "tags['segregated']",
+            "cycleway_tag": "tags['cycleway']",
+            "cycleway_left_tag": "tags['cycleway:left']",
+            "cycleway_left_oneway_tag": "tags['cycleway:left:oneway']",
+            "cycleway_right_tag": "tags['cycleway:right']",
+            "cycleway_right_oneway_tag": "tags['cycleway:right:oneway']",
+            "cycleway_both_tag": "tags['cycleway:both']",
+            "roundabout": "coalesce(tags['junction'] = 'roundabout', false)",
+            "oneway": "coalesce(tags['oneway'] = 'yes', false)",
+            "oneway_bicycle_tag": "tags['oneway:bicycle']",
+            "maxspeed": "tags['maxspeed']",
+            "maxspeed_forward": "tags['maxspeed:forward']",
+            "maxspeed_backward": "tags['maxspeed:backward']",
+            "lanes": "tags['lanes']",
+            "lanes_forward": "tags['lanes:forward']",
+            "lanes_backward": "tags['lanes:backward']",
+            "surface": "tags['surface']",
+            "cycleway_surface": "tags['cycleway:surface']",
+            "smoothness": "tags['smoothness']",
+            "tracktype": "tags['tracktype']",
+        }
 
-        data = super().way_data(way)
-        data.update(
-            {
-                "bicycle": way.tags.get("bicycle"),
-                "segregated": way.tags.get("segregated"),
-                "cycleway": way.tags.get("cycleway"),
-                "cycleway:left": way.tags.get("cycleway:left"),
-                "cycleway:left:oneway": way.tags.get("cycleway:left:oneway"),
-                "cycleway:right": way.tags.get("cycleway:right"),
-                "cycleway:right:oneway": way.tags.get("cycleway:right:oneway"),
-                "cycleway:both": way.tags.get("cycleway:both"),
-                "roundabout": way.tags.get("junction") == "roundabout",
-                "oneway": way.tags.get("oneway") == "yes",
-                "oneway:bicycle": way.tags.get("oneway:bicycle"),
-                "maxspeed": way.tags.get("maxspeed"),
-                "maxspeed:forward": way.tags.get("maxspeed:forward"),
-                "maxspeed:backward": way.tags.get("maxspeed:backward"),
-                "lanes": way.tags.get("lanes"),
-                "lanes:forward": way.tags.get("lanes:forward"),
-                "lanes:backward": way.tags.get("lanes:backward"),
-                "surface": way.tags.get("surface"),
-                "cycleway:surface": way.tags.get("cycleway:surface"),
-                "smoothness": way.tags.get("smoothness"),
-                "tracktype": way.tags.get("tracktype"),
-            }
-        )
-        return data
-
-    def way_data_schema(self) -> dict[str, pl.DataType | type[pl.DataType]]:
-        """Returns a dictionary representing the Polars schema for the DataFrame constructed from
-        `way_data`."""
-        import polars as pl
-
-        schema = super().way_data_schema()
-        schema.update(
-            {
-                "bicycle": pl.String,
-                "segregated": pl.String,
-                "cycleway": pl.String,
-                "cycleway:left": pl.String,
-                "cycleway:left:oneway": pl.String,
-                "cycleway:right": pl.String,
-                "cycleway:right:oneway": pl.String,
-                "cycleway:both": pl.String,
-                "roundabout": pl.Boolean,
-                "oneway": pl.Boolean,
-                "oneway:bicycle": pl.String,
-                "maxspeed": pl.String,
-                "maxspeed:forward": pl.String,
-                "maxspeed:backward": pl.String,
-                "lanes": pl.String,
-                "lanes:forward": pl.String,
-                "lanes:backward": pl.String,
-                "surface": pl.String,
-                "cycleway:surface": pl.String,
-                "smoothness": pl.String,
-                "tracktype": pl.String,
-            }
-        )
-        return schema
-
-    def clean_way_data(self, df: pl.DataFrame) -> pl.DataFrame:
-        """Returns a cleaned version of data collected from `way_data`.
+    def clean_ways_query(self) -> str:
+        """Returns the cleaned way data.
 
         - Classify roundabouts as oneway roads.
+        - Identify the cycleway type in both directions, from the definitions in `cycleways.csv`
+          (ways with no valid type in any direction are discarded).
         - Clean speedlimit from maxspeed tag.
         - Clean number of lanes from lanes tag.
-        - Drop self ways.
+        - Compute road quality from the tracktype, smoothness and surface tags.
         """
-        import polars as pl
-
-        # Roundabouts are oneway.
-        df = df.with_columns(oneway=pl.col("oneway").or_(pl.col("roundabout")))
-        df = df.with_columns(
-            category=pl.when(edge_type="cycleway")
-            .then(pl.lit("cycleway"))
-            .when(pl.col("edge_type").is_in(("crossing", "footway", "path", "track")))
-            .then(pl.lit("shared"))
-            .otherwise(pl.lit("road")),
-            bicycle=pl.when(
-                pl.col("bicycle").is_in(
-                    ("yes", "designated", "use_sidepath", "discouraged", "dismount", "permissive")
-                )
-            ).then("bicycle"),
-            segregated=pl.when(pl.col("segregated").is_in(("yes", "no"))).then("segregated"),
-            cycleway=pl.when(
-                pl.col("cycleway")
-                .replace({"traffic_island": "crossing"})
-                .is_in(
-                    (
-                        "no",
-                        "crossing",
-                        "lane",
-                        "opposite",
-                        "shared_lane",
-                        "separate",
-                        "share_busway",
-                        "opposite_lane",
-                        "track",
-                        "link",
-                    )
-                )
-            ).then("cycleway"),
-            cycleway_left=pl.when(
-                pl.col("cycleway:left").is_in(
-                    (
-                        "no",
-                        "lane",
-                        "separate",
-                        "opposite_lane",
-                        "shared_lane",
-                        "share_busway",
-                        "opposite",
-                        "track",
-                        "opposite_share_busway",
-                        "opposite_track",
-                    )
-                )
-            ).then("cycleway:left"),
-            cycleway_left_oneway=pl.col("cycleway:left:oneway").replace({"opposite": "-1"}),
-            cycleway_right=pl.when(
-                pl.col("cycleway:right").is_in(
-                    (
-                        "no",
-                        "lane",
-                        "separate",
-                        "share_busway",
-                        "shared_lane",
-                        "track",
-                        "opposite",
-                        "opposite_lane",
-                    )
-                )
-            ).then("cycleway:right"),
-            cycleway_right_oneway="cycleway:right:oneway",
-            cycleway_both=pl.when(
-                pl.col("cycleway:both").is_in(
-                    ("no", "separate", "lane", "shared_lane", "share_busway", "track")
-                )
-            ).then("cycleway:both"),
-            oneway="oneway",
-            oneway_bicycle=pl.when(pl.col("oneway:bicycle").is_in(("no", "yes"))).then(
-                "oneway:bicycle"
+        definitions = Path(__file__).parent / "cycleways.csv"
+        # Missing values match with missing values.
+        join_condition = " AND ".join(
+            f"k.{key} IS NOT DISTINCT FROM d.{key}" for key in DEFINITION_KEYS
+        )
+        cycleway = "CASE WHEN cycleway_tag = 'traffic_island' THEN 'crossing' ELSE cycleway_tag END"
+        return f"""
+            WITH definitions AS (
+                SELECT * REPLACE (oneway::BOOLEAN AS oneway)
+                FROM read_csv({sql_literal(str(definitions))}, header = true, all_varchar = true)
             ),
-        )
-        definitions = pl.read_csv(Path(__file__).parent / "cycleways.csv")
-        df = df.join(
-            definitions,
-            on=[
-                "category",
-                "bicycle",
-                "segregated",
-                "cycleway",
-                "cycleway_left",
-                "cycleway_left_oneway",
-                "cycleway_right",
-                "cycleway_right_oneway",
-                "cycleway_both",
-                "oneway",
-                "oneway_bicycle",
+            keys AS (
+                SELECT
+                    * REPLACE (oneway OR roundabout AS oneway),
+                    CASE
+                        WHEN edge_type = 'cycleway' THEN 'cycleway'
+                        WHEN edge_type IN ('crossing', 'footway', 'path', 'track') THEN 'shared'
+                        ELSE 'road'
+                    END AS category,
+                    {valid_value("bicycle_tag", "bicycle")} AS bicycle,
+                    {valid_value("segregated_tag", "segregated")} AS segregated,
+                    CASE
+                        WHEN {cycleway} IN {sql_list(VALID_TAG_VALUES["cycleway"])}
+                        THEN cycleway_tag
+                    END AS cycleway,
+                    {valid_value("cycleway_left_tag", "cycleway_left")} AS cycleway_left,
+                    CASE
+                        WHEN cycleway_left_oneway_tag = 'opposite' THEN '-1'
+                        ELSE cycleway_left_oneway_tag
+                    END AS cycleway_left_oneway,
+                    {valid_value("cycleway_right_tag", "cycleway_right")} AS cycleway_right,
+                    cycleway_right_oneway_tag AS cycleway_right_oneway,
+                    {valid_value("cycleway_both_tag", "cycleway_both")} AS cycleway_both,
+                    {valid_value("oneway_bicycle_tag", "oneway_bicycle")} AS oneway_bicycle
+                FROM ways
+            ),
+            typed AS (
+                SELECT
+                    k.*,
+                    CASE WHEN k.edge_type = 'crossing' THEN 'crossing' ELSE d.forward_type END
+                        AS forward_type,
+                    CASE WHEN k.edge_type = 'crossing' THEN 'crossing' ELSE d.backward_type END
+                        AS backward_type,
+                    TRY_CAST(k.maxspeed AS DOUBLE) AS maxspeed_clean,
+                    TRY_CAST(k.maxspeed_forward AS DOUBLE) AS maxspeed_forward_clean,
+                    TRY_CAST(k.maxspeed_backward AS DOUBLE) AS maxspeed_backward_clean,
+                    coalesce(k.cycleway_surface, k.surface) AS surface_clean
+                FROM keys AS k
+                LEFT JOIN definitions AS d ON {join_condition}
+            )
+            SELECT
+                osm_id,
+                edge_type,
+                name,
+                oneway,
+                roundabout,
+                {
+            directed_speed_and_lanes(
+                "maxspeed_clean", "maxspeed_forward_clean", "maxspeed_backward_clean"
+            )
+        },
+                forward_type,
+                backward_type,
+                least(
+                    {sql_mapping("tracktype", TRACKTYPE_QUALITY)},
+                    coalesce({sql_mapping("smoothness", SMOOTHNESS_QUALITY)}, 8),
+                    coalesce({sql_mapping("surface_clean", SURFACE_QUALITY)}, 8)
+                )::UTINYINT AS quality
+            FROM typed
+            WHERE forward_type IS NOT NULL OR backward_type IS NOT NULL
+        """
+
+    def node_columns(self) -> dict[str, str]:
+        return {
+            "highway": "tags['highway']",
+            "direction": DIRECTION_NODE_COLUMN,
+            "bump": "coalesce(tags['traffic_calming'] IN ('bump', 'hump'), false)",
+        }
+
+    def segment_features_query(self) -> str:
+        """Returns edges with informations on give-way signs, stop signs, traffic signals and
+        bumps, read from node data.
+        """
+        return self.node_features_query(
+            [
+                *directional_node_features(NODE_FEATURES),
+                "coalesce(bool_or(f.bump), false) AS has_bump",
             ],
-            how="left",
+            f"n.highway IN {sql_list(NODE_FEATURES)} OR n.bump",
         )
-        # Find maximum speed if available.
-        df = df.with_columns(
-            pl.col(col).cast(pl.Float64, strict=False)
-            for col in ("maxspeed", "maxspeed:forward", "maxspeed:backward")
-        ).with_columns(
-            # Read tags maxspeed:forward and maxspeed:backward when available, otherwise read tag
-            # maxspeed.
-            forward_speed_limit=pl.col("maxspeed:forward").fill_null(pl.col("maxspeed")),
-            backward_speed_limit=pl.when("oneway")
-            .then(pl.lit(None))
-            .otherwise(pl.col("maxspeed:backward").fill_null(pl.col("maxspeed"))),
-        )
-        # Find number of lanes if available.
-        # Read tags lanes:forward and lanes:backward when available, otherwise read tag lanes.
-        df = df.with_columns(
-            pl.col("lanes").cast(pl.Float64, strict=False),
-            pl.col("lanes:forward").cast(pl.Float64, strict=False),
-            pl.col("lanes:backward").cast(pl.Float64, strict=False),
-        ).with_columns(
-            forward_lanes=pl.when("oneway")
-            .then(pl.col("lanes:forward").fill_null(pl.col("lanes")))
-            .otherwise(pl.col("lanes:forward").fill_null(pl.col("lanes") / 2.0)),
-            backward_lanes=pl.when("oneway")
-            .then(pl.lit(None))
-            .otherwise(pl.col("lanes:backward").fill_null(pl.col("lanes") / 2.0)),
-        )
-        # Mark crossings.
-        df = df.with_columns(
-            forward_type=pl.when(edge_type="crossing")
-            .then(pl.lit("crossing"))
-            .otherwise("forward_type"),
-            backward_type=pl.when(edge_type="crossing")
-            .then(pl.lit("crossing"))
-            .otherwise("backward_type"),
-        )
-        # Drop rows with source == target.
-        df = df.filter(pl.col("source") != pl.col("target"))
-        # Drop undefined edges.
-        df = df.filter(pl.col("forward_type").is_not_null() | pl.col("backward_type").is_not_null())
-        # Compute road quality.
-        df = df.with_columns(
-            surface=pl.col("cycleway:surface").fill_null(pl.col("surface"))
-        ).with_columns(
-            quality=pl.min_horizontal(
-                pl.col("tracktype").replace_strict(
-                    {"grade1": 7, "grade2": 5, "grade3": 4, "grade4": 3, "grade5": 2}, default=None
-                ),
-                pl.col("smoothness")
-                .replace_strict(
-                    {
-                        "excellent": 10,
-                        "good": 8,
-                        "intermediate": 7,
-                        "bad": 5,
-                        "very_bad": 3,
-                        "horrible": 2,
-                        "very_horrible": 1,
-                        "impassable": 0,
-                    },
-                    default=None,
-                )
-                .fill_null(8),
-                pl.col("surface")
-                .replace_strict(
-                    {
-                        "asphalt": 10,
-                        "paved": 8,
-                        "concrete": 8,
-                        "concrete:plates": 8,
-                        "concrete:lanes": 7,
-                        "paving_stones": 6,
-                        "compacted": 6,
-                        "wood": 6,
-                        "metal": 6,
-                        "unpaved": 5,
-                        "grass_paver": 4,
-                        "ground": 4,
-                        "sett": 4,
-                        "fine_gravel": 4,
-                        "cobblestone": 4,
-                        "unhewn_cobblestone": 4,
-                        "gravel": 4,
-                        "earth": 3,
-                        "dirt": 3,
-                        "mud": 3,
-                        "woodchips": 2,
-                        "grass": 2,
-                        "pebblestone": 2,
-                        "sand": 1,
-                    },
-                    default=None,
-                )
-                .fill_null(8),
-            ).cast(pl.UInt8)
-        )
-        df: pl.DataFrame = df.select(
-            "osm_id",
-            "source",
-            "target",
-            "edge_type",
-            "name",
-            "oneway",
-            "roundabout",
-            "forward_speed_limit",
-            "backward_speed_limit",
-            "forward_lanes",
-            "backward_lanes",
-            "forward_type",
-            "backward_type",
-            "quality",
-            "nodes",
-        )
-        return df
 
-    def node_data(self, node: Node) -> dict[str, Any]:
-        """Returns a dictionary with the relevant OpenStreetMap data to extract from a node of the
-        network.
-        """
-        data = super().node_data(node)
-        data.update(
-            {
-                "highway": node.tags.get("highway"),
-                "direction": node.tags.get("traffic_signals:direction")
-                or node.tags.get("direction"),
-                "bump": node.tags.get("traffic_calming") in ("bump", "hump"),
-            }
-        )
-        return data
+    def forward_condition(self) -> str:
+        return "forward_type IS NOT NULL"
 
-    def node_data_schema(self) -> dict[str, pl.DataType | type[pl.DataType]]:
-        """Returns a dictionary representing the Polars schema for the DataFrame constructed from
-        `node_data`.
-        """
-        import polars as pl
+    def backward_condition(self) -> str:
+        return "backward_type IS NOT NULL"
 
-        schema = super().node_data_schema()
-        schema.update({"highway": pl.String, "direction": pl.String, "bump": pl.Boolean})
-        return schema
-
-    def add_node_features_to_edges(self, edges: pl.DataFrame, nodes: pl.DataFrame) -> pl.DataFrame:
-        """Returns edges with informations on give-way signs, stop signs and traffic signals, read
-        from node data.
-        """
-        import polars as pl
-
-        nodes = nodes.with_columns(
-            pl.when(pl.col("direction").is_in(("both", "forward", "backward")))
-            .then("direction")
-            .otherwise(pl.lit(None))
-        )
-        for feature in ("give_way", "stop", "traffic_signals"):
-            edges = self.identify_edge_features(edges, nodes, feature)
-
-        bump_nodes = nodes.filter("bump")["osm_id"].to_list()
-        edges = edges.with_columns(
-            has_bump=pl.col("nodes").list.eval(pl.element().is_in(bump_nodes)).list.any()
-        )
-        return edges
-
-    def identify_edge_features(
-        self, edges: pl.DataFrame, nodes: pl.DataFrame, feature: str
-    ) -> pl.DataFrame:
-        """Identifies the edges that contain nodes with a particular feature (e.g., traffic signals,
-        stop signs).
-
-        Edges is marked as having the feature in the forward direction if:
-        - One of the edge's nodes is marked as having the feature in forward direction.
-        - The target node of the edge is marked as having the feature (with no direction specified).
-        - The edge is "oneway" and one of its nodes is marked as having the feature (with no
-          direction specified).
-
-        Edges is marked as having the feature in the backward direction if:
-        - One of the edge's nodes is marked as having the feature in backward direction.
-        - The source node of the edge is marked as having the feature (with no direction specified).
-        """
-        import polars as pl
-
-        logger.debug(f"Identifying edges with {feature} nodes")
-        featured_nodes = nodes.filter(pl.col("highway") == feature)
-        fwd_node_ids = featured_nodes.filter(pl.col("direction").is_in(("both", "forward")))[
-            "osm_id"
-        ]
-        bwd_node_ids = featured_nodes.filter(pl.col("direction").is_in(("both", "backward")))[
-            "osm_id"
-        ]
-        no_dir_node_ids = featured_nodes.filter(pl.col("direction").is_null())["osm_id"]
-        edges = edges.with_columns(
-            (
-                pl.col("nodes").list.eval(pl.element().is_in(fwd_node_ids)).list.any()
-                | pl.col("target").is_in(no_dir_node_ids)
-                | pl.col("oneway").and_(
-                    pl.col("nodes").list.eval(pl.element().is_in(no_dir_node_ids)).list.any()
-                )
-            ).alias(f"forward_{feature}"),
-            (
-                pl.col("nodes").list.eval(pl.element().is_in(bwd_node_ids)).list.any()
-                | pl.col("source").is_in(no_dir_node_ids)
-            ).alias(f"backward_{feature}"),
-        )
-        return edges
-
-    def duplicate_edges(self, edges: pl.DataFrame) -> pl.DataFrame:
-        """Duplicates edges in the forward and backward direction.
-
-        Only not oneway edges are duplicated.
-
-        Features (speedlimit, lanes, etc.) are read for the correct direction.
-        """
-        import polars as pl
-
-        # Duplicate two-way ways.
-        lf = edges.lazy()
-        forward_edges = lf.filter(pl.col("forward_type").is_not_null()).with_columns(
-            *(pl.col(f"forward_{feat}").alias(feat) for feat in FEATURES), backward=False
-        )
-        backward_edges = lf.filter(pl.col("backward_type").is_not_null()).with_columns(
-            pl.col("source").alias("target"),
-            pl.col("target").alias("source"),
-            pl.col("nodes").list.reverse(),
-            *(pl.col(f"backward_{feat}").alias(feat) for feat in FEATURES),
-            backward=True,
-        )
-        return pl.concat((forward_edges, backward_edges), how="vertical").collect()
+    def directed_features(self) -> list[str]:
+        return list(FEATURES)
 
     def edge_columns(self) -> list[str]:
-        """Returns a list of columns to be kept in the final edge DataFrame."""
         return [*super().edge_columns(), "quality", "has_bump", *FEATURES]
 
 
@@ -459,7 +315,8 @@ class OpenStreetMapBicycleImportStep(GeoStep, OSMStep):
     - Tag `highway` matches one of the value given in
       [`highways`](parameters.md#osm_bicycle_importhighways) parameter.
     - The way has no tag `bicycle` or tag `bicycle` is not `"no"`.
-    - The way's geometry is a valid LineString.
+    - The way has at least two nodes (closed ways are valid).
+    - All the way's nodes are in the OpenStreetMap data.
     - The way intersects with the simulation area (if
       [`simulation_area_filter`](parameters.md#osm_bicycle_importsimulation_area_filter) is `true`).
 

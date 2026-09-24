@@ -1,13 +1,21 @@
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
 from pymetropolis.metro_common.errors import MetropyError
 from pymetropolis.metro_pipeline.parameters import CustomParameter, FloatParameter, IntParameter
 from pymetropolis.metro_spatial import GeoStep, OSMStep
+from pymetropolis.metro_spatial.osm import read_osm_areas
 
 from .common import buffer_area, geom_as_gdf
 from .file import SimulationAreaFile
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    import geopandas as gpd
 
 
 def name_or_names_validator(value: Any) -> str | list[str]:
@@ -105,45 +113,20 @@ class SimulationAreaFromOSMStep(GeoStep, OSMStep):
         )
 
     def run(self):
-        import geopandas as gpd
-        import osmium
-        from osmium.filter import TagFilter
-        from osmium.geom import WKBFactory
-        from osmium.osm import Area
-
         assert self.osm_file is not None
+        assert self.osm_admin_level is not None
+        assert self.osm_name is not None
 
-        names = self.osm_name
+        names = [self.osm_name] if isinstance(self.osm_name, str) else self.osm_name
         if len(names) == 0:
             raise MetropyError("You must provide at least one name to be selected")
-        if isinstance(names, str):
-            # Only one name provided.
-            name_pairs = (("name", names),)
-        else:
-            name_pairs = tuple(("name", name) for name in names)
-        fab = WKBFactory()
         logger.debug("Reading areas from OSM file")
-        found_names = list()
-        polygons = list()
-        for area in (
-            osmium.FileProcessor(self.osm_file)
-            .with_filter(TagFilter(("admin_level", str(self.osm_admin_level))))
-            .with_filter(TagFilter(*name_pairs))
-            .with_areas()
-        ):
-            if area.is_area():  # ty: ignore[unresolved-attribute]
-                assert isinstance(area, Area)
-                found_names.append(area.tags["name"])
-                polygons.append(fab.create_multipolygon(area))
-        if not found_names:
+        gdf = read_admin_areas(self.osm_file, self.osm_admin_level, names)
+        if gdf.empty:
             raise MetropyError(
-                f"The OpenStreetMap data does not contain any relation with \
-                `admin_level={self.osm_admin_level}` and `name` in `{names}`"
+                "The OpenStreetMap data does not contain any relation with "
+                f"`admin_level={self.osm_admin_level}` and `name` in `{names}`"
             )
-        logger.debug("Building GeoDataFrame")
-        gdf = gpd.GeoDataFrame(
-            {"name": names}, geometry=gpd.GeoSeries.from_wkb(polygons, crs="EPSG:4326")
-        )
         missing_names = set(names).difference(set(gdf["name"]))
         if missing_names:
             logger.warning(f"No relation was found for the following names: {missing_names}")
@@ -154,3 +137,20 @@ class SimulationAreaFromOSMStep(GeoStep, OSMStep):
             geom = buffer_area(geom, self.buffer)
         gdf = geom_as_gdf(geom, self.crs)
         self.output["simulation_area"].write(gdf)
+
+
+def read_admin_areas(osm_file: Path, admin_level: int, names: list[str]) -> gpd.GeoDataFrame:
+    """Returns a GeoDataFrame (in EPSG:4326) with the name and polygon of the OpenStreetMap areas
+    with the given `admin_level` and `name` tags (see `read_osm_areas`).
+    """
+    gdf = read_osm_areas(
+        osm_file,
+        "tags['admin_level'] = $level AND list_contains($names, tags['name'])",
+        {"level": str(admin_level), "names": names},
+        {"name": "tags['name']"},
+    )
+    return (
+        gdf.sort_values(["name", "kind", "osm_id"])
+        .loc[:, ["name", "geometry"]]
+        .reset_index(drop=True)
+    )

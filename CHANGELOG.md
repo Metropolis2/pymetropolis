@@ -134,7 +134,7 @@ Other changes:
 - Raise an error when the OpenTripPlanner URL is unreachable (before trying to make any request).
 - Raise an error when `gtfs.date` is outside the range of dates for which the OpenTripPlanner
   server has loaded active GTFS services (before trying to make any request).
-- Fix OpenTripPlanner queries not stopping on interrupt (Ctrl+C).
+- Switched from osmium to duckdb for OSM files parsing, leading to improved performances.
 
 Removed steps:
 
@@ -142,6 +142,7 @@ Removed steps:
 
 Fixes:
 
+- Fix OpenTripPlanner queries not stopping on interrupt (Ctrl+C).
 - Fix a bug where road-specific results in `TripResultsFile` were NULLs when secondary car trips
   exist
 

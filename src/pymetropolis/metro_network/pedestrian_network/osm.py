@@ -1,3 +1,5 @@
+"""Import of the pedestrian network from OpenStreetMap data, using DuckDB."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -11,15 +13,15 @@ from pymetropolis.metro_spatial import GeoStep, OSMStep
 from pymetropolis.metro_spatial.simulation_area.file import SimulationAreaFile
 
 if TYPE_CHECKING:
-    from osmium.osm import Way
     from shapely.geometry import MultiPolygon, Polygon
 
 
 class OSMPedestrianNetworkImport(OpenStreetMapNetworkImport):
-    def extra_way_filter(self, way: Way) -> bool:
-        """Returns True if the candidate way should be imported."""
-        has_access = "access" not in way.tags or way.tags["access"] != "private"
-        return has_access and not way.tags.get("area") == "yes"
+    def extra_way_filter(self) -> str:
+        """Ways with private access or representing areas are excluded."""
+        return (
+            "coalesce(tags['access'] <> 'private', true) AND coalesce(tags['area'] <> 'yes', true)"
+        )
 
 
 class OpenStreetMapPedestrianImportStep(GeoStep, OSMStep):
@@ -68,7 +70,9 @@ class OpenStreetMapPedestrianImportStep(GeoStep, OSMStep):
     - Tag `highway` matches one of the value given in
       [`highways`](parameters.md#osm_pedestrian_importhighways) parameter.
     - The way has no tag `access` or tag `access` is not `"private"`.
-    - The way's geometry is a valid LineString.
+    - The way has no tag `area` or tag `area` is not `"yes"`.
+    - The way has at least two nodes (closed ways are valid).
+    - All the way's nodes are in the OpenStreetMap data.
     - The way intersects with the simulation area (if
       [`simulation_area_filter`](parameters.md#osm_pedestrian_importsimulation_area_filter) is
       `true`).

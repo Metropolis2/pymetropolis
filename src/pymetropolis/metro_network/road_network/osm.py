@@ -1,10 +1,17 @@
+"""Import of the road network from OpenStreetMap data, using DuckDB."""
+
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
-from loguru import logger
-
-from pymetropolis.metro_network.osm import OpenStreetMapNetworkImport
+from pymetropolis.metro_network.osm import (
+    DIRECTION_NODE_COLUMN,
+    OpenStreetMapNetworkImport,
+    directed_speed_and_lanes,
+    directional_node_features,
+    sql_list,
+    sql_literal,
+)
 from pymetropolis.metro_pipeline.parameters import BoolParameter, FloatParameter, ListParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_pipeline.types import String
@@ -16,9 +23,7 @@ from .files import RoadEdgesRawFile
 if TYPE_CHECKING:
     from pathlib import Path
 
-    import polars as pl
     import pyproj
-    from osmium.osm import Node, Way
     from shapely.geometry import MultiPolygon, Polygon
 
 # Dictionary for special `maxspeed` values.
@@ -29,6 +34,24 @@ M_TO_KM = 1.609344
 
 # Directed features of the ways.
 FEATURES = ("speed_limit", "lanes", "give_way", "stop", "traffic_signals")
+
+# Node features (`highway=*` tag of the nodes) which are identified on the edges.
+NODE_FEATURES = ("give_way", "stop", "traffic_signals")
+
+
+def speed_expr(col: str) -> str:
+    """Returns a SQL expression to read the speed limit (in km/h) from a `maxspeed` tag.
+
+    Special values are handled by `SPEED_DICT`.
+    Values in mph, like "30 mph", are converted to km/h.
+    """
+    special = " ".join(
+        f"WHEN {sql_literal(key)} THEN {float(value)}" for key, value in SPEED_DICT.items()
+    )
+    return f"""coalesce(
+        TRY_CAST(nullif(regexp_extract({col}, '([0-9]+) mph', 1), '') AS DOUBLE) * {M_TO_KM},
+        CASE {col} {special} ELSE TRY_CAST({col} AS DOUBLE) END
+    )"""
 
 
 class OSMRoadNetworkImport(OpenStreetMapNetworkImport):
@@ -50,218 +73,79 @@ class OSMRoadNetworkImport(OpenStreetMapNetworkImport):
         )
         self.allowed_access_tags = allowed_access_tags
 
-    def extra_way_filter(self, way: Way) -> bool:
+    def extra_way_filter(self) -> str:
         """Returns True if the candidate way has valid road access."""
-        return "access" not in way.tags or way.tags["access"] in self.allowed_access_tags
+        if not self.allowed_access_tags:
+            return "tags['access'] IS NULL"
+        return f"tags['access'] IS NULL OR tags['access'] IN {sql_list(self.allowed_access_tags)}"
 
-    def way_data(self, way: Way) -> dict[str, Any]:
-        """Returns a dictionary with the relevant OpenStreetMap data to extract from a valid way."""
-        data = super().way_data(way)
-        data.update(
-            {
-                "toll": way.tags.get("toll") == "yes",
-                "roundabout": way.tags.get("junction") == "roundabout",
-                "oneway": way.tags.get("oneway") == "yes",
-                "maxspeed": way.tags.get("maxspeed"),
-                "maxspeed:forward": way.tags.get("maxspeed:forward"),
-                "maxspeed:backward": way.tags.get("maxspeed:backward"),
-                "lanes": way.tags.get("lanes"),
-                "lanes:forward": way.tags.get("lanes:forward"),
-                "lanes:backward": way.tags.get("lanes:backward"),
-            }
-        )
-        return data
+    def way_columns(self) -> dict[str, str]:
+        return {
+            **super().way_columns(),
+            "toll": "coalesce(tags['toll'] = 'yes', false)",
+            "roundabout": "coalesce(tags['junction'] = 'roundabout', false)",
+            "oneway": "coalesce(tags['oneway'] = 'yes', false)",
+            "maxspeed": "tags['maxspeed']",
+            "maxspeed_forward": "tags['maxspeed:forward']",
+            "maxspeed_backward": "tags['maxspeed:backward']",
+            "lanes": "tags['lanes']",
+            "lanes_forward": "tags['lanes:forward']",
+            "lanes_backward": "tags['lanes:backward']",
+        }
 
-    def way_data_schema(self) -> dict[str, pl.DataType | type[pl.DataType]]:
-        """Returns a dictionary representing the Polars schema for the DataFrame constructed from
-        `way_data`."""
-        import polars as pl
-
-        schema = super().way_data_schema()
-        schema.update(
-            {
-                "toll": pl.Boolean,
-                "roundabout": pl.Boolean,
-                "oneway": pl.Boolean,
-                "maxspeed": pl.String,
-                "maxspeed:forward": pl.String,
-                "maxspeed:backward": pl.String,
-                "lanes": pl.String,
-                "lanes:forward": pl.String,
-                "lanes:backward": pl.String,
-            }
-        )
-        return schema
-
-    def clean_way_data(self, df: pl.DataFrame) -> pl.DataFrame:
-        """Returns a cleaned version of data collected from `way_data`.
+    def clean_ways_query(self) -> str:
+        """Returns the cleaned way data.
 
         - Classify roundabouts as oneway roads.
         - Clean speedlimit from maxspeed tag.
         - Clean number of lanes from lanes tag.
-        - Drop self ways.
         """
-        import polars as pl
-
-        # Roundabouts are oneway.
-        df = df.with_columns(oneway=pl.col("oneway").or_(pl.col("roundabout")))
-        # Find maximum speed if available.
-        # Special values are handled by `SPEED_DICT`.
-        # Values in mph, like "30 mph", are converted to km/h.
-        df = df.with_columns(
-            pl.col(col)
-            .str.extract("([0-9]+) mph")
-            .cast(pl.Float64, strict=False)
-            .mul(M_TO_KM)
-            .fill_null(pl.col(col).replace(SPEED_DICT).cast(pl.Float64, strict=False))
-            for col in ("maxspeed", "maxspeed:forward", "maxspeed:backward")
-        ).with_columns(
-            # Read tags maxspeed:forward and maxspeed:backward when available, otherwise read tag
-            # maxspeed.
-            forward_speed_limit=pl.col("maxspeed:forward").fill_null(pl.col("maxspeed")),
-            backward_speed_limit=pl.when("oneway")
-            .then(pl.lit(None))
-            .otherwise(pl.col("maxspeed:backward").fill_null(pl.col("maxspeed"))),
-        )
-        # Find number of lanes if available.
-        # Read tags lanes:forward and lanes:backward when available, otherwise read tag lanes.
-        df = df.with_columns(
-            pl.col("lanes").cast(pl.Float64, strict=False),
-            pl.col("lanes:forward").cast(pl.Float64, strict=False),
-            pl.col("lanes:backward").cast(pl.Float64, strict=False),
-        ).with_columns(
-            forward_lanes=pl.when("oneway")
-            .then(pl.col("lanes:forward").fill_null(pl.col("lanes")))
-            .otherwise(pl.col("lanes:forward").fill_null(pl.col("lanes") / 2.0)),
-            backward_lanes=pl.when("oneway")
-            .then(pl.lit(None))
-            .otherwise(pl.col("lanes:backward").fill_null(pl.col("lanes") / 2.0)),
-        )
-        # Drop rows with source == target.
-        df = df.filter(pl.col("source") != pl.col("target"))
-        df: pl.DataFrame = df.select(
-            "osm_id",
-            "source",
-            "target",
-            "edge_type",
-            "name",
-            "toll",
-            "roundabout",
-            "oneway",
-            "forward_speed_limit",
-            "backward_speed_limit",
-            "forward_lanes",
-            "backward_lanes",
-            "nodes",
-        )
-        return df
-
-    def node_data(self, node: Node) -> dict[str, Any]:
-        """Returns a dictionary with the relevant OpenStreetMap data to extract from a node of the
-        network.
+        return f"""
+            WITH oneway_ways AS (
+                SELECT * REPLACE (oneway OR roundabout AS oneway) FROM ways
+            ),
+            speeds AS (
+                SELECT
+                    *,
+                    {speed_expr("maxspeed")} AS maxspeed_clean,
+                    {speed_expr("maxspeed_forward")} AS maxspeed_forward_clean,
+                    {speed_expr("maxspeed_backward")} AS maxspeed_backward_clean
+                FROM oneway_ways
+            )
+            SELECT
+                osm_id,
+                edge_type,
+                name,
+                toll,
+                roundabout,
+                oneway,
+                {
+            directed_speed_and_lanes(
+                "maxspeed_clean", "maxspeed_forward_clean", "maxspeed_backward_clean"
+            )
+        }
+            FROM speeds
         """
-        data = super().node_data(node)
-        data.update(
-            {
-                "highway": node.tags.get("highway"),
-                "direction": node.tags.get("traffic_signals:direction")
-                or node.tags.get("direction"),
-            }
-        )
-        return data
 
-    def node_data_schema(self) -> dict[str, pl.DataType | type[pl.DataType]]:
-        """Returns a dictionary representing the Polars schema for the DataFrame constructed from
-        `node_data`.
-        """
-        import polars as pl
+    def node_columns(self) -> dict[str, str]:
+        return {"highway": "tags['highway']", "direction": DIRECTION_NODE_COLUMN}
 
-        schema = super().node_data_schema()
-        schema.update({"highway": pl.String, "direction": pl.String})
-        return schema
-
-    def add_node_features_to_edges(self, edges: pl.DataFrame, nodes: pl.DataFrame) -> pl.DataFrame:
+    def segment_features_query(self) -> str:
         """Returns edges with informations on give-way signs, stop signs and traffic signals, read
         from node data.
         """
-        import polars as pl
-
-        nodes = nodes.with_columns(
-            pl.when(pl.col("direction").is_in(("both", "forward", "backward")))
-            .then("direction")
-            .otherwise(pl.lit(None))
+        return self.node_features_query(
+            directional_node_features(NODE_FEATURES), f"n.highway IN {sql_list(NODE_FEATURES)}"
         )
-        for feature in ("give_way", "stop", "traffic_signals"):
-            edges = self.identify_edge_features(edges, nodes, feature)
-        return edges
 
-    def identify_edge_features(
-        self, edges: pl.DataFrame, nodes: pl.DataFrame, feature: str
-    ) -> pl.DataFrame:
-        """Identifies the edges that contain nodes with a particular feature (e.g., traffic signals,
-        stop signs).
+    def backward_condition(self) -> str:
+        """Only not oneway edges are duplicated."""
+        return "NOT oneway"
 
-        Edges is marked as having the feature in the forward direction if:
-        - One of the edge's nodes is marked as having the feature in forward direction.
-        - The target node of the edge is marked as having the feature (with no direction specified).
-        - The edge is "oneway" and one of its nodes is marked as having the feature (with no
-          direction specified).
-
-        Edges is marked as having the feature in the backward direction if:
-        - One of the edge's nodes is marked as having the feature in backward direction.
-        - The source node of the edge is marked as having the feature (with no direction specified).
-        """
-        import polars as pl
-
-        logger.debug(f"Identifying edges with {feature} nodes")
-        featured_nodes = nodes.filter(pl.col("highway") == feature)
-        fwd_node_ids = featured_nodes.filter(pl.col("direction").is_in(("both", "forward")))[
-            "osm_id"
-        ]
-        bwd_node_ids = featured_nodes.filter(pl.col("direction").is_in(("both", "backward")))[
-            "osm_id"
-        ]
-        no_dir_node_ids = featured_nodes.filter(pl.col("direction").is_null())["osm_id"]
-        edges = edges.with_columns(
-            (
-                pl.col("nodes").list.eval(pl.element().is_in(fwd_node_ids)).list.any()
-                | pl.col("target").is_in(no_dir_node_ids)
-                | pl.col("oneway").and_(
-                    pl.col("nodes").list.eval(pl.element().is_in(no_dir_node_ids)).list.any()
-                )
-            ).alias(f"forward_{feature}"),
-            (
-                pl.col("nodes").list.eval(pl.element().is_in(bwd_node_ids)).list.any()
-                | pl.col("source").is_in(no_dir_node_ids)
-            ).alias(f"backward_{feature}"),
-        )
-        return edges
-
-    def duplicate_edges(self, edges: pl.DataFrame) -> pl.DataFrame:
-        """Duplicates edges in the forward and backward direction.
-
-        Only not oneway edges are duplicated.
-
-        Features (speedlimit, lanes, etc.) are read for the correct direction.
-        """
-        import polars as pl
-
-        # Duplicate two-way ways.
-        lf = edges.lazy()
-        forward_edges = lf.with_columns(
-            *(pl.col(f"forward_{feat}").alias(feat) for feat in FEATURES), backward=False
-        )
-        backward_edges = lf.filter(pl.col("oneway").not_()).with_columns(
-            pl.col("source").alias("target"),
-            pl.col("target").alias("source"),
-            pl.col("nodes").list.reverse(),
-            *(pl.col(f"backward_{feat}").alias(feat) for feat in FEATURES),
-            backward=True,
-        )
-        return pl.concat((forward_edges, backward_edges), how="vertical").collect()
+    def directed_features(self) -> list[str]:
+        return list(FEATURES)
 
     def edge_columns(self) -> list[str]:
-        """Returns a list of columns to be kept in the final edge DataFrame."""
         return [*super().edge_columns(), "toll", "roundabout", "oneway", *FEATURES]
 
 
@@ -305,7 +189,8 @@ class OpenStreetMapRoadImportStep(GeoStep, OSMStep):
       [`highways`](parameters.md#osm_road_importhighways) parameter.
     - The way has no tag `access` or tag `access` matches one of the value given in
       [`allowed_access`](parameters.md#osm_road_importallowed_access).
-    - The way's geometry is a valid LineString.
+    - The way has at least two nodes (closed ways, like roundabouts, are valid).
+    - All the way's nodes are in the OpenStreetMap data.
     - The way intersects with the simulation area (if
       [`simulation_area_filter`](parameters.md#osm_road_importsimulation_area_filter) is `true`).
 

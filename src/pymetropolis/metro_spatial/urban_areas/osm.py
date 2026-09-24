@@ -8,6 +8,7 @@ from pymetropolis.metro_pipeline.parameters import FloatParameter, ListParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_pipeline.types import String
 from pymetropolis.metro_spatial import GeoStep, OSMStep
+from pymetropolis.metro_spatial.osm import read_osm_areas
 from pymetropolis.metro_spatial.simulation_area.file import SimulationAreaFile
 
 from .file import UrbanAreasFile
@@ -29,35 +30,20 @@ def read_osm_urban_areas(
     all these urban areas.
     """
     import geopandas as gpd
-    import osmium
-    from osmium.filter import TagFilter
-    from osmium.geom import WKBFactory
 
     filter_polygon = simulation_area_file.get_area_opt()
     logger.info("Reading urban areas")
-    ids = list()
-    tags = list()
-    polygons = list()
-    fab = WKBFactory()
-    valid_tag_pairs = tuple(("landuse", tag) for tag in landuse_tags)
-    logger.debug("Reading areas from OSM file")
-    for area in (
-        osmium.FileProcessor(osm_file).with_filter(TagFilter(*valid_tag_pairs)).with_areas()
-    ):
-        if area.is_area():  # ty: ignore[unresolved-attribute]
-            ids.append(area.id)
-            tags.append(area.tags["landuse"])
-            polygons.append(fab.create_multipolygon(area))  # ty: ignore[invalid-argument-type]
-    logger.debug("Building GeoDataFrame")
-    gdf = gpd.GeoDataFrame(
-        {"osm_id": ids, "landuse": tags}, geometry=gpd.GeoSeries.from_wkb(polygons, crs="EPSG:4326")
+    gdf = read_osm_areas(
+        osm_file,
+        "list_contains($landuse, tags['landuse'])",
+        {"landuse": landuse_tags},
+        {"landuse": "tags['landuse']"},
     )
     logger.debug("Converting to required CRS")
     gdf.to_crs(crs, inplace=True)
     if filter_polygon is not None:
         logger.debug("Filtering based on area")
-        mask = [filter_polygon.intersects(geom) for geom in gdf.geometry]
-        gdf = gdf.loc[mask].copy()
+        gdf = gdf.loc[gdf.intersects(filter_polygon)].copy()
     logger.debug("Computing union of all urban areas")
     urban_area = gdf.union_all()
     logger.debug("Buffering and simplifying geometry")
