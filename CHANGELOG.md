@@ -135,6 +135,8 @@ Other changes:
 - Raise an error when `gtfs.date` is outside the range of dates for which the OpenTripPlanner
   server has loaded active GTFS services (before trying to make any request).
 - Switched from osmium to duckdb for OSM files parsing, leading to improved performances.
+- `osm_*_import.simulation_area_filter` parameters now default to `False`, making SimulationAreaFile
+  optional by default
 
 Removed steps:
 

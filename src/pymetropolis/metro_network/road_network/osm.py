@@ -269,7 +269,7 @@ class OpenStreetMapRoadImportStep(GeoStep, OSMStep):
     )
     simulation_area_filter = BoolParameter(
         "osm_road_import.simulation_area_filter",
-        default=True,
+        default=False,
         description=(
             "Whether the road network must be restricted to the edges within the simulation area."
         ),

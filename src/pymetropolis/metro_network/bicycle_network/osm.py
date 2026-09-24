@@ -380,7 +380,7 @@ class OpenStreetMapBicycleImportStep(GeoStep, OSMStep):
     )
     simulation_area_filter = BoolParameter(
         "osm_bicycle_import.simulation_area_filter",
-        default=True,
+        default=False,
         description=(
             "Whether the bicycle network must be restricted to the edges within the simulation "
             "area."

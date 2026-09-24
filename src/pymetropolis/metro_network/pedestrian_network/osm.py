@@ -123,7 +123,7 @@ class OpenStreetMapPedestrianImportStep(GeoStep, OSMStep):
     )
     simulation_area_filter = BoolParameter(
         "osm_pedestrian_import.simulation_area_filter",
-        default=True,
+        default=False,
         description=(
             "Whether the pedestrian network must be restricted to the edges within the simulation "
             "area."
