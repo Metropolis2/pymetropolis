@@ -18,6 +18,27 @@ if TYPE_CHECKING:
 
     import pyproj
 
+# Maximum distance between the true (round) buffer and its polygonal approximation, in the unit of
+# measure of the CRS.
+MAX_BUFFER_ARC_ERROR = 2.0
+
+
+def buffer_quad_segs(distance: float) -> int:
+    """Returns the smallest number of segments per quarter circle such that the buffer arcs of
+    radius `distance` deviate from the true circle by at most `MAX_BUFFER_ARC_ERROR`.
+
+    A chord spanning an angle `theta` deviates from its arc by `r * (1 - cos(theta / 2))`.
+    The value is capped to the GEOS default (8), so large buffers are never slower to compute than
+    with the default precision.
+    """
+    import math
+
+    radius = abs(distance)
+    if radius <= MAX_BUFFER_ARC_ERROR:
+        return 1
+    half_angle = math.acos(1 - MAX_BUFFER_ARC_ERROR / radius)
+    return min(math.ceil(math.pi / (4 * half_angle)), 8)
+
 
 def read_osm_urban_areas(
     osm_file: Path,
@@ -30,6 +51,7 @@ def read_osm_urban_areas(
     all these urban areas.
     """
     import geopandas as gpd
+    import shapely
 
     filter_polygon = simulation_area_file.get_area_opt()
     logger.info("Reading urban areas")
@@ -43,11 +65,30 @@ def read_osm_urban_areas(
     gdf.to_crs(crs, inplace=True)
     if filter_polygon is not None:
         logger.debug("Filtering based on area")
-        gdf = gdf.loc[gdf.intersects(filter_polygon)].copy()
-    logger.debug("Computing union of all urban areas")
-    urban_area = gdf.union_all()
-    logger.debug("Buffering and simplifying geometry")
-    urban_area = urban_area.buffer(buffer).simplify(0, preserve_topology=False)
+        gdf = gdf.iloc[gdf.sindex.query(filter_polygon, predicate="intersects")]
+    geoms = gdf.geometry.values
+    # Buffering / unioning one huge geometry is much slower than working on many small ones, so
+    # the buffer is applied to individual polygons and the union uses the "disjoint subset"
+    # algorithm (which unions each cluster of intersecting polygons independently).
+    quad_segs = buffer_quad_segs(buffer)
+    if buffer > 0:
+        # A positive buffer distributes over the union: buffer each area, then union them.
+        logger.debug("Buffering and computing union of all urban areas")
+        urban_area = shapely.disjoint_subset_union_all(
+            shapely.buffer(geoms, buffer, quad_segs=quad_segs)
+        )
+    else:
+        logger.debug("Computing union of all urban areas")
+        parts = shapely.get_parts(shapely.disjoint_subset_union_all(geoms))
+        # Only keep polygonal parts (the union can include lines or points from invalid areas).
+        parts = parts[shapely.get_type_id(parts) == shapely.GeometryType.POLYGON]
+        if buffer < 0:
+            # The parts are disjoint so they can be shrunk independently.
+            logger.debug("Buffering geometry")
+            parts = shapely.get_parts(shapely.buffer(parts, buffer, quad_segs=quad_segs))
+            parts = parts[~shapely.is_empty(parts)]
+        urban_area = shapely.multipolygons(parts)
+    urban_area = urban_area.simplify(0, preserve_topology=False)
     gdf = gpd.GeoDataFrame(geometry=[urban_area], crs=crs)
     return gdf
 

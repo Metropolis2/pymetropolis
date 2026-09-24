@@ -137,6 +137,7 @@ Other changes:
 - Switched from osmium to duckdb for OSM files parsing, leading to improved performances.
 - `osm_*_import.simulation_area_filter` parameters now default to `False`, making SimulationAreaFile
   optional by default
+- Optimized `OpenStreetMapUrbanAreasStep` step.
 
 Removed steps:
 
