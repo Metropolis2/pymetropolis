@@ -171,7 +171,9 @@ def read_gtfs_stops_and_routes(
         assert routes is not None and trips is not None
         assert stop_times is not None and stops is not None
         if gtfs_date is not None:
-            trips = trips.filter(pl.col("service_id").is_in(active_service_ids(z, gtfs_date)))
+            trips = trips.filter(
+                pl.col("service_id").is_in(active_service_ids(z, gtfs_date).implode())
+            )
             if trips.is_empty():
                 logger.warning(f"No active service on {gtfs_date} in GTFS file `{gtfs_file}`")
 
