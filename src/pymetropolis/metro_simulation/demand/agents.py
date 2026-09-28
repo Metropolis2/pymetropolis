@@ -1,7 +1,10 @@
+from loguru import logger
+
 from pymetropolis.metro_common.errors import MetropyError
+from pymetropolis.metro_demand.modes.files import ModeChoiceMuFile
 from pymetropolis.metro_demand.population import TripsFile, UniformDrawsFile
 from pymetropolis.metro_pipeline import PopulationStep, Step
-from pymetropolis.metro_pipeline.parameters import EnumParameter, FloatParameter
+from pymetropolis.metro_pipeline.parameters import EnumParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_simulation.common import merge_populations
 from pymetropolis.modes import StepWithModes
@@ -29,18 +32,18 @@ class PrepareMetroAgentsStep(StepWithModes, PopulationStep):
         default="Deterministic",
         description="Type of choice model for mode choice",
     )
-    mode_choice_mu = FloatParameter(
-        "mode_choice.mu",
-        default=1.0,
-        description="Value of mu for the Logit choice model",
-        note="Only required when mode choice model is Logit",
-    )
     input_files = {
         "trips": TripsFile,
         "uniform_draws": InputFile(
             UniformDrawsFile,
             when=lambda inst: inst.has_mode_choice(),
             when_doc="if there are at least two modes",
+        ),
+        "mus": InputFile(
+            ModeChoiceMuFile,
+            when=lambda inst: inst.has_mode_choice() and "Logit" in inst.mode_choice_model,
+            when_doc="if there are at least two modes and mode choice is of Logit type",
+            optional=True,
         ),
     }
     output_files = {"agents": MetroAgentsPopulationFile}
@@ -54,15 +57,28 @@ class PrepareMetroAgentsStep(StepWithModes, PopulationStep):
         import polars as pl
 
         trips = self.input["trips"].read()
+        maybe_mus = self.input["mus"].read_if_exists()
         agents = trips.select(agent_id="tour_id").unique().sort("agent_id")
         if self.has_mode_choice():
             # Add mode choice parameters.
             model = self.mode_choice_model
             if model == "Logit":
-                agents = agents.with_columns(
-                    pl.lit("Logit").alias("alt_choice.type"),
-                    pl.lit(self.mode_choice_mu).alias("alt_choice.mu"),
-                )
+                agents = agents.with_columns(pl.lit("Logit").alias("alt_choice.type"))
+                if maybe_mus is None:
+                    logger.warning(
+                        'Mode choice is "Logit" but error scales have not been generated. '
+                        "Error scales are set to 1 by default."
+                    )
+                    agents = agents.with_columns(pl.lit(1.0).alias("alt_choice.mu"))
+                else:
+                    agents = agents.join(
+                        maybe_mus.select(
+                            "tour_id", pl.col("mode_choice_mu").alias("alt_choice.mu")
+                        ),
+                        left_on="agent_id",
+                        right_on="tour_id",
+                        how="left",
+                    )
             elif model == "DrawnLogit":
                 # TODO: At this point the epsilons should be already drawn.
                 raise MetropyError("TODO")

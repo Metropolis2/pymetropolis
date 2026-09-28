@@ -38,9 +38,14 @@ New steps:
 - `SurveyEconometricModeChoiceStep`
 - `ModePreferencesFromEconometricsStep`
 - `WriteExAnteMetroVehicleTypesStep`
+- `ModeChoiceMuStep`
+- `ModeChoiceMuFromPopulationStep`
+- `JointToursFeatureImportanceStep`
+- `ModeFeatureImportanceStep`
+- `TourResultsStep`
 - `ReadPublicTransitNetworkStep`
 - `ParkAndRideFacilitiesFromNearestStopStep`
-- `ParkAndRideRoadNodesFromCoordinatesStep`
+- `ParkAndRideRoadODNodesFromCoordinatesStep`
 - `ParkAndRideTripsCarFreeFlowTravelTimesStep`
 - `ParkAndRideCarAccessEgressStep`
 - `ParkAndRideTripsOpenTripPlannerStep`
@@ -49,6 +54,10 @@ New steps:
 New files:
 
 - `ModeEstimatorFile`
+- `JointTourFeatureImportanceFile`
+- `JointTourFeatureImportancePlotFile`
+- `ModeFeatureImportanceFile`
+- `ModeFeatureImportancePlotFile`
 - `ToursModeFile`
 - `FreeFlowTravelTimeComparisonPlotFile`
 - `ToursModeShareComparisonFile`
@@ -82,6 +91,8 @@ New files:
 - `SurveyedTripsTravelTimeComparisonWalkingPlotFile`
 - `SurveyModeChoiceResultsFile`
 - `MetroExAnteVehicleTypesFile`
+- `ModeChoiceMuFile`
+- `TourResultsFile`
 - `PublicTransitStopsFile`
 - `PublicTransitRoutesFile`
 - `ParkAndRideStopsFile`
@@ -95,6 +106,10 @@ New files:
 
 New parameters:
 
+- `joint_travel.feature_importance`
+- `joint_travel.nb_plotted_features`
+- `mode_classifier.feature_importance`
+- `mode_classifier.nb_plotted_features`
 - `road_network.capacity_multipliers.traffic_signal`
 - `road_network.capacity_multipliers.roundabout`
 - `ridesharing.subsidy`
@@ -105,11 +120,17 @@ New parameters:
 - `modes.park_and_ride.preferences_file`
 - `modes.park_and_ride.transfer_time`
 
+New columns:
+
+- `tour_id` in `TripResultsFile`
+
 New features:
 
 - Configs can now inherit from other configs through the `parent_config` parameter.
 - Use the `--graph <path>` CLI option to output a graph of the Steps to be run and the dependencies
   between them.
+- Add mode shares by tour count to `AggregateOutputFile`.
+- Add results by joint vs solo tours to `AggregateOutputFile`.
 
 Other changes:
 
@@ -137,11 +158,20 @@ Other changes:
 - Raise an error when the OpenTripPlanner URL is unreachable (before trying to make any request).
 - Raise an error when `gtfs.date` is outside the range of dates for which the OpenTripPlanner
   server has loaded active GTFS services (before trying to make any request).
-- Fix OpenTripPlanner queries not stopping on interrupt (Ctrl+C).
+- Switched from osmium to duckdb for OSM files parsing, leading to improved performances.
+- `osm_*_import.simulation_area_filter` parameters now default to `False`, making SimulationAreaFile
+  optional by default
+- Optimized `OpenStreetMapUrbanAreasStep` step.
 
 Removed steps:
 
 - `GenericPopulationStep` (should no longer be needed with the changes to OD matrix steps)
+
+Fixes:
+
+- Fix OpenTripPlanner queries not stopping on interrupt (Ctrl+C).
+- Fix a bug where road-specific results in `TripResultsFile` were NULLs when secondary car trips
+  exist
 
 ## [0.12.0] – 2026-08-25
 

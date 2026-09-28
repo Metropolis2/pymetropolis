@@ -455,3 +455,66 @@ def compute_lasso(
     coefs = lassocv.coef_ / scaler.scale_
     coef_lasso = {var: coef for var, coef in zip(exog_variables.columns, coefs)}
     return (Y_hat, residuals, rmse, coef_lasso)
+
+
+def compute_feature_importance(
+    X: pd.DataFrame,
+    y: pd.Series,
+    groups: np.ndarray,
+    estimator: BaseEstimator,
+    random_seed: int | None,
+    nb_threads: int | None,
+    n_repeats: int = 10,
+    scoring: str = "neg_brier_score",
+) -> pl.DataFrame:
+    """Returns the permutation importance of each feature, averaged over cross-validation folds.
+
+    The importance of a feature is the decrease in `scoring` observed when the values of that
+    feature are randomly shuffled: the larger the decrease, the more the model relies on the
+    feature. It is computed on the raw columns of `X` (not on the columns the preprocessor derives
+    from them), so the levels of a categorical variable are permuted together and the variable gets
+    a single importance value.
+
+    The permutations are applied to the held-out fold of each cross-validation split, with the
+    estimator re-fitted (as a clone) on the corresponding training fold. Permuting against the
+    estimator as it is fitted by `estimate_model` would instead measure importance on the very
+    observations it was fitted on, which over-states the importance of the features a flexible model
+    can overfit on. The splits are those of `get_cv_splits`, i.e. the exact folds the estimator was
+    selected on when `random_seed` is the one used for the estimation.
+
+    The returned DataFrame has one row per column of `X`, sorted by decreasing importance, with the
+    mean and the standard deviation of the importance over all the folds and repetitions.
+    """
+    import numpy as np
+    import polars as pl
+    from sklearn.base import clone
+    from sklearn.inspection import permutation_importance
+
+    cv = get_cv_splits(X, y, groups, random_seed)
+
+    # One (n_features, n_repeats) array per fold, concatenated over the folds so that the reported
+    # standard deviation accounts for both the permutations and the fold-to-fold variability.
+    importances = []
+    for i, (train, test) in enumerate(cv):
+        logger.debug(f"Computing feature importance on fold {i + 1}/{len(cv)}...")
+        fold_estimator = clone(estimator)
+        fold_estimator.fit(X.iloc[train], y.iloc[train])
+        res = permutation_importance(
+            fold_estimator,
+            X.iloc[test],
+            y.iloc[test],
+            scoring=scoring,
+            n_repeats=n_repeats,
+            random_state=random_seed,
+            n_jobs=nb_threads,
+        )
+        importances.append(res.importances)
+
+    all_importances = np.concatenate(importances, axis=1)
+    return pl.DataFrame(
+        {
+            "feature": pl.Series(list(X.columns), dtype=pl.String),
+            "importance": all_importances.mean(axis=1),
+            "importance_std": all_importances.std(axis=1),
+        }
+    ).sort("importance", descending=True)

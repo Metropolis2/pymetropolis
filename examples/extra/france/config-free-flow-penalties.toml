@@ -1,0 +1,183 @@
+main_directory = "output-free-flow-penalties/"
+
+crs = "epsg:2154"
+
+osm_file = "data/france-260901.osm.pbf"
+
+random_seed = 13081996
+
+# [survey]
+# nb_medoids = 3
+# [survey.mobisurvstd]
+# path = "data/surveys/"
+# bulk = true
+
+[osm_urban_areas]
+urban_landuse_tags = [
+    "commercial",
+    "construction",
+    "education",
+    "industrial",
+    "residential",
+    "retail",
+    "village_green",
+    "recreation_ground",
+    "garages",
+    "religious",
+]
+buffer = 50
+
+[osm_road_import]
+highways = [
+    "motorway",
+    "motorway_link",
+    "trunk",
+    "trunk_link",
+    "primary",
+    "primary_link",
+    "secondary",
+    "secondary_link",
+    "tertiary",
+    "tertiary_link",
+    "living_street",
+    "unclassified",
+    "residential",
+]
+
+[road_network]
+# Minimum number of lanes allowed on edges.
+min_lanes = 0.5
+# Minimum speed limit allowed on edges (in km/h).
+min_speed_limit = 10
+# Minimum length allowed on edges (in meters).
+min_length = 1
+# Whether the duplicate edges (edges with same source and target) should be removed.
+# Only the edge with the smallest free-flow travel time is kept.
+remove_duplicates = false
+# Whether the network should be restricted to the largest strongly connected component of the
+# underlying graph.
+# Warning. If `false`, some origin-destination pairs might not be feasible.
+ensure_connected = true
+# Edges' types that cannot be used as origin / destination nodes.
+forbidden_types = ["motorway", "motorway_link", "trunk", "trunk_link"]
+min_effective_speed = 5.0
+max_effective_speed = 135.0
+
+# Default speed limit per roadtype, in km/h, in rural areas.
+[road_network.default_speed_limit.rural]
+motorway = 130
+trunk = 110
+primary = 80
+secondary = 80
+tertiary = 70
+motorway_link = 70
+trunk_link = 50
+primary_link = 50
+secondary_link = 50
+tertiary_link = 50
+living_street = 20
+unclassified = 50
+residential = 50
+#road = 20
+#service = 20
+
+# Default speed limit per roadtype, in km/h, in urban areas.
+[road_network.default_speed_limit.urban]
+motorway = 130
+trunk = 90
+primary = 50
+secondary = 50
+tertiary = 30
+motorway_link = 50
+trunk_link = 50
+primary_link = 50
+secondary_link = 50
+tertiary_link = 30
+living_street = 20
+unclassified = 30
+residential = 30
+#road = 20
+#service = 20
+
+# Default number of lanes per roadtype.
+[road_network.default_lanes]
+motorway = 3
+trunk = 2
+primary = 1
+secondary = 1
+tertiary = 1
+motorway_link = 1
+trunk_link = 1
+primary_link = 1
+secondary_link = 1
+tertiary_link = 1
+living_street = 1
+unclassified = 1
+residential = 1
+#road = 1
+#service = 1
+
+[road_network.calibration_variables]
+[road_network.calibration_variables.lanes]
+type = "intervals"
+cuts = [1, 2, 3]  # 1 lane, 2 lanes, 3 lanes, 3+ lanes
+
+[road_network.calibration_variables.speed_limit]
+type = "intervals"
+cuts = [30, 50, 70, 80, 90, 110]
+
+[road_network.calibration_variables.edge_type]
+type = "categories"
+[road_network.calibration_variables.edge_type.map]
+motorway = "motorway"
+motorway_link = "motorway_link"
+trunk = "trunk"
+trunk_link = "trunk_link"
+primary = "primary"
+primary_link = "primary_link"
+secondary = "secondary"
+secondary_link = "secondary"
+tertiary = "tertiary"
+tertiary_link = "tertiary"
+living_street = "living_street"
+residential = "residential"
+unclassified = "unclassified"
+#service = "residential"
+#road = "unclassified"
+
+[tomtom_requests]
+date = 2027-03-15
+departure_time = 03:00:00
+nb_routes = 400
+nb_waypoints = 148
+nb_batches = 5
+excluded_edge_types = ["motorway", "motorway_link", "trunk", "trunk_link", "primary", "primary_link"]
+api_key = "env:TOMTOM_API_KEY"
+
+[calibration]
+[calibration.free_flow_travel_time]
+additive_variables = ["traffic_signals"]
+additive_interaction_variables = [["urban", "traffic_signals"]]
+multiplicative_variables = ["edge_type", "speed_limit", "target_in_degree", "target_out_degree", "urban"]
+multiplicative_interaction_variables = [
+  [
+    "edge_type",
+    "speed_limit",
+  ],
+  [
+    "urban",
+    "speed_limit",
+  ],
+  [
+    "speed_limit",
+    "target_in_degree",
+  ],
+  [
+    "speed_limit",
+    "target_out_degree",
+  ],
+  [
+    "target_in_degree",
+    "target_out_degree",
+  ],
+]

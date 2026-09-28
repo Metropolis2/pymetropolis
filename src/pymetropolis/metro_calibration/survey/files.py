@@ -858,6 +858,58 @@ class ModeEstimatorFile(MetroMLEstimatorFile):
     description = "ML estimator for the classification of tours' mode."
 
 
+def _feature_importance_schema(model_description: str) -> list[Column]:
+    return [
+        Column(
+            "feature",
+            MetroDataType.STRING,
+            description="Name of the feature.",
+            unique=True,
+            nullable=False,
+        ),
+        Column(
+            "importance",
+            MetroDataType.FLOAT,
+            description=(
+                "Mean decrease in the Brier score of "
+                f"{model_description} when the values of the feature are randomly shuffled."
+            ),
+            nullable=False,
+        ),
+        Column(
+            "importance_std",
+            MetroDataType.FLOAT,
+            description=(
+                "Standard deviation of the decrease in the Brier score, over the "
+                "cross-validation folds and the repetitions of the permutation."
+            ),
+            nullable=False,
+        ),
+    ]
+
+
+class JointTourFeatureImportanceFile(MetroDataFrameFile):
+    path = "calibration/survey/joint_tour_feature_importance.parquet"
+    description = "Permutation feature importance of the joint-tour classifier."
+    schema = _feature_importance_schema("the joint-tour classifier")
+
+
+class JointTourFeatureImportancePlotFile(MetroPlotFile):
+    path = "calibration/survey/graphs/joint_tour_feature_importance.png"
+    description = "Bar plot of the permutation feature importance of the joint-tour classifier."
+
+
+class ModeFeatureImportanceFile(MetroDataFrameFile):
+    path = "calibration/survey/mode_feature_importance.parquet"
+    description = "Permutation feature importance of the tour-mode classifier."
+    schema = _feature_importance_schema("the tour-mode classifier")
+
+
+class ModeFeatureImportancePlotFile(MetroPlotFile):
+    path = "calibration/survey/graphs/mode_feature_importance.png"
+    description = "Bar plot of the permutation feature importance of the tour-mode classifier."
+
+
 class ToursModeShareComparisonFile(MetroTxtFile, PopulationFile):
     path = "calibration/survey/{population}/mode_share_comparison.json"
     description = (

@@ -10,12 +10,14 @@ from .car import CAR_FILES, CAR_PREFERENCES_FILES, CAR_STEPS
 from .files import (
     BicyclePreferencesFile,
     BicycleTravelTimesFile,
+    ModeChoiceMuFile,
     OutsideOptionPreferencesFile,
     OutsideOptionTravelTimesFile,
     PublicTransitPreferencesFile,
     WalkingPreferencesFile,
     WalkingTravelTimesFile,
 )
+from .mode_choice import ModeChoiceMuFromPopulationStep, ModeChoiceMuStep
 from .outside_option import (
     OutsideOptionPreferencesStep,
     OutsideOptionTravelTimesFromRoadDistancesStep,
@@ -38,7 +40,13 @@ WALKING_FILES = [WalkingPreferencesFile, WalkingTravelTimesFile]
 BICYCLE_FILES = [BicyclePreferencesFile, BicycleTravelTimesFile]
 
 MODES_FILES = (
-    CAR_FILES + PT_FILES + WALKING_FILES + OUTSIDE_FILES + BICYCLE_FILES + PARK_AND_RIDE_FILES
+    CAR_FILES
+    + PT_FILES
+    + WALKING_FILES
+    + OUTSIDE_FILES
+    + BICYCLE_FILES
+    + PARK_AND_RIDE_FILES
+    + [ModeChoiceMuFile]
 )
 
 # Preferences file of each trip-based mode, i.e., the modes whose constant and value of time are
@@ -68,7 +76,14 @@ BICYCLE_STEPS = [
     BicyclePreferencesFromPopulationStep,
     BicycleTravelTimesFromDistanceStep,
 ]
+MU_STEPS = [ModeChoiceMuStep, ModeChoiceMuFromPopulationStep]
 
 MODES_STEPS = (
-    CAR_STEPS + PT_STEPS + WALKING_STEPS + OUTSIDE_STEPS + BICYCLE_STEPS + PARK_AND_RIDE_STEPS
+    CAR_STEPS
+    + PT_STEPS
+    + WALKING_STEPS
+    + OUTSIDE_STEPS
+    + BICYCLE_STEPS
+    + PARK_AND_RIDE_STEPS
+    + MU_STEPS
 )

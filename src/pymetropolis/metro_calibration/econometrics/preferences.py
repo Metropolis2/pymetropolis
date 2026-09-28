@@ -6,10 +6,11 @@ from typing import TYPE_CHECKING, Any
 from loguru import logger
 
 from pymetropolis.metro_common import MetropyError
-from pymetropolis.metro_demand.modes import MODE_PREFERENCES_FILES
-from pymetropolis.metro_demand.population.files import ToursFile
+from pymetropolis.metro_demand.modes import MODE_PREFERENCES_FILES, ModeChoiceMuFile
+from pymetropolis.metro_demand.population.files import JointToursFile, ToursFile
 from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.metro_pipeline.parameters import BoolParameter, FloatParameter, StringParameter
+from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.modes import CarDriver, MetaMode, StepWithModes, mode_from_str
 
 from .files import SurveyModeChoiceResultsFile
@@ -218,8 +219,15 @@ class ModePreferencesFromEconometricsStep(StepWithModes, PopulationStep):
         ),
     )
 
-    input_files = {"tours": ToursFile, "results": SurveyModeChoiceResultsFile}
-    output_files = {repr(m): pref_file for m, pref_file in MODE_PREFERENCES_FILES.items()}
+    input_files = {
+        "tours": ToursFile,
+        "joint_tours": InputFile(JointToursFile, optional=True),
+        "results": SurveyModeChoiceResultsFile,
+    }
+    output_files = {
+        "mu": ModeChoiceMuFile,
+        **{repr(m): pref_file for m, pref_file in MODE_PREFERENCES_FILES.items()},
+    }
 
     def is_defined(self):
         return bool(self.from_econometrics) and self.has_trip_mode()
@@ -230,6 +238,10 @@ class ModePreferencesFromEconometricsStep(StepWithModes, PopulationStep):
         assert self.modes is not None
 
         tours: pl.DataFrame = self.input["tours"].read()
+        joint_tours = self.input["joint_tours"].read_if_exists()
+        if joint_tours is not None:
+            tours = tours.join(joint_tours, on="tour_id", how="left")
+
         results = json.loads(self.input["results"].read())
         spec = results["specification"]
         params = results["parameters"]
@@ -267,3 +279,7 @@ class ModePreferencesFromEconometricsStep(StepWithModes, PopulationStep):
         for mode in modes:
             df = mode_prefs[mode].with_columns(pl.col(f"{mode!r}_cst", f"{mode!r}_vot") / scale)
             self.output[repr(mode)].write(df)
+
+        # Save utility scale as mode-choice mu.
+        df = tours.select("tour_id", mode_choice_mu=1 / scale)
+        self.output["mu"].write(df)

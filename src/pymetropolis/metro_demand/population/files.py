@@ -664,7 +664,7 @@ class HouseholdsHomesUrbanTypeFile(MetroDataFrameFile, PopulationFile):
     ]
 
 
-# TODO. Maybe we should consider having the same mode mu for all the tours of a single person?
+# TODO. Maybe we should consider having the same mode u for all the tours of a single person?
 class UniformDrawsFile(MetroDataFrameFile, PopulationFile):
     path = "demand/{population}/uniform_draws.parquet"
     description = (

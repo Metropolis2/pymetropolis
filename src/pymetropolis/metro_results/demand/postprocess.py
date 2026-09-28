@@ -16,7 +16,7 @@ from pymetropolis.metro_simulation.run import MetroAgentResultsFile, MetroTripRe
 from pymetropolis.metro_simulation.run.files import MetroRouteResultsFile
 from pymetropolis.modes import ParkAndRide
 
-from .files import ActivityResultsFile, RouteResultsFile, TripResultsFile
+from .files import ActivityResultsFile, RouteResultsFile, TourResultsFile, TripResultsFile
 
 if TYPE_CHECKING:
     import polars as pl
@@ -58,6 +58,7 @@ class TripResultsStep(PopulationStep):
         ).with_columns(pl.col("agent_id").str.strip_prefix(prefix))
         df = df.select(
             trip_id=pl.col("trip_id").str.strip_prefix(prefix),
+            tour_id=pl.col("agent_id").str.strip_prefix(prefix),
             mode="selected_alt_id",
             # TODO. Replace this with something more robust when the Mode class is created.
             is_road=pl.col("selected_alt_id").str.starts_with("car_"),
@@ -177,7 +178,7 @@ def merge_park_and_ride_legs(df: pl.DataFrame, trips: pl.DataFrame) -> pl.DataFr
         .sort("trip_id", "departure_time")
         .group_by("trip_id", maintain_order=True)
         .agg(
-            pl.col("mode").first(),
+            *[pl.col(c).first() for c in ("tour_id", "mode") if c in df.columns],
             pl.col("is_road").any(),
             pl.col("departure_time").min(),
             pl.col("arrival_time").max(),
@@ -354,3 +355,48 @@ class ActivityResultsStep(PopulationStep):
         )
         activities = activities.sort("person_id", "start_time")
         self.output["activity_results"].write(activities)
+
+
+class TourResultsStep(PopulationStep):
+    """Reads the trip-level results and the Metropolis-Core agent results and produces a clean file
+    for results at the tour level.
+    """
+
+    input_files = {"trip_results": TripResultsFile, "metro_agent_results": MetroAgentResultsFile}
+    output_files = {"tour_results": TourResultsFile}
+
+    def run(self):
+        import polars as pl
+
+        prefix = f"{self.population_name}-"
+        # In the main simulation, 1 agent = 1 tour.
+        agent_results: pl.DataFrame = (
+            self.input["metro_agent_results"]
+            .scan()
+            .filter(pl.col("agent_id").str.starts_with(prefix))
+            .select(
+                tour_id=pl.col("agent_id").str.strip_prefix(prefix),
+                mode="selected_alt_id",
+                total_utility="utility",
+                mode_expected_utility="alt_expected_utility",
+                expected_utility="expected_utility",
+            )
+            .collect()
+        )
+        tour_trips: pl.DataFrame = (
+            self.input["trip_results"]
+            .scan()
+            .group_by("tour_id")
+            .agg(
+                tour_departure_time=pl.col("departure_time").min(),
+                tour_arrival_time=pl.col("arrival_time").max(),
+                total_travel_time=pl.col("travel_time").sum(),
+                total_travel_utility=pl.col("travel_utility").sum(),
+                total_schedule_utility=pl.col("schedule_utility").sum(),
+            )
+            .collect()
+        )
+        # Left join so that tours without any trip (e.g., outside option) are kept, with null
+        # trip-based values.
+        df = agent_results.join(tour_trips, on="tour_id", how="left").sort("tour_id")
+        self.output["tour_results"].write(df)

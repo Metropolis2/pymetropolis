@@ -1,5 +1,5 @@
-from .files import ActivityResultsFile, RouteResultsFile, TripResultsFile
-from .postprocess import ActivityResultsStep, RouteResultsStep, TripResultsStep
+from .files import ActivityResultsFile, RouteResultsFile, TourResultsFile, TripResultsFile
+from .postprocess import ActivityResultsStep, RouteResultsStep, TourResultsStep, TripResultsStep
 
-DEMAND_RESULTS_FILES = [TripResultsFile, RouteResultsFile, ActivityResultsFile]
-DEMAND_RESULTS_STEPS = [TripResultsStep, RouteResultsStep, ActivityResultsStep]
+DEMAND_RESULTS_FILES = [TourResultsFile, TripResultsFile, RouteResultsFile, ActivityResultsFile]
+DEMAND_RESULTS_STEPS = [TourResultsStep, TripResultsStep, RouteResultsStep, ActivityResultsStep]

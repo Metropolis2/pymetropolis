@@ -21,7 +21,12 @@ from pymetropolis.metro_demand.modes import (
 from pymetropolis.metro_demand.modes.park_and_ride.files import ParkAndRideStopsFile
 from pymetropolis.metro_demand.modes.park_and_ride.transfer_stops import park_and_ride_car_trips
 from pymetropolis.metro_demand.population import TripsFile
-from pymetropolis.metro_demand.population.files import HouseholdsFile, PersonsFile, ToursModeFile
+from pymetropolis.metro_demand.population.files import (
+    HouseholdsFile,
+    JointToursFile,
+    PersonsFile,
+    ToursModeFile,
+)
 from pymetropolis.metro_demand.routing.files import (
     NonPrimaryCarTrips,
     NonPrimaryParkAndRideCarTrips,
@@ -63,6 +68,8 @@ def clean_trips(trips: pl.DataFrame) -> pl.DataFrame:
         trips = trips.with_columns(has_driving_license=True)
     if "destination_activity_duration" not in trips.columns:
         trips = trips.with_columns(destination_activity_duration=pl.lit(None, dtype=pl.Duration))
+    if "joint_tour" not in trips.columns:
+        trips = trips.with_columns(joint_tour=False)
     trips = trips.with_columns(
         "trip_id",
         agent_id="tour_id",
@@ -74,7 +81,9 @@ def clean_trips(trips: pl.DataFrame) -> pl.DataFrame:
         .then("activity_time")
         .otherwise(0.0)
     )
-    return trips.select("trip_id", "agent_id", "activity_time", "has_car", "has_driving_license")
+    return trips.select(
+        "trip_id", "agent_id", "activity_time", "has_car", "has_driving_license", "joint_tour"
+    )
 
 
 def add_ridesharing_subsidy(df: pl.DataFrame, mode: CarMode, subsidy: float) -> pl.DataFrame:
@@ -112,6 +121,9 @@ def generate_car_trips(
     # Car-driver modes are only accessible to driving license holders.
     if mode.requires_driving_license():
         df = df.filter("has_driving_license")
+    # Car modes without passenger are not feasible for joint tours.
+    if not mode.vehicle().has_passenger():
+        df = df.filter(pl.col("joint_tour").not_())
     df = df.with_columns(pl.lit(repr(mode)).alias("alt_id"))
     primary_trips: pl.DataFrame = primary_trips_file.read().select(
         "trip_id",
@@ -213,8 +225,9 @@ def generate_park_and_ride_trips(
 
     if df["trip_id"].dtype != pl.String:
         raise MetropyError("Park-and-ride requires trip ids to be strings")
-    # P+R requires a car and a driving license.
-    df = df.filter("has_car", "has_driving_license")
+    # P+R requires a car and a driving license, and the car part has no passenger so it is not
+    # feasible for joint tours.
+    df = df.filter("has_car", "has_driving_license", pl.col("joint_tour").not_())
     tour_ids = pr_stops_file.read_as_df()["tour_id"]
     df = df.filter(pl.col("agent_id").is_in(tour_ids.implode()))
     car_trips = park_and_ride_car_trips(trips, tour_ids).select("trip_id", "is_outbound")
@@ -570,6 +583,7 @@ class PrepareMetroTripsStep(
             when=lambda inst: inst.has_mode("park_and_ride"),
             when_doc='if the "park_and_ride" mode is defined',
         ),
+        "joint_tours": InputFile(JointToursFile, optional=True),
         **{
             f"{mode!r}_preferences": InputFile(
                 pref_file,
@@ -622,6 +636,9 @@ class PrepareMetroTripsStep(
                     on="household_id",
                     how="left",
                 )
+        if self.input["joint_tours"].exists():
+            joint_tours = self.input["joint_tours"].read()
+            trips = trips.join(joint_tours, on="tour_id", how="left")
         df = clean_trips(trips)
         metro_trips = pl.DataFrame()
         for car_mode in CAR_MODES:
@@ -684,9 +701,9 @@ class PrepareMetroTripsStep(
                 self.input["linear_schedule"],
             )
             metro_trips = pl.concat((metro_trips, bicycle_trips), how="diagonal")
-        metro_trips = metro_trips.drop("has_car", "has_driving_license").sort(
-            "agent_id", "alt_id", "trip_id"
-        )
+        metro_trips = metro_trips.drop(
+            "has_car", "has_driving_license", "joint_tour", strict=False
+        ).sort("agent_id", "alt_id", "trip_id")
         self.output["metro_trips"].write(metro_trips)
 
 
