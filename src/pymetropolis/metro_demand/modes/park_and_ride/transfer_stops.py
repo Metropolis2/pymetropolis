@@ -60,6 +60,28 @@ def park_and_ride_car_trips(trips: pl.DataFrame, tour_ids: pl.Series) -> pl.Data
     return trips.filter(is_first | is_last).select("trip_id", "tour_id", is_outbound=is_first)
 
 
+def park_and_ride_leg_id(trip_id: pl.Expr, leg_index: pl.Expr | int) -> pl.Expr:
+    """Returns the id of a leg (1 or 2) of a park-and-ride trip: `{trip_id}-{leg_index}`."""
+    import polars as pl
+
+    return pl.format("{}-{}", trip_id, leg_index)
+
+
+def park_and_ride_car_legs(trips: pl.DataFrame, tour_ids: pl.Series) -> pl.DataFrame:
+    """Returns the id of the car leg (`car_leg_id`) of the trips with a car part when traveling by
+    park-and-ride.
+
+    The car leg is the first leg of outbound trips and the second leg of inbound trips.
+    """
+    import polars as pl
+
+    return park_and_ride_car_trips(trips, tour_ids).with_columns(
+        car_leg_id=park_and_ride_leg_id(
+            pl.col("trip_id"), pl.when("is_outbound").then(1).otherwise(2)
+        )
+    )
+
+
 class ParkAndRideFacilitiesFromNearestStopStep(StepWithModes, PopulationStep):
     """Generates park-and-ride facilities location for each tour based on nearest stop location.
 

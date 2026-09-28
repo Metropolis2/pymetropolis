@@ -3,10 +3,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pymetropolis.metro_common import MetropyError
+from pymetropolis.metro_demand.modes.park_and_ride.files import ParkAndRideStopsFile
+from pymetropolis.metro_demand.modes.park_and_ride.transfer_stops import park_and_ride_car_legs
 from pymetropolis.metro_demand.population.files import TripsFile
 from pymetropolis.metro_demand.routing.files import (
     NonPrimaryCarTrips,
+    NonPrimaryParkAndRideCarTrips,
     PrimaryCarTripsAccessEgressFile,
+    PrimaryParkAndRideCarTripsAccessEgressFile,
 )
 from pymetropolis.metro_network.road_network.files import RoadEdgesFreeFlowTravelTimeFile
 from pymetropolis.metro_pipeline import PopulationStep
@@ -21,6 +25,52 @@ from .files import ActivityResultsFile, RouteResultsFile, TourResultsFile, TripR
 if TYPE_CHECKING:
     import polars as pl
 
+    from pymetropolis.metro_pipeline.file import MetroFile
+
+# Optional input files for the car parts of park-and-ride trips.
+PARK_AND_RIDE_INPUT_FILES = {
+    "pr_stops": InputFile(ParkAndRideStopsFile, optional=True),
+    "pr_access_egress_parts": InputFile(PrimaryParkAndRideCarTripsAccessEgressFile, optional=True),
+    "pr_secondary_trips": InputFile(NonPrimaryParkAndRideCarTrips, optional=True),
+}
+
+
+def read_park_and_ride_car_legs(trips: pl.DataFrame, stops_file: MetroFile) -> pl.DataFrame | None:
+    """Returns the original trip id (`trip_id`) and the car leg id (`car_leg_id`) of the trips with
+    a car part when traveling by park-and-ride, or `None` if park-and-ride is not simulated.
+    """
+    if not stops_file.exists():
+        return None
+    tour_ids = stops_file.read_as_df()["tour_id"]  # ty: ignore[unresolved-attribute]
+    return park_and_ride_car_legs(trips, tour_ids).select("trip_id", "car_leg_id")
+
+
+def read_car_parts(
+    car_file: MetroFile, pr_file: MetroFile, pr_legs: pl.DataFrame | None
+) -> pl.LazyFrame | None:
+    """Reads the parts of car trips (access / egress parts or non-primary trips) of the car modes
+    and of the car legs of park-and-ride trips.
+
+    For park-and-ride, the trip ids are replaced by the ids of the car legs, as in the
+    Metropolis-Core results.
+    Returns `None` if none of the files exists.
+    """
+    import polars as pl
+
+    lfs = list()
+    if car_file.exists():
+        lfs.append(car_file.scan())
+    if pr_legs is not None and pr_file.exists():
+        lfs.append(
+            pr_file.scan()
+            .join(pr_legs.lazy(), on="trip_id")
+            .with_columns(trip_id="car_leg_id")
+            .drop("car_leg_id")
+        )
+    if not lfs:
+        return None
+    return pl.concat(lfs, how="vertical_relaxed")
+
 
 class TripResultsStep(PopulationStep):
     """Reads the results from the Metropolis-Core simulation and produces a clean file for results
@@ -34,6 +84,7 @@ class TripResultsStep(PopulationStep):
         "access_egress_parts": InputFile(PrimaryCarTripsAccessEgressFile, optional=True),
         "secondary_trips": InputFile(NonPrimaryCarTrips, optional=True),
         "trips": TripsFile,
+        **PARK_AND_RIDE_INPUT_FILES,
     }
     output_files = {"trip_results": TripResultsFile}
 
@@ -53,6 +104,14 @@ class TripResultsStep(PopulationStep):
             .filter(pl.col("agent_id").str.starts_with(prefix))
             .collect()
         )
+        trips = self.input["trips"].read()
+        # The car legs of park-and-ride trips are road trips.
+        pr_legs = read_park_and_ride_car_legs(trips, self.input["pr_stops"])
+        pr_car_leg_ids = (
+            pr_legs["car_leg_id"].implode()
+            if pr_legs is not None
+            else pl.Series([], dtype=pl.String).implode()
+        )
         df = trip_results.join(
             agent_results.select("agent_id", "selected_alt_id"), on="agent_id", how="left"
         ).with_columns(pl.col("agent_id").str.strip_prefix(prefix))
@@ -61,7 +120,8 @@ class TripResultsStep(PopulationStep):
             tour_id=pl.col("agent_id").str.strip_prefix(prefix),
             mode="selected_alt_id",
             # TODO. Replace this with something more robust when the Mode class is created.
-            is_road=pl.col("selected_alt_id").str.starts_with("car_"),
+            is_road=pl.col("selected_alt_id").str.starts_with("car_")
+            | pl.col("trip_id").str.strip_prefix(prefix).is_in(pr_car_leg_ids),
             departure_time=pl.duration(seconds="departure_time"),
             arrival_time=pl.duration(seconds="arrival_time"),
             route_free_flow_travel_time=pl.duration(seconds="route_free_flow_travel_time"),
@@ -72,8 +132,10 @@ class TripResultsStep(PopulationStep):
             route_length="length",
             nb_edges="nb_edges",
         )
-        if self.input["access_egress_parts"].exists():
-            access_egress: pl.LazyFrame = self.input["access_egress_parts"].scan()
+        access_egress = read_car_parts(
+            self.input["access_egress_parts"], self.input["pr_access_egress_parts"], pr_legs
+        )
+        if access_egress is not None:
             access_egress_columns = access_egress.collect_schema().names()
             # Restrict access / egress to primary road trips.
             access_egress = access_egress.join(
@@ -112,8 +174,10 @@ class TripResultsStep(PopulationStep):
                 .drop(set(access_egress_columns) - {"trip_id"})
                 .collect()
             )
-        if self.input["secondary_trips"].exists():
-            secondary_trips = self.input["secondary_trips"].scan()
+        secondary_trips = read_car_parts(
+            self.input["secondary_trips"], self.input["pr_secondary_trips"], pr_legs
+        )
+        if secondary_trips is not None:
             secondary_trips = secondary_trips.join(
                 df.filter("is_road", pl.col("nb_edges").is_null()).lazy(), on="trip_id", how="semi"
             )
@@ -140,7 +204,7 @@ class TripResultsStep(PopulationStep):
             on=["trip_id", "mode"],
             how="left",
         )
-        df = merge_park_and_ride_legs(df, self.input["trips"].read())
+        df = merge_park_and_ride_legs(df, trips)
         df = df.with_columns(travel_time=pl.col("arrival_time") - pl.col("departure_time"))
         self.output["trip_results"].write(df)
 
@@ -201,6 +265,8 @@ class RouteResultsStep(PopulationStep):
         "access_egress_parts": InputFile(PrimaryCarTripsAccessEgressFile, optional=True),
         "secondary_trips": InputFile(NonPrimaryCarTrips, optional=True),
         "edges_fftt": RoadEdgesFreeFlowTravelTimeFile,
+        "trips": TripsFile,
+        **PARK_AND_RIDE_INPUT_FILES,
     }
     output_files = {"route_results": RouteResultsFile}
 
@@ -213,15 +279,23 @@ class RouteResultsStep(PopulationStep):
             .scan()
             .select("trip_id", "edge_id", "entry_time", "exit_time")
             .filter(pl.col("trip_id").str.starts_with(prefix))
+            .with_columns(pl.col("trip_id").str.strip_prefix(prefix))
             .collect()
         )
         lf = df.lazy()
+        pr_legs = read_park_and_ride_car_legs(self.input["trips"].read(), self.input["pr_stops"])
+        edges_fftt: pl.LazyFrame = (
+            self.input["edges_fftt"].scan().rename({"free_flow_travel_time": "travel_time"})
+        )
         # Clean entry / exit time and add travel time.
         lf = lf.with_columns(
             entry_time=pl.duration(seconds="entry_time"), exit_time=pl.duration(seconds="exit_time")
         ).with_columns(travel_time=pl.col("exit_time") - pl.col("entry_time"))
         # Add access / egress part.
-        if self.input["access_egress_parts"].exists():
+        access_egress = read_car_parts(
+            self.input["access_egress_parts"], self.input["pr_access_egress_parts"], pr_legs
+        )
+        if access_egress is not None:
             trip_timings: pl.DataFrame = (
                 lf.group_by("trip_id")
                 .agg(
@@ -229,10 +303,6 @@ class RouteResultsStep(PopulationStep):
                     primary_end=pl.col("exit_time").last(),
                 )
                 .collect()
-            )
-            access_egress: pl.LazyFrame = self.input["access_egress_parts"].scan()
-            edges_fftt: pl.LazyFrame = (
-                self.input["edges_fftt"].scan().rename({"free_flow_travel_time": "travel_time"})
             )
             access_edges = (
                 access_egress.explode("access_path", empty_as_null=False, keep_nulls=False)
@@ -266,25 +336,63 @@ class RouteResultsStep(PopulationStep):
                 .collect()
                 .lazy()
             )
+        # The routes of the car legs of park-and-ride trips are identified by the original trip id.
+        if pr_legs is not None:
+            lf = (
+                lf.join(pr_legs.lazy(), left_on="trip_id", right_on="car_leg_id", how="left")
+                .with_columns(pl.coalesce("trip_id_right", "trip_id").alias("trip_id"))
+                .drop("trip_id_right")
+            )
         # Read trip results to get road trips not taking the primary network, and their
         # departure time.
         trip_results: pl.LazyFrame = (
-            self.input["trip_results"].scan().filter("is_road").select("trip_id", "departure_time")
+            self.input["trip_results"]
+            .scan()
+            .filter("is_road")
+            .select("trip_id", "mode", "departure_time", "arrival_time")
         )
         secondary_trips: pl.DataFrame = trip_results.join(lf, on="trip_id", how="anti").collect()
         if not secondary_trips.is_empty():
-            if not self.input["secondary_trips"].exists():
+            car_secondary: pl.LazyFrame | None = (
+                self.input["secondary_trips"].scan()
+                if self.input["secondary_trips"].exists()
+                else None
+            )
+            pr_secondary: pl.LazyFrame | None = (
+                self.input["pr_secondary_trips"].scan()
+                if self.input["pr_secondary_trips"].exists()
+                else None
+            )
+            is_pr = pl.col("mode") == repr(ParkAndRide)
+            parts = list()
+            if car_secondary is not None:
+                parts.append(
+                    car_secondary.join(secondary_trips.filter(~is_pr).lazy(), on="trip_id")
+                )
+            if pr_secondary is not None and pr_legs is not None:
+                # The car leg of outbound P+R trips departs at the start of the trip; the car leg of
+                # inbound P+R trips arrives at the end of the trip.
+                is_outbound = pl.col("car_leg_id").str.ends_with("-1")
+                parts.append(
+                    pr_secondary.join(secondary_trips.filter(is_pr).lazy(), on="trip_id")
+                    .join(pr_legs.lazy(), on="trip_id")
+                    .with_columns(
+                        departure_time=pl.when(is_outbound)
+                        .then("departure_time")
+                        .otherwise(pl.col("arrival_time") - pl.col("free_flow_travel_time"))
+                    )
+                    .drop("car_leg_id")
+                )
+            if not parts:
                 raise MetropyError(
                     "There are some non-primary car trips in the results, "
                     "but the NonPrimaryCarTrips file does not exist."
                 )
             # Add secondary trips.
             secondary_routes = (
-                self.input["secondary_trips"]
-                .scan()
+                pl.concat(parts, how="diagonal_relaxed")
                 .explode("path", empty_as_null=False, keep_nulls=False)
                 .rename({"path": "edge_id"})
-                .join(secondary_trips.lazy(), on="trip_id")
                 .join(edges_fftt, on="edge_id")
                 .with_columns(
                     exit_time=pl.col("departure_time")

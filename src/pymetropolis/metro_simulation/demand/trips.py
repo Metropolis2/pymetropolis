@@ -19,7 +19,10 @@ from pymetropolis.metro_demand.modes import (
     WalkingTravelTimesFile,
 )
 from pymetropolis.metro_demand.modes.park_and_ride.files import ParkAndRideStopsFile
-from pymetropolis.metro_demand.modes.park_and_ride.transfer_stops import park_and_ride_car_trips
+from pymetropolis.metro_demand.modes.park_and_ride.transfer_stops import (
+    park_and_ride_car_trips,
+    park_and_ride_leg_id,
+)
 from pymetropolis.metro_demand.population import TripsFile
 from pymetropolis.metro_demand.population.files import (
     HouseholdsFile,
@@ -341,7 +344,9 @@ def generate_park_and_ride_trips(
     common_cols = ["agent_id", "alt_id", "has_car", "has_driving_license"]
     car_leg = df.filter(pl.col("is_outbound").is_not_null()).select(
         *common_cols,
-        pl.format("{}-{}", "trip_id", pl.when("is_outbound").then(1).otherwise(2)).alias("trip_id"),
+        park_and_ride_leg_id(pl.col("trip_id"), pl.when("is_outbound").then(1).otherwise(2)).alias(
+            "trip_id"
+        ),
         pl.col("car_type").alias("class.type"),
         pl.col("car_origin").alias("class.origin"),
         pl.col("car_destination").alias("class.destination"),
@@ -361,7 +366,9 @@ def generate_park_and_ride_trips(
         *common_cols,
         pl.when(pl.col("is_outbound").is_null())
         .then("trip_id")
-        .otherwise(pl.format("{}-{}", "trip_id", pl.when("is_outbound").then(2).otherwise(1)))
+        .otherwise(
+            park_and_ride_leg_id(pl.col("trip_id"), pl.when("is_outbound").then(2).otherwise(1))
+        )
         .alias("trip_id"),
         pl.lit("Virtual").alias("class.type"),
         pl.col("pt_travel_time").alias("class.travel_time"),
@@ -518,7 +525,19 @@ def add_schedule_preferences(
 class PrepareMetroTripsStep(
     StepWithModes, StepWithRidesharingCount, StepWithRidesharingSubsidy, PopulationStep
 ):
-    """Prepares the trips for the Metropolis-Core simulation."""
+    """Prepares the trips for the Metropolis-Core simulation.
+
+    For the `park_and_ride` mode, the first and last trips of each tour are split into a car leg and
+    a public-transit leg, with ids `{trip_id}-1` and `{trip_id}-2`, separated by
+    [`modes.park_and_ride.transfer_time`](parameters.md#modespark_and_ridetransfer_time) (see
+    [`ParkAndRideFacilitiesFromNearestStopStep`](steps.md#parkandridefacilitiesfromneareststopstep)
+    for the definition of the P+R facilities).
+    Intermediary trips are traveled by public transit.
+    The car legs use the `car_driver_alone` vehicle and are valued with the `car_driver` value of
+    time, while the public-transit legs and the transfer time are valued with the `public_transit`
+    value of time.
+    Schedule-delay preferences apply to the last leg of each trip.
+    """
 
     input_files = {
         "trips": TripsFile,
