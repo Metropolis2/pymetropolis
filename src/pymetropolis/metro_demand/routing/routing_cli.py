@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from loguru import logger
 
 from pymetropolis.metro_common import MetropyError
+from pymetropolis.metro_demand.modes.park_and_ride.transfer_stops import park_and_ride_car_trips
 from pymetropolis.metro_demand.population.files import TripsFile
 from pymetropolis.metro_network.bicycle_network.files import (
     BicycleEdgesCleanFile,
@@ -21,6 +22,7 @@ from pymetropolis.metro_network.road_network.files import (
 )
 from pymetropolis.metro_pipeline import PopulationStep, Step
 from pymetropolis.metro_pipeline.parameters import BoolParameter, ExecPathParameter
+from pymetropolis.modes import StepWithModes
 
 from .files import (
     ParkAndRideRoadNodesFile,
@@ -180,7 +182,7 @@ class TripsCarFreeFlowTravelTimesStep(RoutingCLIStep, PopulationStep):
         self.output["fftt"].write(df)
 
 
-class ParkAndRideTripsCarFreeFlowTravelTimesStep(RoutingCLIStep, PopulationStep):
+class ParkAndRideTripsCarFreeFlowTravelTimesStep(StepWithModes, RoutingCLIStep, PopulationStep):
     """Computes the travel time on the road network by car, under free-flow conditions, for the car
     part of park-and-ride trips.
 
@@ -195,6 +197,10 @@ class ParkAndRideTripsCarFreeFlowTravelTimesStep(RoutingCLIStep, PopulationStep)
         "edges_fftt": RoadEdgesFreeFlowTravelTimeFile,
     }
     output_files = {"fftt": ParkAndRideTripsCarFreeFlowTravelTimesFile}
+    priority = 0
+
+    def is_defined(self) -> bool:
+        return super().is_defined() and self.has_mode("park_and_ride")
 
     def run(self):
         import polars as pl
@@ -205,22 +211,24 @@ class ParkAndRideTripsCarFreeFlowTravelTimesStep(RoutingCLIStep, PopulationStep)
         edges_fftt = self.input["edges_fftt"].read()
         edges = prepare_edges(edges_gdf, edges_fftt)
 
-        # PFR. Create trips (first and last of each tour only) with correct origin / destination
-        # node.
-        # You need to read both OD pairs (actual origin / destination of trips) and P+R nodes (road
-        # node at the P+R facility).
         od_pairs = self.input["od_pairs"].read()
-        pr_nodes = self.input["road_nodes"].read()
-        # + TripsFile to know the first / last trip of each tour.
-        trips = self.input["trips"].read()
-
-        # The code below is the one I use in the step for standard (unimodal) road trips, modify it
-        # appropriately.
-        # trips = od_pairs.select(
-        #     "trip_id", origin_node="origin_road_node", destination_node="destination_road_node"
-        # )
-
-        # The code below should work as is (it's the same as in the standard road trips Step).
+        pr_nodes = self.input["road_nodes"].read().filter(pl.col("pr_road_node").is_not_null())
+        car_trips = park_and_ride_car_trips(self.input["trips"].read(), pr_nodes["tour_id"])
+        # Outbound car part: from the trip's origin to the P+R facility.
+        # Inbound car part: from the P+R facility to the trip's destination.
+        trips = (
+            car_trips.join(od_pairs, on="trip_id", how="inner")
+            .join(pr_nodes.select("tour_id", "pr_road_node"), on="tour_id", how="inner")
+            .select(
+                "trip_id",
+                origin_node=pl.when("is_outbound")
+                .then("origin_road_node")
+                .otherwise("pr_road_node"),
+                destination_node=pl.when("is_outbound")
+                .then("pr_road_node")
+                .otherwise("destination_road_node"),
+            )
+        )
         df = trip_routing(trips, edges, self.exec_path, with_routes=True)
         df = df.select(
             "trip_id", free_flow_travel_time=pl.duration(seconds="value"), free_flow_route="route"

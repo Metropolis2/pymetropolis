@@ -4,6 +4,7 @@ from pymetropolis.metro_demand.routing.files import (
 )
 from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.metro_pipeline.parameters import FloatParameter
+from pymetropolis.modes import StepWithModes
 
 from .files import CarFuelFile, ParkAndRideFuelFile
 
@@ -42,7 +43,7 @@ class CarFuelStep(GenericCarFuelStep):
         self.output["fuel_consumption"].write(df)
 
 
-class ParkAndRideFuelStep(GenericCarFuelStep):
+class ParkAndRideFuelStep(StepWithModes, GenericCarFuelStep):
     """Generates the fuel consumption and price for the car part of each park-and-ride trip by
     applying a constant emission factor to the free-flow fastest-path length, combined with a fuel
     price.
@@ -50,15 +51,13 @@ class ParkAndRideFuelStep(GenericCarFuelStep):
 
     input_files = {"ff_distances": ParkAndRideTripsCarFreeFlowTravelTimesFile}
     output_files = {"fuel_consumption": ParkAndRideFuelFile}
+    priority = 0
 
     def is_defined(self) -> bool:
-        return self.fuel_factor is not None
+        return self.fuel_factor is not None and self.has_mode("park_and_ride")
 
     def run(self):
         import polars as pl
-
-        # Note PFR. With this Step, fuel consumption can be automatically computed for the car part
-        # of the trip. There is nothing more to do.
 
         df: pl.DataFrame = self.input["ff_distances"].read()
         df = df.select(

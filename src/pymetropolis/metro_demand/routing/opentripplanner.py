@@ -16,6 +16,7 @@ from pymetropolis.common import ThreadedStep
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_demand.departure_time.files import TstarsFile
 from pymetropolis.metro_demand.modes.park_and_ride.files import ParkAndRideStopsFile
+from pymetropolis.metro_demand.modes.park_and_ride.transfer_stops import park_and_ride_car_trips
 from pymetropolis.metro_demand.population.files import (
     TripsDestinationsFile,
     TripsFile,
@@ -35,6 +36,7 @@ from pymetropolis.metro_pipeline.parameters import (
     TimeParameter,
 )
 from pymetropolis.metro_pipeline.steps import InputFile
+from pymetropolis.modes import StepWithModes
 
 if TYPE_CHECKING:
     import geopandas as gpd
@@ -472,22 +474,28 @@ class AbstractPublicTransitTimeStep(Step):
     def is_defined(self):
         return self.time_type is not None
 
-    def clean_trips_time(self, trips: pl.DataFrame, tstars: pl.DataFrame | None):
-        """Add `time` and `arrive_by` column to trips."""
+    def clean_trips_time(
+        self, trips: pl.DataFrame, tstars: pl.DataFrame | None, time_type: str | None = None
+    ):
+        """Add `time` and `arrive_by` column to trips.
+
+        By default, the time type is read from the `opentripplanner.time_type` parameter.
+        """
         import polars as pl
 
-        assert self.time_type is not None
+        time_type = time_type or self.time_type
+        assert time_type is not None
 
-        if self.time_type in ("departure", "arrival"):
-            col_name = f"{self.time_type}_time"
+        if time_type in ("departure", "arrival"):
+            col_name = f"{time_type}_time"
             if col_name not in trips.columns:
                 trips = trips.with_columns(pl.lit(None, dtype=pl.Duration).alias(col_name))
             trips = trips.select(
                 "trip_id",
                 seconds=pl.col(col_name).dt.total_seconds(),
-                arrive_by=self.time_type == "arrival",
+                arrive_by=time_type == "arrival",
             )
-        elif self.time_type == "tstar":
+        elif time_type == "tstar":
             if tstars is None:
                 raise MetropyError('tstars should be given when `time_type` is `"tstar"`')
             trips = (
@@ -503,7 +511,7 @@ class AbstractPublicTransitTimeStep(Step):
             trips = trips.select(
                 "trip_id",
                 seconds=pl.lit(None, dtype=pl.Int64),
-                arrive_by=self.time_type == "custom_arrival",
+                arrive_by=time_type == "custom_arrival",
             )
         if trips["seconds"].is_null().any():
             if self.time is None:
@@ -512,7 +520,7 @@ class AbstractPublicTransitTimeStep(Step):
                     f"Departure / arrival time is undefined for {c:,} trips but the "
                     "`opentripplanner.time` parameter is not set."
                 )
-            if "custom" not in self.time_type:
+            if "custom" not in time_type:
                 s = trips["seconds"].null_count() / len(trips)
                 logger.warning(
                     f"{s:.1%} trips have NULL values for departure / arrival time, using default "
@@ -657,10 +665,21 @@ class TripsOpenTripPlannerStep(OpenTripPlannerStep, AbstractPublicTransitTimeSte
 
 
 class ParkAndRideTripsOpenTripPlannerStep(
-    OpenTripPlannerStep, AbstractPublicTransitTimeStep, PopulationStep
+    StepWithModes, OpenTripPlannerStep, AbstractPublicTransitTimeStep, PopulationStep
 ):
     """Computes the travel time and generalized time for the public-transit parts of P+R trips with
     OpenTripPlanner.
+
+    Only the first and last trip of each P+R tour have a specific public-transit part: from the P+R
+    facility to the destination for the first trip (outbound part) and from the origin to the P+R
+    facility for the last trip (inbound part).
+    The public-transit itineraries of the intermediary trips are the same as for the
+    `public_transit` mode.
+
+    The departure / arrival time of the requests is defined as in
+    [`TripsOpenTripPlannerStep`](steps.md#tripsopentripplannerstep), with one exception: when
+    `time_type` is `"tstar"` or `"arrival"`, the inbound parts use the trips' ex-ante departure
+    time (the arrival time at the P+R facility being unknown before the car part).
 
     Check [`TripsOpenTripPlannerStep`](steps.md#tripsopentripplannerstep) for additional details.
     """
@@ -677,33 +696,67 @@ class ParkAndRideTripsOpenTripPlannerStep(
         ),
     }
     output_files = {"costs": ParkAndRideTripsPublicTransitItinerariesFile}
+    priority = 0
 
     def is_defined(self):
         return (
             super(OpenTripPlannerStep, self).is_defined()
             and super(AbstractPublicTransitTimeStep, self).is_defined()
+            and self.has_mode("park_and_ride")
         )
 
     def run(self):
+        import polars as pl
 
-        # PFR. I think that the tstar option cannot work for P+R trips (for the trip back, we don't
-        # know the car travel time so we don't know the actual arrival time at destination). So
-        # probably, we should disable the option in this case (and clarify that in the Step's
-        # docstring). If you want to implement another solution (e.g., use free-flow car travel time
-        # in this case), we cannot discuss it! How did you do in metropy?
-        trips = self.input["trips"].read()
-        trips = self.clean_trips_time(trips, self.input["tstars"].read_if_exists())
-        trips = trips.with_columns(date=self.gtfs_date)
+        assert self.time_type is not None
 
-        # PFR. Adapt this code to get the actual origin / destination that we want (with P+R
-        # facility and only for first / last trip of tour).
-        # The rest should work as is (to be checked).
-        origins = self.input["origins"].read()
-        origins_df = read_lng_lat(origins, "origin_")
-        trips = trips.join(origins_df, on="trip_id")
-        destinations = self.input["destinations"].read()
-        destinations_df = read_lng_lat(destinations, "destination_")
-        trips = trips.join(destinations_df, on="trip_id")
+        all_trips = self.input["trips"].read()
+        pr_stops = self.input["pr_stops"].read()
+        pr_trips = park_and_ride_car_trips(all_trips, pl.Series(pr_stops["tour_id"]))
+        trips = pr_trips.join(
+            self.clean_trips_time(all_trips, self.input["tstars"].read_if_exists()),
+            on="trip_id",
+            how="left",
+        )
+        if self.time_type in ("tstar", "arrival"):
+            # For the inbound parts, the arrival time at the P+R facility is unknown so the ex-ante
+            # departure time of the trip is used instead.
+            inbound_times = self.clean_trips_time(all_trips, None, time_type="departure").select(
+                "trip_id", inbound_time="time"
+            )
+            trips = (
+                trips.join(inbound_times, on="trip_id", how="left")
+                .with_columns(
+                    time=pl.when("is_outbound").then("time").otherwise("inbound_time"),
+                    arrive_by=pl.col("is_outbound"),
+                )
+                .drop("inbound_time")
+            )
+
+        # Outbound part: from the P+R facility to the trip's destination.
+        # Inbound part: from the trip's origin to the P+R facility.
+        pr_stops.to_crs("EPSG:4326", inplace=True)
+        stops_df = pl.DataFrame(
+            {
+                "tour_id": pr_stops["tour_id"],
+                "pr_lng": pr_stops.geometry.x,
+                "pr_lat": pr_stops.geometry.y,
+            }
+        )
+        origins_df = read_lng_lat(self.input["origins"].read(), "origin_")
+        destinations_df = read_lng_lat(self.input["destinations"].read(), "destination_")
+        trips = (
+            trips.join(stops_df, on="tour_id")
+            .join(origins_df, on="trip_id")
+            .join(destinations_df, on="trip_id")
+            .with_columns(
+                origin_lng=pl.when("is_outbound").then("pr_lng").otherwise("origin_lng"),
+                origin_lat=pl.when("is_outbound").then("pr_lat").otherwise("origin_lat"),
+                destination_lng=pl.when("is_outbound").then("destination_lng").otherwise("pr_lng"),
+                destination_lat=pl.when("is_outbound").then("destination_lat").otherwise("pr_lat"),
+            )
+            .drop("tour_id", "is_outbound", "pr_lng", "pr_lat")
+        )
 
         df = self.run_queries(trips)
         self.output["costs"].write(df)

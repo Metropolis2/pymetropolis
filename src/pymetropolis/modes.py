@@ -210,10 +210,8 @@ class CarRidesharing(metaclass=CarMode):
         return CarRidesharingVehicle
 
 
-# PFR. This is where the ParkAndRide mode is defined. I made two important assumptions:
-# - ParkAndRide is available only to driving license holders
-# - ParkAndRide agents are using the CarDriverAloneVehicle -> they cannot take HOV lane, they
-#   congestion (unlike car passengers)
+# Park-and-ride is only available to car owners with a driving license. The car part is traveled
+# with the `CarDriverAloneVehicle` (no HOV lane, full contribution to congestion).
 class ParkAndRide(metaclass=CarMode):
     _name = "park and ride"
     _repr = "park_and_ride"

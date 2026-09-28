@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_demand.population.files import TripsFile
 from pymetropolis.metro_demand.routing.files import (
@@ -10,8 +14,12 @@ from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_simulation.demand.files import MetroTripsPopulationFile
 from pymetropolis.metro_simulation.run import MetroAgentResultsFile, MetroTripResultsFile
 from pymetropolis.metro_simulation.run.files import MetroRouteResultsFile
+from pymetropolis.modes import ParkAndRide
 
 from .files import ActivityResultsFile, RouteResultsFile, TripResultsFile
+
+if TYPE_CHECKING:
+    import polars as pl
 
 
 class TripResultsStep(PopulationStep):
@@ -25,6 +33,7 @@ class TripResultsStep(PopulationStep):
         "metro_agent_results": MetroAgentResultsFile,
         "access_egress_parts": InputFile(PrimaryCarTripsAccessEgressFile, optional=True),
         "secondary_trips": InputFile(NonPrimaryCarTrips, optional=True),
+        "trips": TripsFile,
     }
     output_files = {"trip_results": TripResultsFile}
 
@@ -111,10 +120,14 @@ class TripResultsStep(PopulationStep):
                 df.lazy()
                 .join(secondary_trips, on="trip_id", how="left")
                 .with_columns(
-                    route_free_flow_travel_time="free_flow_travel_time",
-                    global_free_flow_travel_time="free_flow_travel_time",
-                    route_length="path_length",
-                    nb_edges=pl.col("path").list.len(),
+                    route_free_flow_travel_time=pl.col("route_free_flow_travel_time").fill_null(
+                        pl.col("free_flow_travel_time")
+                    ),
+                    global_free_flow_travel_time=pl.col("global_free_flow_travel_time").fill_null(
+                        pl.col("free_flow_travel_time")
+                    ),
+                    route_length=pl.col("route_length").fill_null(pl.col("path_length")),
+                    nb_edges=pl.col("nb_edges").fill_null(pl.col("path").list.len()),
                 )
                 .drop("free_flow_travel_time", "path", "path_length")
                 .collect()
@@ -126,8 +139,54 @@ class TripResultsStep(PopulationStep):
             on=["trip_id", "mode"],
             how="left",
         )
+        df = merge_park_and_ride_legs(df, self.input["trips"].read())
         df = df.with_columns(travel_time=pl.col("arrival_time") - pl.col("departure_time"))
         self.output["trip_results"].write(df)
+
+
+def merge_park_and_ride_legs(df: pl.DataFrame, trips: pl.DataFrame) -> pl.DataFrame:
+    """Merges the legs of park-and-ride trips (car leg + public-transit leg, with ids
+    `{trip_id}-1` and `{trip_id}-2`) into a single trip with the original trip id.
+
+    The departure time is the one of the first leg and the arrival time is the one of the last leg.
+    Utilities, free-flow travel times, lengths and edge counts are summed over the legs.
+    """
+    import polars as pl
+
+    is_leg = (pl.col("mode") == repr(ParkAndRide)) & ~pl.col("trip_id").is_in(
+        trips["trip_id"].cast(pl.String).implode()
+    )
+    legs = df.filter(is_leg)
+    if legs.is_empty():
+        return df
+    sum_cols = [
+        c
+        for c in (
+            "route_free_flow_travel_time",
+            "global_free_flow_travel_time",
+            "utility",
+            "travel_utility",
+            "schedule_utility",
+            "route_length",
+            "nb_edges",
+        )
+        if c in df.columns
+    ]
+    merged = (
+        legs.with_columns(pl.col("trip_id").str.replace(r"-[12]$", ""))
+        .sort("trip_id", "departure_time")
+        .group_by("trip_id", maintain_order=True)
+        .agg(
+            pl.col("mode").first(),
+            pl.col("is_road").any(),
+            pl.col("departure_time").min(),
+            pl.col("arrival_time").max(),
+            *[pl.col(c).sum() for c in sum_cols],
+            # Vehicle of the car leg.
+            pl.col("vehicle_id").drop_nulls().first(),
+        )
+    )
+    return pl.concat((df.filter(~is_leg), merged), how="diagonal_relaxed").select(df.columns)
 
 
 class RouteResultsStep(PopulationStep):

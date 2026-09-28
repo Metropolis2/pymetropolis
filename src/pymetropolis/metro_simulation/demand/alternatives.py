@@ -169,8 +169,6 @@ class PrepareMetroAlternativesStep(StepWithModes, PopulationStep):
         primary_car_trips = self.input["primary_car_trips"].read_if_exists()
         alts = pl.DataFrame()
         if input_trips is not None:
-            # PFR. I think nothing need to be done here for P+R. Alternatives will be created based
-            # on the trips. Departure-time mode is the same as for the other modes, right?
             alts = input_trips.select("agent_id", "alt_id").unique()
             dep_time_df = generate_departure_time_columns(
                 alts["agent_id"].unique(),

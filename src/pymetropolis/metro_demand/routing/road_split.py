@@ -23,6 +23,7 @@ from pymetropolis.metro_pipeline import PopulationStep, Step
 from pymetropolis.metro_pipeline.parameters import BoolParameter, ListParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_pipeline.types import String
+from pymetropolis.modes import StepWithModes
 
 if TYPE_CHECKING:
     import polars as pl
@@ -245,9 +246,8 @@ class RoadNetworkPrimaryEdgesStep(Step):
             ]
             if dfs:
                 routes = pl.concat(dfs, how="vertical")
-            # PFR. The lines below ensure that P+R car routes (for all populations) are also used to
-            # identify primary edges (when these P+R routes are defined, i.e., when P+R is enabled).
-            # Check that it works properly and remove this comment when done.
+            # The car parts of P+R trips (for all populations) are also used to identify primary
+            # edges (when P+R is enabled).
             pr_dfs = [
                 f.read().select(route="free_flow_route")
                 for f in self.input_populations["pr_ff_routes"].values()
@@ -351,7 +351,7 @@ class CarAccessEgressStep(PopulationStep):
         self.output["secondary_trips"].write(secondary_trips)
 
 
-class ParkAndRideCarAccessEgressStep(PopulationStep):
+class ParkAndRideCarAccessEgressStep(StepWithModes, PopulationStep):
     """Identifies the access and egress parts of the car part of park-and-ride trips, based on the
     primary road network.
 
@@ -371,10 +371,12 @@ class ParkAndRideCarAccessEgressStep(PopulationStep):
         "primary_trips": PrimaryParkAndRideCarTripsAccessEgressFile,
         "secondary_trips": NonPrimaryParkAndRideCarTrips,
     }
+    priority = 0
+
+    def is_defined(self) -> bool:
+        return self.has_mode("park_and_ride")
 
     def run(self):
-        # PFR. This is the same code as for the standard car trips. I think it should work as it is,
-        # but to be checked!
         import polars as pl
 
         edges_gdf = self.input["edges"].read()

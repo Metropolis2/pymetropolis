@@ -12,6 +12,7 @@ from pymetropolis.metro_network.road_network.files import RoadEdgesCleanFile
 from pymetropolis.metro_pipeline import PopulationStep, Step
 from pymetropolis.metro_pipeline.parameters import ListParameter
 from pymetropolis.metro_pipeline.types import String
+from pymetropolis.modes import StepWithModes
 
 from .files import (
     ParkAndRideRoadNodesFile,
@@ -26,17 +27,11 @@ if TYPE_CHECKING:
 
 
 def prepare_edges(edges: gpd.GeoDataFrame, forbidden_types: list[str] = []) -> gpd.GeoDataFrame:
-    from shapely.geometry import Point
-
     edges = edges.loc[
         ~edges["edge_type"].isin(forbidden_types), ["edge_id", "geometry", "source", "target"]
-    ]
-    # Create source / target point of the edges.
+    ].copy()
     logger.debug("Creating source / target points")
-    # TODO: Speed-up this with duckdb
-    edges["source_point"] = edges["geometry"].apply(lambda g: Point(g.coords[0]))
-    edges["target_point"] = edges["geometry"].apply(lambda g: Point(g.coords[-1]))
-    return edges
+    return create_source_target_points(edges)
 
 
 def identify_od_pairs(
@@ -46,9 +41,10 @@ def identify_od_pairs(
     import polars as pl
 
     assert len(origins_gdf) == len(destinations_gdf)
-    # Create source / target point of the edges.
-    logger.debug("Creating source / target points")
-    edges = create_source_target_points(edges)
+    if "source_point" not in edges.columns:
+        # Create source / target point of the edges.
+        logger.debug("Creating source / target points")
+        edges = create_source_target_points(edges)
     logger.debug("Identifying nearest nodes for origins")
     origins = identify_nodes(edges, origins_gdf, id_col="trip_id")
     logger.debug("Identifying nearest nodes for destinations")
@@ -259,7 +255,9 @@ class RoadODNodesFromCoordinatesStep(StepWithRoadForbiddenTypes, PopulationStep)
         self.output["ods"].write(ods)
 
 
-class ParkAndRideRoadODNodesFromCoordinatesStep(StepWithRoadForbiddenTypes, PopulationStep):
+class ParkAndRideRoadODNodesFromCoordinatesStep(
+    StepWithModes, StepWithRoadForbiddenTypes, PopulationStep
+):
     """For each park-and-ride facility, identifies the node of the road network to be used as
     origin / destination for the car parts of park-and-ride trips.
 
@@ -271,10 +269,12 @@ class ParkAndRideRoadODNodesFromCoordinatesStep(StepWithRoadForbiddenTypes, Popu
 
     input_files = {"edges": RoadEdgesCleanFile, "stops": ParkAndRideStopsFile}
     output_files = {"nodes": ParkAndRideRoadNodesFile}
+    priority = 0
+
+    def is_defined(self) -> bool:
+        return self.has_mode("park_and_ride")
 
     def run(self):
-        # PFR. I coded this step myself but did not test it. Check that it works and remove this
-        # comment when done.
         import polars as pl
 
         assert self.forbidden_types is not None
@@ -283,5 +283,5 @@ class ParkAndRideRoadODNodesFromCoordinatesStep(StepWithRoadForbiddenTypes, Popu
         stops = self.input["stops"].read()
         edges = prepare_edges(edges, self.forbidden_types)
         nodes = identify_nodes(edges, stops, id_col="tour_id")
-        nodes = nodes.select("tour_id", pl.all().exclude("tour_id").name.prefix("pr_"))
+        nodes = nodes.select("tour_id", pl.all().exclude("tour_id").name.prefix("pr_road_"))
         self.output["nodes"].write(nodes)

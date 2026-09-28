@@ -99,6 +99,11 @@ New parameters:
 - `road_network.capacity_multipliers.roundabout`
 - `ridesharing.subsidy`
 - `parent_config`
+- `modes.park_and_ride.allowed_route_types`
+- `modes.park_and_ride.allowed_agencies`
+- `modes.park_and_ride.constant`
+- `modes.park_and_ride.preferences_file`
+- `modes.park_and_ride.transfer_time`
 
 New features:
 
@@ -137,7 +142,6 @@ Other changes:
 Removed steps:
 
 - `GenericPopulationStep` (should no longer be needed with the changes to OD matrix steps)
->>>>>>> main
 
 ## [0.12.0] – 2026-08-25
 
