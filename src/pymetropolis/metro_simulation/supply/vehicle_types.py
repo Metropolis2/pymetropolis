@@ -33,12 +33,13 @@ class AbstractWriteMetroVehicleTypesStep(StepWithRidesharingCount, StepWithSimul
     )
     truck_headway = FloatParameter(
         "vehicle_types.truck.headway",
-        default=20.0,
+        default=24.0,
         description="Typical length between two trucks, from head to head, in meters",
+        note="The default value is 3 times the default car headway.",
     )
     truck_pce = FloatParameter(
         "vehicle_types.truck.pce",
-        default=2.0,
+        default=3.0,
         description="Passenger car equivalent of a typical truck",
     )
     truck_max_speed = FloatParameter(
