@@ -108,3 +108,29 @@ class CarRidesharingPreferencesFile(MetroDataFrameFile, PopulationFile):
             nullable=True,
         ),
     ]
+
+
+class TruckPreferencesFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/modes/car/truck_preferences.parquet"
+    description = "Preferences to travel by truck, for each tour."
+    schema = [
+        Column(
+            "tour_id",
+            MetroDataType.ID,
+            description="Identifier of the tour.",
+            unique=True,
+            nullable=False,
+        ),
+        Column(
+            "truck_cst",
+            MetroDataType.FLOAT,
+            description="Penalty for each tour by truck (€).",
+            nullable=True,
+        ),
+        Column(
+            "truck_vot",
+            MetroDataType.FLOAT,
+            description="Value of time by truck (€/h).",
+            nullable=True,
+        ),
+    ]

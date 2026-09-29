@@ -31,12 +31,32 @@ class AbstractWriteMetroVehicleTypesStep(StepWithRidesharingCount, StepWithSimul
         default=1.0,
         description="Passenger car equivalent of a typical car",
     )
+    truck_headway = FloatParameter(
+        "vehicle_types.truck.headway",
+        default=20.0,
+        description="Typical length between two trucks, from head to head, in meters",
+    )
+    truck_pce = FloatParameter(
+        "vehicle_types.truck.pce",
+        default=2.0,
+        description="Passenger car equivalent of a typical truck",
+    )
+    truck_max_speed = FloatParameter(
+        "vehicle_types.truck.max_speed",
+        default=90.0,
+        description="Maximum speed of trucks (km/h)",
+        note="Set to 0 to disable the speed limitation (trucks drive at the edges' speed).",
+        lower_bound=0.0,
+    )
 
     def run(self):
         import polars as pl
 
         assert self.car_headway is not None
         assert self.car_pce is not None
+        assert self.truck_headway is not None
+        assert self.truck_pce is not None
+        assert self.truck_max_speed is not None
         assert self.simulation_ratio is not None
         assert self.ridesharing_passenger_count is not None
 
@@ -70,16 +90,22 @@ class AbstractWriteMetroVehicleTypesStep(StepWithRidesharingCount, StepWithSimul
             if repr(vehicle) not in vehicles:
                 continue
             congestion_share = vehicle.get_congestion_share(self.ridesharing_passenger_count)
+            v: dict = {"vehicle_id": repr(vehicle)}
             if vehicle.is_car():
-                headway = car_headway * congestion_share
-                pce = car_pce * congestion_share
+                v["headway"] = car_headway * congestion_share
+                v["pce"] = car_pce * congestion_share
+            elif vehicle.is_truck():
+                v["headway"] = self.truck_headway / self.simulation_ratio * congestion_share
+                v["pce"] = self.truck_pce / self.simulation_ratio * congestion_share
+                if self.truck_max_speed > 0.0:
+                    v["speed_function.type"] = "UpperBound"
+                    v["speed_function.upper_bound"] = self.truck_max_speed / 3.6
             else:
-                raise MetropyError(f"Vehicle {vehicle} is not a car.")
-            v = {"vehicle_id": repr(vehicle), "headway": headway, "pce": pce}
+                raise MetropyError(f"Vehicle {vehicle} is not a car nor a truck.")
             if hov_edges and not vehicle.can_take_hov_edges():
                 v["restricted_edges"] = hov_edges
             metro_vehicles.append(v)
-        df = pl.DataFrame(metro_vehicles)
+        df = pl.DataFrame(metro_vehicles, infer_schema_length=None)
         self.output["metro_vehicle_types"].write(df)
 
 
