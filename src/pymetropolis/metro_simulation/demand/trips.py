@@ -20,6 +20,7 @@ from pymetropolis.metro_demand.population.files import (
     JointToursFile,
     PersonsFile,
     ToursModeFile,
+    TripsDistancesFile,
 )
 from pymetropolis.metro_demand.routing.files import (
     NonPrimaryCarTrips,
@@ -34,7 +35,21 @@ from pymetropolis.metro_simulation.common import (
     StepWithRidesharingSubsidy,
     merge_populations,
 )
-from pymetropolis.modes import CAR_MODES, CarMode, StepWithModes
+from pymetropolis.modes import (
+    AVAILABILITY_COLUMNS,
+    CAR_MODES,
+    JOINT_TOUR_COLUMN,
+    TOUR_DISTANCE_COLUMN,
+    Bicycle,
+    CarMode,
+    MetaMode,
+    PublicTransit,
+    StepWithModeAvailability,
+    StepWithModes,
+    Walking,
+    mode_availability_expr,
+    warn_missing_availability_columns,
+)
 
 from .files import (
     MetroExAnteTripsFile,
@@ -50,16 +65,13 @@ if TYPE_CHECKING:
 
 
 def clean_trips(trips: pl.DataFrame) -> pl.DataFrame:
+    """Returns the trips with the columns required to generate the trip alternatives, and the
+    columns used to define mode availability (if they exist).
+    """
     import polars as pl
 
-    if "has_car" not in trips.columns:
-        trips = trips.with_columns(has_car=True)
-    if "has_driving_license" not in trips.columns:
-        trips = trips.with_columns(has_driving_license=True)
     if "destination_activity_duration" not in trips.columns:
         trips = trips.with_columns(destination_activity_duration=pl.lit(None, dtype=pl.Duration))
-    if "joint_tour" not in trips.columns:
-        trips = trips.with_columns(joint_tour=False)
     trips = trips.with_columns(
         "trip_id",
         agent_id="tour_id",
@@ -72,7 +84,10 @@ def clean_trips(trips: pl.DataFrame) -> pl.DataFrame:
         .otherwise(0.0)
     )
     return trips.select(
-        "trip_id", "agent_id", "activity_time", "has_car", "has_driving_license", "joint_tour"
+        "trip_id",
+        "agent_id",
+        "activity_time",
+        *(col for col in AVAILABILITY_COLUMNS if col in trips.columns),
     )
 
 
@@ -105,15 +120,6 @@ def generate_car_trips(
 ):
     import polars as pl
 
-    # Some car modes are restricted to owners of cars.
-    if mode.requires_car():
-        df = df.filter("has_car")
-    # Car-driver modes are only accessible to driving license holders.
-    if mode.requires_driving_license():
-        df = df.filter("has_driving_license")
-    # Car modes without passenger are not feasible for joint tours.
-    if not mode.vehicle().has_passenger():
-        df = df.filter(pl.col("joint_tour").not_())
     df = df.with_columns(pl.lit(repr(mode)).alias("alt_id"))
     primary_trips: pl.DataFrame = primary_trips_file.read().select(
         "trip_id",
@@ -314,9 +320,17 @@ def add_schedule_preferences(
 
 
 class PrepareMetroTripsStep(
-    StepWithModes, StepWithRidesharingCount, StepWithRidesharingSubsidy, PopulationStep
+    StepWithModes,
+    StepWithModeAvailability,
+    StepWithRidesharingCount,
+    StepWithRidesharingSubsidy,
+    PopulationStep,
 ):
-    """Prepares the trips for the Metropolis-Core simulation."""
+    """Prepares the trips for the Metropolis-Core simulation.
+
+    The alternatives of each tour are restricted to the available modes, as defined by the
+    `mode_availability` parameters.
+    """
 
     input_files = {
         "trips": TripsFile,
@@ -356,6 +370,11 @@ class PrepareMetroTripsStep(
             when_doc=r'if any "car\_\*" mode is defined',
         ),
         "joint_tours": InputFile(JointToursFile, optional=True),
+        "trips_distances": InputFile(
+            TripsDistancesFile,
+            when=lambda inst: inst.has_distance_caps(),
+            when_doc="if a maximum distance is defined for walking or bicycle",
+        ),
         **{
             f"{mode!r}_preferences": InputFile(
                 pref_file,
@@ -382,33 +401,53 @@ class PrepareMetroTripsStep(
         trips = self.input["trips"].read()
         if self.input["persons"].exists():
             persons = self.input["persons"].read()
-            if "has_driving_license" in persons.columns:
+            person_cols = [c for c in AVAILABILITY_COLUMNS if c in persons.columns]
+            if person_cols:
                 trips = trips.join(
-                    persons.select("person_id", pl.col("has_driving_license").fill_null(False)),
-                    on="person_id",
-                    how="left",
+                    persons.select("person_id", *person_cols), on="person_id", how="left"
                 )
         if self.input["households"].exists():
             households = self.input["households"].read()
-            if "nb_cars" in households.columns:
+            household_cols = [c for c in AVAILABILITY_COLUMNS if c in households.columns]
+            if household_cols:
                 trips = trips.join(
-                    households.select(
-                        "household_id", has_car=pl.col("nb_cars").gt(0).fill_null(False)
-                    ),
+                    households.select("household_id", *household_cols),
                     on="household_id",
                     how="left",
                 )
         if self.input["joint_tours"].exists():
             joint_tours = self.input["joint_tours"].read()
             trips = trips.join(joint_tours, on="tour_id", how="left")
+        else:
+            # Joint tours are not modeled: all tours are solo tours.
+            trips = trips.with_columns(pl.lit(False).alias(JOINT_TOUR_COLUMN))
+        if self.has_distance_caps():
+            # Tour distance is the sum of the Euclidean distances of the trips, like in the
+            # surveyed tours.
+            distances = self.input["trips_distances"].read()
+            trips = trips.join(distances, on="trip_id", how="left").with_columns(
+                pl.col("od_distance").sum().over("tour_id").alias(TOUR_DISTANCE_COLUMN)
+            )
         df = clean_trips(trips)
+        rules = self.availability_rules()
+        # Missing columns are expected when there is no synthetic population (e.g., OD matrix).
+        warn_missing_availability_columns(
+            (m for m in self.modes or [] if m.is_trip_based()),
+            rules,
+            df.columns,
+            level="WARNING" if self.input["persons"].exists() else "DEBUG",
+        )
+
+        def available_trips(mode: MetaMode) -> pl.DataFrame:
+            return df.filter(mode_availability_expr(mode, rules, df.columns))
+
         metro_trips = pl.DataFrame()
         for car_mode in CAR_MODES:
             if self.has_mode_class(car_mode):
                 fuel_share = car_mode.get_fuel_share(self.ridesharing_passenger_count)
                 car_trips = generate_car_trips(
                     car_mode,
-                    df=df,
+                    df=available_trips(car_mode),
                     primary_trips_file=self.input["primary_car_trips"],
                     secondary_trips_file=self.input["secondary_car_trips"],
                     pref_file=self.input[f"{car_mode!r}_preferences"],
@@ -421,7 +460,7 @@ class PrepareMetroTripsStep(
                 metro_trips = pl.concat((metro_trips, car_trips), how="diagonal")
         if self.has_mode("public_transit"):
             public_transit_trips = generate_public_transit_trips(
-                df,
+                available_trips(PublicTransit),
                 self.input["public_transit_travel_times"],
                 self.input["public_transit_preferences"],
                 self.input["tstars"],
@@ -430,7 +469,7 @@ class PrepareMetroTripsStep(
             metro_trips = pl.concat((metro_trips, public_transit_trips), how="diagonal")
         if self.has_mode("walking"):
             walking_trips = generate_walking_trips(
-                df,
+                available_trips(Walking),
                 self.input["walking_travel_times"],
                 self.input["walking_preferences"],
                 self.input["tstars"],
@@ -439,16 +478,16 @@ class PrepareMetroTripsStep(
             metro_trips = pl.concat((metro_trips, walking_trips), how="diagonal")
         if self.has_mode("bicycle"):
             bicycle_trips = generate_bicycle_trips(
-                df,
+                available_trips(Bicycle),
                 self.input["bicycle_travel_times"],
                 self.input["bicycle_preferences"],
                 self.input["tstars"],
                 self.input["linear_schedule"],
             )
             metro_trips = pl.concat((metro_trips, bicycle_trips), how="diagonal")
-        metro_trips = metro_trips.drop(
-            "has_car", "has_driving_license", "joint_tour", strict=False
-        ).sort("agent_id", "alt_id", "trip_id")
+        metro_trips = metro_trips.drop(*AVAILABILITY_COLUMNS, strict=False).sort(
+            "agent_id", "alt_id", "trip_id"
+        )
         self.output["metro_trips"].write(metro_trips)
 
 
@@ -528,7 +567,7 @@ class PrepareExAnteMetroTripsStep(StepWithModes, StepWithRidesharingCount, Popul
         )
         # In the ex-ante simulation, 1 agent = 1 trip.
         metro_trips = metro_trips.with_columns(agent_id="trip_id")
-        metro_trips = metro_trips.drop("has_car", "has_driving_license").sort(
+        metro_trips = metro_trips.drop(*AVAILABILITY_COLUMNS, strict=False).sort(
             "agent_id", "alt_id", "trip_id"
         )
         self.output["metro_trips"].write(metro_trips)

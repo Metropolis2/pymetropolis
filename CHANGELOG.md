@@ -107,6 +107,9 @@ New features:
   between them.
 - Add mode shares by tour count to `AggregateOutputFile`.
 - Add results by joint vs solo tours to `AggregateOutputFile`.
+- Mode availability (car ownership, driving license, minimum age, joint tours, bicycle ownership,
+  maximum walking / bicycle distance) is now configurable through the `mode_availability.*`
+  parameters, controlled by the `StepWithModeAvailability` step.
 
 Other changes:
 

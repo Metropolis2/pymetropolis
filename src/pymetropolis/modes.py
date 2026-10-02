@@ -1,9 +1,23 @@
-from collections.abc import Callable, Iterable
-from typing import Any
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any
+
+from loguru import logger
 
 from pymetropolis.metro_common import MetropyError
-from pymetropolis.metro_pipeline.parameters import CustomParameter
+from pymetropolis.metro_pipeline.parameters import (
+    BoolParameter,
+    CustomParameter,
+    FloatParameter,
+    IntParameter,
+)
 from pymetropolis.metro_pipeline.steps import Step
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Collection, Iterable
+
+    import polars as pl
 
 
 class MetroMetaType(type):
@@ -130,13 +144,8 @@ class CarMode(RoadMode):
         return True
 
     @classmethod
-    def requires_car(cls) -> bool:
-        """Whether this mode requires a car to be taken."""
-        return True
-
-    @classmethod
-    def requires_driving_license(cls) -> bool:
-        """Whether this mode requires a driving license to be taken."""
+    def is_driver(cls) -> bool:
+        """Whether the person taking this mode is known to be the driver of the car."""
         return False
 
     @classmethod
@@ -150,7 +159,7 @@ class CarDriver(metaclass=CarMode):
     _repr = "car_driver"
 
     @classmethod
-    def requires_driving_license(cls) -> bool:
+    def is_driver(cls) -> bool:
         return True
 
     @classmethod
@@ -163,7 +172,7 @@ class CarDriverWithPassengers(metaclass=CarMode):
     _repr = "car_driver_with_passengers"
 
     @classmethod
-    def requires_driving_license(cls) -> bool:
+    def is_driver(cls) -> bool:
         return True
 
     @classmethod
@@ -174,10 +183,6 @@ class CarDriverWithPassengers(metaclass=CarMode):
 class CarPassenger(metaclass=CarMode):
     _name = "car passenger"
     _repr = "car_passenger"
-
-    @classmethod
-    def requires_driving_license(cls) -> bool:
-        return False
 
     @classmethod
     def get_fuel_share(cls, nb_passengers: float) -> float:
@@ -194,10 +199,7 @@ class CarRidesharing(metaclass=CarMode):
     _name = "car ridesharing"
     _repr = "car_ridesharing"
 
-    @classmethod
-    def requires_driving_license(cls) -> bool:
-        # Note. As driver, a driving license is required, but we don't know if the agent is driving.
-        return False
+    # Note. The agent can be either the driver or a passenger so `is_driver` is false.
 
     @classmethod
     def get_fuel_share(cls, nb_passengers: float) -> float:
@@ -339,3 +341,259 @@ class StepWithModes(Step):
         bicycle).
         """
         return self._check_any(lambda m: m.is_pedestrian_based())
+
+
+@dataclass(frozen=True)
+class ModeAvailabilityRules:
+    """Rules defining which modes are available to a tour.
+
+    The same rules must be used when estimating the mode-choice model and when simulating, so that
+    the choice sets are consistent.
+    """
+
+    car_driver_requires_car: bool = True
+    car_driver_requires_driving_license: bool = True
+    car_driver_min_age: int | None = None
+    car_passenger_requires_car: bool = True
+    car_ridesharing_requires_car: bool = True
+    no_solo_modes_for_joint_tours: bool = True
+    bicycle_requires_bicycle: bool = False
+    walking_max_distance: float | None = None
+    bicycle_max_distance: float | None = None
+
+
+# Column used by each availability rule. They are shared by `SurveyedToursFile` and the trips
+# generated in the simulation.
+CAR_OWNERSHIP_COLUMN = "nb_cars"
+DRIVING_LICENSE_COLUMN = "has_driving_license"
+AGE_COLUMN = "age"
+JOINT_TOUR_COLUMN = "joint_tour"
+BICYCLE_OWNERSHIP_COLUMN = "nb_bicycles"
+TOUR_DISTANCE_COLUMN = "total_distance"
+
+AVAILABILITY_COLUMNS = (
+    CAR_OWNERSHIP_COLUMN,
+    DRIVING_LICENSE_COLUMN,
+    AGE_COLUMN,
+    JOINT_TOUR_COLUMN,
+    BICYCLE_OWNERSHIP_COLUMN,
+    TOUR_DISTANCE_COLUMN,
+)
+
+
+@dataclass(frozen=True)
+class _AvailabilityRule:
+    column: str
+    # Human-readable description of the restriction, used in warnings.
+    description: str
+    # Function returning a boolean expression (true if the mode is available) from the column.
+    condition: Callable[[pl.Expr], pl.Expr]
+
+
+def _mode_rules(mode: MetaMode, rules: ModeAvailabilityRules) -> list[_AvailabilityRule]:
+    """Returns the active availability rules for a given mode."""
+    out = []
+    if isinstance(mode, CarMode):
+        if mode.is_driver():
+            requires_car = rules.car_driver_requires_car
+        elif mode is CarPassenger:
+            requires_car = rules.car_passenger_requires_car
+        elif mode is CarRidesharing:
+            requires_car = rules.car_ridesharing_requires_car
+        else:
+            requires_car = True
+        if requires_car:
+            out.append(
+                _AvailabilityRule(
+                    CAR_OWNERSHIP_COLUMN, "car owners", lambda c: c.ge(1).fill_null(False)
+                )
+            )
+        if mode.is_driver() and rules.car_driver_requires_driving_license:
+            out.append(
+                _AvailabilityRule(
+                    DRIVING_LICENSE_COLUMN, "driving-license holders", lambda c: c.fill_null(False)
+                )
+            )
+        if mode.is_driver() and rules.car_driver_min_age is not None:
+            min_age = rules.car_driver_min_age
+            out.append(
+                _AvailabilityRule(
+                    AGE_COLUMN,
+                    f"persons aged {min_age} or more",
+                    lambda c: c.ge(min_age).fill_null(False),
+                )
+            )
+        if rules.no_solo_modes_for_joint_tours and not mode.vehicle().has_passenger():
+            out.append(
+                _AvailabilityRule(
+                    JOINT_TOUR_COLUMN, "non-joint tours", lambda c: c.not_().fill_null(True)
+                )
+            )
+    if mode is Bicycle and rules.bicycle_requires_bicycle:
+        out.append(
+            _AvailabilityRule(
+                BICYCLE_OWNERSHIP_COLUMN, "bicycle owners", lambda c: c.ge(1).fill_null(False)
+            )
+        )
+    max_distance = {Walking: rules.walking_max_distance, Bicycle: rules.bicycle_max_distance}.get(
+        mode
+    )
+    if max_distance is not None:
+        out.append(
+            _AvailabilityRule(
+                TOUR_DISTANCE_COLUMN,
+                f"tours shorter than {max_distance:,} meters",
+                lambda c: c.le(max_distance).fill_null(True),
+            )
+        )
+    return out
+
+
+def mode_availability_conditions(
+    mode: MetaMode, rules: ModeAvailabilityRules, columns: Collection[str]
+) -> list[pl.Expr]:
+    """Returns the boolean expressions that must all be true for `mode` to be available.
+
+    The expressions are evaluated on a DataFrame with the columns `nb_cars`,
+    `has_driving_license`, `age`, `joint_tour`, `nb_bicycles` and `total_distance`. A rule whose
+    column is not in `columns` is skipped (see `warn_missing_availability_columns`).
+    """
+    import polars as pl
+
+    return [
+        rule.condition(pl.col(rule.column))
+        for rule in _mode_rules(mode, rules)
+        if rule.column in columns
+    ]
+
+
+def mode_availability_expr(
+    mode: MetaMode, rules: ModeAvailabilityRules, columns: Collection[str]
+) -> pl.Expr:
+    """Returns a boolean expression which is true if `mode` is available."""
+    import polars as pl
+
+    conditions = mode_availability_conditions(mode, rules, columns)
+    return pl.all_horizontal(*conditions) if conditions else pl.lit(True)
+
+
+def warn_missing_availability_columns(
+    modes: Iterable[MetaMode],
+    rules: ModeAvailabilityRules,
+    columns: Collection[str],
+    level: str = "WARNING",
+) -> None:
+    """Logs a message (with the given level) for each active availability rule which cannot be
+    applied because its column is missing.
+    """
+    for mode in modes:
+        for rule in _mode_rules(mode, rules):
+            if rule.column not in columns:
+                logger.log(
+                    level,
+                    f"`{rule.column}` is not available: mode `{mode!r}` will not be restricted to "
+                    f"{rule.description}.",
+                )
+
+
+class StepWithModeAvailability(Step):
+    """A Step subclass for Steps that depend on the rules defining which modes are available.
+
+    These rules are used both when estimating the mode-choice model and when generating the
+    alternatives of the simulation, so that the choice sets are consistent.
+    """
+
+    car_driver_requires_car = BoolParameter(
+        "mode_availability.car_driver.requires_car",
+        default=True,
+        description=(
+            "If `true`, the car-driver modes are only available to persons whose household owns at "
+            "least one car."
+        ),
+    )
+    car_driver_requires_driving_license = BoolParameter(
+        "mode_availability.car_driver.requires_driving_license",
+        default=True,
+        description=(
+            "If `true`, the car-driver modes are only available to persons with a driving license."
+        ),
+    )
+    car_driver_min_age = IntParameter(
+        "mode_availability.car_driver.min_age",
+        lower_bound=0,
+        description="Minimum age required for the car-driver modes.",
+        note="If not specified, there is no age restriction.",
+        example="`18`",
+    )
+    car_passenger_requires_car = BoolParameter(
+        "mode_availability.car_passenger.requires_car",
+        default=True,
+        description=(
+            "If `true`, the car-passenger modes are only available to persons whose household owns "
+            "at least one car."
+        ),
+        note=(
+            'This does not apply to the "car_ridesharing" mode, use '
+            "`mode_availability.car_ridesharing.requires_car` instead."
+        ),
+    )
+    car_ridesharing_requires_car = BoolParameter(
+        "mode_availability.car_ridesharing.requires_car",
+        default=True,
+        description=(
+            'If `true`, the "car_ridesharing" mode is only available to persons whose household '
+            "owns at least one car."
+        ),
+    )
+    no_solo_modes_for_joint_tours = BoolParameter(
+        "mode_availability.no_solo_modes_for_joint_tours",
+        default=True,
+        description=(
+            'If `true`, car modes without passenger (i.e., "car_driver") are not available for '
+            "tours done jointly with other household members."
+        ),
+    )
+    bicycle_requires_bicycle = BoolParameter(
+        "mode_availability.bicycle.requires_bicycle",
+        default=False,
+        description=(
+            "If `true`, the bicycle mode is only available to persons whose household owns at "
+            "least one bicycle."
+        ),
+    )
+    walking_max_distance = FloatParameter(
+        "mode_availability.walking.max_distance",
+        lower_bound=0.0,
+        description=(
+            "Maximum tour distance (sum of the Euclidean distances of the trips) for the walking "
+            "mode to be available, in meters."
+        ),
+        note="If not specified, there is no distance restriction.",
+    )
+    bicycle_max_distance = FloatParameter(
+        "mode_availability.bicycle.max_distance",
+        lower_bound=0.0,
+        description=(
+            "Maximum tour distance (sum of the Euclidean distances of the trips) for the bicycle "
+            "mode to be available, in meters."
+        ),
+        note="If not specified, there is no distance restriction.",
+    )
+
+    def availability_rules(self) -> ModeAvailabilityRules:
+        """Returns the mode-availability rules defined in the config."""
+        return ModeAvailabilityRules(
+            car_driver_requires_car=bool(self.car_driver_requires_car),
+            car_driver_requires_driving_license=bool(self.car_driver_requires_driving_license),
+            car_driver_min_age=self.car_driver_min_age,
+            car_passenger_requires_car=bool(self.car_passenger_requires_car),
+            car_ridesharing_requires_car=bool(self.car_ridesharing_requires_car),
+            no_solo_modes_for_joint_tours=bool(self.no_solo_modes_for_joint_tours),
+            bicycle_requires_bicycle=bool(self.bicycle_requires_bicycle),
+            walking_max_distance=self.walking_max_distance,
+            bicycle_max_distance=self.bicycle_max_distance,
+        )
+
+    def has_distance_caps(self) -> bool:
+        """Returns `True` if the availability of some modes depends on the tour distance."""
+        return self.walking_max_distance is not None or self.bicycle_max_distance is not None
