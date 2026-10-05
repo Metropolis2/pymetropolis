@@ -141,6 +141,7 @@ Other changes:
 - `osm_*_import.simulation_area_filter` parameters now default to `False`, making SimulationAreaFile
   optional by default
 - Optimized `OpenStreetMapUrbanAreasStep` step.
+- Optimized `UrbanEdgesStep`
 
 Removed steps:
 
