@@ -6,6 +6,7 @@ import pyproj
 import pytest
 from shapely.geometry import LineString
 
+from pymetropolis.metro_calibration.road import tomtom
 from pymetropolis.metro_calibration.road.tomtom import draw_indices_in_window, generate_random_nodes
 from pymetropolis.metro_common import MetropyError
 
@@ -45,7 +46,15 @@ def grid_edges() -> tuple[gpd.GeoDataFrame, dict[int, tuple[float, float]]]:
     return edges, xy
 
 
-def test_generate_random_nodes_max_distance():
+@pytest.fixture(params=["rejection", "exact"])
+def drawing_method(request, monkeypatch):
+    """Runs a test with rejection sampling and with the exact listing of candidates only."""
+    if request.param == "exact":
+        monkeypatch.setattr(tomtom, "MAX_REJECTION_ROUNDS", 0)
+    return request.param
+
+
+def test_generate_random_nodes_max_distance(drawing_method):
     edges, xy = grid_edges()
     rng = np.random.default_rng(13081996)
     max_distance = 2.5 * SPACING
@@ -88,7 +97,7 @@ def consecutive_distances(nodes: np.ndarray, xy: dict[int, tuple[float, float]])
     return np.linalg.norm(points[:, 1:] - points[:, :-1], axis=2)
 
 
-def test_generate_random_nodes_min_distance():
+def test_generate_random_nodes_min_distance(drawing_method):
     edges, xy = grid_edges()
     rng = np.random.default_rng(13081996)
     min_distance = 5 * SPACING
@@ -99,7 +108,7 @@ def test_generate_random_nodes_min_distance():
     assert consecutive_distances(nodes, xy).min() >= min_distance
 
 
-def test_generate_random_nodes_distance_window():
+def test_generate_random_nodes_distance_window(drawing_method):
     edges, xy = grid_edges()
     rng = np.random.default_rng(13081996)
     min_distance, max_distance = 1.5 * SPACING, 3 * SPACING
@@ -126,7 +135,7 @@ def test_generate_random_nodes_distance_window():
         (100 * SPACING, None),
     ],
 )
-def test_generate_random_nodes_empty_window(min_distance, max_distance):
+def test_generate_random_nodes_empty_window(min_distance, max_distance, drawing_method):
     edges, _ = grid_edges()
     rng = np.random.default_rng(13081996)
     with pytest.raises(MetropyError, match="should be enlarged"):
@@ -150,7 +159,7 @@ def test_generate_random_nodes_min_larger_than_max():
         )
 
 
-def test_draw_indices_min_distance_covers_all_candidates():
+def test_draw_indices_min_distance_covers_all_candidates(drawing_method):
     # Points on a line, at x = 0, 1, ..., 9.
     xy = np.column_stack([np.arange(10.0), np.zeros(10)])
     rng = np.random.default_rng(13081996)

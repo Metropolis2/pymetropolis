@@ -35,6 +35,10 @@ if TYPE_CHECKING:
 BASE_URL = "https://api.tomtom.com/routing/1/calculateRoute/"
 PARAMS = {"computeTravelTimeFor": "all", "traffic": "true"}
 MAX_CONSECUTIVE_ERRORS = 8
+# Number of points drawn at once for each route, when drawing points by rejection sampling.
+REJECTION_BATCH_SIZE = 64
+# Number of rejection-sampling rounds before listing the candidates exactly.
+MAX_REJECTION_ROUNDS = 8
 
 
 def generate_random_nodes(
@@ -102,18 +106,50 @@ def draw_indices_in_window(
     `max_distance` (at least one of them must be set).
 
     Each point is drawn uniformly among the points satisfying the constraints.
+
+    The points are first drawn by rejection sampling (points are drawn uniformly among all the
+    points until one satisfies the constraints), which is fast when the distance window contains
+    a non-negligible share of the points. For the (few) routes where no point is accepted after
+    `MAX_REJECTION_ROUNDS` rounds, the candidates are listed exactly with a KD-tree.
     """
     import numpy as np
     from scipy.spatial import KDTree
     from tqdm import tqdm
 
     assert min_distance is not None or max_distance is not None
-    tree = KDTree(xy)
+
+    def in_window(dists: np.ndarray) -> np.ndarray:
+        ok = np.ones(dists.shape, dtype=bool)
+        if min_distance is not None:
+            ok &= dists >= min_distance
+        if max_distance is not None:
+            ok &= dists <= max_distance
+        return ok
+
+    all_indices = np.arange(len(xy))
     idx = np.empty((nb_routes, nb_nodes), dtype=np.int64)
     idx[:, 0] = rng.integers(0, len(xy), size=nb_routes)
-    all_indices = np.arange(len(xy))
+    nb_exact = 0
     for k in tqdm(range(1, nb_nodes), total=nb_nodes - 1, desc="Drawing nodes", smoothing=0.05):
-        prev = idx[:, k - 1]
+        # Routes for which the k-th point has not been drawn yet.
+        pending = np.arange(nb_routes)
+        for _ in range(MAX_REJECTION_ROUNDS):
+            draws = rng.integers(0, len(xy), size=(len(pending), REJECTION_BATCH_SIZE))
+            prev_xy = xy[idx[pending, k - 1]]
+            ok = in_window(np.linalg.norm(xy[draws] - prev_xy[:, None, :], axis=2))
+            # The first accepted point of each route is uniformly drawn among the candidates.
+            found = ok.any(axis=1)
+            first = ok.argmax(axis=1)
+            idx[pending[found], k] = draws[found, first[found]]
+            pending = pending[~found]
+            if len(pending) == 0:
+                break
+        if len(pending) == 0:
+            continue
+        # List the candidates exactly for the remaining routes.
+        nb_exact += len(pending)
+        tree = KDTree(xy)
+        prev = idx[pending, k - 1]
         # Points within `max_distance` of the previous point (the candidates).
         outer = (
             tree.query_ball_point(xy[prev], r=max_distance) if max_distance is not None else None
@@ -122,13 +158,15 @@ def draw_indices_in_window(
         inner = (
             tree.query_ball_point(xy[prev], r=min_distance) if min_distance is not None else None
         )
-        for i in range(nb_routes):
-            candidates = outer[i] if outer is not None else all_indices
+        for j, i in enumerate(pending):
+            candidates = outer[j] if outer is not None else all_indices
             if inner is not None:
-                candidates = np.setdiff1d(candidates, inner[i], assume_unique=True)
+                candidates = np.setdiff1d(candidates, inner[j], assume_unique=True)
             if len(candidates) == 0:
-                raise_empty_window(node_ids[prev[i]], min_distance, max_distance)
+                raise_empty_window(node_ids[prev[j]], min_distance, max_distance)
             idx[i, k] = candidates[rng.integers(len(candidates))]
+    if nb_exact > 0:
+        logger.debug(f"Candidates were listed exactly for {nb_exact} drawn points")
     distances = np.linalg.norm(xy[idx[:, 1:]] - xy[idx[:, :-1]], axis=2)
     logger.debug(
         f"Distance between consecutive points: min = {distances.min():.0f}m, "
