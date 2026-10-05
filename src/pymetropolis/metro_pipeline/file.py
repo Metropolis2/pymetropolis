@@ -373,8 +373,24 @@ class MetroGeoDataFrameFile(MetroFile):
 
     @error_context(msg="Cannot save GeoDataFrame {}", fmt_args=[0])
     def write(self, gdf: gpd.GeoDataFrame):
+        import json
+
+        import pyarrow.parquet as pq
+        from geopandas.io.arrow import _geopandas_to_arrow
+
         gdf = self.validate(gdf)
-        gdf.to_parquet(self.complete_path, geometry_encoding="geoarrow")
+        # The geometries are written as WKB, like `gdf.to_parquet`, but the `geoarrow.wkb`
+        # extension type that geopandas attaches to the geometry columns is removed: when it is
+        # present, GDAL (and thus QGIS) ignores the CRS. The CRS is still stored in the GeoParquet
+        # `geo` metadata, which is read by geopandas, DuckDB and GDAL. The native GeoArrow encoding
+        # is not used because DuckDB cannot read it.
+        # TODO. Switch back to `gdf.to_parquet` if geopandas fix the issue.
+        table = _geopandas_to_arrow(gdf, geometry_encoding="WKB")
+        assert table.schema.metadata is not None
+        for name in json.loads(table.schema.metadata[b"geo"])["columns"]:
+            i = table.schema.get_field_index(name)
+            table = table.set_column(i, table.schema.field(i).remove_metadata(), table.column(i))
+        pq.write_table(table, self.complete_path)
 
     def read(self) -> gpd.GeoDataFrame:
         import geopandas as gpd
