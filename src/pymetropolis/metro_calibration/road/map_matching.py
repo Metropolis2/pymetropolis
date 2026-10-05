@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import itertools
+import math
 from typing import TYPE_CHECKING
 
 from loguru import logger
@@ -15,7 +15,9 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     import geopandas as gpd
+    import numpy as np
     import polars as pl
+    import shapely
 
 
 def load_trajectories(path: Path, radius: float) -> pl.DataFrame:
@@ -26,6 +28,8 @@ def load_trajectories(path: Path, radius: float) -> pl.DataFrame:
     con.load_extension("spatial")
 
     # Read the route trajectories and buffer them by the radius.
+    # The trajectories are simplified before being buffered (instead of simplifying the buffered
+    # polygons), which is much faster and as accurate.
     logger.debug("Reading buffered geometries")
     df = con.sql(
         f"""
@@ -36,16 +40,16 @@ def load_trajectories(path: Path, radius: float) -> pl.DataFrame:
             length,
             ST_AsWKB(geometry) as wkb,
             ST_AsWKB(
-                ST_Simplify(
-                    ST_Buffer(
+                ST_Buffer(
+                    ST_Simplify(
                         geometry,
-                        {radius},      -- distance
-                        16,            -- num_triangles
-                        'CAP_SQUARE',  -- cap style
-                        'JOIN_ROUND',  -- join style
-                        0.0            -- mitre_limit
+                        5.0            -- simplify tolerance
                     ),
-                    5.0                -- simplify tolerance
+                    {radius},          -- distance
+                    16,                -- num_triangles
+                    'CAP_SQUARE',      -- cap style
+                    'JOIN_ROUND',      -- join style
+                    0.0                -- mitre_limit
                 )
             ) as buffered_wkb
         FROM read_parquet('{path}')
@@ -56,95 +60,133 @@ def load_trajectories(path: Path, radius: float) -> pl.DataFrame:
     return df
 
 
+def trajectory_distances(points: np.ndarray, trajectory: shapely.Geometry) -> np.ndarray:
+    """Returns the distance between each point and the trajectory.
+
+    The trajectory is split into segments indexed in a STRtree, which is much faster than
+    `shapely.distance` (that scans all the trajectory's segments for each point) when the
+    trajectory has many vertices and the points are close to it.
+    """
+    import numpy as np
+    import shapely
+
+    coords = shapely.get_coordinates(trajectory)
+    segments = shapely.linestrings(np.stack([coords[:-1], coords[1:]], axis=1))
+    (point_idx, _), dists = shapely.STRtree(segments).query_nearest(
+        points, return_distance=True, all_matches=False
+    )
+    out = np.empty(len(points))
+    out[point_idx] = dists
+    return out
+
+
+def shortest_path(
+    adjacency: dict[int, list[tuple[int, int]]],
+    allowed: set[int],
+    costs: dict[int, float],
+    source: int,
+    target: int,
+) -> list[int] | None:
+    """Dijkstra's algorithm restricted to the `allowed` nodes, where the cost of an edge is the cost
+    of its source node.
+
+    Returns the list of edge ids of the shortest path from `source` to `target`, or `None` if
+    `target` cannot be reached from `source`.
+    """
+    import heapq
+
+    best = {source: 0.0}
+    # For each reached node, the (previous node, edge id) used to reach it.
+    pred: dict[int, tuple[int, int]] = dict()
+    settled = set()
+    heap = [(0.0, source)]
+    while heap:
+        d, u = heapq.heappop(heap)
+        if u in settled:
+            continue
+        if u == target:
+            path = list()
+            while u != source:
+                u, edge_id = pred[u]
+                path.append(edge_id)
+            path.reverse()
+            return path
+        settled.add(u)
+        new_d = d + costs[u]
+        for v, edge_id in adjacency.get(u, ()):
+            if v in allowed and new_d < best.get(v, math.inf):
+                best[v] = new_d
+                pred[v] = (u, edge_id)
+                heapq.heappush(heap, (new_d, v))
+    return None
+
+
 def map_matching(edges: gpd.GeoDataFrame, trajectories: pl.DataFrame, rel_length_threshold: float):
-    import geopandas as gpd
-    import networkx as nx
+    import numpy as np
     import polars as pl
-    from shapely.geometry import Point
+    import shapely
     from tqdm import tqdm
 
     logger.debug("Preparing matching")
     # Find the unique nodes in the road network graph, with their Point geometries.
-    nodes = (
-        edges.drop_duplicates(subset=["source"], ignore_index=True)
-        .rename(columns={"source": "node_id"})
-        .loc[:, ["node_id", "geometry"]]
-    )
-    nodes.set_geometry(nodes["geometry"].map(lambda g: Point(g.coords[0])), inplace=True)
-    # Create dictionaries to find edge_id from source and target and to find edge's length from
-    # edge_id.
-    edges_df = pl.from_pandas(edges.loc[:, ["edge_id", "source", "target", "length"]])
+    node_ids, first_pos = np.unique(edges["source"].to_numpy(), return_index=True)
+    node_points = shapely.get_point(edges.geometry.values[first_pos], 0)
+    node_tree = shapely.STRtree(node_points)
+    # Adjacency lists: source -> [(target, edge_id)]. Parallel edges are deduplicated (the last one
+    # is kept).
     edge_ids = {
-        (source, target): edge_id
-        for source, target, edge_id in zip(
-            edges_df["source"], edges_df["target"], edges_df["edge_id"]
+        (s, t): e
+        for s, t, e in zip(
+            edges["source"].to_numpy().tolist(),
+            edges["target"].to_numpy().tolist(),
+            edges["edge_id"].to_numpy().tolist(),
         )
     }
-    edge_lengths = {
-        edge_id: length for edge_id, length in zip(edges_df["edge_id"], edges_df["length"])
-    }
+    adjacency: dict[int, list[tuple[int, int]]] = dict()
+    for (s, t), e in edge_ids.items():
+        adjacency.setdefault(s, []).append((t, e))
+    edge_lengths = dict(
+        zip(edges["edge_id"].to_numpy().tolist(), edges["length"].to_numpy().tolist())
+    )
+
     logger.debug("Finding nodes contained within the buffered geometries")
-    buffered_trajectories = gpd.GeoDataFrame(
-        {"tomtom_id": trajectories["tomtom_id"]},
-        geometry=gpd.GeoSeries.from_wkb(trajectories["buffered_wkb"]),
-    ).set_index("tomtom_id")
-    node_matches = pl.DataFrame(
-        nodes.sindex.query(buffered_trajectories.geometry, predicate="contains").T,
-        schema=["tomtom_id", "node_id"],
-    )
-    node_matches = node_matches.with_columns(
-        pl.col("node_id").replace_strict(
-            nodes.index.values, nodes["node_id"].values, return_dtype=pl.Int64
-        )
-    )
-    node_matches = node_matches.group_by("tomtom_id").agg("node_id")
-    # Add trajectories data (source, target and length).
-    node_matches = node_matches.join(trajectories.drop("wkb"), on="tomtom_id")
-    # Filter out routes for which either the origin or destination node is not in the matched nodes.
-    node_matches = node_matches.filter(
-        pl.col("node_id").list.contains(pl.col("source")),
-        pl.col("node_id").list.contains(pl.col("target")),
-    )
-    node_matches = node_matches.sort("tomtom_id")
-    nodes = nodes.set_index("node_id")
-    results = list()
-    geom_trajectories = gpd.GeoDataFrame(
-        {"tomtom_id": trajectories["tomtom_id"]},
-        geometry=gpd.GeoSeries.from_wkb(trajectories["wkb"]),
-    )
-    for row in tqdm(
-        node_matches.iter_rows(named=True), total=len(node_matches), desc="Matching", smoothing=0.05
+    buffered = shapely.from_wkb(trajectories["buffered_wkb"].to_numpy())
+    traj_idx, node_idx = node_tree.query(buffered, predicate="contains")
+    # `query` returns pairs sorted by trajectory index: split the matched nodes by trajectory.
+    split_at = np.flatnonzero(np.diff(traj_idx)) + 1
+    matched_trajs = traj_idx[np.r_[0, split_at]] if len(traj_idx) else traj_idx
+    matched_nodes = np.split(node_idx, split_at) if len(node_idx) else []
+
+    lines = shapely.from_wkb(trajectories["wkb"].to_numpy())
+    tomtom_ids = trajectories["tomtom_id"].to_list()
+    sources = trajectories["source"].to_list()
+    targets = trajectories["target"].to_list()
+    lengths = trajectories["length"].to_list()
+    results = {"tomtom_id": [], "path": [], "length": [], "length_tomtom": []}
+    for i, nodes_idx in tqdm(
+        zip(matched_trajs.tolist(), matched_nodes),
+        total=len(matched_nodes),
+        desc="Matching",
+        smoothing=0.05,
     ):
-        node_ids = set(row["node_id"])
-        my_edges = edges_df.filter(
-            pl.col("source").is_in(node_ids) & pl.col("target").is_in(node_ids)
-        ).select("source", "target", "length")
-        if row["source"] not in my_edges["source"] or row["target"] not in my_edges["target"]:
-            # Either source or target is not in the graph.
+        allowed_list = node_ids[nodes_idx].tolist()
+        allowed = set(allowed_list)
+        source, target = sources[i], targets[i]
+        if source not in allowed or target not in allowed:
+            # Either the origin or destination node is not within the buffered geometry.
             continue
-        G = nx.DiGraph()
-        G.add_weighted_edges_from(my_edges.iter_rows())
-        tree = nx.bfs_tree(G, row["source"])
-        if not tree.has_node(row["target"]):
+        # The cost of an edge is the distance between its source node and the trajectory.
+        costs = dict(
+            zip(allowed_list, trajectory_distances(node_points[nodes_idx], lines[i]).tolist())
+        )
+        path = shortest_path(adjacency, allowed, costs, source, target)
+        if path is None:
             # Source and target are not connected.
-            #  assert not nx.has_path(G, row["source"], row["target"])
             continue
-        dists = nodes.loc[list(tree.nodes)].distance(
-            geom_trajectories.loc[row["tomtom_id"], "geometry"]
-        )
-        _, path_nodes = nx.bidirectional_dijkstra(
-            tree, row["source"], row["target"], lambda s, _t, _w: dists[s]
-        )
-        path_edges = [edge_ids[(s, t)] for s, t in itertools.pairwise(path_nodes)]
-        tot_length = sum(edge_lengths[e] for e in path_edges)
-        results.append(
-            {
-                "tomtom_id": row["tomtom_id"],
-                "path": path_edges,
-                "length": tot_length,
-                "length_tomtom": row["length"],
-            }
-        )
+        results["tomtom_id"].append(tomtom_ids[i])
+        results["path"].append(path)
+        results["length"].append(sum(edge_lengths[e] for e in path))
+        results["length_tomtom"].append(lengths[i])
     df = (
         pl.DataFrame(results)
         .with_columns(

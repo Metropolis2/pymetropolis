@@ -141,9 +141,10 @@ Other changes:
   server has loaded active GTFS services (before trying to make any request).
 - Switched from osmium to duckdb for OSM files parsing, leading to improved performances.
 - `osm_*_import.simulation_area_filter` parameters now default to `False`, making SimulationAreaFile
-  optional by default
+  optional by default.
 - Optimized `OpenStreetMapUrbanAreasStep` step.
-- Optimized `UrbanEdgesStep`
+- Optimized `UrbanEdgesStep` step.
+- Optimized `MapMatchingStep` step.
 
 Removed steps:
 
