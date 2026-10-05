@@ -148,8 +148,8 @@ unclassified = "unclassified"
 [tomtom_requests]
 date = 2027-03-15
 departure_time = 03:00:00
-nb_routes = 400
-nb_waypoints = 148
+nb_routes = 5000
+nb_waypoints = 50
 nb_batches = 5
 excluded_edge_types = ["motorway", "motorway_link", "trunk", "trunk_link", "primary", "primary_link"]
 api_key = "env:TOMTOM_API_KEY"

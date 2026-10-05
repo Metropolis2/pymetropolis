@@ -95,6 +95,8 @@ New parameters:
 - `road_network.capacity_multipliers.roundabout`
 - `ridesharing.subsidy`
 - `parent_config`
+- `tomtom_requests.min_distance`
+- `tomtom_requests.max_distance`
 
 New columns:
 
@@ -150,6 +152,8 @@ Removed steps:
 Fixes:
 
 - Fix OpenTripPlanner queries not stopping on interrupt (Ctrl+C).
+- Fix `TomTomRequestsStep` reusing the same random departure time for all the requests of a
+  batch when `tomtom_requests.departure_time` is not specified.
 - Fix a bug where road-specific results in `TripResultsFile` were NULLs when secondary car trips
   exist
 

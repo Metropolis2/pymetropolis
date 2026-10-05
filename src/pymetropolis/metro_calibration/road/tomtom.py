@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import time
 from datetime import date, datetime, timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NoReturn
 
 from loguru import logger
 
@@ -11,6 +11,7 @@ from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_network.road_network.files import RoadEdgesCleanFile
 from pymetropolis.metro_pipeline.parameters import (
     DateParameter,
+    FloatParameter,
     IntParameter,
     ListParameter,
     StringParameter,
@@ -28,6 +29,7 @@ if TYPE_CHECKING:
     import aiohttp
     import geopandas as gpd
     import numpy as np
+    import pyproj
     from tqdm import tqdm
 
 BASE_URL = "https://api.tomtom.com/routing/1/calculateRoute/"
@@ -41,30 +43,112 @@ def generate_random_nodes(
     nb_routes: int,
     nb_waypoints: int,
     excluded_edge_types: list[str] = [],
+    min_distance: float | None = None,
+    max_distance: float | None = None,
+    crs: pyproj.CRS | str | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
-    import geopandas as gpd
-    import numpy as np
+    """Draws random routes (origin, waypoints, destination) from the source nodes of the edges.
 
+    When `min_distance` and / or `max_distance` are set, each point (except the origin) is drawn
+    among the nodes whose Euclidean distance to the previous point is within these bounds.
+    Distances are computed in `crs` (the CRS of `edges` if `None`), which must be projected.
+
+    Returns the drawn node ids and their (latitude, longitude) coordinates.
+    """
+    import geopandas as gpd
+    import shapely
+
+    if min_distance is not None and max_distance is not None and min_distance > max_distance:
+        raise MetropyError(
+            f"The minimum distance ({min_distance}) is larger than the maximum distance "
+            f"({max_distance})."
+        )
     logger.debug("Generating random origin-destination pairs...")
-    # Remove excluded edge types.
+    # Remove excluded edge types and keep one edge per source node.
     mask = ~edges["edge_type"].isin(excluded_edge_types)
-    edges = gpd.GeoDataFrame(edges.loc[mask].copy())
-    all_nodes = list(edges["source"])
+    edges = edges.loc[mask].drop_duplicates(subset="source")
+    node_ids = edges["source"].to_numpy()
+    node_points = gpd.GeoSeries(shapely.get_point(edges.geometry.values, 0), crs=edges.crs)
     # Number of nodes to draw for each route (origin + destination + waypoints).
     nb_nodes = nb_waypoints + 2
-    selected_nodes = rng.choice(all_nodes, size=(nb_routes, nb_nodes))
-    # Dictionary node_id -> lng, lat.
-    source_to_xy = (
-        edges.set_index("source")["geometry"]
-        .to_crs("EPSG:4326")
-        .apply(lambda geom: geom.coords[0])
-        .to_dict()
-    )
-    coordinates = np.array([source_to_xy[node] for node in selected_nodes.flatten()])
-    coordinates = coordinates.reshape(nb_routes, nb_nodes, 2)
+    if min_distance is None and max_distance is None:
+        idx = rng.integers(0, len(node_ids), size=(nb_routes, nb_nodes))
+    else:
+        if crs is not None:
+            node_points = node_points.to_crs(crs)
+        xy = shapely.get_coordinates(node_points.values)
+        idx = draw_indices_in_window(
+            xy, node_ids, rng, nb_routes, nb_nodes, min_distance, max_distance
+        )
+    # Only the drawn nodes are converted to longitude / latitude.
+    selected_points = gpd.GeoSeries(node_points.values[idx.ravel()], crs=node_points.crs)
+    lng_lat = shapely.get_coordinates(selected_points.to_crs("EPSG:4326").values)
     # Switch latitude and longitude.
-    coordinates = coordinates[:, :, ::-1]
-    return selected_nodes, coordinates
+    coordinates = lng_lat.reshape(nb_routes, nb_nodes, 2)[:, :, ::-1]
+    return node_ids[idx], coordinates
+
+
+def draw_indices_in_window(
+    xy: np.ndarray,
+    node_ids: np.ndarray,
+    rng: np.random.Generator,
+    nb_routes: int,
+    nb_nodes: int,
+    min_distance: float | None,
+    max_distance: float | None,
+) -> np.ndarray:
+    """Draws the indices (in `xy`) of `nb_nodes` successive points for each route, such that the
+    Euclidean distance between two consecutive points is between `min_distance` and
+    `max_distance` (at least one of them must be set).
+
+    Each point is drawn uniformly among the points satisfying the constraints.
+    """
+    import numpy as np
+    from scipy.spatial import KDTree
+
+    assert min_distance is not None or max_distance is not None
+    tree = KDTree(xy)
+    idx = np.empty((nb_routes, nb_nodes), dtype=np.int64)
+    idx[:, 0] = rng.integers(0, len(xy), size=nb_routes)
+    all_indices = np.arange(len(xy))
+    for k in range(1, nb_nodes):
+        prev = idx[:, k - 1]
+        # Points within `max_distance` of the previous point (the candidates).
+        outer = (
+            tree.query_ball_point(xy[prev], r=max_distance) if max_distance is not None else None
+        )
+        # Points within `min_distance` of the previous point (excluded from the candidates).
+        inner = (
+            tree.query_ball_point(xy[prev], r=min_distance) if min_distance is not None else None
+        )
+        for i in range(nb_routes):
+            candidates = outer[i] if outer is not None else all_indices
+            if inner is not None:
+                candidates = np.setdiff1d(candidates, inner[i], assume_unique=True)
+            if len(candidates) == 0:
+                raise_empty_window(node_ids[prev[i]], min_distance, max_distance)
+            idx[i, k] = candidates[rng.integers(len(candidates))]
+    distances = np.linalg.norm(xy[idx[:, 1:]] - xy[idx[:, :-1]], axis=2)
+    logger.debug(
+        f"Distance between consecutive points: min = {distances.min():.0f}m, "
+        f"mean = {distances.mean():.0f}m, max = {distances.max():.0f}m"
+    )
+    return idx
+
+
+def raise_empty_window(
+    node_id: object, min_distance: float | None, max_distance: float | None
+) -> NoReturn:
+    bounds = []
+    if min_distance is not None:
+        bounds.append(f"at least {min_distance} meters")
+    if max_distance is not None:
+        bounds.append(f"at most {max_distance} meters")
+    raise MetropyError(
+        f"There is no node at a distance of {' and '.join(bounds)} from node {node_id}. "
+        "The distance window should be enlarged (decrease `tomtom_requests.min_distance` "
+        "and / or increase `tomtom_requests.max_distance`)."
+    )
 
 
 def batch_iter(arr: np.ndarray, batch_size: int) -> Generator[np.ndarray]:
@@ -114,12 +198,17 @@ async def process_batch(
             waypoint_coords = ":".join([f"{lat},{lon}" for lat, lon in points])
             url = f"{BASE_URL}{waypoint_coords}/json?key={api_key}"
             # Set request departure time.
+            # A random departure time is drawn for each request when it is not specified.
             if departure_time is None:
-                departure_time = timedelta(seconds=int(rng.integers(0, 24 * 60 * 60)))
-            td = datetime.combine(date, datetime.min.time()) + departure_time
-            params["departAt"] = td.strftime("%Y-%m-%dT%H:%M:%S")
+                request_departure_time = timedelta(seconds=int(rng.integers(0, 24 * 60 * 60)))
+            else:
+                request_departure_time = departure_time
+            td = datetime.combine(date, datetime.min.time()) + request_departure_time
+            # The params dict is shared by the batches running concurrently so it is copied
+            # rather than modified in place.
+            request_params = {**params, "departAt": td.strftime("%Y-%m-%dT%H:%M:%S")}
             t0 = time.perf_counter()
-            data = await get_tomtom_request(url, session, params)
+            data = await get_tomtom_request(url, session, request_params)
             t1 = time.perf_counter()
             api_time += t1 - t0
             if data is None:
@@ -256,6 +345,36 @@ class TomTomRequestsStep(RandomStep, GeoStep):
             "observed (major highways will be part of most fastest paths anyway)."
         ),
     )
+    min_distance = FloatParameter(
+        "tomtom_requests.min_distance",
+        lower_bound=0.0,
+        description=(
+            "Minimum Euclidean distance between two consecutive points of a request, in meters."
+        ),
+        example=1000,
+        note=(
+            "The constraint applies to each origin-destination pair of a request (origin to first "
+            "waypoint, between waypoints, last waypoint to destination). "
+            "Distances are computed in the projected CRS. "
+            "An error is raised if there is no node satisfying the distance constraints from a "
+            "drawn node."
+        ),
+    )
+    max_distance = FloatParameter(
+        "tomtom_requests.max_distance",
+        lower_bound=0.0,
+        description=(
+            "Maximum Euclidean distance between two consecutive points of a request, in meters."
+        ),
+        example=10000,
+        note=(
+            "The constraint applies to each origin-destination pair of a request (origin to first "
+            "waypoint, between waypoints, last waypoint to destination). "
+            "Distances are computed in the projected CRS. "
+            "An error is raised if there is no node satisfying the distance constraints from a "
+            "drawn node."
+        ),
+    )
     nb_batches = IntParameter(
         "tomtom_requests.nb_batches",
         description="Number of batches to be computed in parallel.",
@@ -299,6 +418,9 @@ class TomTomRequestsStep(RandomStep, GeoStep):
             nb_routes=self.nb_routes,
             nb_waypoints=self.nb_waypoints,
             excluded_edge_types=self.excluded_edge_types,
+            min_distance=self.min_distance,
+            max_distance=self.max_distance,
+            crs=self.crs,
         )
 
         if self.departure_time is None:
