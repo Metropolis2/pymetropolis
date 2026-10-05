@@ -13,6 +13,7 @@ from pymetropolis.metro_demand.modes.park_and_ride.transfer_stops import (
 from pymetropolis.metro_network.public_transit.gtfs import read_gtfs_stops_and_routes
 from pymetropolis.metro_results.demand.postprocess import merge_park_and_ride_legs
 from pymetropolis.metro_simulation.demand.trips import clean_trips, generate_park_and_ride_trips
+from pymetropolis.modes import ModeAvailabilityRules, ParkAndRide, mode_availability_expr
 
 
 class FakeFile:
@@ -171,37 +172,20 @@ def test_generate_trips_schedule():
     assert out["schedule_utility.tstar"].to_list() == [None, 30000.0, 60000.0, None, 69960.0]
 
 
-def test_generate_trips_excludes_joint_tours():
-    df = clean_trips(TRIPS.with_columns(joint_tour=pl.col("tour_id") == "1-1"))
-    out = generate_park_and_ride_trips(
-        df,
-        TRIPS,
-        pr_stops_file=FakeFile(pl.DataFrame({"tour_id": ["1-1"]})),
-        primary_trips_file=FakeFile(
-            pl.DataFrame(
-                {
-                    "trip_id": ["1-1"],
-                    "access_node": [1],
-                    "egress_node": [2],
-                    "access_time": seconds([0]),
-                    "egress_time": seconds([0]),
-                }
-            )
-        ),
-        secondary_trips_file=FakeFile(
-            pl.DataFrame(
-                {"trip_id": [], "free_flow_travel_time": []},
-                schema_overrides={"trip_id": pl.String, "free_flow_travel_time": pl.Duration("us")},
-            )
-        ),
-        park_and_ride_itineraries_file=FakeFile(
-            pl.DataFrame({"trip_id": ["1-1", "1-3"], "travel_time": seconds([60, 60])})
-        ),
-        pt_itineraries_file=FakeFile(
-            pl.DataFrame({"trip_id": ["1-2"], "travel_time": seconds([60])})
-        ),
+def test_availability_rules():
+    # P+R follows the car-driver availability rules: car owner, driving license, minimum age (if
+    # set) and no joint tour (the car leg has no passenger).
+    df = pl.DataFrame(
+        {
+            "nb_cars": [1, 0, 1, 1, 1, 1],
+            "has_driving_license": [True, True, False, True, True, None],
+            "age": [40, 40, 40, 40, 16, 40],
+            "joint_tour": [False, False, False, True, False, False],
+        }
     )
-    assert out.is_empty()
+    rules = ModeAvailabilityRules(car_driver_min_age=18)
+    available = df.select(mode_availability_expr(ParkAndRide, rules, df.columns))
+    assert available.to_series().to_list() == [True, False, False, False, False, False]
 
 
 def test_merge_legs():

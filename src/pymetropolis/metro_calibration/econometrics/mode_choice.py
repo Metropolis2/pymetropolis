@@ -15,7 +15,14 @@ from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_common.utils import pl_duration_to_seconds
 from pymetropolis.metro_pipeline.parameters import ListParameter, StringParameter
 from pymetropolis.metro_pipeline.types import List, String
-from pymetropolis.modes import CarMode, MetaMode, StepWithModes, mode_from_str
+from pymetropolis.modes import (
+    MetaMode,
+    StepWithModeAvailability,
+    StepWithModes,
+    mode_availability_conditions,
+    mode_from_str,
+    warn_missing_availability_columns,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -29,31 +36,18 @@ TRAVEL_TIME_VARIABLE = "travel_time"
 # Variables treated as alternative-varying, read from `{variable}_{mode}` columns.
 ALTERNATIVE_VARYING_VARIABLES = {TRAVEL_TIME_VARIABLE}
 
-# Column of `SurveyedToursFile` indicating whether the person holds a driving license.
-DRIVING_LICENSE_COLUMN = "has_driving_license"
-
-# Column of `SurveyedToursFile` indicating the number of cars owned.
-CAR_OWNERSHIP_COLUMN = "nb_cars"
-
 
 def generic_variable_mode(mode: MetaMode) -> str:
     """Return the mode as a string, mapping all car-based modes to "car"."""
     return "car" if mode.is_car_based() else repr(mode)
 
 
-def requires_driving_license(mode: MetaMode) -> bool:
-    """Returns true if the mode should be restricted to holders of driving license."""
-    return isinstance(mode, CarMode) and mode.requires_driving_license()
-
-
-def requires_car(mode: MetaMode) -> bool:
-    """Returns true if the mode should be restricted to car owners."""
-    return isinstance(mode, CarMode) and mode.requires_car()
-
-
-class SurveyEconometricModeChoiceStep(StepWithModes):
+class SurveyEconometricModeChoiceStep(StepWithModes, StepWithModeAvailability):
     """Estimates a Multinomial Logit model of tour-level mode choice from the surveyed tours,
     using [biogeme](https://biogeme.epfl.ch/).
+
+    The choice set of each tour is restricted to the available modes, as defined by the
+    `mode_availability` parameters (the same rules are used in the simulation).
     """
 
     variables = ListParameter(
@@ -186,42 +180,16 @@ class SurveyEconometricModeChoiceStep(StepWithModes):
             alt_id=pl.col("tour_mode").replace_strict(mode_ids, return_dtype=pl.Int64)
         )
 
-        # Car-driver modes are restricted to holders of a driving license.
-        has_license_data = DRIVING_LICENSE_COLUMN in tours.columns
-        if not has_license_data and any(requires_driving_license(mode) for mode in modes):
-            logger.warning(
-                f"`{DRIVING_LICENSE_COLUMN}` is not available in `SurveyedToursFile`: car-driver "
-                "modes will not be restricted to driving-license holders."
-            )
-        # Car modes are restricted to car owners.
-        has_car_ownership_data = CAR_OWNERSHIP_COLUMN in tours.columns
-        if not has_car_ownership_data and any(requires_car(mode) for mode in modes):
-            logger.warning(
-                f"`{CAR_OWNERSHIP_COLUMN}` is not available in `SurveyedToursFile`: car modes will "
-                "not be restricted to car owners."
-            )
-        joint_tour_variable = "joint_tour" in self.variables
+        # A mode is available if all its alternative-varying variables are defined and if the
+        # mode-availability rules are satisfied.
+        rules = self.availability_rules()
+        warn_missing_availability_columns(modes, rules, tours.columns)
         avail_exprs = {}
         for mode in modes:
             conditions = [
                 pl.col(generic_columns[v][repr(mode)]).is_not_null() for v in generic_columns
             ]
-            if has_license_data and isinstance(mode, CarMode) and mode.requires_driving_license():
-                conditions.append(pl.col(DRIVING_LICENSE_COLUMN).fill_null(False))
-            if has_car_ownership_data and isinstance(mode, CarMode) and mode.requires_car():
-                conditions.append(pl.col(CAR_OWNERSHIP_COLUMN).ge(1).fill_null(False))
-            if (
-                joint_tour_variable
-                and isinstance(mode, CarMode)
-                and not mode.vehicle().has_passenger()
-            ):
-                # Car modes with no passenger are not available for joint tours.
-                conditions.append(pl.col("joint_tour").not_())
-            # TODO. Check if useful.
-            if repr(mode) == "walking":
-                conditions.append(pl.col("total_distance") < 5000)
-            if repr(mode) == "bicycle":
-                conditions.append(pl.col("total_distance") < 15000)
+            conditions.extend(mode_availability_conditions(mode, rules, tours.columns))
             avail_exprs[f"avail_{mode!r}"] = (
                 pl.all_horizontal(*conditions) if conditions else pl.lit(True)
             ).cast(pl.Int8)

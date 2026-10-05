@@ -132,6 +132,9 @@ New features:
   between them.
 - Add mode shares by tour count to `AggregateOutputFile`.
 - Add results by joint vs solo tours to `AggregateOutputFile`.
+- Mode availability (car ownership, driving license, minimum age, joint tours, bicycle ownership,
+  maximum walking / bicycle distance) is now configurable through the `mode_availability.*`
+  parameters, controlled by the `StepWithModeAvailability` step.
 - New `park_and_ride` mode (see below).
 
 Other changes:
@@ -164,6 +167,7 @@ Other changes:
 - `osm_*_import.simulation_area_filter` parameters now default to `False`, making SimulationAreaFile
   optional by default
 - Optimized `OpenStreetMapUrbanAreasStep` step.
+- Optimized `UrbanEdgesStep`
 
 Removed steps:
 
@@ -189,8 +193,8 @@ Park-and-ride (`park_and_ride` mode):
   leg (P+R facility -> destination); the last trip into a public-transit leg (origin -> P+R
   facility) and a car leg (P+R facility -> destination). Intermediary trips are traveled by public
   transit. The legs are separated by `modes.park_and_ride.transfer_time` (default: 5 minutes).
-- The car legs use the `car_driver_alone` vehicle: P+R is restricted to car owners with a driving
-  license, and not available for joint tours. Their free-flow routes are used to identify the
+- The car legs use the `car_driver_alone` vehicle: the car-driver availability rules
+  (`mode_availability.car_driver.*`, joint tours) apply to P+R. Their free-flow routes are used to identify the
   primary road network, like car trips.
 - The public-transit legs are computed with OpenTripPlanner. When `opentripplanner.time_type` is
   `"tstar"` or `"arrival"`, the public-transit leg of the last trip uses the trip's departure time

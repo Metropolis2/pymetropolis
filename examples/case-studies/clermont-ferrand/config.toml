@@ -19,37 +19,6 @@ nb_medoids = 3
 [survey.mobisurvstd]
 path = "data/emc2-2023.zip"
 
-[joint_travel]
-features = [
-    "nb_activities",
-    "total_activity_duration",
-    "total_distance",
-    "first_activity_start",
-    "last_activity_end",
-    "age",
-    "nb_persons",
-    "nb_minors",
-    "nb_cars",
-    "nb_driving_licenses",
-    "minor_ratio",
-    "car_ratio",
-    "driving_license_ratio",
-    "woman",
-    "has_driving_license",
-    "has_leisure_purpose",
-    "has_shopping_purpose",
-    "has_task_purpose",
-    "has_other_purpose",
-    "has_work_purpose",
-    "has_education_purpose",
-    "has_escort_purpose",
-    "professional_activity",
-    "home_density",
-    "home_urban_type",
-    "home_functional_area_type",
-    "home_functional_area_category",
-]
-
 [osm_urban_areas]
 urban_landuse_tags = [
     "commercial",
@@ -295,7 +264,6 @@ modes = [
     "bicycle"
 ]
 model = "Logit"
-mu = 1.0
 
 [modes]
 [modes.walking]
@@ -448,3 +416,19 @@ reference_mode = "walking"
 from_econometrics = true
 reference_value_of_time_mode = "car_driver"
 reference_value_of_time = 15.0
+
+[mode_availability]
+no_solo_modes_for_joint_tours = true
+
+[mode_availability.car_driver]
+requires_car = true
+requires_driving_license = true
+
+[mode_availability.car_passenger]
+requires_car = true
+
+[mode_availability.walking]
+max_distance = 5000
+
+[mode_availability.bicycle]
+max_distance = 15000

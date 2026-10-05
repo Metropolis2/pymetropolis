@@ -10,15 +10,22 @@ from .files import RoadEdgesUrbanFlagFile
 
 if TYPE_CHECKING:
     import geopandas as gpd
-
-
-def add_urban_tag(edges: gpd.GeoDataFrame, urban_areas: gpd.GeoDataFrame):
-    """Creates a DataFrame classifying the edges within urban areas."""
     import polars as pl
-    from shapely.prepared import prep
 
-    geom = prep(urban_areas.unary_union)
-    urban_flag = [geom.contains(g) for g in edges.geometry]
+
+def add_urban_tag(edges: gpd.GeoDataFrame, urban_areas: gpd.GeoDataFrame) -> pl.DataFrame:
+    """Creates a DataFrame classifying the edges within urban areas."""
+    import numpy as np
+    import polars as pl
+    import shapely
+
+    # Each polygon of the urban areas only needs to be tested against the edges whose bounding box
+    # intersects it (much faster than testing each edge against the whole MultiPolygon).
+    parts = shapely.get_parts(urban_areas.geometry.values)
+    tree = shapely.STRtree(edges.geometry.values)
+    _, edge_idx = tree.query(parts, predicate="contains")
+    urban_flag = np.zeros(len(edges), dtype=bool)
+    urban_flag[edge_idx] = True
     df = pl.DataFrame({"edge_id": edges["edge_id"], "urban": urban_flag})
     return df
 
