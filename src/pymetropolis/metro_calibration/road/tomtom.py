@@ -105,13 +105,14 @@ def draw_indices_in_window(
     """
     import numpy as np
     from scipy.spatial import KDTree
+    from tqdm import tqdm
 
     assert min_distance is not None or max_distance is not None
     tree = KDTree(xy)
     idx = np.empty((nb_routes, nb_nodes), dtype=np.int64)
     idx[:, 0] = rng.integers(0, len(xy), size=nb_routes)
     all_indices = np.arange(len(xy))
-    for k in range(1, nb_nodes):
+    for k in tqdm(range(1, nb_nodes), total=nb_nodes - 1, desc="Drawing nodes", smoothing=0.05):
         prev = idx[:, k - 1]
         # Points within `max_distance` of the previous point (the candidates).
         outer = (
