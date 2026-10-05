@@ -153,6 +153,8 @@ nb_waypoints = 50
 nb_batches = 5
 excluded_edge_types = ["motorway", "motorway_link", "trunk", "trunk_link", "primary", "primary_link"]
 api_key = "env:TOMTOM_API_KEY"
+min_distance = 500
+max_distance = 50_000
 
 [calibration]
 [calibration.free_flow_travel_time]
