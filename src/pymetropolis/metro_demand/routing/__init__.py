@@ -1,6 +1,11 @@
 from .files import (
     NonPrimaryCarTrips,
+    NonPrimaryParkAndRideCarTrips,
+    ParkAndRideRoadNodesFile,
+    ParkAndRideTripsCarFreeFlowTravelTimesFile,
+    ParkAndRideTripsPublicTransitItinerariesFile,
     PrimaryCarTripsAccessEgressFile,
+    PrimaryParkAndRideCarTripsAccessEgressFile,
     TripsBicycleCostsFile,
     TripsBicycleNodesFile,
     TripsCarFreeFlowTravelTimesFile,
@@ -16,6 +21,7 @@ from .files import (
 )
 from .od_pairs import (
     BicycleODNodesFromCoordinatesStep,
+    ParkAndRideRoadODNodesFromCoordinatesStep,
     PedestrianODNodesFromCoordinatesStep,
     RoadODNodesFromCoordinatesStep,
 )
@@ -26,10 +32,15 @@ from .od_zones import (
     ZonesLevel4RoadNodesStep,
     ZonesLevel5RoadNodesStep,
 )
-from .opentripplanner import TripsOpenTripPlannerStep
+from .opentripplanner import ParkAndRideTripsOpenTripPlannerStep, TripsOpenTripPlannerStep
 from .r5 import TripsPublicTransitTravelTimeFromR5Step
-from .road_split import CarAccessEgressStep, RoadNetworkPrimaryEdgesStep
+from .road_split import (
+    CarAccessEgressStep,
+    ParkAndRideCarAccessEgressStep,
+    RoadNetworkPrimaryEdgesStep,
+)
 from .routing_cli import (
+    ParkAndRideTripsCarFreeFlowTravelTimesStep,
     TripsBicycleCostStep,
     TripsCarFreeFlowTravelTimesStep,
     TripsPedestrianDistancesStep,
@@ -43,7 +54,13 @@ ROUTING_FILES = [
     TripsRoadNodesFile,
     TripsCarFreeFlowTravelTimesFile,
     PrimaryCarTripsAccessEgressFile,
+    NonPrimaryCarTrips,
     TripsPublicTransitItinerariesFile,
+    ParkAndRideRoadNodesFile,
+    ParkAndRideTripsCarFreeFlowTravelTimesFile,
+    PrimaryParkAndRideCarTripsAccessEgressFile,
+    NonPrimaryParkAndRideCarTrips,
+    ParkAndRideTripsPublicTransitItinerariesFile,
     NonPrimaryCarTrips,
     ZonesLevel1RoadNodeFile,
     ZonesLevel2RoadNodeFile,
@@ -63,6 +80,10 @@ ROUTING_STEPS = [
     CarAccessEgressStep,
     TripsOpenTripPlannerStep,
     TripsPublicTransitTravelTimeFromR5Step,
+    ParkAndRideCarAccessEgressStep,
+    ParkAndRideRoadODNodesFromCoordinatesStep,
+    ParkAndRideTripsOpenTripPlannerStep,
+    ParkAndRideTripsCarFreeFlowTravelTimesStep,
     ZonesLevel1RoadNodesStep,
     ZonesLevel2RoadNodesStep,
     ZonesLevel3RoadNodesStep,

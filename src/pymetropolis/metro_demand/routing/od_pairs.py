@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 
+from pymetropolis.metro_demand.modes.park_and_ride.files import ParkAndRideStopsFile
 from pymetropolis.metro_demand.population.files import TripsDestinationsFile, TripsOriginsFile
 from pymetropolis.metro_network.bicycle_network.files import BicycleEdgesCleanFile
 from pymetropolis.metro_network.pedestrian_network.files import PedestrianEdgesCleanFile
@@ -11,12 +12,26 @@ from pymetropolis.metro_network.road_network.files import RoadEdgesCleanFile
 from pymetropolis.metro_pipeline import PopulationStep, Step
 from pymetropolis.metro_pipeline.parameters import ListParameter
 from pymetropolis.metro_pipeline.types import String
+from pymetropolis.modes import StepWithModes
 
-from .files import TripsBicycleNodesFile, TripsPedestrianNodesFile, TripsRoadNodesFile
+from .files import (
+    ParkAndRideRoadNodesFile,
+    TripsBicycleNodesFile,
+    TripsPedestrianNodesFile,
+    TripsRoadNodesFile,
+)
 
 if TYPE_CHECKING:
     import geopandas as gpd
     import polars as pl
+
+
+def prepare_edges(edges: gpd.GeoDataFrame, forbidden_types: list[str] = []) -> gpd.GeoDataFrame:
+    edges = edges.loc[
+        ~edges["edge_type"].isin(forbidden_types), ["edge_id", "geometry", "source", "target"]
+    ].copy()
+    logger.debug("Creating source / target points")
+    return create_source_target_points(edges)
 
 
 def identify_od_pairs(
@@ -26,9 +41,10 @@ def identify_od_pairs(
     import polars as pl
 
     assert len(origins_gdf) == len(destinations_gdf)
-    # Create source / target point of the edges.
-    logger.debug("Creating source / target points")
-    edges = create_source_target_points(edges)
+    if "source_point" not in edges.columns:
+        # Create source / target point of the edges.
+        logger.debug("Creating source / target points")
+        edges = create_source_target_points(edges)
     logger.debug("Identifying nearest nodes for origins")
     origins = identify_nodes(edges, origins_gdf, id_col="trip_id")
     logger.debug("Identifying nearest nodes for destinations")
@@ -224,13 +240,12 @@ class RoadODNodesFromCoordinatesStep(StepWithRoadForbiddenTypes, PopulationStep)
     def run(self):
         import polars as pl
 
+        assert self.forbidden_types is not None
+
         edges = self.input["edges"].read()
-        edges = edges.loc[
-            ~edges["edge_type"].isin(self.forbidden_types),
-            ["edge_id", "geometry", "source", "target"],
-        ]
         origins = self.input["origins"].read()
         destinations = self.input["destinations"].read()
+        edges = prepare_edges(edges, self.forbidden_types)
         ods = identify_od_pairs(edges, origins, destinations)
         ods = ods.select(
             pl.all()
@@ -238,3 +253,35 @@ class RoadODNodesFromCoordinatesStep(StepWithRoadForbiddenTypes, PopulationStep)
             .name.replace("destination_", "destination_road_")
         )
         self.output["ods"].write(ods)
+
+
+class ParkAndRideRoadODNodesFromCoordinatesStep(
+    StepWithModes, StepWithRoadForbiddenTypes, PopulationStep
+):
+    """For each park-and-ride facility, identifies the node of the road network to be used as
+    origin / destination for the car parts of park-and-ride trips.
+
+    The nodes are identified in the same way as in the
+    [`RoadODNodesFromCoordinatesStep`](steps.md#roadodnodesfromcoordinatesstep).
+    The [`road_network.forbidden_types`](parameters.md#road_networkforbidden_types) has the same
+    meaning.
+    """
+
+    input_files = {"edges": RoadEdgesCleanFile, "stops": ParkAndRideStopsFile}
+    output_files = {"nodes": ParkAndRideRoadNodesFile}
+    priority = 0
+
+    def is_defined(self) -> bool:
+        return self.has_mode("park_and_ride")
+
+    def run(self):
+        import polars as pl
+
+        assert self.forbidden_types is not None
+
+        edges = self.input["edges"].read()
+        stops = self.input["stops"].read()
+        edges = prepare_edges(edges, self.forbidden_types)
+        nodes = identify_nodes(edges, stops, id_col="tour_id")
+        nodes = nodes.select("tour_id", pl.all().exclude("tour_id").name.prefix("pr_road_"))
+        self.output["nodes"].write(nodes)

@@ -1,4 +1,5 @@
-from pymetropolis.modes import Bicycle, PublicTransit, Walking
+from pymetropolis.metro_demand.modes.park_and_ride.files import ParkAndRidePreferencesFile
+from pymetropolis.modes import Bicycle, ParkAndRide, PublicTransit, Walking
 
 from .bicycle import (
     BicyclePreferencesFromPopulationStep,
@@ -21,6 +22,7 @@ from .outside_option import (
     OutsideOptionPreferencesStep,
     OutsideOptionTravelTimesFromRoadDistancesStep,
 )
+from .park_and_ride import PARK_AND_RIDE_FILES, PARK_AND_RIDE_STEPS
 from .public_transit import (
     PublicTransitPreferencesFromPopulationStep,
     PublicTransitPreferencesStep,
@@ -38,7 +40,13 @@ WALKING_FILES = [WalkingPreferencesFile, WalkingTravelTimesFile]
 BICYCLE_FILES = [BicyclePreferencesFile, BicycleTravelTimesFile]
 
 MODES_FILES = (
-    CAR_FILES + PT_FILES + WALKING_FILES + OUTSIDE_FILES + BICYCLE_FILES + [ModeChoiceMuFile]
+    CAR_FILES
+    + PT_FILES
+    + WALKING_FILES
+    + OUTSIDE_FILES
+    + BICYCLE_FILES
+    + PARK_AND_RIDE_FILES
+    + [ModeChoiceMuFile]
 )
 
 # Preferences file of each trip-based mode, i.e., the modes whose constant and value of time are
@@ -46,6 +54,7 @@ MODES_FILES = (
 # file is read directly by `PrepareMetroAlternativesStep`).
 MODE_PREFERENCES_FILES = {
     **CAR_PREFERENCES_FILES,
+    ParkAndRide: ParkAndRidePreferencesFile,
     PublicTransit: PublicTransitPreferencesFile,
     Walking: WalkingPreferencesFile,
     Bicycle: BicyclePreferencesFile,
@@ -69,4 +78,12 @@ BICYCLE_STEPS = [
 ]
 MU_STEPS = [ModeChoiceMuStep, ModeChoiceMuFromPopulationStep]
 
-MODES_STEPS = CAR_STEPS + PT_STEPS + WALKING_STEPS + OUTSIDE_STEPS + BICYCLE_STEPS + MU_STEPS
+MODES_STEPS = (
+    CAR_STEPS
+    + PT_STEPS
+    + WALKING_STEPS
+    + OUTSIDE_STEPS
+    + BICYCLE_STEPS
+    + PARK_AND_RIDE_STEPS
+    + MU_STEPS
+)
