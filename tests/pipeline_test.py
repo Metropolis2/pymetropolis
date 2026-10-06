@@ -508,6 +508,63 @@ def test_pipeline_sequence_is_deterministic():
             assert step_sequence == expected
 
 
+class UsedDirFile(MetroTxtFile):
+    path = "used/file.txt"
+
+
+class ExternalDirFile(MetroTxtFile):
+    path = "external/file.txt"
+
+
+class UnusedDirFile(MetroTxtFile):
+    path = "unused/file.txt"
+
+
+class UsedDirStep(Step):
+    output_files = {"used": UsedDirFile}
+
+    def run(self):
+        self.output["used"].write("used")
+
+
+class ExternalDirStep(Step):
+    """Writes its output without `MetroFile.write`, like a Step running an external tool."""
+
+    output_files = {"external": ExternalDirFile}
+
+    def run(self):
+        self.output["external"].get_path().write_text("external")
+
+
+class UnusedDirStep(Step):
+    """Non-primary Step whose output is not needed by any other Step: it never runs."""
+
+    priority = 0
+    output_files = {"unused": UnusedDirFile}
+
+    def run(self):
+        self.output["unused"].write("unused")
+
+
+def test_directories_are_created_only_when_needed():
+    """No directory is created under `main_directory` until a file is saved within it: a dry run
+    creates nothing, and a real run only creates the directories of the files actually written.
+    """
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        main_dir = Path(tmp_dir) / "output"
+        step_classes: list[type[Step]] = [UsedDirStep, ExternalDirStep, UnusedDirStep]
+
+        pipeline = MetroPipeline(Config({"main_directory": str(main_dir)}), step_classes)
+        pipeline.run(dry_run=True)
+        assert not main_dir.exists()
+
+        pipeline.run()
+        assert (main_dir / "used" / "file.txt").is_file()
+        assert (main_dir / "external" / "file.txt").is_file()
+        assert (main_dir / "update_files" / "UsedDirStep.json").is_file()
+        assert not (main_dir / "unused").exists()
+
+
 def test_relative_main_directory_is_resolved_against_config_file():
     """A relative `main_directory` is resolved against the directory of the main config file, not
     against the current working directory.
@@ -519,7 +576,8 @@ def test_relative_main_directory_is_resolved_against_config_file():
         config_path.write_text('main_directory = "output"\n')
         config = Config.from_toml(config_path)
         assert config.main_directory == config_dir / "output"
-        assert config.main_directory.is_dir()
+        # The directory is only created when a file needs to be saved in it.
+        assert not config.main_directory.exists()
 
 
 def test_absolute_main_directory_is_unaffected_by_config_file_location():

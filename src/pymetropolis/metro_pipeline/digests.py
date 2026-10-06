@@ -108,6 +108,7 @@ class DigestCache:
         if not self._dirty:
             return
         entries = {k: v for k, v in self._entries.items() if k in self._used}
+        self.cache_path.parent.mkdir(parents=True, exist_ok=True)
         tmp_fd, tmp_name = tempfile.mkstemp(dir=self.cache_path.parent, suffix=".tmp")
         try:
             with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:

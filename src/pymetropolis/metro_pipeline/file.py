@@ -227,7 +227,6 @@ class MetroFile:
     def from_dir(cls, main_directory: Path) -> Self:
         instance = cls.__new__(cls)
         instance.complete_path = main_directory / Path(cls.path)
-        instance.create_dir_if_needed()
         return instance
 
     def read(self) -> Any:
@@ -241,6 +240,15 @@ class MetroFile:
         raise MetropyError("Unimplemented")
 
     def write(self, value: Any):
+        """Saves `value` to the file, creating its parent directory if needed."""
+        self.create_dir_if_needed()
+        self._write(value)
+
+    def _write(self, value: Any):
+        """Saves `value` to the file, whose parent directory is guaranteed to exist.
+
+        This method needs to be overridden by each subclass.
+        """
         raise MetropyError("Unimplemented")
 
     def create_dir_if_needed(self):
@@ -303,7 +311,7 @@ class MetroDataFrameFile(MetroFile):
 
     @override
     @error_context(msg="Cannot save DataFrame {}", fmt_args=[0])
-    def write(self, df: pl.DataFrame):
+    def _write(self, df: pl.DataFrame):
         df = self.validate(df)
         df.write_parquet(self.complete_path)
 
@@ -371,8 +379,9 @@ class MetroGeoDataFrameFile(MetroFile):
                 gdf.drop(columns=col, inplace=True)
         return gdf
 
+    @override
     @error_context(msg="Cannot save GeoDataFrame {}", fmt_args=[0])
-    def write(self, gdf: gpd.GeoDataFrame):
+    def _write(self, gdf: gpd.GeoDataFrame):
         import json
 
         import pyarrow.parquet as pq
@@ -449,8 +458,9 @@ class MetroGeoDataFrameFile(MetroFile):
 class MetroMLEstimatorFile(MetroFile):
     """Special MetroFile for Machine-Learning estimators."""
 
+    @override
     @error_context(msg="Cannot save joblib file {}", fmt_args=[0])
-    def write(self, estimator: BaseEstimator):
+    def _write(self, estimator: BaseEstimator):
         import joblib
 
         with open(self.complete_path, "wb") as f:
@@ -475,8 +485,9 @@ class MetroMLEstimatorFile(MetroFile):
 
 
 class MetroTxtFile(MetroFile):
+    @override
     @error_context(msg="Cannot save Txt file {}", fmt_args=[0])
-    def write(self, txt: str):
+    def _write(self, txt: str):
         with open(self.complete_path, "w") as f:
             f.write(txt)
 
@@ -497,8 +508,9 @@ class MetroTxtFile(MetroFile):
 
 
 class MetroPlotFile(MetroFile):
+    @override
     @error_context(msg="Cannot save plot {}", fmt_args=[0])
-    def write(self, fig: plt.Figure):
+    def _write(self, fig: plt.Figure):
         fig.savefig(self.complete_path, dpi=300)
 
     @override

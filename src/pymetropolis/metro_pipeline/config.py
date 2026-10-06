@@ -77,7 +77,7 @@ class Config:
         # Must come first: every other step below may consult the parent config.
         self.read_parent_config(_parent_chain)
         self.check_main_directory()
-        # After `check_main_directory`, which creates `main_directory/update_files/`.
+        # After `check_main_directory`, which defines `main_directory`.
         self.digest_cache = DigestCache(self.main_directory / "update_files" / "digest_cache.json")
         self.read_secrets()
         self.read_main_population()
@@ -124,8 +124,6 @@ class Config:
         if path in chain:
             chain_str = " -> ".join(str(p) for p in (*chain, path))
             raise MetropyError(f"Cyclic `{PARENT_CONFIG_KEY}` chain: {chain_str}")
-        # Note. Building the parent Config runs its own `check_main_directory`, which creates its
-        # `main_directory` (and `update_files/`) if needed. This is idempotent and harmless.
         self.parent_config = Config(parse_toml(path), path, _parent_chain=chain)
 
     def chain(self) -> Iterator[Config]:
@@ -147,9 +145,10 @@ class Config:
         return [config.main_directory for config in self.chain() if config is not self]
 
     def check_main_directory(self):
-        """Asserts that `main_directory` is properly defined and that the directory exists.
+        """Asserts that `main_directory` is properly defined.
 
-        If the directory does not exist, creates it.
+        The directory itself is not created here: it (and its sub-directories) are created only when
+        a file needs to be saved within them.
 
         A relative `main_directory` is resolved against the directory of the main config file.
 
@@ -164,7 +163,6 @@ class Config:
         if not isinstance(main_dir, str):
             raise MetropyError(f"Config value `{MAIN_DIR_KEY}` should be a path, got `{main_dir}`")
         path = self.resolve_path(main_dir)
-        # Checked before creating the directory, so that an invalid config creates nothing.
         # Paths are resolved for the comparison so that two different ways of spelling the same
         # directory are caught; `self.main_directory` itself is kept as-is.
         for parent_config in self.chain():
@@ -177,11 +175,7 @@ class Config:
                     "config must write to its own directory, otherwise it would overwrite the "
                     "parent run's output files and caches"
                 )
-        path.mkdir(exist_ok=True, parents=True)
         self.main_directory = path
-        # Also create the update_files/ directory if needed.
-        update_files_path = path / "update_files"
-        update_files_path.mkdir(exist_ok=True)
 
     def read_secrets(self):
         """Reads the secrets file if it exists.

@@ -145,6 +145,7 @@ Other changes:
 - Optimized `OpenStreetMapUrbanAreasStep` step.
 - Optimized `UrbanEdgesStep` step.
 - Optimized `MapMatchingStep` step.
+- Subdirectories in `main_directory` are created on-the-fly as needed.
 
 Removed steps:
 

@@ -273,6 +273,11 @@ class Step:
 
     @error_context(msg="Failed to execute step `{}`", fmt_args=[0])
     def execute(self):
+        # Directories are created only for the steps actually executed, and before `run` so that
+        # output files written by something else than `MetroFile.write` (e.g., Metropolis-Core
+        # itself) have their directory available.
+        for f in self.output.values():
+            f.create_dir_if_needed()
         self.run()
         self.save_update_dict()
 
@@ -333,6 +338,7 @@ class Step:
                 continue
             update_dict[f"metro_file_{k}_mtime"] = f.last_modified_time()
         update_dict["config_hash"] = self.config_hash()
+        self._update_file_path.parent.mkdir(parents=True, exist_ok=True)
         with open(self._update_file_path, "w", encoding="utf-8") as f:
             json.dump(update_dict, f)
 
