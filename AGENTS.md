@@ -366,7 +366,9 @@ Always run `ruff format`, `ruff check --fix`, `ty check`, and
 `pytest` after making changes, and fix anything they flag before
 treating a task as finished. These same checks (including `pytest`)
 run in CI on every pull request and push to `main`
-(`.github/workflows/lint.yml`, Python 3.14). Ruff uses a line length
+(`.github/workflows/lint.yml`; Python 3.14, plus 3.12 for `pytest` —
+reproduce locally, without touching `.venv`, with
+`uv run --isolated --python 3.12 pytest`). Ruff uses a line length
 of 100 with `skip-magic-trailing-comma = true`.
 
 ## Conventions

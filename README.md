@@ -119,7 +119,8 @@ An increase of the PATCH number indicates bug fixes.
 <!-- GETTING STARTED -->
 ## Getting Started
 
-1. Install the Python package with `pip install pymetropolis`.
+1. Install the Python package with `pip install pymetropolis` (Python 3.12 or later is required;
+   Python 3.14 is recommended).
 2. Download the [Metropolis-Core simulator](https://github.com/Metropolis2/Metropolis-Core/releases).
 3. Create a TOML configuration file describing the simulation instance.
 4. Run the pipeline with `pymetropolis my-config.toml`.

@@ -36,15 +36,23 @@ jobs:
         run: uv run ty check
 
   pytest:
-    name: Pytest
+    name: Pytest (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Minimum supported version (`requires-python`) and pinned version (`.python-version`).
+        python-version: ["3.12", "3.14"]
+    env:
+      # Overrides `.python-version` so that `uv run` uses the matrix version.
+      UV_PYTHON: ${{ matrix.python-version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
       - name: Install uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d
       - name: Install Python
-        run: uv python install 3.14
+        run: uv python install ${{ matrix.python-version }}
       - name: Install Graphviz
         run: sudo apt-get update && sudo apt-get install -y graphviz
       - name: Run tests
