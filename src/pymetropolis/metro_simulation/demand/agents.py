@@ -57,7 +57,7 @@ class PrepareMetroAgentsStep(StepWithModes, PopulationStep):
         import polars as pl
 
         trips = self.input["trips"].read()
-        maybe_mus = self.input["mus"].read_if_exists()
+        maybe_mus = self.input["mus"].read() if "mus" in self.input else None
         agents = trips.select(agent_id="tour_id").unique().sort("agent_id")
         if self.has_mode_choice():
             # Add mode choice parameters.
