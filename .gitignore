@@ -22,3 +22,4 @@ qgis/
 secrets.toml
 .env
 .claude/settings.local.json
+CLAUDE.md
