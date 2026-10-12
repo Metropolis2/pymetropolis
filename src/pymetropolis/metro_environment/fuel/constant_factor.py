@@ -1,8 +1,12 @@
-from pymetropolis.metro_demand.routing.files import TripsCarFreeFlowTravelTimesFile
+from pymetropolis.metro_demand.routing.files import (
+    ParkAndRideTripsCarFreeFlowTravelTimesFile,
+    TripsCarFreeFlowTravelTimesFile,
+)
 from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.metro_pipeline.parameters import FloatParameter
+from pymetropolis.modes import StepWithModes
 
-from .files import CarFuelFile
+from .files import CarFuelFile, ParkAndRideFuelFile
 
 
 class GenericCarFuelStep(PopulationStep):
@@ -39,17 +43,18 @@ class CarFuelStep(GenericCarFuelStep):
         self.output["fuel_consumption"].write(df)
 
 
-class ParkAndRideFuelStep(GenericCarFuelStep):
+class ParkAndRideFuelStep(StepWithModes, GenericCarFuelStep):
     """Generates the fuel consumption and price for the car part of each park-and-ride trip by
     applying a constant emission factor to the free-flow fastest-path length, combined with a fuel
     price.
     """
 
-    input_files = {"ff_distances": TripsCarFreeFlowTravelTimesFile}
-    output_files = {"fuel_consumption": CarFuelFile}
+    input_files = {"ff_distances": ParkAndRideTripsCarFreeFlowTravelTimesFile}
+    output_files = {"fuel_consumption": ParkAndRideFuelFile}
+    priority = 0
 
     def is_defined(self) -> bool:
-        return self.fuel_factor is not None
+        return self.fuel_factor is not None and self.has_mode("park_and_ride")
 
     def run(self):
         import polars as pl

@@ -212,6 +212,22 @@ class CarRidesharing(metaclass=CarMode):
         return CarRidesharingVehicle
 
 
+# The P+R traveler drives the car part with the `CarDriverAloneVehicle` (no HOV lane, full
+# contribution to congestion), so the car-driver availability rules apply (car ownership, driving
+# license, minimum age, no joint tours).
+class ParkAndRide(metaclass=CarMode):
+    _name = "park and ride"
+    _repr = "park_and_ride"
+
+    @classmethod
+    def is_driver(cls) -> bool:
+        return True
+
+    @classmethod
+    def vehicle(cls) -> MetaVehicle:
+        return CarDriverAloneVehicle
+
+
 class PublicTransit(metaclass=MetaMode):
     _name = "public transit"
     _repr = "public_transit"
@@ -246,7 +262,14 @@ class OutsideOption(metaclass=MetaMode):
 
 CAR_MODES: list[CarMode] = [CarDriver, CarDriverWithPassengers, CarPassenger, CarRidesharing]
 
-METRO_MODES: list[MetaMode] = [*CAR_MODES, PublicTransit, Walking, Bicycle, OutsideOption]
+METRO_MODES: list[MetaMode] = [
+    *CAR_MODES,
+    PublicTransit,
+    Walking,
+    Bicycle,
+    ParkAndRide,
+    OutsideOption,
+]
 
 METRO_VEHICLES: list[MetaVehicle] = [
     CarDriverAloneVehicle,

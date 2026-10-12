@@ -9,14 +9,8 @@ from typing import TYPE_CHECKING
 from loguru import logger
 
 from pymetropolis.metro_common import MetropyError
-from pymetropolis.metro_demand.routing.files import (
-    TripsBicycleCostsFile,
-    TripsBicycleNodesFile,
-    TripsCarFreeFlowTravelTimesFile,
-    TripsPedestrianDistancesFile,
-    TripsPedestrianNodesFile,
-    TripsRoadNodesFile,
-)
+from pymetropolis.metro_demand.modes.park_and_ride.transfer_stops import park_and_ride_car_trips
+from pymetropolis.metro_demand.population.files import TripsFile
 from pymetropolis.metro_network.bicycle_network.files import (
     BicycleEdgesCleanFile,
     BicycleEdgesCostsFile,
@@ -28,8 +22,21 @@ from pymetropolis.metro_network.road_network.files import (
 )
 from pymetropolis.metro_pipeline import PopulationStep, Step
 from pymetropolis.metro_pipeline.parameters import BoolParameter, ExecPathParameter
+from pymetropolis.modes import StepWithModes
+
+from .files import (
+    ParkAndRideRoadNodesFile,
+    ParkAndRideTripsCarFreeFlowTravelTimesFile,
+    TripsBicycleCostsFile,
+    TripsBicycleNodesFile,
+    TripsCarFreeFlowTravelTimesFile,
+    TripsPedestrianDistancesFile,
+    TripsPedestrianNodesFile,
+    TripsRoadNodesFile,
+)
 
 if TYPE_CHECKING:
+    import geopandas as gpd
     import polars as pl
 
 
@@ -156,16 +163,8 @@ class TripsCarFreeFlowTravelTimesStep(RoutingCLIStep, PopulationStep):
 
         edges_gdf = self.input["edges"].read()
         edges_fftt = self.input["edges_fftt"].read()
-        edges = (
-            pl.from_pandas(edges_gdf.loc[:, ["edge_id", "source", "target", "length"]])
-            .join(edges_fftt, on="edge_id", how="left")
-            .with_columns(pl.col("free_flow_travel_time").dt.total_nanoseconds() / 1e9)
-            .rename({"free_flow_travel_time": "weight"})
-        )
-        n = edges["weight"].null_count()
-        if n:
-            logger.warning(f"Discarding {n} edges with NULL free-flow travel time")
-            edges = edges.filter(pl.col("weight").is_not_null())
+        edges = prepare_edges(edges_gdf, edges_fftt)
+
         od_pairs = self.input["od_pairs"].read()
         trips = od_pairs.select(
             "trip_id", origin_node="origin_road_node", destination_node="destination_road_node"
@@ -181,6 +180,82 @@ class TripsCarFreeFlowTravelTimesStep(RoutingCLIStep, PopulationStep):
             .list.sum()
         )
         self.output["fftt"].write(df)
+
+
+class ParkAndRideTripsCarFreeFlowTravelTimesStep(StepWithModes, RoutingCLIStep, PopulationStep):
+    """Computes the travel time on the road network by car, under free-flow conditions, for the car
+    part of park-and-ride trips.
+
+    For each tour, only the first and last trip have a car part.
+    """
+
+    input_files = {
+        "trips": TripsFile,
+        "od_pairs": TripsRoadNodesFile,
+        "road_nodes": ParkAndRideRoadNodesFile,
+        "edges": RoadEdgesCleanFile,
+        "edges_fftt": RoadEdgesFreeFlowTravelTimeFile,
+    }
+    output_files = {"fftt": ParkAndRideTripsCarFreeFlowTravelTimesFile}
+    priority = 0
+
+    def is_defined(self) -> bool:
+        return super().is_defined() and self.has_mode("park_and_ride")
+
+    def run(self):
+        import polars as pl
+
+        assert self.exec_path is not None
+
+        edges_gdf = self.input["edges"].read()
+        edges_fftt = self.input["edges_fftt"].read()
+        edges = prepare_edges(edges_gdf, edges_fftt)
+
+        od_pairs = self.input["od_pairs"].read()
+        pr_nodes = self.input["road_nodes"].read().filter(pl.col("pr_road_node").is_not_null())
+        car_trips = park_and_ride_car_trips(self.input["trips"].read(), pr_nodes["tour_id"])
+        # Outbound car part: from the trip's origin to the P+R facility.
+        # Inbound car part: from the P+R facility to the trip's destination.
+        trips = (
+            car_trips.join(od_pairs, on="trip_id", how="inner")
+            .join(pr_nodes.select("tour_id", "pr_road_node"), on="tour_id", how="inner")
+            .select(
+                "trip_id",
+                origin_node=pl.when("is_outbound")
+                .then("origin_road_node")
+                .otherwise("pr_road_node"),
+                destination_node=pl.when("is_outbound")
+                .then("pr_road_node")
+                .otherwise("destination_road_node"),
+            )
+        )
+        df = trip_routing(trips, edges, self.exec_path, with_routes=True)
+        df = df.select(
+            "trip_id", free_flow_travel_time=pl.duration(seconds="value"), free_flow_route="route"
+        )
+        # Add route distance.
+        df = df.with_columns(
+            free_flow_distance=pl.col("free_flow_route")
+            .list.eval(pl.element().replace_strict(edges["edge_id"], edges["length"]))
+            .list.sum()
+        )
+        self.output["fftt"].write(df)
+
+
+def prepare_edges(edges_gdf: gpd.GeoDataFrame, edges_fftt: pl.DataFrame) -> pl.DataFrame:
+    import polars as pl
+
+    edges = (
+        pl.from_pandas(edges_gdf.loc[:, ["edge_id", "source", "target", "length"]])
+        .join(edges_fftt, on="edge_id", how="left")
+        .with_columns(pl.col("free_flow_travel_time").dt.total_nanoseconds() / 1e9)
+        .rename({"free_flow_travel_time": "weight"})
+    )
+    n = edges["weight"].null_count()
+    if n:
+        logger.warning(f"Discarding {n} edges with NULL free-flow travel time")
+        edges = edges.filter(pl.col("weight").is_not_null())
+    return edges
 
 
 def trip_routing(

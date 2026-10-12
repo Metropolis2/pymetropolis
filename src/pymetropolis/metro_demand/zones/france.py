@@ -90,7 +90,9 @@ class FrenchZonesStep(AbstractFrenchZonesStep, IRISStep, AdminExpressStep, GeoSt
                 (self.read_iris, "iris_id"),
             )
         ):
-            gdf = func(bbox=bbox)
+            # Local IGN files can use another CRS than the API: `area` and `all_points` are in
+            # EPSG:4326.
+            gdf = func(bbox=bbox).to_crs("EPSG:4326")
             gdf["within_area"] = gdf.intersects(area)
             intersects_points = (
                 gdf.intersects(all_points.union_all()) if not all_points.empty else False

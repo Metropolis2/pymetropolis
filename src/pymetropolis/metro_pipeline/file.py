@@ -77,6 +77,7 @@ class MetroDataType(Enum):
             is_datetime64_any_dtype,
             is_float_dtype,
             is_integer_dtype,
+            is_object_dtype,
             is_string_dtype,
             is_timedelta64_dtype,
             is_unsigned_integer_dtype,
@@ -102,6 +103,13 @@ class MetroDataType(Enum):
             return isinstance(dtype, pd.CategoricalDtype)
         elif self == MetroDataType.ANY:
             return True
+        elif self in (
+            MetroDataType.LIST_OF_IDS,
+            MetroDataType.LIST_OF_FLOATS,
+            MetroDataType.LIST_OF_DURATIONS,
+        ):
+            # Pandas stores lists in columns of object dtype.
+            return is_object_dtype(dtype)
         # TIME and DURATION dtypes are not allowed in GeoDataFrames.
         else:
             return False
