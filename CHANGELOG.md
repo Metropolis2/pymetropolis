@@ -3,7 +3,7 @@
 ## [Unreleased]
 
 New mode: `park_and_ride` (park-and-ride: car from home to a public-transit stop, then public
-transit). See the `park_and_ride` section below.
+transit). @PierreFrevalSGP
 
 New steps:
 
@@ -137,7 +137,6 @@ New features:
 - Mode availability (car ownership, driving license, minimum age, joint tours, bicycle ownership,
   maximum walking / bicycle distance) is now configurable through the `mode_availability.*`
   parameters, controlled by the `StepWithModeAvailability` step.
-- New `park_and_ride` mode (see below).
 
 Other changes:
 
@@ -186,27 +185,6 @@ Fixes:
   (`ign.admin_express_directory` / `ign.contours_iris_directory`).
 - Fix `RouteResultsFile` mixing trip ids with and without the population prefix, and missing the
   access / egress parts of primary car trips.
-- `MetroGeoDataFrameFile` now accepts list columns (`LIST_OF_*` data types).
-
-Park-and-ride (`park_and_ride` mode):
-
-- P+R facility: for each tour starting from home and ending at home (or with a single trip), the
-  public-transit stop nearest to home among the stops served by an allowed route
-  (`modes.park_and_ride.allowed_route_types`, `modes.park_and_ride.allowed_agencies`).
-- The first trip of a tour is split into a car leg (origin -> P+R facility) and a public-transit
-  leg (P+R facility -> destination); the last trip into a public-transit leg (origin -> P+R
-  facility) and a car leg (P+R facility -> destination). Intermediary trips are traveled by public
-  transit. The legs are separated by `modes.park_and_ride.transfer_time` (default: 5 minutes).
-- The car legs use the `car_driver_alone` vehicle: the car-driver availability rules
-  (`mode_availability.car_driver.*`, joint tours) apply to P+R. Their free-flow routes are used to identify the
-  primary road network, like car trips.
-- The public-transit legs are computed with OpenTripPlanner. When `opentripplanner.time_type` is
-  `"tstar"` or `"arrival"`, the public-transit leg of the last trip uses the trip's departure time
-  (the arrival time at the P+R facility is unknown).
-- Preferences: tour constant from `modes.park_and_ride.constant` or
-  `modes.park_and_ride.preferences_file`; values of time of the car and public-transit legs read
-  from the `car_driver` and `public_transit` preferences.
-- In `TripResultsFile`, the legs of P+R trips are merged back into a single trip.
 
 ## [0.12.0] – 2026-08-25
 
