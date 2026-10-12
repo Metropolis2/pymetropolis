@@ -4,7 +4,8 @@ Main developer:
 
 - Lucas Javaudin [lucas@lucasjavaudin.com]
 
-Contributors:
+Contributors (chronological order):
 
-- Viery Naoussi: computation of travel time matrices
 - Martin Briand: bug fix
+- Viery Naoussi: computation of travel time matrices
+- Pierre Freval: park-and-ride mode

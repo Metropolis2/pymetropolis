@@ -216,6 +216,12 @@ which is in part supported by 3rd Programme d’Investissements d’Avenir [ANR-
 Other contributors were funded through research grants held by Nicolas Coulombel, André de Palma,
 and Nathalie Picard.
 
+**Collaborations**
+
+Parts of Pymetropolis were developed in collaboration with
+[Société des Grands Projets](https://www.societedesgrandsprojets.fr/), with code contributions from
+Pierre Fréval.
+
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
