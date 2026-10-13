@@ -197,10 +197,8 @@ map = {"motorway": "motorway", "motorway_link": "motorway", ...}
         import polars as pl
         import polars.selectors as cs
 
-        # Overwrite default definitions with custom definitions.
-        definitions = DEFAULT_DEFINITIONS
-        if self.variable_definitions is not None:
-            definitions.update(self.variable_definitions)
+        custom_definitions = self.variable_definitions or {}
+        definitions = DEFAULT_DEFINITIONS | custom_definitions
 
         edges = self.input["edges"].read()
         df = pl.from_pandas(
@@ -218,7 +216,7 @@ map = {"motorway": "motorway", "motorway_link": "motorway", ...}
         for variable, definition in definitions.items():
             if variable in df.columns:
                 variables.append(definition_to_expression(variable, definition))
-            elif variable in self.variable_definitions:
+            elif variable in custom_definitions:
                 # Variable is explicitly defined but is not available in the data.
                 raise MetropyError(
                     f"Cannot define variable for `{variable}`: column does not exist in edges"
