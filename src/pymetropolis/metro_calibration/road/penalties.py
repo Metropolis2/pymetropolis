@@ -225,7 +225,9 @@ class FreeFlowPenaltyCoefficientsFromFileStep(Step):
         assert self.coef_file is not None
 
         var_schema = pl.read_parquet_schema(self.input["edges_variables"].complete_path)
-        existing_variables = set(var_schema.keys()) - {"edge_id"}
+        # `cst` is a specific variable representing the constant, created in
+        # `EdgePenaltiesFromCoefficientsStep`.
+        existing_variables = (set(var_schema.keys()) - {"edge_id"}) | {"cst"}
 
         coefs: pl.DataFrame = read_dataframe(self.coef_file)
 
@@ -245,7 +247,7 @@ class FreeFlowPenaltyCoefficientsFromFileStep(Step):
             sys.exit()
 
         # Check that all defined variables are available in the variables.
-        defined_variables = set(coefs["variable1"]) | set(coefs["variable2"]) - {None}
+        defined_variables = (set(coefs["variable1"]) | set(coefs["variable2"])) - {None}
         missing_variables = defined_variables - existing_variables
         if missing_variables:
             logger.error(

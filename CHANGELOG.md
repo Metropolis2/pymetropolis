@@ -187,6 +187,8 @@ Fixes:
   (`ign.admin_express_directory` / `ign.contours_iris_directory`).
 - Fix `RouteResultsFile` mixing trip ids with and without the population prefix, and missing the
   access / egress parts of primary car trips.
+- Fix `FreeFlowPenaltyCoefficientsFromFileStep` not being discovered by the pipeline.
+- Fix `FreeFlowPenaltyCoefficientsFromFileStep` not recognizing `"cst"` as a valid variable.
 
 ## [0.12.0] – 2026-08-25
 
