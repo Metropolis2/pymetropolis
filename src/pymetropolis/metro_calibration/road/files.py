@@ -137,38 +137,60 @@ class TomTomRoutesFile(MetroGeoDataFrameFile):
 class FreeFlowTravelTimeComparisonPlotFile(MetroPlotFile):
     path = "calibration/road/free_flow/travel_time_comparison.png"
     description = (
-        "Scatter plot comparing TomTom-observed and Metropolis-simulated free-flow travel "
-        "times at the OD level."
+        "Scatter plot comparing observed and Metropolis-simulated free-flow travel "
+        "times of the target routes."
     )
 
 
-class TomTomRoutesMatchedFile(MetroDataFrameFile):
-    path = "calibration/road/tomtom_routes_matched.parquet"
-    description = "Results of the routing requests from TomTom API after map matching."
+class TargetRoutesFile(MetroDataFrameFile):
+    path = "calibration/road/target_routes.parquet"
+    description = (
+        "Target routes on the road network, with their observed travel times (e.g., TomTom routes "
+        "after map matching)."
+    )
     schema = [
         Column(
-            "tomtom_id",
+            "route_id",
             MetroDataType.ID,
-            description="Identifier of the request.",
+            description="Identifier of the route.",
             unique=True,
+            nullable=False,
+        ),
+        Column(
+            "source",
+            MetroDataType.ID,
+            description="Identifier of the route first node.",
+            nullable=False,
+        ),
+        Column(
+            "target",
+            MetroDataType.ID,
+            description="Identifier of the route last node.",
+            nullable=False,
+        ),
+        Column(
+            "departure_time",
+            MetroDataType.DATETIME,
+            description="Departure time of the route.",
+            nullable=False,
+        ),
+        Column(
+            "target_tt",
+            MetroDataType.DURATION,
+            description="Observed travel time on the route, under congested conditions.",
+            nullable=False,
+        ),
+        Column(
+            "target_free_flow_tt",
+            MetroDataType.DURATION,
+            description="Observed travel time on the route, under free-flow conditions.",
+            optional=True,
             nullable=False,
         ),
         Column(
             "length",
             MetroDataType.FLOAT,
-            description="Length of the matched path, in meters.",
-            nullable=False,
-        ),
-        Column(
-            "length_tomtom",
-            MetroDataType.FLOAT,
-            description="Length of the TomTom path, in meters.",
-            nullable=False,
-        ),
-        Column(
-            "rel_length_diff",
-            MetroDataType.FLOAT,
-            description="Relative difference between matched and TomTom length.",
+            description="Length of the path, in meters.",
             nullable=False,
         ),
         Column(
@@ -181,23 +203,21 @@ class TomTomRoutesMatchedFile(MetroDataFrameFile):
 
 
 class CongestionTimeComparisonPlotFile(MetroPlotFile):
-    path = "calibration/road/congestion_time_comparison.png"
+    path = "calibration/road/congestion/comparison.png"
     description = (
-        "Scatter plot comparing TomTom-observed and Metropolis-simulated congested "
-        "times at the OD level."
+        "Scatter plot comparing observed and Metropolis-simulated congested "
+        "times of the target routes."
     )
 
 
-class TomTomCongestionTimesFile(MetroDataFrameFile):
-    path = "calibration/road/tomtom_congestion_times.parquet"
-    description = (
-        "Metropolis-simulated travel time and congested time of each map-matched TomTom route."
-    )
+class TargetRoutesCongestionTimesFile(MetroDataFrameFile):
+    path = "calibration/road/congestion/target_routes_times.parquet"
+    description = "Metropolis-simulated travel time and congested time of each target route."
     schema = [
         Column(
-            "tomtom_id",
+            "route_id",
             MetroDataType.ID,
-            description="Identifier of the request.",
+            description="Identifier of the route.",
             unique=True,
             nullable=False,
         ),

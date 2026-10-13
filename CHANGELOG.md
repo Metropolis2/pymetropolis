@@ -77,7 +77,7 @@ New files:
 - `MetroExAnteSimulatedTravelTimeFunctionsFile`
 - `MetroExAnteExpectedTravelTimeFunctionsFile`
 - `MetroExAnteNextExpectedTravelTimeFunctionsFile`
-- `TomTomCongestionTimesFile`
+- `TargetRoutesCongestionTimesFile`
 - `CongestionTimeComparisonPlotFile`
 - `SurveyedZonesMedoidsFile`
 - `SurveyedZonesPedestrianNodesFile`
@@ -173,6 +173,8 @@ Other changes:
 - Optimized `UrbanEdgesStep` step.
 - Optimized `MapMatchingStep` step.
 - Subdirectories in `main_directory` are created on-the-fly as needed.
+- `TomTomRoutesMatchedFile` is renamed `TargetRoutesFile` (with path
+  `calibration/road/target_routes.parquet` and columns changed).
 
 Removed steps:
 

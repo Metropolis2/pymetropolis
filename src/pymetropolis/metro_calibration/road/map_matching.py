@@ -9,7 +9,7 @@ from pymetropolis.metro_network.road_network.files import RoadEdgesCleanFile
 from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import FloatParameter
 
-from .files import TomTomRoutesFile, TomTomRoutesMatchedFile
+from .files import TargetRoutesFile, TomTomRoutesFile
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -193,6 +193,7 @@ def map_matching(edges: gpd.GeoDataFrame, trajectories: pl.DataFrame, rel_length
             rel_length_diff=(pl.col("length") - pl.col("length_tomtom")) / pl.col("length_tomtom")
         )
         .filter(pl.col("rel_length_diff").abs() <= rel_length_threshold)
+        .select(pl.col("tomtom_id").alias("route_id"), "path", "length")
     )
     n = len(df)
     s = n / len(trajectories)
@@ -227,10 +228,12 @@ class MapMatchingStep(Step):
     )
 
     input_files = {"edges": RoadEdgesCleanFile, "routes": TomTomRoutesFile}
-    output_files = {"results": TomTomRoutesMatchedFile}
+    output_files = {"results": TargetRoutesFile}
     priority = 0
 
     def run(self):
+        import polars as pl
+
         assert self.radius is not None
         assert self.relative_length_threshold is not None
 
@@ -239,5 +242,22 @@ class MapMatchingStep(Step):
         trajectories = load_trajectories(self.input["routes"].complete_path, self.radius)
 
         df = map_matching(edges, trajectories, self.relative_length_threshold)
+
+        # Add the routes' attributes (read through geopandas so that durations and datetimes are
+        # properly converted).
+        routes = self.input["routes"].read()
+        attributes = pl.from_pandas(
+            routes.loc[
+                :,
+                ["tomtom_id", "source", "target", "departure_time", "tt_traffic", "tt_no_traffic"],
+            ]
+        ).rename(
+            {
+                "tomtom_id": "route_id",
+                "tt_traffic": "target_tt",
+                "tt_no_traffic": "target_free_flow_tt",
+            }
+        )
+        df = df.join(attributes, on="route_id", how="inner", maintain_order="left")
 
         self.output["results"].write(df)

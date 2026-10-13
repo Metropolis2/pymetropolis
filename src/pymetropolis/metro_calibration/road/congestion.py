@@ -20,21 +20,19 @@ from pymetropolis.modes import CarDriverAloneVehicle
 
 from .files import (
     CongestionTimeComparisonPlotFile,
-    TomTomCongestionTimesFile,
-    TomTomRoutesFile,
-    TomTomRoutesMatchedFile,
+    TargetRoutesCongestionTimesFile,
+    TargetRoutesFile,
 )
+from .free_flow_lasso import check_free_flow_tt
 
 if TYPE_CHECKING:
     import polars as pl
 
 
-def prepare_trips(
-    routes: pl.DataFrame, matched_routes: pl.DataFrame, edges: pl.DataFrame, period: list
-) -> pl.DataFrame:
-    """Builds one row per map-matched TomTom route, with its departure time (in seconds since
-    midnight) and its origin / destination node (derived from the first / last edge of the
-    matched path, so they are guaranteed to be valid road-network nodes).
+def prepare_trips(routes: pl.DataFrame, edges: pl.DataFrame, period: list) -> pl.DataFrame:
+    """Builds one row per target route, with its departure time (in seconds since midnight) and
+    its origin / destination node (derived from the first / last edge of the path, so they are
+    guaranteed to be valid road-network nodes).
     """
     import polars as pl
 
@@ -48,13 +46,13 @@ def prepare_trips(
     t0, t1 = period[0].seconds(), period[1].seconds()
     routes = routes.filter(pl.col("dt") >= t0, pl.col("dt") <= t1)
 
-    trips = matched_routes.join(routes.select("tomtom_id", "dt"), on="tomtom_id", how="inner")
-    trips = trips.with_columns(path=pl.col("path").cast(pl.List(pl.String)))
+    trips = routes.with_columns(path=pl.col("path").cast(pl.List(pl.String)))
+    edge_ids = edges["edge_id"].cast(pl.String)
     trips = trips.with_columns(
-        origin=pl.col("path").list.first().replace_strict(edges["edge_id"], edges["source"]),
-        destination=pl.col("path").list.last().replace_strict(edges["edge_id"], edges["target"]),
+        origin=pl.col("path").list.first().replace_strict(edge_ids, edges["source"]),
+        destination=pl.col("path").list.last().replace_strict(edge_ids, edges["target"]),
     )
-    return trips.select("tomtom_id", "dt", "origin", "destination", "path")
+    return trips.select("route_id", "dt", "origin", "destination", "path")
 
 
 def prepare_edges(edges: pl.DataFrame, penalties: pl.DataFrame) -> pl.DataFrame:
@@ -97,16 +95,16 @@ def write_congestion_inputs(
     """
     import polars as pl
 
-    agents = trips.select(agent_id="tomtom_id")
+    agents = trips.select(agent_id="route_id")
     alts = trips.select(
-        agent_id="tomtom_id",
+        agent_id="route_id",
         alt_id=pl.lit(1),
         **{"dt_choice.type": pl.lit("Constant"), "dt_choice.departure_time": pl.col("dt")},
     )
     demand_trips = trips.select(
-        agent_id="tomtom_id",
+        agent_id="route_id",
         alt_id=pl.lit(1),
-        trip_id="tomtom_id",
+        trip_id="route_id",
         **{
             "class.type": pl.lit("Road"),
             "class.origin": pl.col("origin"),
@@ -170,7 +168,7 @@ def compute_congestion_times(route_results: pl.DataFrame, edges: pl.DataFrame) -
         .group_by("trip_id")
         .agg(travel_time=pl.col("travel_time").sum(), ff_time=pl.col("ff_time").sum())
         .select(
-            tomtom_id="trip_id",
+            route_id="trip_id",
             travel_time=pl.duration(seconds="travel_time"),
             congested_time=pl.duration(seconds=pl.col("travel_time") - pl.col("ff_time")),
         )
@@ -179,9 +177,9 @@ def compute_congestion_times(route_results: pl.DataFrame, edges: pl.DataFrame) -
 
 
 class CongestionSimulationStep(ThreadedStep, AbstractRunSimulationStep, StepWithPeriod):
-    """Replays map-matched TomTom routes through Metropolis-Core to get simulated travel times.
+    """Replays target routes through Metropolis-Core to get simulated travel times.
 
-    Builds a Metropolis-Core simulation whose demand is exactly the map-matched TomTom routes, with
+    Builds a Metropolis-Core simulation whose demand is exactly the target routes, with
     each trip's route and departure time fixed (`class.route`, `dt_choice.type = "Constant"`) and
     `only_compute_decisions` enabled, so that travel times are computed for the fixed routes without
     any route, mode or departure-time choice. The road-network congestion state is fixed to the
@@ -189,13 +187,12 @@ class CongestionSimulationStep(ThreadedStep, AbstractRunSimulationStep, StepWith
     """
 
     input_files = {
-        "routes": TomTomRoutesFile,
-        "matched_routes": TomTomRoutesMatchedFile,
+        "routes": TargetRoutesFile,
         "edges": RoadEdgesCleanFile,
         "penalties": RoadEdgesPenaltiesFile,
         "road_network_conditions": MetroExAnteSimulatedTravelTimeFunctionsFile,
     }
-    output_files = {"congestion_times": TomTomCongestionTimesFile}
+    output_files = {"congestion_times": TargetRoutesCongestionTimesFile}
 
     def is_defined(self) -> bool:
         return self.exec_path is not None and self.period is not None
@@ -206,13 +203,11 @@ class CongestionSimulationStep(ThreadedStep, AbstractRunSimulationStep, StepWith
         assert self.exec_path is not None
         assert self.period is not None
 
-        routes_gdf = self.input["routes"].read()
-        routes = pl.from_pandas(routes_gdf.loc[:, ["tomtom_id", "departure_time"]])
-        matched_routes = self.input["matched_routes"].read()
+        routes = self.input["routes"].read()
         edges = self.input["edges"].read_as_df()  # ty: ignore[unresolved-attribute]
         penalties = self.input["penalties"].read()
 
-        trips = prepare_trips(routes, matched_routes, edges, self.period)
+        trips = prepare_trips(routes, edges, self.period)
         # The `edges.parquet` from the actual simulation cannot be reused here since the simulation
         # needs to have all edges (primary and secondary).
         edges = prepare_edges(edges, penalties)
@@ -236,38 +231,38 @@ class CongestionSimulationStep(ThreadedStep, AbstractRunSimulationStep, StepWith
 
 
 class CongestionTimeComparisonStep(Step):
-    """Compares TomTom-observed and Metropolis-simulated congested times, by OD."""
+    """Compares observed and Metropolis-simulated congested times of the target routes."""
 
-    input_files = {"routes": TomTomRoutesFile, "congestion_times": TomTomCongestionTimesFile}
+    input_files = {"routes": TargetRoutesFile, "congestion_times": TargetRoutesCongestionTimesFile}
     output_files = {"comparison_plot": CongestionTimeComparisonPlotFile}
 
     def run(self):
         import polars as pl
 
         routes = self.input["routes"].read()
+        check_free_flow_tt(routes.columns)
         congestion_times = self.input["congestion_times"].scan()
 
-        observed_tt = pl.from_pandas(
-            routes.loc[:, ["tomtom_id", "tt_no_traffic", "tt_traffic"]]
-        ).with_columns(
-            tomtom_congested_time=(pl.col("tt_traffic") - pl.col("tt_no_traffic")).dt.total_seconds(
-                fractional=True
-            )
+        observed_tt = routes.select(
+            "route_id",
+            target_congested_time=(
+                pl.col("target_tt") - pl.col("target_free_flow_tt")
+            ).dt.total_seconds(fractional=True),
         )
 
         simulated_tt = congestion_times.select(
-            "tomtom_id",
+            "route_id",
             metropolis_congested_time=pl.col("congested_time").dt.total_seconds(fractional=True),
         ).collect()
 
-        df = simulated_tt.join(observed_tt, on="tomtom_id", how="inner")
-        observed = df["tomtom_congested_time"].to_numpy()
+        df = simulated_tt.join(observed_tt, on="route_id", how="inner")
+        observed = df["target_congested_time"].to_numpy()
         predicted = df["metropolis_congested_time"].to_numpy()
         rmse = float(((observed - predicted) ** 2).mean() ** 0.5)
 
         logger.debug(f"Average congested time (observed): {observed.mean()}")
         logger.debug(
-            f"Congested time (observed): {observed_tt['tomtom_congested_time'].describe()}"
+            f"Congested time (observed): {observed_tt['target_congested_time'].describe()}"
         )
         logger.debug(f"Average congested time (simulated): {predicted.mean()}")
         logger.debug(
@@ -279,7 +274,7 @@ class CongestionTimeComparisonStep(Step):
             observed,
             predicted,
             rmse,
-            xlabel="TomTom congested time",
+            xlabel="Observed congested time",
             ylabel="Metropolis congested time",
         )
         self.output["comparison_plot"].write(fig)

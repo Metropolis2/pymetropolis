@@ -18,8 +18,7 @@ from .files import (
     FreeFlowTravelTimeComparisonPlotFile,
     RoadEdgesPenaltyCoefficientsFile,
     RoadEdgesVariablesFile,
-    TomTomRoutesFile,
-    TomTomRoutesMatchedFile,
+    TargetRoutesFile,
 )
 
 if TYPE_CHECKING:
@@ -44,7 +43,6 @@ def compute_regression_variables(
 
     logger.info("Computing congested time by edge characteristics...")
     df = routes.select(
-        "tomtom_id",
         "path",
         cst=pl.col("path").list.len(),
         tt_cst=sum_edge_values_along_path(
@@ -125,6 +123,13 @@ def compute_regression_variables(
     return df
 
 
+def check_free_flow_tt(columns: list[str]):
+    if "target_free_flow_tt" not in columns:
+        raise MetropyError(
+            "Column `target_free_flow_tt` is required in `TargetRoutesFile` but is not defined."
+        )
+
+
 def coefs_to_df(coefs: dict[str, float]) -> pl.DataFrame:
     import polars as pl
 
@@ -152,7 +157,7 @@ def coefs_to_df(coefs: dict[str, float]) -> pl.DataFrame:
 
 
 class FreeFlowLassoStep(Step):
-    """Estimates free-flow penalty coefficients from a Lasso regression on TomTom routes."""
+    """Estimates free-flow penalty coefficients from a Lasso regression on target routes."""
 
     additive_variables = ListParameter(
         "calibration.free_flow_travel_time.additive_variables",
@@ -197,16 +202,10 @@ class FreeFlowLassoStep(Step):
         note="The listed variables must be available in `RoadEdgesVariablesFile`.",
     )
 
-    input_files = {
-        "variables": RoadEdgesVariablesFile,
-        "routes": TomTomRoutesFile,
-        "matched_routes": TomTomRoutesMatchedFile,
-    }
+    input_files = {"variables": RoadEdgesVariablesFile, "routes": TargetRoutesFile}
     output_files = {"coefs": RoadEdgesPenaltyCoefficientsFile}
 
     def run(self):
-        import polars as pl
-
         assert self.additive_variables is not None
         assert self.additive_interaction_variables is not None
         assert self.multiplicative_variables is not None
@@ -214,25 +213,18 @@ class FreeFlowLassoStep(Step):
 
         variables = self.input["variables"].read()
         routes = self.input["routes"].read()
-        matched_routes = self.input["matched_routes"].read()
+        check_free_flow_tt(routes.columns)
 
         exog_variables = compute_regression_variables(
             variables,
-            matched_routes,
+            routes,
             self.additive_variables,
             self.additive_interaction_variables,
             self.multiplicative_variables,
             self.multiplicative_interaction_variables,
         )
 
-        # Join on `tomtom_id` so that observed travel times are aligned with the exogenous
-        # variables.
-        observed_tt = pl.from_pandas(routes.loc[:, ["tomtom_id", "tt_no_traffic"]])
-        exog_variables = exog_variables.join(
-            observed_tt, on="tomtom_id", how="inner", maintain_order="left"
-        )
-        endog_variable = exog_variables["tt_no_traffic"].dt.total_seconds(fractional=True)
-        exog_variables = exog_variables.drop("tomtom_id", "tt_no_traffic")
+        endog_variable = routes["target_free_flow_tt"].dt.total_seconds(fractional=True)
 
         (_Y_hat, _residuals, _rmse, coefs) = compute_lasso(endog_variable, exog_variables)
 
@@ -241,39 +233,30 @@ class FreeFlowLassoStep(Step):
 
 
 class FreeFlowTravelTimeComparisonStep(Step):
-    """Compares TomTom-observed and Metropolis-simulated free-flow travel times, by OD."""
+    """Compares observed and Metropolis-simulated free-flow travel times of the target routes."""
 
-    input_files = {
-        "edges_fftt": RoadEdgesFreeFlowTravelTimeFile,
-        "routes": TomTomRoutesFile,
-        "matched_routes": TomTomRoutesMatchedFile,
-    }
+    input_files = {"edges_fftt": RoadEdgesFreeFlowTravelTimeFile, "routes": TargetRoutesFile}
     output_files = {"comparison_plot": FreeFlowTravelTimeComparisonPlotFile}
 
     def run(self):
         import polars as pl
 
         edges_fftt = self.input["edges_fftt"].read()
-        routes = self.input["routes"].read()
-        matched_routes = self.input["matched_routes"].scan()
+        routes = self.input["routes"].scan()
+        check_free_flow_tt(routes.collect_schema().names())
 
         edges_fftt = edges_fftt.with_columns(
             free_flow_travel_time=pl.col("free_flow_travel_time").dt.total_seconds(fractional=True)
         )
 
-        metropolis_tt = matched_routes.select(
-            "tomtom_id",
+        df = routes.select(
             metropolis_tt=sum_edge_values_along_path(
                 pl.col("path"), edges_fftt["edge_id"], edges_fftt["free_flow_travel_time"]
             ),
+            target_tt=pl.col("target_free_flow_tt").dt.total_seconds(fractional=True),
         ).collect()
 
-        observed_tt = pl.from_pandas(routes.loc[:, ["tomtom_id", "tt_no_traffic"]]).with_columns(
-            tomtom_tt=pl.col("tt_no_traffic").dt.total_seconds(fractional=True)
-        )
-
-        df = metropolis_tt.join(observed_tt, on="tomtom_id", how="inner")
-        observed = df["tomtom_tt"].to_numpy()
+        observed = df["target_tt"].to_numpy()
         predicted = df["metropolis_tt"].to_numpy()
         rmse = float(((observed - predicted) ** 2).mean() ** 0.5)
 
@@ -281,7 +264,7 @@ class FreeFlowTravelTimeComparisonStep(Step):
             observed,
             predicted,
             rmse,
-            xlabel="TomTom free-flow travel time",
+            xlabel="Observed free-flow travel time",
             ylabel="Metropolis free-flow travel time",
         )
         self.output["comparison_plot"].write(fig)
