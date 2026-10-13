@@ -6,7 +6,7 @@ from pymetropolis.metro_common.errors import MetropyError, error_context
 from pymetropolis.metro_common.utils import pl_duration_to_seconds
 from pymetropolis.metro_demand.modes import MODE_PREFERENCES_FILES, OutsideOptionPreferencesFile
 from pymetropolis.metro_demand.population import UniformDrawsFile
-from pymetropolis.metro_demand.population.files import TripsFile
+from pymetropolis.metro_demand.population.files import ToursFile, TripsFile
 from pymetropolis.metro_demand.routing.files import PrimaryCarTripsAccessEgressFile
 from pymetropolis.metro_pipeline import PopulationStep, Step
 from pymetropolis.metro_pipeline.parameters import EnumParameter, FloatParameter
@@ -34,12 +34,14 @@ def generate_departure_time_columns(
     tour_ids: pl.Series,
     departure_time_choice_model: str,
     departure_time_choice_mu: float | None,
-    draw_file: UniformDrawsFile,
+    draw_file: UniformDrawsFile | None,
+    tours_file: ToursFile | None,
 ):
     import polars as pl
 
     df = pl.DataFrame({"agent_id": tour_ids})
     if departure_time_choice_model == "ContinuousLogit":
+        assert draw_file is not None
         df = df.with_columns(
             pl.lit("Continuous").alias("dt_choice.type"),
             pl.lit("Logit").alias("dt_choice.model.type"),
@@ -52,7 +54,27 @@ def generate_departure_time_columns(
             how="left",
         )
     elif departure_time_choice_model == "Exogenous":
-        raise MetropyError("TODO")
+        # The tour-level departure time is the ex-ante departure time of the first trip.
+        assert tours_file is not None
+        tours: pl.DataFrame = tours_file.read()
+        if "first_departure_time" not in tours.columns:
+            raise MetropyError(
+                "The ex-ante departure times need to be defined when the departure-time choice "
+                'model is "Exogenous"'
+            )
+        df = df.join(
+            tours.select(
+                agent_id="tour_id",
+                **{"dt_choice.departure_time": pl_duration_to_seconds("first_departure_time")},
+            ),
+            on="agent_id",
+            how="left",
+        ).with_columns(pl.lit("Constant").alias("dt_choice.type"))
+        if df["dt_choice.departure_time"].has_nulls():
+            raise MetropyError(
+                "Some tours have no departure time. "
+                "Are ex-ante departure times defined for all trips?"
+            )
     return df
 
 
@@ -137,6 +159,16 @@ class PrepareMetroAlternativesStep(StepWithModes, PopulationStep):
                 'is "ContinuousLogit"'
             ),
         ),
+        "tours": InputFile(
+            ToursFile,
+            when=lambda inst: (
+                inst.has_trip_mode() and inst.departure_time_choice_model == "Exogenous"
+            ),
+            when_doc=(
+                'if at least one "trip-based" mode is defined and departure-time choice '
+                'is "Exogenous"'
+            ),
+        ),
         "outside_option_preferences": InputFile(
             OutsideOptionPreferencesFile,
             when=lambda inst: inst.has_mode_class(OutsideOption),
@@ -174,7 +206,8 @@ class PrepareMetroAlternativesStep(StepWithModes, PopulationStep):
                 alts["agent_id"].unique(),
                 self.departure_time_choice_model,
                 self.departure_time_choice_mu,
-                self.input["uniform_draws"],
+                self.input.get("uniform_draws"),
+                self.input.get("tours"),
             )
             alts = alts.join(dep_time_df, on="agent_id", how="left")
             if primary_car_trips is not None:

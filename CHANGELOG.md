@@ -137,6 +137,8 @@ New features:
 - Mode availability (car ownership, driving license, minimum age, joint tours, bicycle ownership,
   maximum walking / bicycle distance) is now configurable through the `mode_availability.*`
   parameters, controlled by the `StepWithModeAvailability` step.
+- Allow `departure_time_choice.model = "Exogenous"` (departure time is fixed and set to the ex-ante
+  departure time).
 
 Other changes:
 
