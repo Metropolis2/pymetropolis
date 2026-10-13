@@ -176,31 +176,43 @@ class FreeFlowPenaltyCoefficientsFromFileStep(Step):
 
     Columns are:
 
-    - `type`: whether the penalty is additive or a multiplier of speed limit (`"additive"` or
-      `"multiplicative"`)
+    - `type`: whether the penalty is additive (in seconds) or multiplicative (multiplier of the
+      travel time at speed limit) (`"additive"` or `"multiplicative"`)
     - `variable1`: variable to which the coefficient applies
     - `variable2`: for interaction variables, second variable to which the coefficient applies
-    - `penalty`: value of the penalty
+    - `penalty`: value of the coefficient
+
+    For each edge, the additive (respectively multiplicative) penalty is the sum, over all the
+    additive (respectively multiplicative) rows, of the coefficient times the value of the variable
+    (or the product of the two variables' values, for interaction variables).
+    The free-flow travel time of the edge is then:
+
+    `additive_penalty + multiplicative_penalty * length / speed_limit`
 
     For penalties that apply to all edges, use `"cst"` as variable.
     For categorical variables, you can use the syntax `"{variable}_{modality}"` to apply a different
     coefficient for each modality.
 
-    For example, the following CSV file set:
+    For example, the following CSV file sets:
 
     - an additive penalty of 3 seconds for all edges + 5 seconds for edges with traffic signals + 4
       seconds for urban edges with traffic signals
-    - a multiplicative penalty of 0.9 for all non-residential edges and 0.9 * 0.9 for all
-      residential edges
+    - a multiplicative penalty of 1.1 for all non-residential edges and 1.1 + 0.2 = 1.3 for all
+      residential edges (i.e., travel time at speed limit is increased by 10% and 30%,
+      respectively)
 
     ```csv
     type,variable1,variable2,penalty
     additive,cst,,3.0
     additive,traffic_signals,,5.0
     additive,traffic_signals,urban,4.0
-    multiplicative,cst,,0.9
-    multiplicative,edge_type_residential,,0.9
+    multiplicative,cst,,1.1
+    multiplicative,edge_type_residential,,0.2
     ```
+
+    Note that, if no multiplicative coefficient is defined, the multiplicative penalty is zero,
+    i.e., the free-flow travel time is only made of the additive penalty. Use a `"cst"`
+    multiplicative coefficient of 1 to keep the travel time at speed limit.
     """
 
     coef_file = PathParameter(
