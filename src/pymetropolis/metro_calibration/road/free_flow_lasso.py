@@ -39,7 +39,7 @@ def compute_regression_variables(
     additive_interaction_variables: list[list[str]],
     multiplicative_variables: list[str],
     multiplicative_interaction_variables: list[list[str]],
-):
+) -> pl.DataFrame:
     import polars as pl
 
     logger.info("Computing congested time by edge characteristics...")
@@ -121,7 +121,7 @@ def compute_regression_variables(
                     .list.sum()
                     .alias(f"tt_{col1}_x_{col2}")
                 )
-    df = df.drop("tomtom_id", "path")
+    df = df.drop("path")
     return df
 
 
@@ -204,14 +204,6 @@ class FreeFlowLassoStep(Step):
     }
     output_files = {"coefs": RoadEdgesPenaltyCoefficientsFile}
 
-    mandatory_keys = [
-        "calibration.free_flow_calibration.additive_variables",
-        "calibration.free_flow_calibration.additive_interaction_variables",
-        "calibration.free_flow_calibration.multiplicative_variables",
-        "calibration.free_flow_calibration.multiplicative_interaction_variables",
-        "calibration.free_flow_calibration.coef_filename",
-    ]
-
     def run(self):
         import polars as pl
 
@@ -233,9 +225,14 @@ class FreeFlowLassoStep(Step):
             self.multiplicative_interaction_variables,
         )
 
-        endog_variable = pl.Series(
-            routes.loc[routes["tomtom_id"].isin(matched_routes["tomtom_id"]), "tt_no_traffic"]
-        ).dt.total_seconds(fractional=True)
+        # Join on `tomtom_id` so that observed travel times are aligned with the exogenous
+        # variables.
+        observed_tt = pl.from_pandas(routes.loc[:, ["tomtom_id", "tt_no_traffic"]])
+        exog_variables = exog_variables.join(
+            observed_tt, on="tomtom_id", how="inner", maintain_order="left"
+        )
+        endog_variable = exog_variables["tt_no_traffic"].dt.total_seconds(fractional=True)
+        exog_variables = exog_variables.drop("tomtom_id", "tt_no_traffic")
 
         (_Y_hat, _residuals, _rmse, coefs) = compute_lasso(endog_variable, exog_variables)
 
