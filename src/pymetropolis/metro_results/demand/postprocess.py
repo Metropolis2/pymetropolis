@@ -206,6 +206,7 @@ class TripResultsStep(PopulationStep):
         )
         df = merge_park_and_ride_legs(df, trips)
         df = df.with_columns(travel_time=pl.col("arrival_time") - pl.col("departure_time"))
+        df = df.sort("trip_id")
         self.output["trip_results"].write(df)
 
 
@@ -307,8 +308,13 @@ class RouteResultsStep(PopulationStep):
             access_edges = (
                 access_egress.explode("access_path", empty_as_null=False, keep_nulls=False)
                 .select("trip_id", edge_id="access_path")
-                .join(edges_fftt, on="edge_id")
-                .join(trip_timings.select("trip_id", "primary_start").lazy(), on="trip_id")
+                # Joins must keep the order of the edges along the path for the `cum_sum` below.
+                .join(edges_fftt, on="edge_id", maintain_order="left")
+                .join(
+                    trip_timings.select("trip_id", "primary_start").lazy(),
+                    on="trip_id",
+                    maintain_order="left",
+                )
                 .with_columns(
                     entry_time=pl.col("primary_start")
                     - pl.col("travel_time").cum_sum(reverse=True).over("trip_id")
@@ -319,8 +325,12 @@ class RouteResultsStep(PopulationStep):
             egress_edges = (
                 access_egress.explode("egress_path", empty_as_null=False, keep_nulls=False)
                 .select("trip_id", edge_id="egress_path")
-                .join(edges_fftt, on="edge_id")
-                .join(trip_timings.select("trip_id", "primary_end").lazy(), on="trip_id")
+                .join(edges_fftt, on="edge_id", maintain_order="left")
+                .join(
+                    trip_timings.select("trip_id", "primary_end").lazy(),
+                    on="trip_id",
+                    maintain_order="left",
+                )
                 .with_columns(
                     exit_time=pl.col("primary_end")
                     + pl.col("travel_time").cum_sum().over("trip_id")
@@ -393,7 +403,8 @@ class RouteResultsStep(PopulationStep):
                 pl.concat(parts, how="diagonal_relaxed")
                 .explode("path", empty_as_null=False, keep_nulls=False)
                 .rename({"path": "edge_id"})
-                .join(edges_fftt, on="edge_id")
+                # The join must keep the order of the edges along the path for the `cum_sum` below.
+                .join(edges_fftt, on="edge_id", maintain_order="left")
                 .with_columns(
                     exit_time=pl.col("departure_time")
                     + pl.col("travel_time").cum_sum().over("trip_id")

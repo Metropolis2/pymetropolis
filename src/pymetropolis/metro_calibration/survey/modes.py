@@ -252,10 +252,12 @@ def restrict_tours_to_area(tours: pl.DataFrame, area) -> pl.DataFrame:
     df = df.with_columns(
         origin_in_area=pl.Series(origin_in_area), destination_in_area=pl.Series(destination_in_area)
     )
-    mask = df.group_by("tour_id").agg(
-        keep=pl.col("origin_in_area").all() & pl.col("destination_in_area").all()
-    )["keep"]
-    return tours.filter(mask)
+    kept_ids = (
+        df.group_by("tour_id")
+        .agg(keep=pl.col("origin_in_area").all() & pl.col("destination_in_area").all())
+        .filter("keep")["tour_id"]
+    )
+    return tours.filter(pl.col("tour_id").is_in(kept_ids.implode()))
 
 
 def plot_mode_share_comparison(
