@@ -15,6 +15,7 @@ from .penalties import (
     EdgePenaltiesFromCoefficientsStep,
     EdgesFreeFlowTravelTimesStep,
     ExogenousEdgePenaltiesStep,
+    FreeFlowPenaltyCoefficientsFromFileStep,
 )
 from .routing import AllFreeFlowTravelTimesStep
 from .tomtom import TomTomRequestsStep
@@ -37,6 +38,7 @@ ROAD_STEPS = [
     EdgesFreeFlowTravelTimesStep,
     EdgePenaltiesFromCoefficientsStep,
     AllFreeFlowTravelTimesStep,
+    FreeFlowPenaltyCoefficientsFromFileStep,
     TomTomRequestsStep,
     MapMatchingStep,
     FreeFlowLassoStep,
