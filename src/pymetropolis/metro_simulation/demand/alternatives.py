@@ -6,7 +6,7 @@ from pymetropolis.metro_common.errors import MetropyError, error_context
 from pymetropolis.metro_common.utils import pl_duration_to_seconds
 from pymetropolis.metro_demand.modes import MODE_PREFERENCES_FILES, OutsideOptionPreferencesFile
 from pymetropolis.metro_demand.population import UniformDrawsFile
-from pymetropolis.metro_demand.population.files import ToursFile, TripsFile
+from pymetropolis.metro_demand.population.files import ExAnteDepartureTimesFile, ToursFile
 from pymetropolis.metro_demand.routing.files import PrimaryCarTripsAccessEgressFile
 from pymetropolis.metro_pipeline import PopulationStep, Step
 from pymetropolis.metro_pipeline.parameters import EnumParameter, FloatParameter
@@ -236,7 +236,7 @@ class PrepareExAnteMetroAlternativesStep(StepWithModes, PopulationStep):
 
     input_files = {
         "input_trips": MetroExAnteTripsPopulationFile,
-        "trips": TripsFile,
+        "departure_times": ExAnteDepartureTimesFile,
         "primary_car_trips": InputFile(PrimaryCarTripsAccessEgressFile, optional=True),
     }
     output_files = {"metro_alternatives": MetroExAnteAlternativesPopulationFile}
@@ -245,7 +245,7 @@ class PrepareExAnteMetroAlternativesStep(StepWithModes, PopulationStep):
     def run(self):
         import polars as pl
 
-        trips = self.input["trips"].read()
+        departure_times = self.input["departure_times"].read()
         input_trips = self.input["input_trips"].read()
         primary_car_trips = self.input["primary_car_trips"].read_if_exists()
 
@@ -253,7 +253,7 @@ class PrepareExAnteMetroAlternativesStep(StepWithModes, PopulationStep):
         assert (input_trips["agent_id"] == input_trips["trip_id"]).all()
         alts = (
             input_trips.select("agent_id", "alt_id", "trip_id")
-            .join(trips.select("trip_id", "departure_time"), on="trip_id", how="left")
+            .join(departure_times, on="trip_id", how="left")
             .drop("trip_id")
         )
         alts = alts.with_columns(

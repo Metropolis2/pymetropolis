@@ -18,6 +18,8 @@ from pymetropolis.metro_demand.departure_time.files import TstarsFile
 from pymetropolis.metro_demand.modes.park_and_ride.files import ParkAndRideStopsFile
 from pymetropolis.metro_demand.modes.park_and_ride.transfer_stops import park_and_ride_car_trips
 from pymetropolis.metro_demand.population.files import (
+    ExAnteArrivalTimesFile,
+    ExAnteDepartureTimesFile,
     TripsDestinationsFile,
     TripsFile,
     TripsOriginsFile,
@@ -474,12 +476,26 @@ class AbstractPublicTransitTimeStep(Step):
     def is_defined(self):
         return self.time_type is not None
 
+    def read_ex_ante_times(self) -> pl.DataFrame | None:
+        """Reads the ex-ante times required by the `time_type` parameter, if any."""
+        if self.time_type == "departure":
+            return self.input["departure_times"].read_if_exists()
+        elif self.time_type == "arrival":
+            return self.input["arrival_times"].read_if_exists()
+        return None
+
     def clean_trips_time(
-        self, trips: pl.DataFrame, tstars: pl.DataFrame | None, time_type: str | None = None
+        self,
+        trips: pl.DataFrame,
+        tstars: pl.DataFrame | None,
+        ex_ante_times: pl.DataFrame | None = None,
+        time_type: str | None = None,
     ):
         """Add `time` and `arrive_by` column to trips.
 
         By default, the time type is read from the `opentripplanner.time_type` parameter.
+        `ex_ante_times` must have a `{time_type}_time` column when `time_type` is `"departure"` or
+        `"arrival"`.
         """
         import polars as pl
 
@@ -488,8 +504,11 @@ class AbstractPublicTransitTimeStep(Step):
 
         if time_type in ("departure", "arrival"):
             col_name = f"{time_type}_time"
-            if col_name not in trips.columns:
-                trips = trips.with_columns(pl.lit(None, dtype=pl.Duration).alias(col_name))
+            if ex_ante_times is None:
+                raise MetropyError(f"Ex-ante {time_type} times should be given")
+            trips = trips.select("trip_id").join(
+                ex_ante_times.select("trip_id", col_name), on="trip_id", how="left"
+            )
             trips = trips.select(
                 "trip_id",
                 seconds=pl.col(col_name).dt.total_seconds(),
@@ -564,9 +583,11 @@ class TripsOpenTripPlannerStep(OpenTripPlannerStep, AbstractPublicTransitTimeSte
     Five different cases are possible:
 
     - `time_type = "departure"`: trips are departing at their ex-ante departure time, read from
-      [TripsFile](files.md#tripsfile) (with `time` as a fallback value)
+      [ExAnteDepartureTimesFile](files.md#exantedeparturetimesfile) (with `time` as a fallback
+      value)
     - `time_type = "arrival"`: trips are arriving at their ex-ante arrival time, read from
-      [TripsFile](files.md#tripsfile) (with `time` as a fallback value)
+      [ExAnteArrivalTimesFile](files.md#exantearrivaltimesfile) (with `time` as a fallback
+      value)
     - `time_type = "tstar"`: trips are arriving at their desired arrival time, read from
       [TstarsFile](files.md#tstarsfile) (with `time` as a fallback value)
     - `time_type = "custom_departure"`: trips are all departing at time `time`
@@ -637,6 +658,16 @@ class TripsOpenTripPlannerStep(OpenTripPlannerStep, AbstractPublicTransitTimeSte
             when=lambda inst: inst.time_type == "tstar",
             when_doc='if `time_type` is `"tstar"`',
         ),
+        "departure_times": InputFile(
+            ExAnteDepartureTimesFile,
+            when=lambda inst: inst.time_type == "departure",
+            when_doc='if `time_type` is `"departure"`',
+        ),
+        "arrival_times": InputFile(
+            ExAnteArrivalTimesFile,
+            when=lambda inst: inst.time_type == "arrival",
+            when_doc='if `time_type` is `"arrival"`',
+        ),
     }
     output_files = {"costs": TripsPublicTransitItinerariesFile}
 
@@ -650,7 +681,9 @@ class TripsOpenTripPlannerStep(OpenTripPlannerStep, AbstractPublicTransitTimeSte
         trips = self.input["trips"].read()
         # Note that tstars are read even when not required. This could be optimized although the
         # impact is probably very small.
-        trips = self.clean_trips_time(trips, self.input["tstars"].read_if_exists())
+        trips = self.clean_trips_time(
+            trips, self.input["tstars"].read_if_exists(), self.read_ex_ante_times()
+        )
 
         # Read origin / destination longitude and latitude.
         origins = self.input["origins"].read()
@@ -694,6 +727,16 @@ class ParkAndRideTripsOpenTripPlannerStep(
             when=lambda inst: inst.time_type == "tstar",
             when_doc='if `time_type` is `"tstar"`',
         ),
+        "departure_times": InputFile(
+            ExAnteDepartureTimesFile,
+            when=lambda inst: inst.time_type in ("departure", "arrival", "tstar"),
+            when_doc='if `time_type` is `"departure"`, `"arrival"` or `"tstar"`',
+        ),
+        "arrival_times": InputFile(
+            ExAnteArrivalTimesFile,
+            when=lambda inst: inst.time_type == "arrival",
+            when_doc='if `time_type` is `"arrival"`',
+        ),
     }
     output_files = {"costs": ParkAndRideTripsPublicTransitItinerariesFile}
     priority = 0
@@ -714,16 +757,21 @@ class ParkAndRideTripsOpenTripPlannerStep(
         pr_stops = self.input["pr_stops"].read()
         pr_trips = park_and_ride_car_trips(all_trips, pl.Series(pr_stops["tour_id"]))
         trips = pr_trips.join(
-            self.clean_trips_time(all_trips, self.input["tstars"].read_if_exists()),
+            self.clean_trips_time(
+                all_trips, self.input["tstars"].read_if_exists(), self.read_ex_ante_times()
+            ),
             on="trip_id",
             how="left",
         )
         if self.time_type in ("tstar", "arrival"):
             # For the inbound parts, the arrival time at the P+R facility is unknown so the ex-ante
             # departure time of the trip is used instead.
-            inbound_times = self.clean_trips_time(all_trips, None, time_type="departure").select(
-                "trip_id", inbound_time="time"
-            )
+            inbound_times = self.clean_trips_time(
+                all_trips,
+                None,
+                self.input["departure_times"].read_if_exists(),
+                time_type="departure",
+            ).select("trip_id", inbound_time="time")
             trips = (
                 trips.join(inbound_times, on="trip_id", how="left")
                 .with_columns(

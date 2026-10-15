@@ -7,7 +7,7 @@ from loguru import logger
 
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_common.io import read_dataframe
-from pymetropolis.metro_demand.population.files import TripsFile
+from pymetropolis.metro_demand.population.files import ExAnteArrivalTimesFile, TripsFile
 from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.metro_pipeline.parameters import EnumParameter, PathParameter
 from pymetropolis.random import (
@@ -211,15 +211,13 @@ class TstarFromArrivalTimeStep(PopulationStep):
         values=["arrival_time"],
         description="How tstar values are computed.",
     )
-    input_files = {"trips": TripsFile}
+    input_files = {"arrival_times": ExAnteArrivalTimesFile}
     output_files = {"tstars": TstarsFile}
 
     def is_defined(self):
         return self.tstar_type is not None
 
     def run(self):
-        trips = self.input["trips"].read()
-        if "arrival_time" not in trips.columns:
-            raise MetropyError("Ex-ante arrival times are not defined for trips.")
-        df = trips.select("trip_id", tstar="arrival_time")
+        arrival_times = self.input["arrival_times"].read()
+        df = arrival_times.select("trip_id", tstar="arrival_time")
         self.output["tstars"].write(df)

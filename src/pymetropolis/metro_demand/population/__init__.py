@@ -5,6 +5,8 @@ from .eqasim import EqasimImportStep
 from .files import (
     ActivitiesLocationsFile,
     CarsFile,
+    ExAnteArrivalTimesFile,
+    ExAnteDepartureTimesFile,
     HouseholdsFile,
     HouseholdsHomesFile,
     HouseholdsHomesUrbanTypeFile,
@@ -37,6 +39,8 @@ POPULATION_FILES = [
     CarsFile,
     PersonsFile,
     TripsFile,
+    ExAnteDepartureTimesFile,
+    ExAnteArrivalTimesFile,
     TripsOriginsFile,
     TripsDestinationsFile,
     TripsDistancesFile,

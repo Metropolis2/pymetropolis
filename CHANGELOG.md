@@ -104,6 +104,8 @@ New files:
 - `ParkAndRideTripsPublicTransitItinerariesFile`
 - `ParkAndRidePreferencesFile`
 - `ParkAndRideFuelFile`
+- `ExAnteDepartureTimesFile`
+- `ExAnteArrivalTimesFile`
 
 New parameters:
 
@@ -179,6 +181,11 @@ Other changes:
 Removed steps:
 
 - `GenericPopulationStep` (should no longer be needed with the changes to OD matrix steps)
+
+Removed columns:
+
+- `departure_time` and `arrival_time` in `TripsFile` (moved to `ExAnteDepartureTimesFile` and
+  `ExAnteArrivalTimesFile`)
 
 Fixes:
 
