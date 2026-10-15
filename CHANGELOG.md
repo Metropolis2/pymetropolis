@@ -51,6 +51,7 @@ New steps:
 - `ParkAndRideCarAccessEgressStep`
 - `ParkAndRideTripsOpenTripPlannerStep`
 - `ParkAndRideFuelStep`
+- `HomogeneousExAnteDepartureTimeStep`
 
 New files:
 
