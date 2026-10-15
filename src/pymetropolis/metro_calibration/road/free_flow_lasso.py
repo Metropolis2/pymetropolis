@@ -241,11 +241,12 @@ class FreeFlowTravelTimeComparisonStep(Step):
     def run(self):
         import polars as pl
 
-        edges_fftt = self.input["edges_fftt"].read()
         routes = self.input["routes"].scan()
         if "target_free_flow_tt" not in routes.collect_schema().names():
             logger.warning('No "target_free_flow_tt" in the target routes, skipping step.')
             return
+
+        edges_fftt = self.input["edges_fftt"].read()
 
         edges_fftt = edges_fftt.with_columns(
             free_flow_travel_time=pl.col("free_flow_travel_time").dt.total_seconds(fractional=True)
