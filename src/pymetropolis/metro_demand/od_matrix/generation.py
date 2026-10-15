@@ -25,7 +25,12 @@ from pymetropolis.metro_pipeline.parameters import (
     StringParameter,
 )
 from pymetropolis.metro_pipeline.steps import InputFile
-from pymetropolis.random import IntDistributionParameter, RandomStep, generate_int_values
+from pymetropolis.random import (
+    FloatDistributionParameter,
+    IntDistributionParameter,
+    RandomStep,
+    generate_values,
+)
 
 if TYPE_CHECKING:
     import geopandas as gpd
@@ -572,7 +577,7 @@ class ODMatrixEachStep(AbstractODMatrixStep):
     the road nodes) that are eligible as origin / destination.
     """
 
-    each = IntDistributionParameter(
+    each = FloatDistributionParameter(
         "od_matrix.trips_per_pair",
         description="Number of trips to generate for each origin-destination pair.",
     )
@@ -581,7 +586,7 @@ class ODMatrixEachStep(AbstractODMatrixStep):
         return self.each is not None
 
     def od_pairs_with_size(self, df: pl.DataFrame) -> pl.DataFrame:
-        df = df.with_columns(size=generate_int_values(self.each, len(df), self.get_rng(str(self))))
+        df = df.with_columns(size=generate_values(self.each, len(df), self.get_rng(str(self))))
         return df
 
 
@@ -644,7 +649,7 @@ class GravityODMatrixStep(AbstractODMatrixStep):
         df = (
             df.with_columns(rate=(-pl.lit(decay) * pl.col("distance")).exp())
             .with_columns(normalized_rate=pl.col("rate") / pl.col("rate").sum().over("origin"))
-            .with_columns(trips_per_origin=generate_int_values(self.trips_per_origin, len(df), rng))
+            .with_columns(trips_per_origin=generate_values(self.trips_per_origin, len(df), rng))
             .with_columns(size=pl.col("normalized_rate") * pl.col("trips_per_origin"))
         )
         return df

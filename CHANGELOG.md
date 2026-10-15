@@ -193,6 +193,7 @@ Fixes:
   access / egress parts of primary car trips.
 - Fix `FreeFlowPenaltyCoefficientsFromFileStep` not being discovered by the pipeline.
 - Fix `FreeFlowPenaltyCoefficientsFromFileStep` not recognizing `"cst"` as a valid variable.
+- Fix `ODMatrixEachStep` and `GravityODMatrixStep` with small trip counts per pair.
 
 ## [0.12.0] – 2026-08-25
 
