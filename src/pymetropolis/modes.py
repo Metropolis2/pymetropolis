@@ -37,6 +37,9 @@ class MetaVehicle(MetroMetaType):
     def is_car(cls) -> bool:
         return False
 
+    def is_truck(cls) -> bool:
+        return False
+
     def has_passenger(cls) -> bool:
         """Returns true if the vehicle has passengers in it."""
         return False
@@ -54,6 +57,11 @@ class MetaVehicle(MetroMetaType):
 
 class CarVehicle(MetaVehicle):
     def is_car(cls) -> bool:
+        return True
+
+
+class TruckVehicleType(MetaVehicle):
+    def is_truck(cls) -> bool:
         return True
 
 
@@ -84,6 +92,11 @@ class CarPassengerVehicle(metaclass=CarVehicle):
     @classmethod
     def has_passenger(cls) -> bool:
         return True
+
+
+class TruckVehicle(metaclass=TruckVehicleType):
+    _repr = "truck"
+    _name = "truck"
 
 
 class CarRidesharingVehicle(metaclass=CarVehicle):
@@ -212,6 +225,17 @@ class CarRidesharing(metaclass=CarMode):
         return CarRidesharingVehicle
 
 
+class Truck(metaclass=CarMode):
+    """Heavy goods vehicle (truck), simulated like a car driver with its own vehicle type."""
+
+    _name = "truck"
+    _repr = "truck"
+
+    @classmethod
+    def vehicle(cls) -> MetaVehicle:
+        return TruckVehicle
+
+
 # The P+R traveler drives the car part with the `CarDriverAloneVehicle` (no HOV lane, full
 # contribution to congestion), so the car-driver availability rules apply (car ownership, driving
 # license, minimum age, no joint tours).
@@ -260,7 +284,9 @@ class OutsideOption(metaclass=MetaMode):
         return False
 
 
-CAR_MODES: list[CarMode] = [CarDriver, CarDriverWithPassengers, CarPassenger, CarRidesharing]
+# Road-vehicle modes, simulated on the road network (the truck mode is included since it is
+# simulated exactly like the car modes, with its own vehicle type).
+CAR_MODES: list[CarMode] = [CarDriver, CarDriverWithPassengers, CarPassenger, CarRidesharing, Truck]
 
 METRO_MODES: list[MetaMode] = [
     *CAR_MODES,
@@ -276,7 +302,11 @@ METRO_VEHICLES: list[MetaVehicle] = [
     CarDriverMultiVehicle,
     CarPassengerVehicle,
     CarRidesharingVehicle,
+    TruckVehicle,
 ]
+
+# Alternative ids of the road-vehicle modes.
+CAR_MODE_IDS: list[str] = [repr(mode) for mode in CAR_MODES]
 
 
 def mode_from_str(s: str) -> MetaMode:
@@ -416,6 +446,9 @@ class _AvailabilityRule:
 def _mode_rules(mode: MetaMode, rules: ModeAvailabilityRules) -> list[_AvailabilityRule]:
     """Returns the active availability rules for a given mode."""
     out = []
+    if mode is Truck:
+        # Trucks are not driven by the persons of a household: no availability rule applies.
+        return out
     if isinstance(mode, CarMode):
         if mode.is_driver():
             requires_car = rules.car_driver_requires_car

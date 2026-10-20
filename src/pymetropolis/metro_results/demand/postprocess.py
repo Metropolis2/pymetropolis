@@ -18,7 +18,7 @@ from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_simulation.demand.files import MetroTripsPopulationFile
 from pymetropolis.metro_simulation.run import MetroAgentResultsFile, MetroTripResultsFile
 from pymetropolis.metro_simulation.run.files import MetroRouteResultsFile
-from pymetropolis.modes import ParkAndRide
+from pymetropolis.modes import CAR_MODE_IDS, ParkAndRide
 
 from .files import ActivityResultsFile, RouteResultsFile, TourResultsFile, TripResultsFile
 
@@ -119,8 +119,7 @@ class TripResultsStep(PopulationStep):
             trip_id=pl.col("trip_id").str.strip_prefix(prefix),
             tour_id=pl.col("agent_id").str.strip_prefix(prefix),
             mode="selected_alt_id",
-            # TODO. Replace this with something more robust when the Mode class is created.
-            is_road=pl.col("selected_alt_id").str.starts_with("car_")
+            is_road=pl.col("selected_alt_id").is_in(CAR_MODE_IDS)
             | pl.col("trip_id").str.strip_prefix(prefix).is_in(pr_car_leg_ids),
             departure_time=pl.duration(seconds="departure_time"),
             arrival_time=pl.duration(seconds="arrival_time"),

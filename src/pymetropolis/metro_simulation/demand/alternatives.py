@@ -12,7 +12,7 @@ from pymetropolis.metro_pipeline import PopulationStep, Step
 from pymetropolis.metro_pipeline.parameters import EnumParameter, FloatParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_simulation.common import merge_populations
-from pymetropolis.modes import MetaMode, OutsideOption, StepWithModes
+from pymetropolis.modes import CAR_MODE_IDS, MetaMode, OutsideOption, StepWithModes
 
 from .files import (
     MetroAlternativesFile,
@@ -122,7 +122,7 @@ def get_origin_delay(input_trips: pl.DataFrame, primary_car_trips: pl.DataFrame)
     # trip in the tour.
     return (
         input_trips.select("agent_id", "alt_id", "trip_id")
-        .filter(pl.col("alt_id").str.starts_with("car_"))
+        .filter(pl.col("alt_id").is_in(CAR_MODE_IDS))
         .join(primary_car_trips.select("trip_id", "access_time"), on="trip_id", how="left")
         .group_by("agent_id", "alt_id")
         .agg(origin_delay=pl_duration_to_seconds(pl.col("access_time").first()).fill_null(0.0))

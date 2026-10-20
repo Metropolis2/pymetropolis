@@ -5,6 +5,9 @@
 New mode: `park_and_ride` (park-and-ride: car from home to a public-transit stop, then public
 transit). @PierreFrevalSGP
 
+New mode: `truck` (heavy goods vehicle, simulated on the road network with its own vehicle
+type). @PierreFrevalSGP
+
 New steps:
 
 - `ExternalJointToursClassifierStep`
@@ -51,6 +54,8 @@ New steps:
 - `ParkAndRideCarAccessEgressStep`
 - `ParkAndRideTripsOpenTripPlannerStep`
 - `ParkAndRideFuelStep`
+- `TruckPreferencesStep`
+- `TruckPreferencesFromPopulationStep`
 - `HomogeneousExAnteDepartureTimeStep`
 
 New files:
@@ -105,6 +110,7 @@ New files:
 - `ParkAndRideTripsPublicTransitItinerariesFile`
 - `ParkAndRidePreferencesFile`
 - `ParkAndRideFuelFile`
+- `TruckPreferencesFile`
 - `ExAnteDepartureTimesFile`
 - `ExAnteArrivalTimesFile`
 
@@ -125,6 +131,12 @@ New parameters:
 - `modes.park_and_ride.constant`
 - `modes.park_and_ride.preferences_file`
 - `modes.park_and_ride.transfer_time`
+- `modes.truck.constant`
+- `modes.truck.alpha`
+- `modes.truck.preferences_file`
+- `vehicle_types.truck.headway`
+- `vehicle_types.truck.pce`
+- `vehicle_types.truck.max_speed`
 
 New columns:
 
@@ -142,6 +154,9 @@ New features:
   parameters, controlled by the `StepWithModeAvailability` step.
 - Allow `departure_time_choice.model = "Exogenous"` (departure time is fixed and set to the ex-ante
   departure time).
+- Trucks have their own PCE and headway (3 times the car values by default) and a maximum speed
+  (90 km/h by default), applied through an `UpperBound` speed function. No mode-availability
+  rule applies to the `truck` mode.
 
 Other changes:
 
