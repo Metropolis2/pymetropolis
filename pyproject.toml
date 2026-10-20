@@ -59,6 +59,7 @@ pymetropolis = "pymetropolis:main"
 dev = [
     "ipython>=8.37.0",
     "pytest>=8.4.2",
+    "pytest-cov>=7.1.0",
     "ruff>=0.14.3",
     "treelib>=1.8.0",
     "ty>=0.0.28",
