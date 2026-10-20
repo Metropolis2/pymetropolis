@@ -18,7 +18,7 @@ from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_simulation.demand.files import MetroTripsPopulationFile
 from pymetropolis.metro_simulation.run import MetroAgentResultsFile, MetroTripResultsFile
 from pymetropolis.metro_simulation.run.files import MetroRouteResultsFile
-from pymetropolis.modes import CAR_MODE_IDS, ParkAndRide
+from pymetropolis.modes import ROAD_MODE_IDS, ParkAndRide
 
 from .files import ActivityResultsFile, RouteResultsFile, TourResultsFile, TripResultsFile
 
@@ -119,8 +119,12 @@ class TripResultsStep(PopulationStep):
             trip_id=pl.col("trip_id").str.strip_prefix(prefix),
             tour_id=pl.col("agent_id").str.strip_prefix(prefix),
             mode="selected_alt_id",
-            is_road=pl.col("selected_alt_id").is_in(CAR_MODE_IDS)
-            | pl.col("trip_id").str.strip_prefix(prefix).is_in(pr_car_leg_ids),
+            is_road=pl.col("selected_alt_id").is_in(ROAD_MODE_IDS)
+            # For park-and-ride, only the car legs are road trips.
+            & (
+                pl.col("selected_alt_id").ne("park_and_ride")
+                | pl.col("trip_id").str.strip_prefix(prefix).is_in(pr_car_leg_ids)
+            ),
             departure_time=pl.duration(seconds="departure_time"),
             arrival_time=pl.duration(seconds="arrival_time"),
             route_free_flow_travel_time=pl.duration(seconds="route_free_flow_travel_time"),

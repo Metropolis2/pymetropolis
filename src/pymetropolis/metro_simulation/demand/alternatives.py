@@ -12,7 +12,7 @@ from pymetropolis.metro_pipeline import PopulationStep, Step
 from pymetropolis.metro_pipeline.parameters import EnumParameter, FloatParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_simulation.common import merge_populations
-from pymetropolis.modes import CAR_MODE_IDS, MetaMode, OutsideOption, StepWithModes
+from pymetropolis.modes import ROAD_MODE_IDS, MetaMode, OutsideOption, StepWithModes
 
 from .files import (
     MetroAlternativesFile,
@@ -115,15 +115,15 @@ def add_mode_constants(alts: pl.DataFrame, pref_files: dict[MetaMode, MetroDataF
     return alts.join(constants, on=["agent_id", "alt_id"], how="left")
 
 
-def get_origin_delay(input_trips: pl.DataFrame, primary_car_trips: pl.DataFrame):
+def get_origin_delay(input_trips: pl.DataFrame, primary_road_trips: pl.DataFrame):
     import polars as pl
 
     # For primary car trips, `origin_delay` is equal to the access time of the first
     # trip in the tour.
     return (
         input_trips.select("agent_id", "alt_id", "trip_id")
-        .filter(pl.col("alt_id").is_in(CAR_MODE_IDS))
-        .join(primary_car_trips.select("trip_id", "access_time"), on="trip_id", how="left")
+        .filter(pl.col("alt_id").is_in(ROAD_MODE_IDS) & pl.col("alt_id").ne("park_and_ride"))
+        .join(primary_road_trips.select("trip_id", "access_time"), on="trip_id", how="left")
         .group_by("agent_id", "alt_id")
         .agg(origin_delay=pl_duration_to_seconds(pl.col("access_time").first()).fill_null(0.0))
     )
@@ -174,7 +174,7 @@ class PrepareMetroAlternativesStep(StepWithModes, PopulationStep):
             when=lambda inst: inst.has_mode_class(OutsideOption),
             when_doc="if the outside-option mode is defined",
         ),
-        "primary_car_trips": InputFile(PrimaryCarTripsAccessEgressFile, optional=True),
+        "primary_road_trips": InputFile(PrimaryCarTripsAccessEgressFile, optional=True),
         **{
             f"{mode!r}_preferences": InputFile(
                 pref_file,
@@ -198,7 +198,7 @@ class PrepareMetroAlternativesStep(StepWithModes, PopulationStep):
         import polars as pl
 
         input_trips = self.input["input_trips"].read_if_exists()
-        primary_car_trips = self.input["primary_car_trips"].read_if_exists()
+        primary_road_trips = self.input["primary_road_trips"].read_if_exists()
         alts = pl.DataFrame()
         if input_trips is not None:
             alts = input_trips.select("agent_id", "alt_id").unique()
@@ -210,8 +210,8 @@ class PrepareMetroAlternativesStep(StepWithModes, PopulationStep):
                 self.input.get("tours"),
             )
             alts = alts.join(dep_time_df, on="agent_id", how="left")
-            if primary_car_trips is not None:
-                origin_delays = get_origin_delay(input_trips, primary_car_trips)
+            if primary_road_trips is not None:
+                origin_delays = get_origin_delay(input_trips, primary_road_trips)
                 alts = alts.join(origin_delays, on=["agent_id", "alt_id"], how="left")
             alts = add_mode_constants(
                 alts,
@@ -237,7 +237,7 @@ class PrepareExAnteMetroAlternativesStep(StepWithModes, PopulationStep):
     input_files = {
         "input_trips": MetroExAnteTripsPopulationFile,
         "departure_times": ExAnteDepartureTimesFile,
-        "primary_car_trips": InputFile(PrimaryCarTripsAccessEgressFile, optional=True),
+        "primary_road_trips": InputFile(PrimaryCarTripsAccessEgressFile, optional=True),
     }
     output_files = {"metro_alternatives": MetroExAnteAlternativesPopulationFile}
     priority = 0
@@ -247,7 +247,7 @@ class PrepareExAnteMetroAlternativesStep(StepWithModes, PopulationStep):
 
         departure_times = self.input["departure_times"].read()
         input_trips = self.input["input_trips"].read()
-        primary_car_trips = self.input["primary_car_trips"].read_if_exists()
+        primary_road_trips = self.input["primary_road_trips"].read_if_exists()
 
         assert input_trips["trip_id"].n_unique() == len(input_trips)
         assert (input_trips["agent_id"] == input_trips["trip_id"]).all()
@@ -260,8 +260,8 @@ class PrepareExAnteMetroAlternativesStep(StepWithModes, PopulationStep):
             pl.lit("Constant").alias("dt_choice.type"),
             pl_duration_to_seconds("departure_time").alias("dt_choice.departure_time"),
         ).drop("departure_time")
-        if primary_car_trips is not None:
-            origin_delays = get_origin_delay(input_trips, primary_car_trips)
+        if primary_road_trips is not None:
+            origin_delays = get_origin_delay(input_trips, primary_road_trips)
             alts = alts.join(origin_delays, on=["agent_id", "alt_id"], how="left")
         alts = alts.sort("agent_id", "alt_id")
         self.output["metro_alternatives"].write(alts)
