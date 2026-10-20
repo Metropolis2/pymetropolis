@@ -7,7 +7,10 @@ from pymetropolis.metro_common.utils import pl_duration_to_seconds
 from pymetropolis.metro_demand.modes import MODE_PREFERENCES_FILES, OutsideOptionPreferencesFile
 from pymetropolis.metro_demand.population import UniformDrawsFile
 from pymetropolis.metro_demand.population.files import ExAnteDepartureTimesFile, ToursFile
-from pymetropolis.metro_demand.routing.files import PrimaryCarTripsAccessEgressFile
+from pymetropolis.metro_demand.routing.files import (
+    PrimaryCarTripsAccessEgressFile,
+    PrimaryParkAndRideCarTripsAccessEgressFile,
+)
 from pymetropolis.metro_pipeline import PopulationStep, Step
 from pymetropolis.metro_pipeline.parameters import EnumParameter, FloatParameter
 from pymetropolis.metro_pipeline.steps import InputFile
@@ -115,18 +118,48 @@ def add_mode_constants(alts: pl.DataFrame, pref_files: dict[MetaMode, MetroDataF
     return alts.join(constants, on=["agent_id", "alt_id"], how="left")
 
 
-def get_origin_delay(input_trips: pl.DataFrame, primary_road_trips: pl.DataFrame):
+def get_origin_delay(
+    input_trips: pl.DataFrame,
+    primary_road_trips: pl.DataFrame | None,
+    primary_pr_trips: pl.DataFrame | None = None,
+):
     import polars as pl
 
-    # For primary car trips, `origin_delay` is equal to the access time of the first
-    # trip in the tour.
-    return (
-        input_trips.select("agent_id", "alt_id", "trip_id")
-        .filter(pl.col("alt_id").is_in(ROAD_MODE_IDS) & pl.col("alt_id").ne("park_and_ride"))
-        .join(primary_road_trips.select("trip_id", "access_time"), on="trip_id", how="left")
-        .group_by("agent_id", "alt_id")
-        .agg(origin_delay=pl_duration_to_seconds(pl.col("access_time").first()).fill_null(0.0))
-    )
+    results = []
+    trips = input_trips.select("agent_id", "alt_id", "trip_id")
+    if primary_road_trips is not None:
+        # For primary car trips, `origin_delay` is equal to the access time of the first
+        # trip in the tour.
+        results.append(
+            trips.filter(
+                pl.col("alt_id").is_in(ROAD_MODE_IDS) & pl.col("alt_id").ne("park_and_ride")
+            )
+            .join(
+                primary_road_trips.select("trip_id", "access_time"),
+                on="trip_id",
+                how="left",
+                maintain_order="left",
+            )
+            .group_by("agent_id", "alt_id")
+            .agg(origin_delay=pl_duration_to_seconds(pl.col("access_time").first()).fill_null(0.0))
+        )
+    if primary_pr_trips is not None:
+        # For park-and-ride, the first trip of the tour is split into legs `{trip_id}-1` (car) and
+        # `{trip_id}-2`. The first leg of the tour is the car leg, whose access time is the origin
+        # delay. The trip ids of `primary_pr_trips` are the ids of the unsplit trips.
+        results.append(
+            trips.filter(pl.col("alt_id").eq("park_and_ride"))
+            .with_columns(pl.col("trip_id").str.replace(r"-[12]$", ""))
+            .join(
+                primary_pr_trips.select("trip_id", "access_time"),
+                on="trip_id",
+                how="left",
+                maintain_order="left",
+            )
+            .group_by("agent_id", "alt_id")
+            .agg(origin_delay=pl_duration_to_seconds(pl.col("access_time").first()).fill_null(0.0))
+        )
+    return pl.concat(results, how="vertical")
 
 
 class PrepareMetroAlternativesStep(StepWithModes, PopulationStep):
@@ -175,6 +208,12 @@ class PrepareMetroAlternativesStep(StepWithModes, PopulationStep):
             when_doc="if the outside-option mode is defined",
         ),
         "primary_road_trips": InputFile(PrimaryCarTripsAccessEgressFile, optional=True),
+        "primary_pr_trips": InputFile(
+            PrimaryParkAndRideCarTripsAccessEgressFile,
+            optional=True,
+            when=lambda inst: inst.has_mode("park_and_ride"),
+            when_doc='if the "park_and_ride" mode is defined',
+        ),
         **{
             f"{mode!r}_preferences": InputFile(
                 pref_file,
@@ -199,6 +238,8 @@ class PrepareMetroAlternativesStep(StepWithModes, PopulationStep):
 
         input_trips = self.input["input_trips"].read_if_exists()
         primary_road_trips = self.input["primary_road_trips"].read_if_exists()
+        primary_pr_file = self.input.get("primary_pr_trips")
+        primary_pr_trips = primary_pr_file.read_if_exists() if primary_pr_file else None
         alts = pl.DataFrame()
         if input_trips is not None:
             alts = input_trips.select("agent_id", "alt_id").unique()
@@ -210,8 +251,8 @@ class PrepareMetroAlternativesStep(StepWithModes, PopulationStep):
                 self.input.get("tours"),
             )
             alts = alts.join(dep_time_df, on="agent_id", how="left")
-            if primary_road_trips is not None:
-                origin_delays = get_origin_delay(input_trips, primary_road_trips)
+            if primary_road_trips is not None or primary_pr_trips is not None:
+                origin_delays = get_origin_delay(input_trips, primary_road_trips, primary_pr_trips)
                 alts = alts.join(origin_delays, on=["agent_id", "alt_id"], how="left")
             alts = add_mode_constants(
                 alts,
