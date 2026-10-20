@@ -74,6 +74,20 @@ class TripsFile(MetroDataFrameFile, PopulationFile):
             nullable=True,
             optional=True,
         ),
+    ]
+
+
+class ExAnteDepartureTimesFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/trips/ex_ante_departure_times.parquet"
+    description = "Ex-ante departure time of each trip."
+    schema = [
+        Column(
+            "trip_id",
+            MetroDataType.ID,
+            description="Identifier of the trip.",
+            unique=True,
+            nullable=False,
+        ),
         Column(
             "departure_time",
             MetroDataType.DURATION,
@@ -81,8 +95,21 @@ class TripsFile(MetroDataFrameFile, PopulationFile):
                 "Ex-ante departure time from origin. "
                 "This can differ from the simulated departure time."
             ),
-            nullable=True,
-            optional=True,
+            nullable=False,
+        ),
+    ]
+
+
+class ExAnteArrivalTimesFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/trips/ex_ante_arrival_times.parquet"
+    description = "Ex-ante arrival time of each trip."
+    schema = [
+        Column(
+            "trip_id",
+            MetroDataType.ID,
+            description="Identifier of the trip.",
+            unique=True,
+            nullable=False,
         ),
         Column(
             "arrival_time",
@@ -91,8 +118,7 @@ class TripsFile(MetroDataFrameFile, PopulationFile):
                 "Ex-ante arrival time at destination. "
                 "This can differ from the simulated arrival time."
             ),
-            nullable=True,
-            optional=True,
+            nullable=False,
         ),
     ]
 

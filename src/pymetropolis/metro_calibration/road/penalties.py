@@ -243,6 +243,9 @@ class FreeFlowPenaltyCoefficientsFromFileStep(Step):
 
         coefs: pl.DataFrame = read_dataframe(self.coef_file)
 
+        # Ignore null coefs.
+        coefs = coefs.filter(pl.col("penalty") != 0.0, pl.col("penalty").is_not_null())
+
         # Check columns.
         has_error = False
         for col in ("type", "variable1", "variable2", "penalty"):
@@ -262,11 +265,15 @@ class FreeFlowPenaltyCoefficientsFromFileStep(Step):
         defined_variables = (set(coefs["variable1"]) | set(coefs["variable2"])) - {None}
         missing_variables = defined_variables - existing_variables
         if missing_variables:
-            logger.error(
+            logger.warning(
                 "The following variables are defined in the coefficients file but they are not "
-                f"available in the edges' variables: {missing_variables}"
+                f"available in the edges' variables: {missing_variables}.\n"
+                "Free-flow penalties will be computed without considering them."
             )
-            sys.exit()
+        coefs = coefs.filter(
+            pl.col("variable1").is_in(missing_variables).not_(),
+            pl.col("variable2").is_in(missing_variables, nulls_equal=True).not_(),
+        )
 
         self.output["coefs"].write(coefs)
 

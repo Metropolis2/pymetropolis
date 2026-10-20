@@ -14,6 +14,8 @@ from pymetropolis.metro_spatial.simulation_area import SimulationAreaFile
 from pymetropolis.random import RandomStep
 
 from .files import (
+    ExAnteArrivalTimesFile,
+    ExAnteDepartureTimesFile,
     HouseholdsFile,
     HouseholdsHomesFile,
     PersonsFile,
@@ -315,6 +317,8 @@ class EqasimImportStep(GeoStep, RandomStep, PopulationStep):
         "homes": HouseholdsHomesFile,
         "persons": PersonsFile,
         "trips": TripsFile,
+        "ex_ante_departure_times": ExAnteDepartureTimesFile,
+        "ex_ante_arrival_times": ExAnteArrivalTimesFile,
         "origins": TripsOriginsFile,
         "destinations": TripsDestinationsFile,
     }
@@ -361,6 +365,9 @@ class EqasimImportStep(GeoStep, RandomStep, PopulationStep):
             geoparquet_file=trips_geoparquet, gpkg_file=trips_gpkg, person_ids=person_ids
         )
         households, persons, trips = clean(households, persons, trips)
+        departure_times = trips.select("trip_id", "departure_time")
+        arrival_times = trips.select("trip_id", "arrival_time")
+        trips = trips.drop("departure_time", "arrival_time")
         homes = homes.to_crs(self.crs)
         origins = origins.to_crs(self.crs)
         destinations = destinations.to_crs(self.crs)
@@ -372,5 +379,7 @@ class EqasimImportStep(GeoStep, RandomStep, PopulationStep):
         self.output["homes"].write(homes)
         self.output["persons"].write(persons)
         self.output["trips"].write(trips)
+        self.output["ex_ante_departure_times"].write(departure_times)
+        self.output["ex_ante_arrival_times"].write(arrival_times)
         self.output["origins"].write(origins)
         self.output["destinations"].write(destinations)

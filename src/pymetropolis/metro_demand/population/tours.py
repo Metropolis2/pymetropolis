@@ -8,6 +8,8 @@ from pymetropolis.metro_pipeline.steps import InputFile
 
 from .common import PURPOSES
 from .files import (
+    ExAnteArrivalTimesFile,
+    ExAnteDepartureTimesFile,
     HouseholdsFile,
     HouseholdsHomesUrbanTypeFile,
     PersonsFile,
@@ -45,6 +47,8 @@ class CreateToursStep(PopulationStep):
         "trips": TripsFile,
         "persons": PersonsFile,
         "distances": InputFile(TripsDistancesFile, optional=True),
+        "departure_times": InputFile(ExAnteDepartureTimesFile, optional=True),
+        "arrival_times": InputFile(ExAnteArrivalTimesFile, optional=True),
         "households": InputFile(HouseholdsFile, optional=True),
         "home_urban_type": InputFile(HouseholdsHomesUrbanTypeFile, optional=True),
         "trip_urban_type": InputFile(TripsUrbanTypeFile, optional=True),
@@ -62,6 +66,12 @@ class CreateToursStep(PopulationStep):
         if self.input["distances"].exists():
             distances = self.input["distances"].read()
             trips = trips.join(distances, on="trip_id", how="left")
+
+        if self.input["departure_times"].exists():
+            trips = trips.join(self.input["departure_times"].read(), on="trip_id", how="left")
+
+        if self.input["arrival_times"].exists():
+            trips = trips.join(self.input["arrival_times"].read(), on="trip_id", how="left")
 
         if self.input["trip_urban_type"].exists():
             trip_urban_type = self.input["trip_urban_type"].read()

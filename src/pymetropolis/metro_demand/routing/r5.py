@@ -8,6 +8,7 @@ from loguru import logger
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_common.utils import pl_duration_to_seconds
 from pymetropolis.metro_demand.population.files import (
+    ExAnteDepartureTimesFile,
     TripsDestinationsFile,
     TripsFile,
     TripsOriginsFile,
@@ -21,6 +22,7 @@ from pymetropolis.metro_pipeline.parameters import (
     FloatParameter,
     TimeParameter,
 )
+from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_spatial import OSMStep
 
 if TYPE_CHECKING:
@@ -175,6 +177,11 @@ class TripsPublicTransitTravelTimeFromR5Step(OSMStep, GTFSStep, PopulationStep):
         "trips": TripsFile,
         "origins": TripsOriginsFile,
         "destinations": TripsDestinationsFile,
+        "departure_times": InputFile(
+            ExAnteDepartureTimesFile,
+            when=lambda inst: inst.time_type == "departure",
+            when_doc='if `time_type` is `"departure"`',
+        ),
     }
     output_files = {"costs": TripsPublicTransitItinerariesFile}
 
@@ -198,8 +205,8 @@ class TripsPublicTransitTravelTimeFromR5Step(OSMStep, GTFSStep, PopulationStep):
 
         trips = self.input["trips"].read()
         if self.time_type == "departure":
-            if "departure_time" not in trips.columns:
-                trips = trips.with_columns(pl.lit(None, dtype=pl.Duration).alias("departure_time"))
+            departure_times = self.input["departure_times"].read()
+            trips = trips.select("trip_id").join(departure_times, on="trip_id", how="left")
             trips = trips.select("trip_id", seconds=pl_duration_to_seconds("departure_time"))
         else:
             trips = trips.select("trip_id", seconds=pl.lit(None, dtype=pl.Float64))
