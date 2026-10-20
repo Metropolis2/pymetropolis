@@ -284,6 +284,7 @@ class RouteResultsStep(PopulationStep):
             .select("trip_id", "edge_id", "entry_time", "exit_time")
             .filter(pl.col("trip_id").str.starts_with(prefix))
             .with_columns(pl.col("trip_id").str.strip_prefix(prefix))
+            .sort("trip_id", "entry_time")
             .collect()
         )
         lf = df.lazy()
@@ -440,8 +441,12 @@ class ActivityResultsStep(PopulationStep):
             if col not in trips.columns:
                 trips = trips.with_columns(pl.lit(None, dtype=pl.String).alias(col))
         trips = trips.select(
-            "person_id", "trip_id", "origin_purpose_group", "destination_purpose_group"
-        )
+            "person_id",
+            "trip_id",
+            "trip_index",
+            "origin_purpose_group",
+            "destination_purpose_group",
+        ).sort("person_id", "trip_index")
         first_activities = trips.group_by("person_id").agg(
             preceding_trip_id=pl.lit(None, dtype=trips.schema["trip_id"]),
             following_trip_id=pl.col("trip_id").first(),

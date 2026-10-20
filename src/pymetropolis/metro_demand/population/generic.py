@@ -113,6 +113,8 @@ class ActivitiesLocationsFromTripsLocationsStep(PopulationStep):
             col = f"{x}_purpose_group"
             if col not in trips.columns:
                 trips = trips.with_columns(pl.lit(None, dtype=pl.String).alias(col))
+        # Sort the trips of each person, as the aggregation and shift below depend on the order.
+        trips = trips.sort("person_id", "trip_index")
         first_activities = trips.group_by("person_id").agg(
             preceding_trip_id=pl.lit(None, dtype=trips.schema["trip_id"]),
             following_trip_id=pl.col("trip_id").first(),

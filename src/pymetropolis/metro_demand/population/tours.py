@@ -80,6 +80,8 @@ class CreateToursStep(PopulationStep):
         trips = add_lng_lat(trips, self.input["origins"].read_if_exists(), "origin")
         trips = add_lng_lat(trips, self.input["destinations"].read_if_exists(), "destination")
 
+        # Sort the trips of each tour, as the aggregations below depend on the order.
+        trips = trips.sort("tour_id", "trip_index")
         tours = trips.group_by("tour_id").agg(
             person_id=pl.col("person_id").first(),
             nb_trips=pl.len(),
