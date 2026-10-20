@@ -10,7 +10,7 @@ from pymetropolis.metro_pipeline.parameters import PathParameter
 from pymetropolis.metro_pipeline.steps import Step
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Generator
 
     import duckdb
     import geopandas as gpd
@@ -41,7 +41,7 @@ def sql_literal(value: str) -> str:
 
 
 @contextmanager
-def open_osm_duckdb(osm_file: Path) -> Iterator[tuple[duckdb.DuckDBPyConnection, Path]]:
+def open_osm_duckdb(osm_file: Path) -> Generator[tuple[duckdb.DuckDBPyConnection, Path]]:
     """Context manager yielding an in-memory DuckDB connection (with the spatial extension loaded)
     and the path to a PBF version of the OSM file, to be read with `ST_ReadOSM`.
 
@@ -82,7 +82,7 @@ def open_osm_duckdb(osm_file: Path) -> Iterator[tuple[duckdb.DuckDBPyConnection,
 
 
 @contextmanager
-def keep_join_build_side(con: duckdb.DuckDBPyConnection) -> Iterator[None]:
+def keep_join_build_side(con: duckdb.DuckDBPyConnection) -> Generator[None]:
     """Context manager to run queries joining `ST_ReadOSM` with a table of ids.
 
     `ST_ReadOSM` reports a cardinality of 1 so, by default, DuckDB builds the hash table of the

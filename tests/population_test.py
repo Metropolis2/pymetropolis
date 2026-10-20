@@ -217,6 +217,7 @@ def test_non_population_step_allows_all_populations_input():
     class Ok(Step):
         input_files = {"f": InputFile(PopFile1, all_populations=True)}
 
+    assert isinstance(Ok.input_files["f"], InputFile)
     assert Ok.input_files["f"].all_populations is True
 
 
