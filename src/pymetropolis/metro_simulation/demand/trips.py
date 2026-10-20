@@ -60,6 +60,7 @@ from pymetropolis.modes import (
     PublicTransit,
     StepWithModeAvailability,
     StepWithModes,
+    Truck,
     Walking,
     mode_availability_expr,
     warn_missing_availability_columns,
@@ -554,15 +555,15 @@ class PrepareMetroTripsStep(
         "trips": TripsFile,
         "persons": InputFile(PersonsFile, optional=True),
         "households": InputFile(HouseholdsFile, optional=True),
-        "primary_car_trips": InputFile(
+        "primary_road_trips": InputFile(
             PrimaryCarTripsAccessEgressFile,
-            when=lambda inst: inst.has_car_mode(),
-            when_doc=r'if any "car\_\*" mode is defined',
+            when=lambda inst: inst.has_road_mode(),
+            when_doc="if any road mode is defined",
         ),
-        "secondary_car_trips": InputFile(
+        "secondary_road_trips": InputFile(
             NonPrimaryCarTrips,
-            when=lambda inst: inst.has_car_mode(),
-            when_doc=r'if any "car\_\*" mode is defined',
+            when=lambda inst: inst.has_road_mode(),
+            when_doc="if any road mode is defined",
         ),
         "public_transit_itineraries": InputFile(
             TripsPublicTransitItinerariesFile,
@@ -702,8 +703,8 @@ class PrepareMetroTripsStep(
                 car_trips = generate_car_trips(
                     car_mode,
                     df=available_trips(car_mode),
-                    primary_trips_file=self.input["primary_car_trips"],
-                    secondary_trips_file=self.input["secondary_car_trips"],
+                    primary_trips_file=self.input["primary_road_trips"],
+                    secondary_trips_file=self.input["secondary_road_trips"],
                     pref_file=self.input[f"{car_mode!r}_preferences"],
                     tstars_file=self.input["tstars"],
                     schedule_pref_file=self.input["linear_schedule"],
@@ -712,6 +713,17 @@ class PrepareMetroTripsStep(
                     subsidy=self.ridesharing_subsidy,
                 )
                 metro_trips = pl.concat((metro_trips, car_trips), how="diagonal")
+        if self.has_mode("truck"):
+            truck_trips = generate_car_trips(
+                Truck,
+                df=available_trips(Truck),
+                primary_trips_file=self.input["primary_road_trips"],
+                secondary_trips_file=self.input["secondary_road_trips"],
+                pref_file=self.input["truck_preferences"],
+                tstars_file=self.input["tstars"],
+                schedule_pref_file=self.input["linear_schedule"],
+            )
+            metro_trips = pl.concat((metro_trips, truck_trips), how="diagonal")
         if self.has_mode("park_and_ride"):
             assert self.pr_transfer_time is not None
             park_and_ride_trips = generate_park_and_ride_trips(
@@ -771,15 +783,15 @@ class PrepareExAnteMetroTripsStep(StepWithModes, StepWithRidesharingCount, Popul
     input_files = {
         "trips": TripsFile,
         "tour_modes": ToursModeFile,
-        "primary_car_trips": InputFile(
+        "primary_road_trips": InputFile(
             PrimaryCarTripsAccessEgressFile,
-            when=lambda inst: inst.has_car_mode(),
-            when_doc=r'if any "car\_\*" mode is defined',
+            when=lambda inst: inst.has_road_mode(),
+            when_doc="if any road mode is defined",
         ),
-        "secondary_car_trips": InputFile(
+        "secondary_road_trips": InputFile(
             NonPrimaryCarTrips,
-            when=lambda inst: inst.has_car_mode(),
-            when_doc=r'if any "car\_\*" mode is defined',
+            when=lambda inst: inst.has_road_mode(),
+            when_doc="if any road mode is defined",
         ),
         "public_transit_travel_times": InputFile(
             TripsPublicTransitItinerariesFile,
@@ -815,10 +827,18 @@ class PrepareExAnteMetroTripsStep(StepWithModes, StepWithRidesharingCount, Popul
                 car_trips = generate_car_trips(
                     car_mode,
                     df=df,
-                    primary_trips_file=self.input["primary_car_trips"],
-                    secondary_trips_file=self.input["secondary_car_trips"],
+                    primary_trips_file=self.input["primary_road_trips"],
+                    secondary_trips_file=self.input["secondary_road_trips"],
                 )
                 metro_trips = pl.concat((metro_trips, car_trips), how="diagonal")
+        if self.has_mode("truck"):
+            truck_trips = generate_car_trips(
+                Truck,
+                df=df,
+                primary_trips_file=self.input["primary_road_trips"],
+                secondary_trips_file=self.input["secondary_road_trips"],
+            )
+            metro_trips = pl.concat((metro_trips, truck_trips), how="diagonal")
         if self.has_mode("public_transit"):
             public_transit_trips = generate_public_transit_trips(
                 df, self.input["public_transit_travel_times"]

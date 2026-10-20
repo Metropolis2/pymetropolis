@@ -44,10 +44,9 @@ class AbstractWriteMetroVehicleTypesStep(StepWithRidesharingCount, StepWithSimul
     )
     truck_max_speed = FloatParameter(
         "vehicle_types.truck.max_speed",
-        default=90.0,
         description="Maximum speed of trucks (km/h)",
-        note="Set to 0 to disable the speed limitation (trucks drive at the edges' speed).",
-        lower_bound=0.0,
+        note="Default is no speed limit.",
+        lower_bound=1e-8,
     )
 
     def run(self):
@@ -57,7 +56,6 @@ class AbstractWriteMetroVehicleTypesStep(StepWithRidesharingCount, StepWithSimul
         assert self.car_pce is not None
         assert self.truck_headway is not None
         assert self.truck_pce is not None
-        assert self.truck_max_speed is not None
         assert self.simulation_ratio is not None
         assert self.ridesharing_passenger_count is not None
 
@@ -98,7 +96,7 @@ class AbstractWriteMetroVehicleTypesStep(StepWithRidesharingCount, StepWithSimul
             elif vehicle.is_truck():
                 v["headway"] = self.truck_headway / self.simulation_ratio * congestion_share
                 v["pce"] = self.truck_pce / self.simulation_ratio * congestion_share
-                if self.truck_max_speed > 0.0:
+                if self.truck_max_speed is not None:
                     v["speed_function.type"] = "UpperBound"
                     v["speed_function.upper_bound"] = self.truck_max_speed / 3.6
             else:

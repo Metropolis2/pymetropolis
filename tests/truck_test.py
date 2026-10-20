@@ -12,6 +12,7 @@ from pymetropolis.metro_simulation.supply.files import MetroVehicleTypesFile
 from pymetropolis.metro_simulation.supply.vehicle_types import WriteMetroVehicleTypesStep
 from pymetropolis.modes import (
     CAR_MODE_IDS,
+    ROAD_MODE_IDS,
     ModeAvailabilityRules,
     Truck,
     mode_availability_expr,
@@ -21,7 +22,8 @@ from pymetropolis.modes import (
 
 def test_truck_mode():
     assert mode_from_str("truck") is Truck
-    assert "truck" in CAR_MODE_IDS
+    assert "truck" in ROAD_MODE_IDS
+    assert "truck" not in CAR_MODE_IDS
     assert Truck.vehicle().is_truck()
     assert not Truck.vehicle().is_car()
 
@@ -67,16 +69,16 @@ def test_truck_vehicle_type_defaults(tmp_path: Path):
     # Headway and PCE are scaled by the simulation ratio; trucks are 3 times a car by default.
     assert df["headway"].to_list() == pytest.approx([16.0, 48.0])
     assert df["pce"].to_list() == pytest.approx([2.0, 6.0])
-    # Only trucks have a maximum speed (90 km/h by default).
-    assert df["speed_function.type"].to_list() == [None, "UpperBound"]
-    assert df["speed_function.upper_bound"].to_list() == pytest.approx([None, 25.0])
+    # No speed limit by default.
+    assert "speed_function.type" not in df.columns
 
 
 def test_truck_vehicle_type_custom(tmp_path: Path):
     write_inputs(tmp_path, ["truck"])
-    config = {"vehicle_types": {"truck": {"headway": 15.0, "pce": 2.5, "max_speed": 0.0}}}
+    config = {"vehicle_types": {"truck": {"headway": 15.0, "pce": 2.5, "max_speed": 90.0}}}
     df = run_vehicle_types(tmp_path, config)
     assert df["headway"].to_list() == pytest.approx([15.0])
     assert df["pce"].to_list() == pytest.approx([2.5])
-    # A maximum speed of 0 disables the speed limitation.
-    assert "speed_function.type" not in df.columns
+    # A maximum speed of 90 km/h.
+    assert df["speed_function.type"].to_list() == ["UpperBound"]
+    assert df["speed_function.upper_bound"].to_list() == pytest.approx([90.0 / 3.6])

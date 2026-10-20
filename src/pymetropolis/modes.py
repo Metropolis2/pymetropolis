@@ -55,7 +55,7 @@ class MetaVehicle(MetroMetaType):
         return 1.0
 
 
-class CarVehicle(MetaVehicle):
+class CarVehicleType(MetaVehicle):
     def is_car(cls) -> bool:
         return True
 
@@ -65,12 +65,12 @@ class TruckVehicleType(MetaVehicle):
         return True
 
 
-class CarDriverAloneVehicle(metaclass=CarVehicle):
+class CarDriverAloneVehicle(metaclass=CarVehicleType):
     _repr = "car_driver_alone"
     _name = "car driver alone"
 
 
-class CarDriverMultiVehicle(metaclass=CarVehicle):
+class CarDriverMultiVehicle(metaclass=CarVehicleType):
     _repr = "car_driver_multi"
     _name = "car driver multi"
 
@@ -79,7 +79,7 @@ class CarDriverMultiVehicle(metaclass=CarVehicle):
         return True
 
 
-class CarPassengerVehicle(metaclass=CarVehicle):
+class CarPassengerVehicle(metaclass=CarVehicleType):
     _repr = "car_passenger"
     _name = "car passenger"
 
@@ -99,7 +99,7 @@ class TruckVehicle(metaclass=TruckVehicleType):
     _name = "truck"
 
 
-class CarRidesharingVehicle(metaclass=CarVehicle):
+class CarRidesharingVehicle(metaclass=CarVehicleType):
     _repr = "car_ridesharing"
     _name = "car ridesharing"
 
@@ -145,6 +145,11 @@ class RoadMode(MetaMode):
         return True
 
     @classmethod
+    def is_driver(cls) -> bool:
+        """Whether the person taking this mode is known to be the driver of the vehicle."""
+        return True
+
+    @classmethod
     def vehicle(cls) -> MetaVehicle:
         raise NotImplementedError
 
@@ -157,11 +162,6 @@ class CarMode(RoadMode):
         return True
 
     @classmethod
-    def is_driver(cls) -> bool:
-        """Whether the person taking this mode is known to be the driver of the car."""
-        return False
-
-    @classmethod
     def get_fuel_share(cls, nb_passengers: float) -> float:
         """Share of total fuel cost that should be attributed to the agent."""
         return 1.0
@@ -170,10 +170,6 @@ class CarMode(RoadMode):
 class CarDriver(metaclass=CarMode):
     _name = "car driver"
     _repr = "car_driver"
-
-    @classmethod
-    def is_driver(cls) -> bool:
-        return True
 
     @classmethod
     def vehicle(cls) -> MetaVehicle:
@@ -185,10 +181,6 @@ class CarDriverWithPassengers(metaclass=CarMode):
     _repr = "car_driver_with_passengers"
 
     @classmethod
-    def is_driver(cls) -> bool:
-        return True
-
-    @classmethod
     def vehicle(cls) -> MetaVehicle:
         return CarDriverMultiVehicle
 
@@ -196,6 +188,10 @@ class CarDriverWithPassengers(metaclass=CarMode):
 class CarPassenger(metaclass=CarMode):
     _name = "car passenger"
     _repr = "car_passenger"
+
+    @classmethod
+    def is_driver(cls) -> bool:
+        return False
 
     @classmethod
     def get_fuel_share(cls, nb_passengers: float) -> float:
@@ -212,7 +208,10 @@ class CarRidesharing(metaclass=CarMode):
     _name = "car ridesharing"
     _repr = "car_ridesharing"
 
-    # Note. The agent can be either the driver or a passenger so `is_driver` is false.
+    @classmethod
+    def is_driver(cls) -> bool:
+        # Note. The agent can be either the driver or a passenger so `is_driver` is false.
+        return False
 
     @classmethod
     def get_fuel_share(cls, nb_passengers: float) -> float:
@@ -225,7 +224,7 @@ class CarRidesharing(metaclass=CarMode):
         return CarRidesharingVehicle
 
 
-class Truck(metaclass=CarMode):
+class Truck(metaclass=RoadMode):
     """Heavy goods vehicle (truck), simulated like a car driver with its own vehicle type."""
 
     _name = "truck"
@@ -239,13 +238,9 @@ class Truck(metaclass=CarMode):
 # The P+R traveler drives the car part with the `CarDriverAloneVehicle` (no HOV lane, full
 # contribution to congestion), so the car-driver availability rules apply (car ownership, driving
 # license, minimum age, no joint tours).
-class ParkAndRide(metaclass=CarMode):
+class ParkAndRide(metaclass=RoadMode):
     _name = "park and ride"
     _repr = "park_and_ride"
-
-    @classmethod
-    def is_driver(cls) -> bool:
-        return True
 
     @classmethod
     def vehicle(cls) -> MetaVehicle:
@@ -284,18 +279,23 @@ class OutsideOption(metaclass=MetaMode):
         return False
 
 
-# Road-vehicle modes, simulated on the road network (the truck mode is included since it is
-# simulated exactly like the car modes, with its own vehicle type).
-CAR_MODES: list[CarMode] = [CarDriver, CarDriverWithPassengers, CarPassenger, CarRidesharing, Truck]
-
 METRO_MODES: list[MetaMode] = [
-    *CAR_MODES,
+    CarDriver,
+    CarDriverWithPassengers,
+    CarPassenger,
+    CarRidesharing,
+    Truck,
     PublicTransit,
     Walking,
     Bicycle,
     ParkAndRide,
     OutsideOption,
 ]
+
+# Road-vehicle modes, simulated on the road network.
+ROAD_MODES: list[RoadMode] = [mode for mode in METRO_MODES if isinstance(mode, RoadMode)]
+
+CAR_MODES: list[CarMode] = [mode for mode in METRO_MODES if isinstance(mode, CarMode)]
 
 METRO_VEHICLES: list[MetaVehicle] = [
     CarDriverAloneVehicle,
@@ -306,6 +306,8 @@ METRO_VEHICLES: list[MetaVehicle] = [
 ]
 
 # Alternative ids of the road-vehicle modes.
+ROAD_MODE_IDS: list[str] = [repr(mode) for mode in ROAD_MODES]
+# Alternative ids of the car modes.
 CAR_MODE_IDS: list[str] = [repr(mode) for mode in CAR_MODES]
 
 
@@ -446,10 +448,7 @@ class _AvailabilityRule:
 def _mode_rules(mode: MetaMode, rules: ModeAvailabilityRules) -> list[_AvailabilityRule]:
     """Returns the active availability rules for a given mode."""
     out = []
-    if mode is Truck:
-        # Trucks are not driven by the persons of a household: no availability rule applies.
-        return out
-    if isinstance(mode, CarMode):
+    if isinstance(mode, CarMode) or mode is ParkAndRide:
         if mode.is_driver():
             requires_car = rules.car_driver_requires_car
         elif mode is CarPassenger:
