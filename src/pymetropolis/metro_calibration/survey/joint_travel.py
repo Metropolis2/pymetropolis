@@ -14,6 +14,7 @@ from pymetropolis.metro_common.ml_models import (
     test_models,
 )
 from pymetropolis.metro_common.plots import plot_feature_importance
+from pymetropolis.metro_demand.population.common import TOUR_VARIABLE_LABELS
 from pymetropolis.metro_demand.population.files import JointToursFile, ToursFile
 from pymetropolis.metro_pipeline import PopulationStep, Step
 from pymetropolis.metro_pipeline.parameters import (
@@ -182,6 +183,7 @@ class JointToursFeatureImportanceStep(RandomStep, ThreadedStep):
             df,
             "Increase in Brier score when the feature is shuffled",
             max_features=self.nb_plotted_features,
+            labels=TOUR_VARIABLE_LABELS,
         )
         self.output["plot"].write(fig)
 
