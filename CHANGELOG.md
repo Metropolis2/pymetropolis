@@ -8,6 +8,9 @@ transit). @PierreFrevalSGP
 New mode: `truck` (heavy goods vehicle, simulated on the road network with its own vehicle
 type). @PierreFrevalSGP
 
+The ex-ante simulation supports the `park_and_ride` mode, and populations with a single mode
+(e.g., trucks) do not need the mode classifier. @PierreFrevalSGP
+
 New steps:
 
 - `ExternalJointToursClassifierStep`
@@ -211,6 +214,10 @@ Fixes:
 - Fix `FreeFlowPenaltyCoefficientsFromFileStep` not being discovered by the pipeline.
 - Fix `FreeFlowPenaltyCoefficientsFromFileStep` not recognizing `"cst"` as a valid variable.
 - Fix `ODMatrixEachStep` and `GravityODMatrixStep` with small trip counts per pair.
+- In the ex-ante simulation, the departure time of the trips without ex-ante departure time is
+  their ex-ante arrival time minus their free-flow travel time by car.
+- In the ex-ante simulation, the tours whose ex-ante mode is not simulated or not feasible are
+  dropped, with a warning.
 
 ## [0.12.0] – 2026-08-25
 

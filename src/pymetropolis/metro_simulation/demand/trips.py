@@ -774,10 +774,72 @@ class PrepareMetroTripsStep(
         self.output["metro_trips"].write(metro_trips)
 
 
+def select_ex_ante_trips(
+    metro_trips: pl.DataFrame, tour_modes: pl.DataFrame, trips: pl.DataFrame
+) -> pl.DataFrame:
+    """Keeps the trips of the ex-ante mode of each tour and sets the agent id to the trip id (in the
+    ex-ante simulation, 1 agent = 1 trip).
+
+    The two legs of a park-and-ride trip (`{trip_id}-1` and `{trip_id}-2`) are traveled by the same
+    agent, whose id is the id of the trip.
+    """
+    import polars as pl
+
+    metro_trips = metro_trips.join(
+        tour_modes, left_on=["agent_id", "alt_id"], right_on=["tour_id", "mode"], how="semi"
+    )
+    nb_tours = tour_modes["tour_id"].n_unique()
+    dropped = tour_modes.filter(
+        pl.col("tour_id").is_in(metro_trips["agent_id"].unique().implode()).not_()
+    )
+    if not dropped.is_empty():
+        counts = ", ".join(
+            f"{mode}: {count:,}" for mode, count in dropped["mode"].value_counts(sort=True).rows()
+        )
+        logger.warning(
+            f"{len(dropped):,} tours ({len(dropped) / nb_tours:.2%}) are not simulated because "
+            f"their ex-ante mode is not simulated or not feasible ({counts})"
+        )
+    # The tours are identified by `agent_id` in `metro_trips`.
+    pr_tour_ids = metro_trips.filter(pl.col("alt_id") == repr(ParkAndRide))["agent_id"].unique()
+    if pr_tour_ids.is_empty():
+        metro_trips = metro_trips.with_columns(agent_id="trip_id")
+    else:
+        pr_trips = trips.filter(pl.col("tour_id").is_in(pr_tour_ids.implode())).select("trip_id")
+        pr_legs = pl.concat(
+            pr_trips.select(
+                leg_id=park_and_ride_leg_id(pl.col("trip_id"), i),
+                alt_id=pl.lit(repr(ParkAndRide)),
+                original_trip_id="trip_id",
+            )
+            for i in (1, 2)
+        )
+        metro_trips = (
+            metro_trips.join(
+                pr_legs, left_on=["trip_id", "alt_id"], right_on=["leg_id", "alt_id"], how="left"
+            )
+            .with_columns(agent_id=pl.col("original_trip_id").fill_null(pl.col("trip_id")))
+            .drop("original_trip_id")
+        )
+    return metro_trips.drop(*AVAILABILITY_COLUMNS, strict=False).sort(
+        "agent_id", "alt_id", "trip_id"
+    )
+
+
 class PrepareExAnteMetroTripsStep(StepWithModes, StepWithRidesharingCount, PopulationStep):
     """Prepares the trips using ex-ante modes and departure time for the ex-ante simulation.
 
     Preference parameters are not defined (they have no impact on route choice).
+
+    Each trip is simulated as a separate agent, whose id is the trip id.
+    For the `park_and_ride` mode, the first and last trips of each tour are split into a car leg and
+    a public-transit leg (see
+    [`PrepareMetroTripsStep`](steps.md#preparemetrotripsstep)), the two legs of a trip being
+    traveled by the same agent, separated by
+    [`modes.park_and_ride.transfer_time`](parameters.md#modespark_and_ridetransfer_time).
+
+    The tours whose ex-ante mode is not simulated (not in `mode_choice.modes`) or not feasible
+    (e.g., a park-and-ride tour without P+R facility) are not simulated.
     """
 
     input_files = {
@@ -795,8 +857,8 @@ class PrepareExAnteMetroTripsStep(StepWithModes, StepWithRidesharingCount, Popul
         ),
         "public_transit_travel_times": InputFile(
             TripsPublicTransitItinerariesFile,
-            when=lambda inst: inst.has_mode("public_transit"),
-            when_doc='if the "public_transit" mode is defined',
+            when=lambda inst: inst.has_mode("public_transit") or inst.has_mode("park_and_ride"),
+            when_doc='if the "public_transit" or "park_and_ride" mode is defined',
         ),
         "walking_travel_times": InputFile(
             WalkingTravelTimesFile,
@@ -808,9 +870,39 @@ class PrepareExAnteMetroTripsStep(StepWithModes, StepWithRidesharingCount, Popul
             when=lambda inst: inst.has_mode("bicycle"),
             when_doc='if the "bicycle" mode is defined',
         ),
+        "pr_stops": InputFile(
+            ParkAndRideStopsFile,
+            when=lambda inst: inst.has_mode("park_and_ride"),
+            when_doc='if the "park_and_ride" mode is defined',
+        ),
+        "primary_pr_trips": InputFile(
+            PrimaryParkAndRideCarTripsAccessEgressFile,
+            when=lambda inst: inst.has_mode("park_and_ride"),
+            when_doc='if the "park_and_ride" mode is defined',
+        ),
+        "secondary_pr_trips": InputFile(
+            NonPrimaryParkAndRideCarTrips,
+            when=lambda inst: inst.has_mode("park_and_ride"),
+            when_doc='if the "park_and_ride" mode is defined',
+        ),
+        "pr_pt_itineraries": InputFile(
+            ParkAndRideTripsPublicTransitItinerariesFile,
+            when=lambda inst: inst.has_mode("park_and_ride"),
+            when_doc='if the "park_and_ride" mode is defined',
+        ),
     }
     output_files = {"metro_trips": MetroExAnteTripsPopulationFile}
     priority = 0
+
+    pr_transfer_time = DurationParameter(
+        "modes.park_and_ride.transfer_time",
+        default=timedelta(minutes=5),
+        description=(
+            "Time spent at the P+R facility between the car part and the public-transit part of "
+            "park-and-ride trips (parking, walking to the platform)."
+        ),
+        note="This time is valued at the public-transit value of time.",
+    )
 
     def is_defined(self) -> bool:
         # If there is no "road-based mode", this step cannot be run (there is no trip to generate).
@@ -839,6 +931,19 @@ class PrepareExAnteMetroTripsStep(StepWithModes, StepWithRidesharingCount, Popul
                 secondary_trips_file=self.input["secondary_road_trips"],
             )
             metro_trips = pl.concat((metro_trips, truck_trips), how="diagonal")
+        if self.has_mode("park_and_ride"):
+            assert self.pr_transfer_time is not None
+            park_and_ride_trips = generate_park_and_ride_trips(
+                df,
+                trips=trips,
+                pr_stops_file=self.input["pr_stops"],
+                primary_trips_file=self.input["primary_pr_trips"],
+                secondary_trips_file=self.input["secondary_pr_trips"],
+                park_and_ride_itineraries_file=self.input["pr_pt_itineraries"],
+                pt_itineraries_file=self.input["public_transit_travel_times"],
+                transfer_time=self.pr_transfer_time.total_seconds(),
+            )
+            metro_trips = pl.concat((metro_trips, park_and_ride_trips), how="diagonal")
         if self.has_mode("public_transit"):
             public_transit_trips = generate_public_transit_trips(
                 df, self.input["public_transit_travel_times"]
@@ -850,17 +955,8 @@ class PrepareExAnteMetroTripsStep(StepWithModes, StepWithRidesharingCount, Popul
         if self.has_mode("bicycle"):
             bicycle_trips = generate_bicycle_trips(df, self.input["bicycle_travel_times"])
             metro_trips = pl.concat((metro_trips, bicycle_trips), how="diagonal")
-        metro_trips = metro_trips.sort("agent_id", "alt_id", "trip_id")
-        # Keep only trips with the ex-ante mode.
         tour_modes = self.input["tour_modes"].read()
-        metro_trips = metro_trips.join(
-            tour_modes, left_on=["agent_id", "alt_id"], right_on=["tour_id", "mode"], how="semi"
-        )
-        # In the ex-ante simulation, 1 agent = 1 trip.
-        metro_trips = metro_trips.with_columns(agent_id="trip_id")
-        metro_trips = metro_trips.drop(*AVAILABILITY_COLUMNS, strict=False).sort(
-            "agent_id", "alt_id", "trip_id"
-        )
+        metro_trips = select_ex_ante_trips(metro_trips, tour_modes, trips)
         self.output["metro_trips"].write(metro_trips)
 
 

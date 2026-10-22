@@ -12,7 +12,11 @@ from pymetropolis.metro_demand.modes.park_and_ride.transfer_stops import (
 )
 from pymetropolis.metro_network.public_transit.gtfs import read_gtfs_stops_and_routes
 from pymetropolis.metro_results.demand.postprocess import merge_park_and_ride_legs
-from pymetropolis.metro_simulation.demand.trips import clean_trips, generate_park_and_ride_trips
+from pymetropolis.metro_simulation.demand.trips import (
+    clean_trips,
+    generate_park_and_ride_trips,
+    select_ex_ante_trips,
+)
 from pymetropolis.modes import ModeAvailabilityRules, ParkAndRide, mode_availability_expr
 
 
@@ -275,3 +279,36 @@ def test_read_gtfs_with_date(tmp_path):
     stops, routes = read_gtfs_stops_and_routes(path, date(2026, 3, 11))
     assert sorted(stops["stop_id"]) == ["S2", "S3"]
     assert routes["route_id"].to_list() == ["R2"]
+
+
+def test_select_ex_ante_trips():
+    pr = generate()
+    walking = clean_trips(TRIPS).select(
+        "trip_id",
+        "agent_id",
+        alt_id=pl.lit("walking"),
+        **{"class.type": pl.lit("Virtual")},
+        **{"class.travel_time": pl.lit(600.0)},
+        stopping_time="activity_time",
+    )
+    metro_trips = pl.concat((pr, walking), how="diagonal")
+    tour_modes = pl.DataFrame(
+        {
+            "tour_id": ["1-1", "2-1", "3-1"],
+            # Tour "2-1" has no feasible P+R alternative: it is not simulated.
+            "mode": ["park_and_ride", "park_and_ride", "walking"],
+        }
+    )
+    out = select_ex_ante_trips(metro_trips, tour_modes, TRIPS)
+    assert out["trip_id"].to_list() == ["1-1-1", "1-1-2", "1-2", "1-3-1", "1-3-2", "3-1"]
+    # The two legs of a P+R trip are traveled by the same agent (the trip).
+    assert out["agent_id"].to_list() == ["1-1", "1-1", "1-2", "1-3", "1-3", "3-1"]
+    assert out["alt_id"].to_list() == ["park_and_ride"] * 5 + ["walking"]
+
+
+def test_select_ex_ante_trips_without_park_and_ride():
+    df = clean_trips(TRIPS).with_columns(alt_id=pl.lit("walking"))
+    tour_modes = pl.DataFrame({"tour_id": ["1-1", "2-1"], "mode": ["walking", "bicycle"]})
+    out = select_ex_ante_trips(df, tour_modes, TRIPS)
+    assert out["trip_id"].to_list() == ["1-1", "1-2", "1-3"]
+    assert (out["agent_id"] == out["trip_id"]).all()

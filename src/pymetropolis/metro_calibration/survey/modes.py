@@ -209,25 +209,40 @@ class ModeFeatureImportanceStep(RandomStep, ThreadedStep, StepWithModes):
         self.output["plot"].write(fig)
 
 
-class ClassifyToursModeStep(RandomStep, PopulationStep):
-    """Predict an ex-ante mode for each tour, based on the mode classifier."""
+class ClassifyToursModeStep(RandomStep, StepWithModes, PopulationStep):
+    """Predict an ex-ante mode for each tour, based on the mode classifier.
 
-    input_files = {"tours": ToursFile, "estimator": ModeEstimatorFile}
+    For a population with a single mode (e.g., trucks), all the tours get this mode and the
+    classifier is not used.
+    """
+
+    input_files = {
+        "tours": ToursFile,
+        "estimator": InputFile(
+            ModeEstimatorFile,
+            when=lambda inst: inst.has_mode_choice() or not inst.has_any_mode(),
+            when_doc="unless the population has a single mode",
+        ),
+    }
     output_files = {"modes": ToursModeFile}
 
     def run(self):
         import polars as pl
 
         tours = self.input["tours"].read()
-        estimator = self.input["estimator"].read()
 
-        features = estimator.feature_names_in_
+        if self.modes is not None and len(self.modes) == 1:
+            df = tours.select("tour_id", mode=pl.lit(repr(self.modes[0])))
+        else:
+            estimator = self.input["estimator"].read()
 
-        X = get_X(tours, features)
+            features = estimator.feature_names_in_
 
-        modes = sample_classes(X, estimator, self.get_rng(str(self)))
+            X = get_X(tours, features)
 
-        df = tours.select("tour_id", mode=pl.Series("mode", modes, dtype=pl.String))
+            modes = sample_classes(X, estimator, self.get_rng(str(self)))
+
+            df = tours.select("tour_id", mode=pl.Series("mode", modes, dtype=pl.String))
 
         for mode, count in df["mode"].value_counts(sort=True).iter_rows():
             logger.info(f"Share of tours with mode `{mode}`: {count / len(df):.2%}")
