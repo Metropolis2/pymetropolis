@@ -134,6 +134,8 @@ New parameters:
 - `vehicle_types.truck.headway`
 - `vehicle_types.truck.pce`
 - `vehicle_types.truck.max_speed`
+- `simulation.learning_model`
+- `simulation.nb_exponential_iterations`
 
 New columns:
 
@@ -151,6 +153,7 @@ New features:
   parameters, controlled by the `StepWithModeAvailability` step.
 - Allow `departure_time_choice.model = "Exogenous"` (departure time is fixed and set to the ex-ante
   departure time).
+- Add `ExponentialUnadjusted` and `ExponentialThenLinear` learning models from Metropolis-Core.
 
 Other changes:
 
