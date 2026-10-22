@@ -6,15 +6,10 @@ from pymetropolis.metro_common.errors import MetropyError, error_context
 from pymetropolis.metro_common.utils import pl_duration_to_seconds
 from pymetropolis.metro_demand.modes import MODE_PREFERENCES_FILES, OutsideOptionPreferencesFile
 from pymetropolis.metro_demand.population import UniformDrawsFile
-from pymetropolis.metro_demand.population.files import (
-    ExAnteArrivalTimesFile,
-    ExAnteDepartureTimesFile,
-    ToursFile,
-)
+from pymetropolis.metro_demand.population.files import ExAnteDepartureTimesFile, ToursFile
 from pymetropolis.metro_demand.routing.files import (
     PrimaryCarTripsAccessEgressFile,
     PrimaryParkAndRideCarTripsAccessEgressFile,
-    TripsCarFreeFlowTravelTimesFile,
 )
 from pymetropolis.metro_pipeline import PopulationStep, Step
 from pymetropolis.metro_pipeline.parameters import EnumParameter, FloatParameter
@@ -278,18 +273,11 @@ class PrepareMetroAlternativesStep(StepWithModes, PopulationStep):
 
 
 class PrepareExAnteMetroAlternativesStep(StepWithModes, PopulationStep):
-    """Prepares the alternatives for the ex-ante simulation.
-
-    The departure time of each trip is fixed to its ex-ante departure time. For the populations
-    whose trips only have an ex-ante arrival time (e.g., flows from an OD matrix with arrival
-    hours), the departure time is the arrival time minus the free-flow travel time by car.
-    """
+    """Prepares the alternatives for the ex-ante simulation."""
 
     input_files = {
         "input_trips": MetroExAnteTripsPopulationFile,
-        "departure_times": InputFile(ExAnteDepartureTimesFile, optional=True),
-        "arrival_times": InputFile(ExAnteArrivalTimesFile, optional=True),
-        "free_flow_travel_times": InputFile(TripsCarFreeFlowTravelTimesFile, optional=True),
+        "departure_times": ExAnteDepartureTimesFile,
         "primary_road_trips": InputFile(PrimaryCarTripsAccessEgressFile, optional=True),
         "primary_pr_trips": InputFile(PrimaryParkAndRideCarTripsAccessEgressFile, optional=True),
     }
@@ -299,26 +287,10 @@ class PrepareExAnteMetroAlternativesStep(StepWithModes, PopulationStep):
     def run(self):
         import polars as pl
 
+        departure_times = self.input["departure_times"].read()
         input_trips = self.input["input_trips"].read()
         primary_road_trips = self.input["primary_road_trips"].read_if_exists()
         primary_pr_trips = self.input["primary_pr_trips"].read_if_exists()
-
-        departure_times = self.input["departure_times"].read_if_exists()
-        if departure_times is None:
-            arrival_times = self.input["arrival_times"].read_if_exists()
-            free_flow = self.input["free_flow_travel_times"].read_if_exists()
-            if arrival_times is None or free_flow is None:
-                raise MetropyError(
-                    "The trips have no ex-ante departure time, and no ex-ante arrival time with "
-                    "free-flow travel time to compute it"
-                )
-            departure_times = arrival_times.join(
-                free_flow.select("trip_id", "free_flow_travel_time"), on="trip_id", how="left"
-            ).select(
-                "trip_id",
-                departure_time=pl.col("arrival_time")
-                - pl.col("free_flow_travel_time").fill_null(pl.duration(seconds=0)),
-            )
 
         # Each agent is a trip (`agent_id` is the trip id), with a single alternative. Park-and-ride
         # trips are made of two legs (two Metropolis-Core trips for the same agent).

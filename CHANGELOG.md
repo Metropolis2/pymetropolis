@@ -218,8 +218,6 @@ Fixes:
 - Fix `FreeFlowPenaltyCoefficientsFromFileStep` not being discovered by the pipeline.
 - Fix `FreeFlowPenaltyCoefficientsFromFileStep` not recognizing `"cst"` as a valid variable.
 - Fix `ODMatrixEachStep` and `GravityODMatrixStep` with small trip counts per pair.
-- In the ex-ante simulation, the departure time of the trips without ex-ante departure time is
-  their ex-ante arrival time minus their free-flow travel time by car.
 - In the ex-ante simulation, the tours whose ex-ante mode is not simulated or not feasible are
   dropped, with a warning.
 - The agents, alternatives and trips of the populations are merged even if their columns differ
