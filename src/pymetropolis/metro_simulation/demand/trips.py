@@ -41,7 +41,7 @@ from pymetropolis.metro_demand.routing.files import (
 )
 from pymetropolis.metro_environment.fuel import CarFuelFile, ParkAndRideFuelFile
 from pymetropolis.metro_pipeline import PopulationStep, Step
-from pymetropolis.metro_pipeline.parameters import DurationParameter
+from pymetropolis.metro_pipeline.parameters import DurationParameter, FloatParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_simulation.common import (
     StepWithRidesharingCount,
@@ -215,6 +215,7 @@ def generate_park_and_ride_trips(
     schedule_pref_file: LinearScheduleFile | None = None,
     fuel_file: ParkAndRideFuelFile | None = None,
     transfer_time: float = 0.0,
+    transfer_vot_multiplier: float = 1.0,
 ):
     """Generates the trips of the park-and-ride alternatives.
 
@@ -227,7 +228,8 @@ def generate_park_and_ride_trips(
     - intermediary trips: single public-transit leg (same as the `public_transit` mode).
 
     The legs of a split trip have ids `{trip_id}-1` and `{trip_id}-2`.
-    The `transfer_time` (in seconds) is spent at the P+R facility, between the two legs.
+    The `transfer_time` (in seconds) is spent at the P+R facility, between the two legs. It is
+    valued at the public-transit value of time multiplied by `transfer_vot_multiplier`.
     The schedule-delay preferences of a trip apply to its last leg.
     The car legs use the `car_driver_alone` vehicle.
     """
@@ -321,7 +323,9 @@ def generate_park_and_ride_trips(
         pt_utility=-pl.col("pt_alpha")
         * (
             pl.col("pt_generalized_time")
-            + pl.when(pl.col("is_outbound").is_not_null()).then(transfer_time).otherwise(0.0)
+            + pl.when(pl.col("is_outbound").is_not_null())
+            .then(transfer_time * transfer_vot_multiplier)
+            .otherwise(0.0)
         ),
         # Value of the access / egress time of the car leg.
         car_utility=-pl.col("car_alpha") * (pl.col("access_time_sec") + pl.col("egress_time_sec")),
@@ -639,7 +643,19 @@ class PrepareMetroTripsStep(
             "Time spent at the P+R facility between the car part and the public-transit part of "
             "park-and-ride trips (parking, walking to the platform)."
         ),
-        note="This time is valued at the public-transit value of time.",
+        note=(
+            "This time is valued at the public-transit value of time, multiplied by "
+            "`modes.park_and_ride.transfer_vot_multiplier`."
+        ),
+    )
+    pr_transfer_vot_multiplier = FloatParameter(
+        "modes.park_and_ride.transfer_vot_multiplier",
+        default=1.0,
+        lower_bound=0.0,
+        description=(
+            "Multiplier of the public-transit value of time applied to the transfer time at the "
+            "P+R facility."
+        ),
     )
 
     def is_defined(self) -> bool:
@@ -739,6 +755,7 @@ class PrepareMetroTripsStep(
                 schedule_pref_file=self.input["linear_schedule"],
                 fuel_file=self.input["pr_fuel"],
                 transfer_time=self.pr_transfer_time.total_seconds(),
+                transfer_vot_multiplier=self.pr_transfer_vot_multiplier or 1.0,
             )
             metro_trips = pl.concat((metro_trips, park_and_ride_trips), how="diagonal")
         if self.has_mode("public_transit"):

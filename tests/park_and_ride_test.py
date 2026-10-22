@@ -69,7 +69,7 @@ def test_car_trips_and_legs():
     assert legs["car_leg_id"].to_list() == ["1-1-1", "1-3-2", "2-1-1"]
 
 
-def generate(transfer_time=300.0):
+def generate(transfer_time=300.0, transfer_vot_multiplier=1.0):
     df = clean_trips(TRIPS)
     return generate_park_and_ride_trips(
         df,
@@ -125,6 +125,7 @@ def generate(transfer_time=300.0):
         schedule_pref_file=None,
         fuel_file=FakeFile(pl.DataFrame({"trip_id": ["1-1", "1-3"], "fuel_cost": [1.5, 1.6]})),
         transfer_time=transfer_time,
+        transfer_vot_multiplier=transfer_vot_multiplier,
     )
 
 
@@ -164,6 +165,16 @@ def test_generate_trips_utilities():
     assert utilities[3] == pytest.approx(-10 / 3600 * (1300 + 300))
     # Car legs are valued with the car value of time.
     assert out["alpha"].to_list()[0] == pytest.approx(15 / 3600)
+
+
+def test_generate_trips_transfer_vot_multiplier():
+    out = generate(transfer_vot_multiplier=2.0)
+    utilities = out["constant_utility"].to_list()
+    # The transfer time is valued at twice the public-transit value of time; the generalized time
+    # of the public-transit leg is not affected.
+    assert utilities[1] == pytest.approx(-10 / 3600 * (1200 + 2 * 300))
+    assert utilities[2] == pytest.approx(-10 / 3600 * 700)
+    assert utilities[3] == pytest.approx(-10 / 3600 * (1300 + 2 * 300))
 
 
 def test_generate_trips_schedule():
