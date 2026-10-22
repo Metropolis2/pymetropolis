@@ -131,6 +131,7 @@ New parameters:
 - `modes.park_and_ride.constant`
 - `modes.park_and_ride.preferences_file`
 - `modes.park_and_ride.transfer_time`
+- `modes.park_and_ride.transfer_vot_multiplier`
 - `vehicle_types.truck.headway`
 - `vehicle_types.truck.pce`
 - `vehicle_types.truck.max_speed`
@@ -214,6 +215,9 @@ Fixes:
 - Fix `FreeFlowPenaltyCoefficientsFromFileStep` not being discovered by the pipeline.
 - Fix `FreeFlowPenaltyCoefficientsFromFileStep` not recognizing `"cst"` as a valid variable.
 - Fix `ODMatrixEachStep` and `GravityODMatrixStep` with small trip counts per pair.
+- The agents, alternatives and trips of the populations are merged even if their columns differ
+  (missing columns are filled with nulls), e.g., for a population with a single mode and no
+  mode-choice parameters.
 
 ## [0.12.0] – 2026-08-25
 
