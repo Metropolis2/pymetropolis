@@ -173,14 +173,14 @@ class JointToursFeatureImportanceStep(RandomStep, ThreadedStep):
             X, y, groups, estimator, self.random_seed, self.nb_threads or -1
         )
 
-        logger.info("Feature importance of the joint-tour classifier (decrease in Brier score):")
+        logger.info("Feature importance of the joint-tour classifier (increase in Brier score):")
         for feature, importance, std in df.head(10).iter_rows():
             logger.info(f"  {feature}: {importance:.4f} (+/- {std:.4f})")
 
         self.output["importance"].write(df)
         fig = plot_feature_importance(
             df,
-            "Decrease in Brier score when the feature is shuffled",
+            "Increase in Brier score when the feature is shuffled",
             max_features=self.nb_plotted_features,
         )
         self.output["plot"].write(fig)
