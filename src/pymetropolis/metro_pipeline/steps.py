@@ -157,18 +157,29 @@ class Step:
             spec = self.input_files[k]
             if isinstance(spec, InputFile) and spec.all_populations:
                 self._population_input_files[k] = {
-                    population: _namespace(f, population).from_dir(config.main_directory)
+                    population: self._resolve_file_class(f, population).from_dir(
+                        config.main_directory
+                    )
                     for population in all_population_names
                 }
             else:
-                self._input_files[k] = _namespace(f, file_population).from_dir(
+                self._input_files[k] = self._resolve_file_class(f, file_population).from_dir(
                     config.main_directory
                 )
         self._output_files = {
-            k: _namespace(f, file_population).from_dir(config.main_directory)
+            k: self._resolve_file_class(f, file_population).from_dir(config.main_directory)
             for k, f in self.output_files.items()
         }
         self._update_file_path = config.main_directory / "update_files" / f"{self}.json"
+
+    def _resolve_file_class(self, file_class: type[MetroFile], population: str) -> type[MetroFile]:
+        """Returns the variant of `file_class` with the placeholders of its path resolved, for the
+        given population.
+
+        Called once the parameters of the step are set, so that a subclass can resolve other
+        placeholders from them (see `PlotStep`).
+        """
+        return _namespace(file_class, population)
 
     @classmethod
     def _iter_params(cls):

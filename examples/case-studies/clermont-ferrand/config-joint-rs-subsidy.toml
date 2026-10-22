@@ -1,0 +1,6 @@
+main_directory = "output-joint-rs-subsidy"
+
+parent_config = "config-joint.toml"
+
+[ridesharing]
+subsidy = 1.0

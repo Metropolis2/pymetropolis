@@ -10,9 +10,8 @@ from loguru import logger
 
 from pymetropolis.common import ThreadedStep
 from pymetropolis.metro_common import MetropyError
-from pymetropolis.metro_common.plots import plot_travel_time_comparison
+from pymetropolis.metro_common.plots import PlotStep, plot_travel_time_comparison
 from pymetropolis.metro_network.road_network.files import RoadEdgesCleanFile, RoadEdgesPenaltiesFile
-from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_simulation.parameters.step import StepWithPeriod
 from pymetropolis.metro_simulation.run.exec import AbstractRunSimulationStep
 from pymetropolis.metro_simulation.run.files import MetroExAnteSimulatedTravelTimeFunctionsFile
@@ -230,7 +229,7 @@ class CongestionSimulationStep(ThreadedStep, AbstractRunSimulationStep, StepWith
         self.output["congestion_times"].write(congestion_times)
 
 
-class CongestionTimeComparisonStep(Step):
+class CongestionTimeComparisonStep(PlotStep):
     """Compares observed and Metropolis-simulated congested times of the target routes."""
 
     input_files = {"routes": TargetRoutesFile, "congestion_times": TargetRoutesCongestionTimesFile}

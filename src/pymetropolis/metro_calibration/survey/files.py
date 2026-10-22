@@ -663,14 +663,14 @@ class SurveyedToursTravelTimesFile(MetroDataFrameFile):
 
 
 class SurveyedTripsTravelTimeComparisonCarPlotFile(MetroPlotFile):
-    path = "calibration/survey/graphs/travel_time_comparison_car.png"
+    path = "calibration/survey/graphs/travel_time_comparison_car.{format}"
     description = (
         "Scatter plot comparing observed and simulated travel times for car trips in the survey."
     )
 
 
 class SurveyedTripsTravelTimeComparisonWalkingPlotFile(MetroPlotFile):
-    path = "calibration/survey/graphs/travel_time_comparison_walking.png"
+    path = "calibration/survey/graphs/travel_time_comparison_walking.{format}"
     description = (
         "Scatter plot comparing observed and simulated travel times for walking trips in the "
         "survey."
@@ -678,7 +678,7 @@ class SurveyedTripsTravelTimeComparisonWalkingPlotFile(MetroPlotFile):
 
 
 class SurveyedTripsTravelTimeComparisonBicyclePlotFile(MetroPlotFile):
-    path = "calibration/survey/graphs/travel_time_comparison_bicycle.png"
+    path = "calibration/survey/graphs/travel_time_comparison_bicycle.{format}"
     description = (
         "Scatter plot comparing observed and simulated travel times for bicycle trips in the "
         "survey."
@@ -686,7 +686,7 @@ class SurveyedTripsTravelTimeComparisonBicyclePlotFile(MetroPlotFile):
 
 
 class SurveyedTripsTravelTimeComparisonPublicTransitPlotFile(MetroPlotFile):
-    path = "calibration/survey/graphs/travel_time_comparison_public_transit.png"
+    path = "calibration/survey/graphs/travel_time_comparison_public_transit.{format}"
     description = (
         "Scatter plot comparing observed and simulated travel times for public-transit trips in "
         "the survey."
@@ -895,7 +895,7 @@ class JointTourFeatureImportanceFile(MetroDataFrameFile):
 
 
 class JointTourFeatureImportancePlotFile(MetroPlotFile):
-    path = "calibration/survey/graphs/joint_tour_feature_importance.png"
+    path = "calibration/survey/graphs/joint_tour_feature_importance.{format}"
     description = "Bar plot of the permutation feature importance of the joint-tour classifier."
 
 
@@ -906,7 +906,7 @@ class ModeFeatureImportanceFile(MetroDataFrameFile):
 
 
 class ModeFeatureImportancePlotFile(MetroPlotFile):
-    path = "calibration/survey/graphs/mode_feature_importance.png"
+    path = "calibration/survey/graphs/mode_feature_importance.{format}"
     description = "Bar plot of the permutation feature importance of the tour-mode classifier."
 
 
@@ -919,10 +919,10 @@ class ToursModeShareComparisonFile(MetroTxtFile, PopulationFile):
 
 
 class ToursModeShareTourCountPlotFile(MetroPlotFile, PopulationFile):
-    path = "calibration/survey/{population}/mode_share_tour_count.png"
+    path = "calibration/survey/{population}/mode_share_tour_count.{format}"
     description = "Comparison of survey vs. ex-ante mode shares, by tour count."
 
 
 class ToursModeShareDistancePlotFile(MetroPlotFile, PopulationFile):
-    path = "calibration/survey/{population}/mode_share_distance.png"
+    path = "calibration/survey/{population}/mode_share_distance.{format}"
     description = "Comparison of survey vs. ex-ante mode shares, by tour distance."

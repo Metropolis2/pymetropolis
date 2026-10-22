@@ -13,7 +13,7 @@ from pymetropolis.metro_common.ml_models import (
     predict,
     test_models,
 )
-from pymetropolis.metro_common.plots import plot_feature_importance
+from pymetropolis.metro_common.plots import PlotStep, plot_feature_importance
 from pymetropolis.metro_demand.population.common import TOUR_VARIABLE_LABELS
 from pymetropolis.metro_demand.population.files import JointToursFile, ToursFile
 from pymetropolis.metro_pipeline import PopulationStep, Step
@@ -132,23 +132,8 @@ class JointToursFeatureImportanceStep(RandomStep, ThreadedStep):
         ),
     )
 
-    nb_plotted_features = IntParameter(
-        "joint_travel.nb_plotted_features",
-        lower_bound=1,
-        description="Number of features to show in the feature importance plot.",
-        note=(
-            "Only the most important features are shown. "
-            "Default is to show all the features. "
-            "This does not affect `JointTourFeatureImportanceFile`, which always includes all the "
-            "features."
-        ),
-    )
-
     input_files = {"tours": SurveyedToursFile, "estimator": JointTourEstimatorFile}
-    output_files = {
-        "importance": JointTourFeatureImportanceFile,
-        "plot": JointTourFeatureImportancePlotFile,
-    }
+    output_files = {"importance": JointTourFeatureImportanceFile}
 
     def is_defined(self):
         return bool(self.feature_importance)
@@ -179,6 +164,28 @@ class JointToursFeatureImportanceStep(RandomStep, ThreadedStep):
             logger.info(f"  {feature}: {importance:.4f} (+/- {std:.4f})")
 
         self.output["importance"].write(df)
+
+
+class JointToursFeatureImportancePlotStep(PlotStep):
+    """Plots the permutation feature importance of the joint-tour classifier."""
+
+    nb_plotted_features = IntParameter(
+        "joint_travel.nb_plotted_features",
+        lower_bound=1,
+        description="Number of features to show in the feature importance plot.",
+        note=(
+            "Only the most important features are shown. "
+            "Default is to show all the features. "
+            "This does not affect `JointTourFeatureImportanceFile`, which always includes all the "
+            "features."
+        ),
+    )
+
+    input_files = {"importance": JointTourFeatureImportanceFile}
+    output_files = {"plot": JointTourFeatureImportancePlotFile}
+
+    def run(self):
+        df = self.input["importance"].read()
         fig = plot_feature_importance(
             df,
             "Increase in Brier score when the feature is shuffled",

@@ -9,6 +9,7 @@ import polars as pl
 from matplotlib.ticker import FuncFormatter
 from shapely.geometry import LineString
 
+from pymetropolis.metro_common.plots import PlotStep
 from pymetropolis.metro_common.utils import (
     pl_duration_to_seconds,
     seconds_since_midnight_to_time_string,
@@ -143,14 +144,14 @@ class UniformDrawsStep(UniformDrawsStep):
 
 
 class DepartureRateComparisonPlotFile(MetroPlotFile, PopulationFile):
-    path = "results/graphs/{population}/trips/departure_rate_comparison.png"
+    path = "results/graphs/{population}/trips/departure_rate_comparison.{format}"
     description = (
         "Comparison of the simulated departure rate from origin, at the trip level, against the "
         "analytical equilibrium departure rate of the stochastic bottleneck model."
     )
 
 
-class DepartureRateComparisonStep(PopulationStep):
+class DepartureRateComparisonStep(PlotStep, PopulationStep):
     """Generates a graph comparing the simulated departure rate from origin, at the trip level,
     against the analytical equilibrium departure rate of the stochastic bottleneck model (de
     Palma, Ben-Akiva, Lefevre, and Litinas, 1983), for the `car_driver` mode used by the bottleneck

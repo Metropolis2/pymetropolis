@@ -1,10 +1,10 @@
+from pymetropolis.metro_common.plots import PlotStep, duration_formatter, percent_label
 from pymetropolis.metro_common.utils import (
     pl_duration_to_seconds,
     seconds_since_midnight_to_time_string,
-    seconds_to_duration_string,
 )
 from pymetropolis.metro_network.road_network.files import RoadEdgesFreeFlowTravelTimeFile
-from pymetropolis.metro_pipeline import PopulationStep, Step
+from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.metro_results.aggregate import IterationResultsFile
 from pymetropolis.metro_results.demand import TripResultsFile
 from pymetropolis.metro_simulation.run import (
@@ -40,7 +40,7 @@ PURPLE = "#9932CC"
 TEAL = "#008080"
 
 
-class ConvergencePlotStep(Step):
+class ConvergencePlotStep(PlotStep):
     """Generates various graphs to analyze the convergence of the simulation."""
 
     input_files = {"iteration_results": IterationResultsFile}
@@ -54,7 +54,7 @@ class ConvergencePlotStep(Step):
 
     def run(self):
         import matplotlib.pyplot as plt
-        from matplotlib.ticker import FuncFormatter, PercentFormatter
+        from matplotlib.ticker import PercentFormatter
 
         # TODO. What if the values are all null? (e.g., no trip simulation).
         # TODO. Add configuration for log vs linear scale (and labels?).
@@ -80,12 +80,10 @@ class ConvergencePlotStep(Step):
             ys = df[col].dt.total_nanoseconds() / 1e9
             ax.semilogy(xs, ys, alpha=0.9)
             ax.set_xlabel("Iteration")
-            ax.set_ylabel(f"{label} (log scale)")
+            ax.set_ylabel(self.text(f"{label} (log scale)"))
             ax.set_xlim(xs.min(), xs.max())
             # ax.set_ylim(bottom=0)
-            ax.yaxis.set_major_formatter(
-                FuncFormatter(lambda x, pos: seconds_to_duration_string(x))
-            )
+            ax.yaxis.set_major_formatter(duration_formatter())
             ax.grid()
             fig.tight_layout()
             self.output[ofile].write(fig)
@@ -104,7 +102,7 @@ class ConvergencePlotStep(Step):
             ys = df[col]
             ax.plot(xs, ys, alpha=0.9)
             ax.set_xlabel("Iteration")
-            ax.set_ylabel(label)
+            ax.set_ylabel(self.text(label))
             ax.set_xlim(xs.min(), xs.max())
             if bottom_to_zero:
                 ax.set_ylim(bottom=0)
@@ -115,7 +113,7 @@ class ConvergencePlotStep(Step):
             self.output[ofile].write(fig)
 
 
-class TripDepartureTimeDistributionStep(PopulationStep):
+class TripDepartureTimeDistributionStep(PlotStep, PopulationStep):
     """Generates a histogram of departure-time distribution at the trip level."""
 
     input_files = {"trip_results": TripResultsFile}
@@ -142,7 +140,7 @@ class TripDepartureTimeDistributionStep(PopulationStep):
         self.output["trip_departure_time_distribution_plot"].write(fig)
 
 
-class RoadNetworkCongestionFunctionPlotsStep(Step):
+class RoadNetworkCongestionFunctionPlotsStep(PlotStep):
     """Generates plots of expected and simulated congestion function global over the entire road
     network.
     """
@@ -184,7 +182,7 @@ class RoadNetworkCongestionFunctionPlotsStep(Step):
             )
             ax.plot(df["departure_time"], df["cong"], alpha=0.9)
             ax.set_xlabel("Departure time")
-            ax.set_ylabel(f"{label} road-network congestion")
+            ax.set_ylabel(self.text(f"{label} road-network congestion"))
             ax.set_xlim(df["departure_time"].min(), df["departure_time"].max())
             ax.set_ylim(bottom=0)
             ax.xaxis.set_major_formatter(
@@ -196,7 +194,7 @@ class RoadNetworkCongestionFunctionPlotsStep(Step):
             self.output[f"{x}_plot"].write(fig)
 
 
-class TripModeSharesStep(PopulationStep):
+class TripModeSharesStep(PlotStep, PopulationStep):
     """Generates a plot of mode shares at the trip level."""
 
     input_files = {"trip_results": TripResultsFile}
@@ -210,14 +208,14 @@ class TripModeSharesStep(PopulationStep):
         shares = df["mode"].value_counts(normalize=True, sort=True)
         fig, ax = plt.subplots()
         bars = ax.barh(
-            y=shares["mode"],
+            y=[self.text(mode) for mode in shares["mode"]],
             width=shares["proportion"],
             height=0.9,
             align="center",
             color=COLORS,
             zorder=1,
         )
-        ax.bar_label(bars, fmt="{:.0%}", padding=5, zorder=3)
+        ax.bar_label(bars, fmt=percent_label, padding=5, zorder=3)
         ax.xaxis.set_major_formatter(PercentFormatter(xmax=1, decimals=0))
         ax.set_xlim(left=0)
         ax.tick_params(axis="y", which="both", length=0)

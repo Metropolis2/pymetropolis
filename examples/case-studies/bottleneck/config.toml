@@ -47,3 +47,11 @@ period = [07:00:00, 08:00:00]
 recording_interval = 60
 learning_factor = 0.1
 nb_iterations = 200
+
+# Uncomment to style the plots, e.g., to include them in a LaTeX document.
+#[plots]
+#width = "455.24pt"  # Value of \showthe\textwidth in the LaTeX document (or "16cm", "1200px", ...).
+#latex = true
+#font = "serif"
+#fontsize = 10
+#format = "pdf"

@@ -1,0 +1,6 @@
+main_directory = "output-rs-subsidy"
+
+parent_config = "config.toml"
+
+[ridesharing]
+subsidy = 1.0

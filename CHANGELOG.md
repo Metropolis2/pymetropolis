@@ -57,6 +57,7 @@ New steps:
 - `TruckPreferencesStep`
 - `TruckPreferencesFromPopulationStep`
 - `HomogeneousExAnteDepartureTimeStep`
+- `PlotStep`
 
 New files:
 

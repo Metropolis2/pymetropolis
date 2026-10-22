@@ -34,6 +34,7 @@ from .joint_travel import (
     ClassifyJointToursStep,
     EstimateJointToursClassifierStep,
     ExternalJointToursClassifierStep,
+    JointToursFeatureImportancePlotStep,
     JointToursFeatureImportanceStep,
 )
 from .mobisurvstd import MobiSurvStdImportStep
@@ -42,6 +43,7 @@ from .modes import (
     CompareToursModeSharesStep,
     EstimateModeClassifierStep,
     ExternalModeClassifierStep,
+    ModeFeatureImportancePlotStep,
     ModeFeatureImportanceStep,
 )
 from .tours import CleanSurveyToursStep
@@ -95,10 +97,12 @@ SURVEY_STEPS = [
     ExternalJointToursClassifierStep,
     EstimateJointToursClassifierStep,
     JointToursFeatureImportanceStep,
+    JointToursFeatureImportancePlotStep,
     ClassifyJointToursStep,
     ExternalModeClassifierStep,
     EstimateModeClassifierStep,
     ModeFeatureImportanceStep,
+    ModeFeatureImportancePlotStep,
     ClassifyToursModeStep,
     CompareToursModeSharesStep,
     SurveyedZoneMedoidsStep,
