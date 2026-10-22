@@ -531,10 +531,41 @@ def add_schedule_preferences(
     return df
 
 
+# The P+R transfer is used in both the simulation and the ex-ante simulation so we create a Step
+# for it.
+class StepWithParkAndRideTransfer(Step):
+    pr_transfer_time = DurationParameter(
+        "modes.park_and_ride.transfer_time",
+        default=timedelta(minutes=5),
+        description=(
+            "Time spent at the P+R facility between the car part and the public-transit part of "
+            "park-and-ride trips (parking, walking to the platform)."
+        ),
+        note=(
+            "This time is valued at the public-transit value of time, multiplied by "
+            "`modes.park_and_ride.transfer_vot_multiplier`."
+        ),
+    )
+    pr_transfer_vot_multiplier = FloatParameter(
+        "modes.park_and_ride.transfer_vot_multiplier",
+        default=1.0,
+        lower_bound=0.0,
+        description=(
+            "Multiplier of the public-transit value of time applied to the transfer time at the "
+            "P+R facility."
+        ),
+        note=(
+            "The French reference values for socio-economic appraisal weight transfer time by 2 "
+            "(DGITM, Valeurs recommandées pour le calcul socio-économique, 2019, table 3)."
+        ),
+    )
+
+
 class PrepareMetroTripsStep(
     StepWithModes,
     StepWithModeAvailability,
     StepWithRidesharingCount,
+    StepWithParkAndRideTransfer,
     StepWithRidesharingSubsidy,
     PopulationStep,
 ):
@@ -635,32 +666,6 @@ class PrepareMetroTripsStep(
         },
     }
     output_files = {"metro_trips": MetroTripsPopulationFile}
-
-    pr_transfer_time = DurationParameter(
-        "modes.park_and_ride.transfer_time",
-        default=timedelta(minutes=5),
-        description=(
-            "Time spent at the P+R facility between the car part and the public-transit part of "
-            "park-and-ride trips (parking, walking to the platform)."
-        ),
-        note=(
-            "This time is valued at the public-transit value of time, multiplied by "
-            "`modes.park_and_ride.transfer_vot_multiplier`."
-        ),
-    )
-    pr_transfer_vot_multiplier = FloatParameter(
-        "modes.park_and_ride.transfer_vot_multiplier",
-        default=1.0,
-        lower_bound=0.0,
-        description=(
-            "Multiplier of the public-transit value of time applied to the transfer time at the "
-            "P+R facility."
-        ),
-        note=(
-            "The French reference values for socio-economic appraisal weight transfer time by 2 "
-            "(DGITM, Valeurs recommandées pour le calcul socio-économique, 2019, table 3)."
-        ),
-    )
 
     def is_defined(self) -> bool:
         if not self.has_any_mode():
@@ -847,7 +852,9 @@ def select_ex_ante_trips(
     )
 
 
-class PrepareExAnteMetroTripsStep(StepWithModes, StepWithRidesharingCount, PopulationStep):
+class PrepareExAnteMetroTripsStep(
+    StepWithModes, StepWithRidesharingCount, StepWithParkAndRideTransfer, PopulationStep
+):
     """Prepares the trips using ex-ante modes and departure time for the ex-ante simulation.
 
     Preference parameters are not defined (they have no impact on route choice).
@@ -915,16 +922,6 @@ class PrepareExAnteMetroTripsStep(StepWithModes, StepWithRidesharingCount, Popul
     output_files = {"metro_trips": MetroExAnteTripsPopulationFile}
     priority = 0
 
-    pr_transfer_time = DurationParameter(
-        "modes.park_and_ride.transfer_time",
-        default=timedelta(minutes=5),
-        description=(
-            "Time spent at the P+R facility between the car part and the public-transit part of "
-            "park-and-ride trips (parking, walking to the platform)."
-        ),
-        note="This time is valued at the public-transit value of time.",
-    )
-
     def is_defined(self) -> bool:
         # If there is no "road-based mode", this step cannot be run (there is no trip to generate).
         return self.has_trip_mode()
@@ -963,6 +960,7 @@ class PrepareExAnteMetroTripsStep(StepWithModes, StepWithRidesharingCount, Popul
                 park_and_ride_itineraries_file=self.input["pr_pt_itineraries"],
                 pt_itineraries_file=self.input["public_transit_travel_times"],
                 transfer_time=self.pr_transfer_time.total_seconds(),
+                transfer_vot_multiplier=self.pr_transfer_vot_multiplier or 1.0,
             )
             metro_trips = pl.concat((metro_trips, park_and_ride_trips), how="diagonal")
         if self.has_mode("public_transit"):
