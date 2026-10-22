@@ -134,9 +134,12 @@ New parameters:
 - `modes.park_and_ride.constant`
 - `modes.park_and_ride.preferences_file`
 - `modes.park_and_ride.transfer_time`
+- `modes.park_and_ride.transfer_vot_multiplier`
 - `vehicle_types.truck.headway`
 - `vehicle_types.truck.pce`
 - `vehicle_types.truck.max_speed`
+- `simulation.learning_model`
+- `simulation.nb_exponential_iterations`
 
 New columns:
 
@@ -154,6 +157,7 @@ New features:
   parameters, controlled by the `StepWithModeAvailability` step.
 - Allow `departure_time_choice.model = "Exogenous"` (departure time is fixed and set to the ex-ante
   departure time).
+- Add `ExponentialUnadjusted` and `ExponentialThenLinear` learning models from Metropolis-Core.
 
 Other changes:
 
@@ -218,6 +222,9 @@ Fixes:
   their ex-ante arrival time minus their free-flow travel time by car.
 - In the ex-ante simulation, the tours whose ex-ante mode is not simulated or not feasible are
   dropped, with a warning.
+- The agents, alternatives and trips of the populations are merged even if their columns differ
+  (missing columns are filled with nulls), e.g., for a population with a single mode and no
+  mode-choice parameters.
 
 ## [0.12.0] – 2026-08-25
 

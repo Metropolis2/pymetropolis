@@ -90,3 +90,11 @@ def test_plot_is_limited_to_the_most_important_features():
     fig = plot_feature_importance(df, "importance", max_features=2)
     labels = [t.get_text() for t in fig.axes[0].get_yticklabels()]
     assert labels == ["weak_signal", "signal"]
+
+
+def test_plot_uses_the_labels_of_the_features():
+    df = get_importance()
+    fig = plot_feature_importance(df, "importance", labels={"weak_signal": "Weak signal"})
+    labels = [t.get_text() for t in fig.axes[0].get_yticklabels()]
+    # The features missing from `labels` are shown with their name.
+    assert labels == ["noise", "Weak signal", "signal"]

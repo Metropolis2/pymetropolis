@@ -73,13 +73,19 @@ def plot_travel_time_comparison(
 
 
 def plot_feature_importance(
-    df: pl.DataFrame, xlabel: str, max_features: int | None = None
+    df: pl.DataFrame,
+    xlabel: str,
+    max_features: int | None = None,
+    labels: dict[str, str] | None = None,
 ) -> plt.Figure:
     """Plots the feature importance of `df` (columns `feature`, `importance`, `importance_std`) as
     a horizontal bar chart, with the most important feature on top.
 
     With `max_features`, only that many features are plotted, the most important ones. The
     features left out of the figure are unaffected otherwise: they are still part of `df`.
+
+    With `labels`, the features are shown with their human-friendly name from that dictionary (the
+    features missing from it are shown with their name in `df`).
     """
     import matplotlib.pyplot as plt
 
@@ -95,7 +101,9 @@ def plot_feature_importance(
     # figure must grow with it for the labels to stay readable.
     fig, ax = plt.subplots(figsize=(8.0, 0.3 * len(df) + 1.5))
     ax.barh(y, df["importance"], xerr=df["importance_std"], capsize=2, zorder=2)
-    ax.set_yticks(y, df["feature"])
+    if labels is None:
+        labels = {}
+    ax.set_yticks(y, [labels.get(feature, feature) for feature in df["feature"]])
     # A feature the model does not use has a zero importance (and can be slightly negative, when
     # shuffling it happens to improve the predictions).
     ax.axvline(0.0, color="black", linewidth=1, zorder=3)

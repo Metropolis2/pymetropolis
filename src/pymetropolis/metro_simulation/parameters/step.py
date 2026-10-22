@@ -89,14 +89,27 @@ class AbstractWriteMetroParametersStep(StepWithPeriod, ThreadedStep):
             "(in km/h)."
         ),
     )
+    learning_model = EnumParameter(
+        "simulation.learning_model",
+        values=["Exponential", "ExponentialUnadjusted", "ExponentialThenLinear"],
+        default="Exponential",
+        description="Learning model for the simulation iterative process.",
+        note="See Metropolis-Core for the definition of the models.",
+    )
     learning_factor = FloatParameter(
         "simulation.learning_factor",
         default=0.0,
-        description="Value of the smoothing factor for the exponential learning model.",
+        description="Value of the smoothing factor for the learning model.",
         note=(
             "Value must be between 0 and 1. Smaller values lead to slower but steadier "
             "convergences."
         ),
+    )
+    nb_exponential_iterations = IntParameter(
+        "simulation.nb_exponential_iterations",
+        default=10,
+        description="Number of iterations in the exponential phase.",
+        note="Only applies for the `ExponentialThenLinear` learning model.",
     )
     routing_algorithm = EnumParameter(
         "simulation.routing_algorithm",
@@ -146,6 +159,7 @@ class AbstractWriteMetroParametersStep(StepWithPeriod, ThreadedStep):
     def get_parameters(self) -> dict:
         assert self.period is not None
         assert self.recording_interval is not None
+        assert self.learning_model is not None
         assert not self.spillback or self.max_pending_duration is not None
         assert self.departure_time_interval is not None
         assert self.backward_wave_speed is not None
@@ -169,11 +183,16 @@ class AbstractWriteMetroParametersStep(StepWithPeriod, ThreadedStep):
             "output_directory": self.output_directory(),
             "period": period,
             "departure_time_interval": self.departure_time_interval.total_seconds(),
-            "learning_model": {"type": "Exponential", "value": self.learning_factor},
+            "learning_model": {"type": self.learning_model, "value": self.learning_factor},
             "max_iterations": self.nb_iterations,
             "saving_format": "Parquet",
             "nb_threads": self.nb_threads or 0,
         }
+        if self.learning_model == "ExponentialThenLinear":
+            params["learning_model"]["value"] = {
+                "alpha": self.learning_factor,
+                "nb_exponential": self.nb_exponential_iterations,
+            }
         for name in ("edges", "vehicle_types", "trips"):
             if self.input[name].exists():
                 params["input_files"][name] = self.input[name].relative_path_from(wdir)

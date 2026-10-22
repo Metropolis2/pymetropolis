@@ -871,7 +871,7 @@ def _feature_importance_schema(model_description: str) -> list[Column]:
             "importance",
             MetroDataType.FLOAT,
             description=(
-                "Mean decrease in the Brier score of "
+                "Mean increase in the Brier score of "
                 f"{model_description} when the values of the feature are randomly shuffled."
             ),
             nullable=False,
@@ -880,7 +880,7 @@ def _feature_importance_schema(model_description: str) -> list[Column]:
             "importance_std",
             MetroDataType.FLOAT,
             description=(
-                "Standard deviation of the decrease in the Brier score, over the "
+                "Standard deviation of the increase in the Brier score, over the "
                 "cross-validation folds and the repetitions of the permutation."
             ),
             nullable=False,

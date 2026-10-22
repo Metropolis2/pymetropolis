@@ -21,6 +21,9 @@ def merge_populations(
     Each column in `id_columns` is prefixed with `f"{population}-"` so that ids stay globally
     unique after the merge (a plain agent_id / trip_id is only unique within its own population's
     file).
+
+    Columns missing in some populations are filled with nulls (e.g., the mode-choice columns of the
+    agents of a single-mode population).
     """
     import polars as pl
 
@@ -30,7 +33,7 @@ def merge_populations(
         )
         for population, f in files.items()
     ]
-    return pl.concat(dfs, how="vertical")
+    return pl.concat(dfs, how="diagonal_relaxed")
 
 
 # Ridesharing passenger count is used for both vehicle types and trips so we create a Step for it.
