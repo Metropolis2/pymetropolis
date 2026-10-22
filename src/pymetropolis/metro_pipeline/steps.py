@@ -295,6 +295,13 @@ class Step:
     def update_required(self) -> bool:
         """Returns `False` if the step was already executed and does not need to be executed again.
 
+        See `update_reason` for the conditions.
+        """
+        return self.update_reason() is not None
+
+    def update_reason(self) -> str | None:
+        """Returns why the step needs to be executed again, or `None` if it does not.
+
         A step needs to be executed again if:
         - The update file does not exist (the step has never be run).
         - Any configuration variable has been modified.
@@ -305,7 +312,7 @@ class Step:
         update_dict = self.update_dict()
         if update_dict is None:
             # Step has never been executed or the update file has been removed.
-            return True
+            return "the step has never been run (no update file)"
         # Check that the input / output MetroFiles have not been modified.
         for k, f in self._iter_flat_files():
             if not f.exists():
@@ -315,12 +322,14 @@ class Step:
                     continue
                 else:
                     # it has been removed.
-                    return True
+                    return f"file `{f.get_path()}` has been removed"
             if f.last_modified_time() != update_dict.get(f"metro_file_{k}_mtime"):
                 # The file exists but was updated since the last run (or did not exist before).
-                return True
+                return f"file `{f.get_path()}` has been modified since the last run"
         # Check that the relevant config has not been modified.
-        return self.config_hash() != update_dict.get("config_hash")
+        if self.config_hash() != update_dict.get("config_hash"):
+            return "the configuration parameters of the step have changed"
+        return None
 
     def update_dict(self) -> dict | None:
         """Returns a dictionary representing the update file of this step.

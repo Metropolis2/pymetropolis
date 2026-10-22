@@ -150,6 +150,9 @@ New features:
 - Allow `departure_time_choice.model = "Exogenous"` (departure time is fixed and set to the ex-ante
   departure time).
 - Add `ExponentialUnadjusted` and `ExponentialThenLinear` learning models from Metropolis-Core.
+- Use the `--explain <step>` CLI option to explain why a Step is up to date, outdated, invalidated
+  or not in the sequence.
+
 
 Other changes:
 

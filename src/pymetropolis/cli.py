@@ -31,6 +31,10 @@ def app(
         help="Run steps one at a time, asking for a confirmation between each step.",
     ),
     step: Annotated[str | None, typer.Option(help="Explicitly ask for a step to be run.")] = None,
+    explain: Annotated[
+        str | None,
+        typer.Option(help="Explain the status of a Step (why it is run or not) and exit."),
+    ] = None,
     graph: Annotated[
         Path | None,
         typer.Option(
@@ -67,4 +71,7 @@ def app(
         PathType(extensions=RENDER_EXTENSIONS + SOURCE_EXTENSIONS).validate(graph)
     config = Config.from_toml(config)
     pipeline = MetroPipeline(config, STEPS, target_step=step)
+    if explain is not None:
+        pipeline.explain(explain)
+        return
     pipeline.run(dry_run, step_by_step, graph_path=graph)
