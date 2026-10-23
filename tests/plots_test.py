@@ -10,6 +10,7 @@ from pymetropolis.metro_common.plots import (
     PlotStep,
     escape_tex,
     length_to_inches,
+    parse_colors,
     parse_length,
     plot_feature_importance,
     plot_mode_share_comparison,
@@ -101,6 +102,26 @@ def test_plot_rc_params_leaves_out_unset_options():
     assert rc["figure.figsize"] == (4.0, 3.0)
     assert rc["savefig.dpi"] == 150
     assert rc["savefig.format"] == "pdf"
+
+
+def test_plot_rc_params_colors():
+    rc = plot_rc_params(colors=["#ff0000", "#00ff00"])
+    assert rc["axes.prop_cycle"].by_key() == {"color": ["#ff0000", "#00ff00"]}
+
+
+def test_parse_colors():
+    assert parse_colors(["#FF0000", "blue"]) == ["#ff0000", "#0000ff"]
+    # Qualitative colormap: all its colors.
+    assert len(parse_colors("Set2")) == 8
+    assert len(parse_colors("tab20")) == 20
+    # Continuous colormap: sampled colors.
+    assert len(parse_colors("viridis")) == 8
+
+
+@pytest.mark.parametrize("value", ["not_a_cmap", [], ["notacolor"], [1], 3, None])
+def test_parse_colors_invalid(value):
+    with pytest.raises(MetropyError):
+        parse_colors(value)
 
 
 def test_for_format_resolves_the_placeholder():

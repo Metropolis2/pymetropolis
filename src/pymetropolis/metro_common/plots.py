@@ -71,6 +71,38 @@ def parse_length(value: Any) -> tuple[float, str]:
     return length
 
 
+# Number of colors sampled from a continuous colormap, and maximum size of a colormap which is
+# considered qualitative (all its colors are used).
+N_SAMPLED_COLORS = 8
+MAX_QUALITATIVE_COLORS = 20
+
+
+def parse_colors(value: Any) -> list[str]:
+    """Parses a colormap name or a list of colors and returns the colors as HEX strings.
+
+    A qualitative colormap (e.g., `Set2`) gives all its colors; a continuous colormap (e.g.,
+    `viridis`) gives colors sampled evenly from it.
+    """
+    import matplotlib as mpl
+    from matplotlib.colors import ListedColormap, is_color_like, to_hex
+
+    if isinstance(value, str):
+        if value not in mpl.colormaps:
+            raise MetropyError(f"Unknown colormap: `{value}`")
+        cmap = mpl.colormaps[value]
+        if isinstance(cmap, ListedColormap) and cmap.N <= MAX_QUALITATIVE_COLORS:
+            return [to_hex(cmap(i)) for i in range(cmap.N)]
+        return [
+            to_hex(cmap(x)) for x in [i / (N_SAMPLED_COLORS - 1) for i in range(N_SAMPLED_COLORS)]
+        ]
+    if isinstance(value, list) and value:
+        for c in value:
+            if not isinstance(c, str) or not is_color_like(c):
+                raise MetropyError(f"Invalid color: `{c}`")
+        return [to_hex(c) for c in value]
+    raise MetropyError(f"Invalid colors: `{value}` (expected a colormap name or a list of colors)")
+
+
 def length_to_inches(length: tuple[float, str], dpi: float) -> float:
     """Converts a length returned by `parse_length` to inches, with pixels converted according to
     the resolution `dpi`."""
@@ -135,6 +167,7 @@ def plot_rc_params(
     width: float | None = None,
     dpi: int | None = None,
     fmt: str | None = None,
+    colors: list[str] | None = None,
     aspect: float = 3 / 4,
 ) -> dict[RcKeyType, Any]:
     """Returns the matplotlib rcParams which apply the given plot style.
@@ -158,6 +191,10 @@ def plot_rc_params(
         rc["savefig.dpi"] = dpi
     if fmt is not None:
         rc["savefig.format"] = fmt
+    if colors is not None:
+        from cycler import cycler
+
+        rc["axes.prop_cycle"] = cycler(color=colors)
     return rc
 
 
@@ -244,6 +281,21 @@ class PlotStep(Step):
         shared=True,
     )
 
+    colors = CustomParameter(
+        "plots.colors",
+        validator=parse_colors,
+        validator_description="a colormap name or a list of colors",
+        description="Colors used, in order, for the series of the plots.",
+        example='`"Set2"`, `["#E69F00", "#56B4E9", "#009E73"]`',
+        note=(
+            "Either the name of a matplotlib colormap or a list of colors (HEX codes or color "
+            "names). All the colors of a qualitative colormap are used; for a continuous colormap "
+            f"(e.g., `viridis`), {N_SAMPLED_COLORS} colors are sampled evenly. "
+            "Default is matplotlib's default (`tab10`)."
+        ),
+        shared=True,
+    )
+
     @override
     def _resolve_file_class(self, file_class: type[MetroFile], population: str) -> type[MetroFile]:
         file_class = super()._resolve_file_class(file_class, population)
@@ -263,6 +315,7 @@ class PlotStep(Step):
             width=width,
             dpi=self.dpi,
             fmt=self.plot_format,
+            colors=self.colors,
         )
 
     def text(self, text: str) -> str:
