@@ -216,6 +216,8 @@ Fixes:
 - The agents, alternatives and trips of the populations are merged even if their columns differ
   (missing columns are filled with nulls), e.g., for a population with a single mode and no
   mode-choice parameters.
+- Fix a crash in Metropolis-core when some agents have no available alternative: the simulation now
+  runs without them and a warning is logged.
 
 ## [0.12.0] – 2026-08-25
 

@@ -12,6 +12,7 @@ from pymetropolis.modes import StepWithModes
 from .files import (
     MetroAgentsFile,
     MetroAgentsPopulationFile,
+    MetroAlternativesPopulationFile,
     MetroExAnteAgentsFile,
     MetroExAnteAgentsPopulationFile,
     MetroExAnteAlternativesPopulationFile,
@@ -23,6 +24,9 @@ class PrepareMetroAgentsStep(StepWithModes, PopulationStep):
 
     If mode choice is enabled (more than 1 mode is simulated), the mode-choice parameters of the
     agents are initiated.
+
+    Agents with no alternative (e.g., because no mode is available for them) are removed from the
+    simulation, with a warning.
     """
 
     # TODO: Implement and explain in the docs the 4 mode choice models.
@@ -34,6 +38,7 @@ class PrepareMetroAgentsStep(StepWithModes, PopulationStep):
     )
     input_files = {
         "trips": TripsFile,
+        "alts": MetroAlternativesPopulationFile,
         "uniform_draws": InputFile(
             UniformDrawsFile,
             when=lambda inst: inst.has_mode_choice(),
@@ -59,6 +64,20 @@ class PrepareMetroAgentsStep(StepWithModes, PopulationStep):
         trips = self.input["trips"].read()
         maybe_mus = self.input["mus"].read() if "mus" in self.input else None
         agents = trips.select(agent_id="tour_id").unique().sort("agent_id")
+        # Agents with no alternative would make the simulation fail, so they are removed.
+        alts = self.input["alts"].read()
+        no_alt = agents.join(alts.select("agent_id").unique(), on="agent_id", how="anti")
+        if len(no_alt) > 0:
+            examples = ", ".join(str(i) for i in no_alt["agent_id"].head(5))
+            logger.warning(
+                f"{len(no_alt)} of {len(agents)} agents ({len(no_alt) / len(agents):.1%}) have no "
+                "alternative (no mode is available for them, check the mode availability rules "
+                f"and the routing results) and are removed from the simulation. "
+                f"Example tour ids: {examples}"
+            )
+            agents = agents.join(no_alt, on="agent_id", how="anti")
+        if agents.is_empty():
+            raise MetropyError("No agent has an alternative, there is nothing to simulate")
         if self.has_mode_choice():
             # Add mode choice parameters.
             model = self.mode_choice_model
