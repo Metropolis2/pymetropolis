@@ -6,7 +6,7 @@ from loguru import logger
 
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_common.algorithms import find_kmedoids
-from pymetropolis.metro_common.plots import plot_travel_time_comparison
+from pymetropolis.metro_common.plots import PlotStep, plot_travel_time_comparison
 from pymetropolis.metro_demand.modes.bicycle import StepWithBicycleSpeed
 from pymetropolis.metro_demand.modes.walking import StepWithWalkingSpeed
 from pymetropolis.metro_demand.routing.od_pairs import (
@@ -544,7 +544,7 @@ class SurveyedToursTravelTimesStep(StepWithModes, StepWithWalkingSpeed, StepWith
         self.output["tt"].write(tours)
 
 
-class SurveyedTripsTravelTimeComparisonStep(StepWithWalkingSpeed, StepWithBicycleSpeed):
+class SurveyedTripsTravelTimeComparisonStep(PlotStep, StepWithWalkingSpeed, StepWithBicycleSpeed):
     """Compares reported and simulated travel times for the survey trips, for each mode."""
 
     input_files = {

@@ -157,18 +157,29 @@ class Step:
             spec = self.input_files[k]
             if isinstance(spec, InputFile) and spec.all_populations:
                 self._population_input_files[k] = {
-                    population: _namespace(f, population).from_dir(config.main_directory)
+                    population: self._resolve_file_class(f, population).from_dir(
+                        config.main_directory
+                    )
                     for population in all_population_names
                 }
             else:
-                self._input_files[k] = _namespace(f, file_population).from_dir(
+                self._input_files[k] = self._resolve_file_class(f, file_population).from_dir(
                     config.main_directory
                 )
         self._output_files = {
-            k: _namespace(f, file_population).from_dir(config.main_directory)
+            k: self._resolve_file_class(f, file_population).from_dir(config.main_directory)
             for k, f in self.output_files.items()
         }
         self._update_file_path = config.main_directory / "update_files" / f"{self}.json"
+
+    def _resolve_file_class(self, file_class: type[MetroFile], population: str) -> type[MetroFile]:
+        """Returns the variant of `file_class` with the placeholders of its path resolved, for the
+        given population.
+
+        Called once the parameters of the step are set, so that a subclass can resolve other
+        placeholders from them (see `PlotStep`).
+        """
+        return _namespace(file_class, population)
 
     @classmethod
     def _iter_params(cls):
@@ -284,6 +295,13 @@ class Step:
     def update_required(self) -> bool:
         """Returns `False` if the step was already executed and does not need to be executed again.
 
+        See `update_reason` for the conditions.
+        """
+        return self.update_reason() is not None
+
+    def update_reason(self) -> str | None:
+        """Returns why the step needs to be executed again, or `None` if it does not.
+
         A step needs to be executed again if:
         - The update file does not exist (the step has never be run).
         - Any configuration variable has been modified.
@@ -294,7 +312,7 @@ class Step:
         update_dict = self.update_dict()
         if update_dict is None:
             # Step has never been executed or the update file has been removed.
-            return True
+            return "the step has never been run (no update file)"
         # Check that the input / output MetroFiles have not been modified.
         for k, f in self._iter_flat_files():
             if not f.exists():
@@ -304,12 +322,14 @@ class Step:
                     continue
                 else:
                     # it has been removed.
-                    return True
+                    return f"file `{f.get_path()}` has been removed"
             if f.last_modified_time() != update_dict.get(f"metro_file_{k}_mtime"):
                 # The file exists but was updated since the last run (or did not exist before).
-                return True
+                return f"file `{f.get_path()}` has been modified since the last run"
         # Check that the relevant config has not been modified.
-        return self.config_hash() != update_dict.get("config_hash")
+        if self.config_hash() != update_dict.get("config_hash"):
+            return "the configuration parameters of the step have changed"
+        return None
 
     def update_dict(self) -> dict | None:
         """Returns a dictionary representing the update file of this step.

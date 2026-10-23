@@ -50,6 +50,7 @@ class MetroPipeline:
     # non-primary Steps) is entirely kept in the sequence, not just its last link.
     needed_files: set[MetroFile]
     config: Config
+    step_classes: list[type[Step]]
     target_step: Step | None = None
     # The Config whose `main_directory` canonically owns each Step's output: either `self.config`
     # itself, or (only possible when `self.config.parent_config` is set) an ancestor config
@@ -63,6 +64,7 @@ class MetroPipeline:
     ) -> None:
         self.config = config
         step_classes = self.load_custom_steps(step_classes)
+        self.step_classes = step_classes
         used_keys = set()
         for step_class in step_classes:
             assert issubclass(step_class, Step), f"Not a valid Step: {step_class}"
@@ -71,7 +73,7 @@ class MetroPipeline:
                 used_keys.add(str(p))
         # Instantiate every step against the config. Multiple steps are returned for
         # PopulationStep when multiple populations are defined in the config.
-        self.steps, all_output_files = instantiate_step_graph(self.config, step_classes)
+        self.steps, all_output_files = instantiate_step_graph(self.config, self.step_classes)
         # Every Step is instantiated by now, so every input data file has been hashed. Saved here
         # rather than at the end of `__init__` because `check_files_to_delete` below asks for a
         # confirmation and exits if it is denied, which would throw away the hashing work.
@@ -80,14 +82,14 @@ class MetroPipeline:
         # Must run against the not-yet-feasibility-filtered `self.steps`, so that a target step
         # which turns out infeasible is diagnosed by `check_target_step_files` below (which lists
         # the specific missing input file) rather than reported as "unknown" here.
-        self.find_target_step(target_step, step_classes)
+        self.find_target_step(target_step)
         self.generated_files, self.primary_input_files = resolve_feasible_graph(self.steps)
         self.check_target_step_files()
         if self.config.parent_config is None:
             self.source_config = {step: self.config for step in self.steps}
         else:
             self.source_config = compute_source_config(
-                self.config, step_classes, self.steps, self.generated_files
+                self.config, self.step_classes, self.steps, self.generated_files
             )
         # Repoints a Step whose output canonically belongs to an ancestor config at that config's
         # `main_directory`, so that running an outdated such Step writes there instead of into
@@ -160,17 +162,21 @@ class MetroPipeline:
                 for f in to_delete_files:
                     f.remove()
 
-    def find_target_step(self, target_step: str | None, step_classes: list[type[Step]]):
+    def find_step(self, name: str) -> type[Step]:
+        """Find a step by its name among all steps.
+
+        If the step cannot be found, raise an error.
+        """
+        for step_class in self.step_classes:
+            if step_class.__name__.lower() == name.lower():
+                return step_class
+        logger.error(f"Unknown Step: {name}")
+        sys.exit()
+
+    def find_target_step(self, target_step: str | None):
         if target_step is None:
             return
-        # Try to find the target step in all the step classes.
-        for step_class in step_classes:
-            if step_class.__name__.lower() == target_step.lower():
-                target_step_class = step_class
-                break
-        else:
-            logger.error(f"Unknown Step: {target_step}")
-            sys.exit()
+        target_step_class = self.find_step(target_step)
         # Try to find the target step in the defined steps.
         for step in self.steps.keys():
             if step.__class__ == target_step_class:
@@ -289,6 +295,62 @@ class MetroPipeline:
         # (At this point, the pipeline should have already stopped if the target step is not run.)
         assert self.target_step is None or any(map(lambda x: x[0] == self.target_step, sequence))
         return sequence
+
+    def explain(self, step_name: str) -> None:
+        """Prints the status of the Step named `step_name` and why."""
+        step_class = self.find_step(step_name)
+        sequence = self.find_sequence()
+        status_of = {str(s): status for s, status in sequence}
+        by_name = {str(s): s for s in self.steps}
+        outdated_producers = {
+            f: s
+            for s, status in sequence
+            if status != StepStatus.UP_TO_DATE
+            for f in self.steps[s]["outputs"]
+        }
+        for instance in self.config.instantiate_step(step_class):
+            name = str(instance)
+            step = by_name.get(name)
+            if step is not None and name in status_of:
+                status = status_of[name]
+                match status:
+                    case StepStatus.UP_TO_DATE:
+                        msg = "up to date"
+                    case StepStatus.OUTDATED:
+                        reason = step.update_reason() or "it is the target step (`--step`)"
+                        msg = f"outdated: {reason}"
+                    case StepStatus.INVALIDATED:
+                        inputs = (
+                            self.steps[step]["required_inputs"]
+                            | self.steps[step]["optional_inputs"]
+                        )
+                        causes = sorted(
+                            f"file `{f.get_path()}` (produced by {outdated_producers[f]})"
+                            for f in inputs
+                            if f in outdated_producers
+                        )
+                        msg = "invalidated: its input " + "; ".join(causes)
+                source = self.source_config.get(step)
+                if source is not None and source is not self.config:
+                    msg += f" (from: {source.main_path.name if source.main_path else ''})"
+            elif step is not None:
+                msg = "not run: it is not a primary step and none of its outputs is needed"
+            elif not instance.is_defined():
+                msg = "not run: missing parameters (the step is not defined by the config)"
+            elif not instance.output:
+                msg = "not run: the step declares no output file"
+            else:
+                missing = [
+                    f
+                    for f in instance._iter_resolved_input_files(required=True)
+                    if f not in self.generated_files
+                ]
+                if missing:
+                    files = ", ".join(f"`{f.get_path()}`" for f in missing)
+                    msg = f"not run: required file(s) {files} cannot be generated by any step"
+                else:
+                    msg = "not run: another step with higher priority generates the same file(s)"
+            print(f"{name}: {msg}")
 
     def run(
         self, dry_run: bool = False, step_by_step: bool = False, graph_path: Path | None = None

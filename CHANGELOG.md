@@ -60,6 +60,7 @@ New steps:
 - `TruckPreferencesStep`
 - `TruckPreferencesFromPopulationStep`
 - `HomogeneousExAnteDepartureTimeStep`
+- `PlotStep`
 
 New files:
 
@@ -129,12 +130,6 @@ New parameters:
 - `parent_config`
 - `tomtom_requests.min_distance`
 - `tomtom_requests.max_distance`
-- `modes.park_and_ride.allowed_route_types`
-- `modes.park_and_ride.allowed_agencies`
-- `modes.park_and_ride.constant`
-- `modes.park_and_ride.preferences_file`
-- `modes.park_and_ride.transfer_time`
-- `modes.park_and_ride.transfer_vot_multiplier`
 - `vehicle_types.truck.headway`
 - `vehicle_types.truck.pce`
 - `vehicle_types.truck.max_speed`
@@ -158,6 +153,9 @@ New features:
 - Allow `departure_time_choice.model = "Exogenous"` (departure time is fixed and set to the ex-ante
   departure time).
 - Add `ExponentialUnadjusted` and `ExponentialThenLinear` learning models from Metropolis-Core.
+- Use the `--explain <step>` CLI option to explain why a Step is up to date, outdated, invalidated
+  or not in the sequence.
+
 
 Other changes:
 

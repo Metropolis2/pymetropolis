@@ -13,7 +13,11 @@ from pymetropolis.metro_common.ml_models import (
     sample_classes,
     test_models,
 )
-from pymetropolis.metro_common.plots import plot_feature_importance
+from pymetropolis.metro_common.plots import (
+    PlotStep,
+    plot_feature_importance,
+    plot_mode_share_comparison,
+)
 from pymetropolis.metro_demand.population.common import TOUR_VARIABLE_LABELS
 from pymetropolis.metro_demand.population.files import ToursFile, ToursModeFile
 from pymetropolis.metro_pipeline import PopulationStep, Step
@@ -42,7 +46,6 @@ from .files import (
 )
 
 if TYPE_CHECKING:
-    import matplotlib.pyplot as plt
     import polars as pl
 
 
@@ -158,20 +161,8 @@ class ModeFeatureImportanceStep(RandomStep, ThreadedStep, StepWithModes):
         ),
     )
 
-    nb_plotted_features = IntParameter(
-        "mode_classifier.nb_plotted_features",
-        lower_bound=1,
-        description="Number of features to show in the feature importance plot.",
-        note=(
-            "Only the most important features are shown. "
-            "Default is to show all the features. "
-            "This does not affect `ModeFeatureImportanceFile`, which always includes all the "
-            "features."
-        ),
-    )
-
     input_files = {"tours": SurveyedToursFile, "estimator": ModeEstimatorFile}
-    output_files = {"importance": ModeFeatureImportanceFile, "plot": ModeFeatureImportancePlotFile}
+    output_files = {"importance": ModeFeatureImportanceFile}
 
     def is_defined(self):
         return self.modes is not None and bool(self.feature_importance)
@@ -202,6 +193,28 @@ class ModeFeatureImportanceStep(RandomStep, ThreadedStep, StepWithModes):
             logger.info(f"  {feature}: {importance:.4f} (+/- {std:.4f})")
 
         self.output["importance"].write(df)
+
+
+class ModeFeatureImportancePlotStep(PlotStep):
+    """Plots the permutation feature importance of the tour-mode classifier."""
+
+    nb_plotted_features = IntParameter(
+        "mode_classifier.nb_plotted_features",
+        lower_bound=1,
+        description="Number of features to show in the feature importance plot.",
+        note=(
+            "Only the most important features are shown. "
+            "Default is to show all the features. "
+            "This does not affect `ModeFeatureImportanceFile`, which always includes all the "
+            "features."
+        ),
+    )
+
+    input_files = {"importance": ModeFeatureImportanceFile}
+    output_files = {"plot": ModeFeatureImportancePlotFile}
+
+    def run(self):
+        df = self.input["importance"].read()
         fig = plot_feature_importance(
             df,
             "Increase in Brier score when the feature is shuffled",
@@ -277,38 +290,7 @@ def restrict_tours_to_area(tours: pl.DataFrame, area) -> pl.DataFrame:
     return tours.filter(pl.col("tour_id").is_in(kept_ids.implode()))
 
 
-def plot_mode_share_comparison(
-    survey_shares: dict[str, float], sim_shares: dict[str, float], xlabel: str
-) -> plt.Figure:
-    import matplotlib.pyplot as plt
-    from matplotlib.ticker import PercentFormatter
-
-    modes = sorted(set(survey_shares) | set(sim_shares))
-    survey_values = [survey_shares.get(mode, 0.0) for mode in modes]
-    sim_values = [sim_shares.get(mode, 0.0) for mode in modes]
-    y = list(range(len(modes)))
-    height = 0.35
-
-    fig, ax = plt.subplots()
-    survey_bars = ax.barh(
-        [i + height / 2 for i in y], survey_values, height=height, label="Survey", zorder=1
-    )
-    sim_bars = ax.barh(
-        [i - height / 2 for i in y], sim_values, height=height, label="Simulation", zorder=1
-    )
-    ax.bar_label(survey_bars, fmt="{:.0%}", padding=5, zorder=3)
-    ax.bar_label(sim_bars, fmt="{:.0%}", padding=5, zorder=3)
-    ax.set_yticks(y, modes)
-    ax.xaxis.set_major_formatter(PercentFormatter(xmax=1, decimals=0))
-    ax.set_xlim(left=0)
-    ax.set_xlabel(xlabel)
-    ax.legend()
-    ax.grid(which="major", axis="x", zorder=2)
-    fig.tight_layout(pad=0.5)
-    return fig
-
-
-class CompareToursModeSharesStep(PopulationStep, StepWithModes):
+class CompareToursModeSharesStep(PlotStep, PopulationStep, StepWithModes):
     """Compares survey and ex-ante tour mode shares, by tour count and by distance."""
 
     # TODO. This Step is only valid if the survey area is similar to the simulation area.

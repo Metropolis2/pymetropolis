@@ -135,7 +135,7 @@ class TomTomRoutesFile(MetroGeoDataFrameFile):
 
 
 class FreeFlowTravelTimeComparisonPlotFile(MetroPlotFile):
-    path = "calibration/road/free_flow/travel_time_comparison.png"
+    path = "calibration/road/free_flow/travel_time_comparison.{format}"
     description = (
         "Scatter plot comparing observed and Metropolis-simulated free-flow travel "
         "times of the target routes."
@@ -203,7 +203,7 @@ class TargetRoutesFile(MetroDataFrameFile):
 
 
 class CongestionTimeComparisonPlotFile(MetroPlotFile):
-    path = "calibration/road/congestion/comparison.png"
+    path = "calibration/road/congestion/comparison.{format}"
     description = (
         "Scatter plot comparing observed and Metropolis-simulated congested "
         "times of the target routes."

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, Self, override
@@ -13,6 +14,10 @@ if TYPE_CHECKING:
     import matplotlib.pyplot as plt
     import polars as pl
     from sklearn.base import BaseEstimator
+
+
+# Placeholder in a `MetroFile.path` (e.g., `{population}`), to be resolved before use.
+PLACEHOLDER_REGEX = re.compile(r"\{\w+\}")
 
 
 class MetroDataType(Enum):
@@ -233,6 +238,13 @@ class MetroFile:
 
     @classmethod
     def from_dir(cls, main_directory: Path) -> Self:
+        if m := PLACEHOLDER_REGEX.search(cls.path):
+            # The placeholders must be resolved first (e.g., by `PopulationFile.for_population` or
+            # `MetroPlotFile.for_format`), otherwise the file would be written to a path containing
+            # the placeholder itself.
+            raise MetropyError(
+                f"`{cls.__name__}.path` has an unresolved placeholder `{m[0]}`: `{cls.path}`"
+            )
         instance = cls.__new__(cls)
         instance.complete_path = main_directory / Path(cls.path)
         return instance
@@ -516,16 +528,58 @@ class MetroTxtFile(MetroFile):
 
 
 class MetroPlotFile(MetroFile):
+    """A plot, saved in the format given by the extension of its path.
+
+    `path` must contain a `{format}` placeholder for the extension, e.g.
+    `"results/graphs/mode_shares.{format}"`, which is resolved by `PlotStep` from the `plots.format`
+    parameter.
+    """
+
+    _format_variants: ClassVar[dict[str, type[MetroFile]]] = {}
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        # Each subclass needs its own cache (see `PopulationFile.__init_subclass__`).
+        cls._format_variants = {}
+
+    @classmethod
+    def for_format(cls, fmt: str) -> type[MetroFile]:
+        """Returns the variant of this file whose path has the extension `fmt`.
+
+        The extension is part of the variant class (and not only of its instances) so that
+        `from_dir`, used to rebase a file on another `main_directory`, keeps it.
+        """
+        # Memoized so the same format always resolves to the same class object (files compare by
+        # class identity).
+        if fmt not in cls._format_variants:
+            if "{format}" not in cls.path:
+                raise MetropyError(
+                    f"`{cls.__name__}.path` must contain a `{{format}}` placeholder, got "
+                    f"`{cls.path}`"
+                )
+            # `str.replace` (and not `str.format`) so that the other placeholders (e.g.,
+            # `{population}`) are left for their own resolution.
+            cls._format_variants[fmt] = type(
+                cls.__name__, (cls,), {"path": cls.path.replace("{format}", fmt)}
+            )
+        return cls._format_variants[fmt]
+
     @override
     @error_context(msg="Cannot save plot {}", fmt_args=[0])
     def _write(self, fig: plt.Figure):
-        fig.savefig(self.complete_path, dpi=300)
+        import matplotlib.pyplot as plt
+
+        # The resolution (and the other output options) are set by `PlotStep` through the
+        # matplotlib rcParams.
+        fig.savefig(self.complete_path)
+        plt.close(fig)
 
     @override
     @classmethod
     def _md_doc(cls) -> str:
         doc = super()._md_doc()
         doc += "- **Type:** Plot\n"
+        doc += "- **Note:** `{format}` is replaced by the value of the `plots.format` parameter.\n"
         return doc
 
 
@@ -550,7 +604,7 @@ class PopulationFile(MetroFile):
         # generated_files/primary_input_files compare by class identity.
         if population not in cls._population_variants:
             if "{population}" not in cls.path:
-                # Without the placeholder, `.format` below is a silent no-op: every population
+                # Without the placeholder, `.replace` below is a silent no-op: every population
                 # would resolve to the identical path and collide (see `AggregateOutputFile`).
                 raise MetropyError(
                     f"`{cls.__name__}.path` must contain a `{{population}}` placeholder, got "
@@ -559,6 +613,8 @@ class PopulationFile(MetroFile):
             cls._population_variants[population] = type(
                 f"{population}__{cls.__name__}",
                 (cls,),
-                {"path": cls.path.format(population=population)},
+                # `str.replace` (and not `str.format`) so that the other placeholders (e.g.,
+                # `{format}`) are left for their own resolution.
+                {"path": cls.path.replace("{population}", population)},
             )
         return cls._population_variants[population]

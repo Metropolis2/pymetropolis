@@ -354,6 +354,9 @@ uv run pymetropolis examples/case-studies/bottleneck/config.toml
 # Show what would run without running it (reused steps show "(from: <config>)")
 uv run pymetropolis path/to/config.toml --dry-run
 
+# Explain why a Step is up to date, outdated, invalidated or not run
+uv run pymetropolis path/to/config.toml --explain TripDistancesStep
+
 # Run only one Step (and what it needs); save the Step graph (rendering needs Graphviz)
 uv run pymetropolis path/to/config.toml --step TripDistancesStep
 uv run pymetropolis path/to/config.toml --graph steps.svg
