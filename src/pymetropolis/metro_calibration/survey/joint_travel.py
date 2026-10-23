@@ -13,9 +13,18 @@ from pymetropolis.metro_common.ml_models import (
     predict,
     test_models,
 )
-from pymetropolis.metro_common.plots import PlotStep, plot_feature_importance
+from pymetropolis.metro_common.plots import (
+    PlotStep,
+    plot_feature_importance,
+    plot_joint_share_comparison,
+)
 from pymetropolis.metro_demand.population.common import TOUR_VARIABLE_LABELS
-from pymetropolis.metro_demand.population.files import JointToursFile, ToursFile
+from pymetropolis.metro_demand.population.files import (
+    HouseholdsHomesFile,
+    JointToursFile,
+    ToursFile,
+    TripsFile,
+)
 from pymetropolis.metro_pipeline import PopulationStep, Step
 from pymetropolis.metro_pipeline.parameters import (
     BoolParameter,
@@ -24,13 +33,20 @@ from pymetropolis.metro_pipeline.parameters import (
     PathParameter,
     StringParameter,
 )
+from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_pipeline.types import String
+from pymetropolis.metro_spatial.simulation_area.file import SimulationAreaFile
 from pymetropolis.random import RandomStep
 
 from .files import (
     JointTourEstimatorFile,
     JointTourFeatureImportanceFile,
     JointTourFeatureImportancePlotFile,
+    JointToursShareComparisonFile,
+    JointToursShareDistancePlotFile,
+    JointToursShareTourCountPlotFile,
+    SurveyedDrawZonesFile,
+    SurveyedHouseholdsFile,
     SurveyedToursFile,
 )
 
@@ -228,3 +244,161 @@ class ClassifyJointToursStep(RandomStep, PopulationStep):
         logger.debug(f"Share of joint tours: {s:.2%}")
 
         self.output["joint_tours"].write(df)
+
+
+def restrict_to_home_in_area(df: pl.DataFrame, area) -> pl.DataFrame:
+    """Restricts `df` to the rows whose home (columns `home_lng` and `home_lat`) falls within
+    `area` (a shapely geometry in EPSG:4326). Rows without home coordinates are dropped."""
+    import numpy as np
+    import polars as pl
+    import shapely
+
+    lngs = df["home_lng"].cast(pl.Float64).fill_null(np.nan).to_numpy()
+    lats = df["home_lat"].cast(pl.Float64).fill_null(np.nan).to_numpy()
+    return df.filter(pl.Series(shapely.contains_xy(area, lngs, lats)))
+
+
+def compute_joint_tours_shares(survey: pl.DataFrame, sim: pl.DataFrame) -> dict:
+    """Computes the share of joint tours, by tour count and by distance, for the survey (weighted)
+    and the simulation, together with the totals the shares are computed on."""
+    survey_joint = survey.filter("joint_tour")
+    survey_weight = float(survey["weight"].sum())
+    survey_joint_weight = float(survey_joint["weight"].sum())
+    survey_distance = float(survey["weighted_distance"].sum())
+    survey_joint_distance = float(survey_joint["weighted_distance"].sum())
+
+    sim_count = len(sim)
+    sim_joint_count = int(sim["joint_tour"].sum())
+    sim_distance: float | None
+    sim_joint_distance: float | None
+    if "total_distance" in sim.columns:
+        sim_distance = float(sim["total_distance"].sum())
+        sim_joint_distance = float(sim.filter("joint_tour")["total_distance"].sum())
+    else:
+        logger.warning(
+            "`total_distance` is not available in `ToursFile`: skipping the distance-based "
+            "joint-tour share comparison for the simulated population."
+        )
+        sim_distance = sim_joint_distance = None
+
+    def ratio(num: float | None, den: float | None) -> float | None:
+        return None if num is None or not den else num / den
+
+    return {
+        "tour_count": {
+            "survey": ratio(survey_joint_weight, survey_weight),
+            "simulation": ratio(sim_joint_count, sim_count),
+        },
+        "distance": {
+            "survey": ratio(survey_joint_distance, survey_distance),
+            "simulation": ratio(sim_joint_distance, sim_distance),
+        },
+        "totals": {
+            "survey_weight": survey_weight,
+            "simulation_tours": sim_count,
+            "survey_distance": survey_distance,
+            "simulation_distance": sim_distance,
+        },
+    }
+
+
+class CompareJointToursShareStep(PlotStep, PopulationStep):
+    """Compares the share of joint tours in the survey and in the simulated population, by tour
+    count and by distance."""
+
+    # TODO. This Step is only valid if the survey area is similar to the simulation area.
+
+    input_files = {
+        "survey_tours": SurveyedToursFile,
+        "survey_households": SurveyedHouseholdsFile,
+        "survey_zones": InputFile(SurveyedDrawZonesFile, optional=True),
+        "simulation_area": InputFile(SimulationAreaFile, optional=True),
+        "sim_tours": ToursFile,
+        "sim_joint": JointToursFile,
+        "sim_trips": TripsFile,
+        "sim_homes": HouseholdsHomesFile,
+    }
+    output_files = {
+        "comparison": JointToursShareComparisonFile,
+        "tour_count_plot": JointToursShareTourCountPlotFile,
+        "distance_plot": JointToursShareDistancePlotFile,
+    }
+
+    def run(self):
+        import json
+
+        import polars as pl
+
+        survey = self.input["survey_tours"].read()
+        # Only fully surveyed households (and on same day) have a reliable "joint" status.
+        survey = survey.filter("household_fully_surveyed", "household_surveyed_on_same_day")
+        survey = survey.drop_nulls(["joint_tour", "weight", "weighted_distance"])
+        households = self.input["survey_households"].read()
+        for col in ("home_lng", "home_lat", "home_draw_zone"):
+            if col not in households.columns:
+                raise MetropyError(f"Column `{col}` is missing from `SurveyedHouseholdsFile`.")
+        survey = survey.join(
+            households.select("household_id", "home_lng", "home_lat", "home_draw_zone"),
+            on="household_id",
+            how="left",
+        )
+
+        # The households of the simulated tours are read from the trips.
+        tour_households = self.input["sim_trips"].scan().select("tour_id", "household_id").unique()
+        homes = self.input["sim_homes"].read().to_crs("EPSG:4326")
+        homes = pl.from_pandas(homes[["household_id"]]).with_columns(
+            home_lng=pl.Series(homes.geometry.x.to_numpy()),
+            home_lat=pl.Series(homes.geometry.y.to_numpy()),
+        )
+        sim = (
+            self.input["sim_tours"]
+            .read()
+            .join(self.input["sim_joint"].read(), on="tour_id")
+            .join(tour_households.collect(), on="tour_id", how="left")
+            .join(homes, on="household_id", how="left")
+        )
+
+        # First, restrict the surveyed tours to those with home in the simulation area.
+        if self.input["simulation_area"].exists():
+            sim_area = self.input["simulation_area"].get_area("EPSG:4326")  # ty: ignore[unresolved-attribute]
+            survey = restrict_to_home_in_area(survey, sim_area)
+
+        # Then, restrict the simulated tours to those with home in the draw zones where at least
+        # one surveyed tour is observed.
+        if self.input["survey_zones"].exists():
+            draw_zones = self.input["survey_zones"].read()
+            observed = survey["home_draw_zone"].drop_nulls().unique().to_list()
+            draw_zones = draw_zones[draw_zones["draw_zone_id"].isin(observed)]
+            if draw_zones.empty:
+                raise MetropyError("No draw zone with an observed tour in the simulation area.")
+            survey_area = draw_zones.to_crs("EPSG:4326").union_all()
+            sim = restrict_to_home_in_area(sim, survey_area)
+
+        results = compute_joint_tours_shares(survey, sim)
+        totals = results.pop("totals")
+
+        logger.debug(
+            f"Total tours after filtering: survey (weighted) {totals['survey_weight']:,.0f} "
+            f"vs. simulation {totals['simulation_tours']:,}"
+        )
+        if totals["simulation_distance"] is not None:
+            logger.debug(
+                f"Total distance after filtering: survey (weighted) "
+                f"{totals['survey_distance']:,.0f} m vs. simulation "
+                f"{totals['simulation_distance']:,.0f} m"
+            )
+
+        self.output["comparison"].write(json.dumps(results, indent=2, sort_keys=True))
+
+        fig = plot_joint_share_comparison(
+            results["tour_count"]["survey"] or 0.0,
+            results["tour_count"]["simulation"] or 0.0,
+            "Share of tours",
+        )
+        self.output["tour_count_plot"].write(fig)
+
+        sim_dist = results["distance"]["simulation"]
+        fig = plot_joint_share_comparison(
+            results["distance"]["survey"] or 0.0, sim_dist or 0.0, "Share of distance"
+        )
+        self.output["distance_plot"].write(fig)

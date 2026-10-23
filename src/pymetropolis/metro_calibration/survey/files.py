@@ -926,3 +926,21 @@ class ToursModeShareTourCountPlotFile(MetroPlotFile, PopulationFile):
 class ToursModeShareDistancePlotFile(MetroPlotFile, PopulationFile):
     path = "calibration/survey/{population}/mode_share_distance.{format}"
     description = "Comparison of survey vs. ex-ante mode shares, by tour distance."
+
+
+class JointToursShareComparisonFile(MetroTxtFile, PopulationFile):
+    path = "calibration/survey/{population}/joint_tours_share_comparison.json"
+    description = (
+        "JSON file comparing, by tour count and by distance, the share of joint tours observed in "
+        "the survey and the share of joint tours predicted for the simulated population."
+    )
+
+
+class JointToursShareTourCountPlotFile(MetroPlotFile, PopulationFile):
+    path = "calibration/survey/{population}/joint_tours_share_tour_count.{format}"
+    description = "Comparison of survey vs. simulated share of joint tours, by tour count."
+
+
+class JointToursShareDistancePlotFile(MetroPlotFile, PopulationFile):
+    path = "calibration/survey/{population}/joint_tours_share_distance.{format}"
+    description = "Comparison of survey vs. simulated share of joint tours, by tour distance."

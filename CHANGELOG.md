@@ -20,6 +20,7 @@ New steps:
 - `AbstractFrenchZonesStep`
 - `ModeClassifierConfigStep`
 - `CompareToursModeSharesStep`
+- `CompareJointToursShareStep`
 - `PrepareExAnteMetroAgentsStep`
 - `WriteExAnteMetroAgentsStep`
 - `PrepareExAnteMetroAlternativesStep`
@@ -71,6 +72,9 @@ New files:
 - `ToursModeShareComparisonFile`
 - `ToursModeShareTourCountPlotFile`
 - `ToursModeShareDistancePlotFile`
+- `JointToursShareComparisonFile`
+- `JointToursShareTourCountPlotFile`
+- `JointToursShareDistancePlotFile`
 - `MetroExAnteAgentsPopulationFile`
 - `MetroExAnteAgentsFile`
 - `MetroExAnteAlternativesPopulationFile`

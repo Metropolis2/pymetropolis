@@ -522,3 +522,28 @@ def plot_mode_share_comparison(
     ax.grid(which="major", axis="x", zorder=2)
     fig.tight_layout(pad=0.5)
     return fig
+
+
+def plot_joint_share_comparison(survey_share: float, sim_share: float, xlabel: str) -> plt.Figure:
+    """Plots the share of joint tours in the survey and in the simulation, as stacked horizontal
+    bars (joint / non-joint)."""
+    import matplotlib.pyplot as plt
+    from matplotlib.ticker import PercentFormatter
+
+    labels = ["Survey", "Simulation"]
+    joint = [survey_share, sim_share]
+    non_joint = [1.0 - x for x in joint]
+
+    fig, ax = plt.subplots()
+    joint_bars = ax.barh(labels, joint, label="Joint tours", zorder=1)
+    non_joint_bars = ax.barh(labels, non_joint, left=joint, label="Other tours", zorder=1)
+    ax.bar_label(joint_bars, fmt=lambda x: tex(f"{x:.1%}"), label_type="center", zorder=3)
+    ax.bar_label(non_joint_bars, fmt=lambda x: tex(f"{x:.1%}"), label_type="center", zorder=3)
+    ax.invert_yaxis()
+    ax.xaxis.set_major_formatter(PercentFormatter(xmax=1, decimals=0))
+    ax.set_xlim(0, 1)
+    ax.set_xlabel(tex(xlabel))
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.15), ncol=2)
+    ax.grid(which="major", axis="x", zorder=2)
+    fig.tight_layout(pad=0.5)
+    return fig
