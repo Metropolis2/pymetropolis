@@ -279,6 +279,7 @@ class PrepareExAnteMetroAlternativesStep(StepWithModes, PopulationStep):
         "input_trips": MetroExAnteTripsPopulationFile,
         "departure_times": ExAnteDepartureTimesFile,
         "primary_road_trips": InputFile(PrimaryCarTripsAccessEgressFile, optional=True),
+        "primary_pr_trips": InputFile(PrimaryParkAndRideCarTripsAccessEgressFile, optional=True),
     }
     output_files = {"metro_alternatives": MetroExAnteAlternativesPopulationFile}
     priority = 0
@@ -289,20 +290,24 @@ class PrepareExAnteMetroAlternativesStep(StepWithModes, PopulationStep):
         departure_times = self.input["departure_times"].read()
         input_trips = self.input["input_trips"].read()
         primary_road_trips = self.input["primary_road_trips"].read_if_exists()
+        primary_pr_trips = self.input["primary_pr_trips"].read_if_exists()
 
+        # Each agent is a trip (`agent_id` is the trip id), with a single alternative. Park-and-ride
+        # trips are made of two legs (two Metropolis-Core trips for the same agent).
         assert input_trips["trip_id"].n_unique() == len(input_trips)
-        assert (input_trips["agent_id"] == input_trips["trip_id"]).all()
-        alts = (
-            input_trips.select("agent_id", "alt_id", "trip_id")
-            .join(departure_times, on="trip_id", how="left")
-            .drop("trip_id")
+        agents = input_trips.select("agent_id", "alt_id").unique()
+        assert agents["agent_id"].n_unique() == len(agents)
+        alts = agents.join(
+            departure_times.select(agent_id="trip_id", departure_time="departure_time"),
+            on="agent_id",
+            how="left",
         )
         alts = alts.with_columns(
             pl.lit("Constant").alias("dt_choice.type"),
             pl_duration_to_seconds("departure_time").alias("dt_choice.departure_time"),
         ).drop("departure_time")
-        if primary_road_trips is not None:
-            origin_delays = get_origin_delay(input_trips, primary_road_trips)
+        if primary_road_trips is not None or primary_pr_trips is not None:
+            origin_delays = get_origin_delay(input_trips, primary_road_trips, primary_pr_trips)
             alts = alts.join(origin_delays, on=["agent_id", "alt_id"], how="left")
         alts = alts.sort("agent_id", "alt_id")
         self.output["metro_alternatives"].write(alts)
