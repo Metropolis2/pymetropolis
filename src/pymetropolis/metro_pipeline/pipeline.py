@@ -91,6 +91,12 @@ class MetroPipeline:
             self.source_config = compute_source_config(
                 self.config, self.step_classes, self.steps, self.generated_files
             )
+            # Probing the ancestors instantiated their Steps against their own configs, which
+            # hashed the input files into their own digest caches (not `self.config`'s, saved
+            # above). Without this, those files would be hashed again on every run.
+            for ancestor in self.config.chain():
+                if ancestor is not self.config:
+                    ancestor.digest_cache.save()
         # Repoints a Step whose output canonically belongs to an ancestor config at that config's
         # `main_directory`, so that running an outdated such Step writes there instead of into
         # `self.config`'s own directory. This rebuilds `self.generated_files` and returns the
