@@ -84,7 +84,7 @@ def parse_colors(value: Any) -> list[str]:
     `viridis`) gives colors sampled evenly from it.
     """
     import matplotlib as mpl
-    from matplotlib.colors import ListedColormap, is_color_like, to_hex
+    from matplotlib.colors import ListedColormap, to_hex
 
     if isinstance(value, str):
         if value not in mpl.colormaps:
@@ -96,11 +96,24 @@ def parse_colors(value: Any) -> list[str]:
             to_hex(cmap(x)) for x in [i / (N_SAMPLED_COLORS - 1) for i in range(N_SAMPLED_COLORS)]
         ]
     if isinstance(value, list) and value:
-        for c in value:
-            if not isinstance(c, str) or not is_color_like(c):
-                raise MetropyError(f"Invalid color: `{c}`")
-        return [to_hex(c) for c in value]
+        return [parse_color(c) for c in value]
     raise MetropyError(f"Invalid colors: `{value}` (expected a colormap name or a list of colors)")
+
+
+def parse_color(value: Any) -> str:
+    """Parses a color (HEX code or color name) and returns it as a HEX string."""
+    from matplotlib.colors import is_color_like, to_hex
+
+    if not isinstance(value, str) or not is_color_like(value):
+        raise MetropyError(f"Invalid color: `{value}`")
+    return to_hex(value)
+
+
+def parse_mode_colors(value: Any) -> dict[str, str]:
+    """Parses a table mapping mode names to colors and returns the colors as HEX strings."""
+    if not isinstance(value, dict):
+        raise MetropyError(f"Invalid mode colors: `{value}` (expected a table of colors by mode)")
+    return {mode: parse_color(c) for mode, c in value.items()}
 
 
 def length_to_inches(length: tuple[float, str], dpi: float) -> float:
@@ -295,6 +308,18 @@ class PlotStep(Step):
         ),
         shared=True,
     )
+    mode_colors = CustomParameter(
+        "plots.mode_colors",
+        validator=parse_mode_colors,
+        validator_description="a table mapping mode names to colors",
+        description="Color of each mode in the plots showing modes (e.g., the mode shares).",
+        example='`{ car_driver = "#D55E00", public_transit = "#0072B2" }`',
+        note=(
+            "Modes missing from the table are colored with the colors of `plots.colors` (or "
+            "matplotlib's default colors), in order."
+        ),
+        shared=True,
+    )
 
     @override
     def _resolve_file_class(self, file_class: type[MetroFile], population: str) -> type[MetroFile]:
@@ -317,6 +342,21 @@ class PlotStep(Step):
             fmt=self.plot_format,
             colors=self.colors,
         )
+
+    def mode_color_map(self, modes: list[str]) -> list[str]:
+        """Returns the color of each of `modes`.
+
+        The color is the one of `plots.mode_colors` if any, otherwise the next color of the color
+        cycle (`plots.colors`), the cycle being consumed only by the modes without a set color.
+        """
+        from itertools import cycle
+
+        import matplotlib as mpl
+        from matplotlib.colors import to_hex
+
+        fallback = cycle(to_hex(c) for c in mpl.rcParams["axes.prop_cycle"].by_key()["color"])
+        mode_colors = self.mode_colors or {}
+        return [mode_colors[mode] if mode in mode_colors else next(fallback) for mode in modes]
 
     def text(self, text: str) -> str:
         """Returns `text`, escaped if the plots are rendered with LaTeX."""

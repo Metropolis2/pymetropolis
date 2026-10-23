@@ -12,6 +12,7 @@ from pymetropolis.metro_common.plots import (
     length_to_inches,
     parse_colors,
     parse_length,
+    parse_mode_colors,
     plot_feature_importance,
     plot_mode_share_comparison,
     plot_rc_params,
@@ -243,3 +244,36 @@ def test_plots_with_latex():
             )
             fig = plot_feature_importance(df, "Increase in score (€)")
             fig.savefig(Path(tmp_dir) / "importance.png")
+
+
+def test_parse_mode_colors():
+    assert parse_mode_colors({"car": "#FF0000", "bus": "blue"}) == {
+        "car": "#ff0000",
+        "bus": "#0000ff",
+    }
+
+
+@pytest.mark.parametrize("value", ["red", ["red"], {"car": "notacolor"}, {"car": 1}])
+def test_parse_mode_colors_invalid(value):
+    with pytest.raises(MetropyError):
+        parse_mode_colors(value)
+
+
+def _mode_color_map(config_dict: dict, modes: list[str]) -> list[str]:
+    import matplotlib as mpl
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        step = APlotStep(Config({"main_directory": tmp_dir, **config_dict}))
+        with mpl.rc_context(step.rc_params()):
+            return step.mode_color_map(modes)
+
+
+def test_mode_color_map():
+    plots = {"colors": ["#111111", "#222222"]}
+    # No mode colors: the cycle, wrapping around.
+    assert _mode_color_map({"plots": plots}, ["a", "b", "c"]) == ["#111111", "#222222", "#111111"]
+    # Modes with a color do not consume the cycle.
+    plots["mode_colors"] = {"b": "#ff0000"}
+    assert _mode_color_map({"plots": plots}, ["a", "b", "c"]) == ["#111111", "#ff0000", "#222222"]
+    # Default cycle (tab10).
+    assert _mode_color_map({}, ["a"]) == ["#1f77b4"]

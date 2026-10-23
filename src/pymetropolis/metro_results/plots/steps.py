@@ -25,20 +25,6 @@ from .files import (
     TripModeSharesPlotFile,
 )
 
-# Define a color palette from Okabe and Ito.
-ORANGE = "#E69F00"
-LIGHTBLUE = "#56B4E9"
-GREEN = "#009E73"
-YELLOW = "#F0E442"
-BLUE = "#0072B2"
-RED = "#D55E00"
-PINK = "#CC79A7"
-BLACK = "#000000"
-COLORS = [ORANGE, LIGHTBLUE, GREEN, BLUE, RED, PINK, YELLOW, BLACK]
-
-PURPLE = "#9932CC"
-TEAL = "#008080"
-
 
 class ConvergencePlotStep(PlotStep):
     """Generates various graphs to analyze the convergence of the simulation."""
@@ -212,7 +198,7 @@ class TripModeSharesStep(PlotStep, PopulationStep):
             width=shares["proportion"],
             height=0.9,
             align="center",
-            color=COLORS,
+            color=self.mode_color_map(shares["mode"].to_list()),
             zorder=1,
         )
         ax.bar_label(bars, fmt=percent_label, padding=5, zorder=3)
