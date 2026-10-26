@@ -411,9 +411,15 @@ def read_tours(
         .group_by("person_id", "home_sequence_index")
         .agg(other_person_ids="other_person_id", other_modes="other_mode")
     )
+    # The joint status is unknown (NULL) for households that were not fully surveyed or not
+    # surveyed on the same day, as the other members of the joint tour might not have been surveyed.
     tours = tours.join(
         joint_tours, on=["person_id", "home_sequence_index"], how="left"
-    ).with_columns(joint_tour=pl.col("other_person_ids").is_not_null())
+    ).with_columns(
+        joint_tour=pl.when("household_fully_surveyed", "household_surveyed_on_same_day").then(
+            pl.col("other_person_ids").is_not_null()
+        )
+    )
 
     # Create tour_id column.
     tours = tours.with_columns(

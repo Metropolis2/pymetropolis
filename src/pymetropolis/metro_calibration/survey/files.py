@@ -326,7 +326,10 @@ class SurveyedToursFile(MetroDataFrameFile):
         Column(
             "joint_tour",
             MetroDataType.BOOL,
-            description="Whether the tour was made jointly with other household members.",
+            description=(
+                "Whether the tour was made jointly with other household members "
+                "(NULL if the household was not fully surveyed or not surveyed on the same day)."
+            ),
             nullable=True,
             optional=True,
         ),
