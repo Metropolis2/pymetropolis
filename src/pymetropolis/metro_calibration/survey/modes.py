@@ -118,8 +118,6 @@ class EstimateModeClassifierStep(RandomStep, ThreadedStep, StepWithModes):
         return self.modes is not None and self.features is not None
 
     def run(self):
-        import json
-
         assert self.features is not None
         assert self.modes is not None
 
@@ -154,7 +152,7 @@ class EstimateModeClassifierStep(RandomStep, ThreadedStep, StepWithModes):
         results = estimation_results(
             y, groups, self.features, model, comparison, estimation, self.random_seed
         )
-        self.output["results"].write(json.dumps(results, indent=2, sort_keys=True))
+        self.output["results"].write(results)
 
 
 class ModeFeatureImportanceStep(RandomStep, ThreadedStep, StepWithModes):
@@ -319,8 +317,6 @@ class CompareToursModeSharesStep(PlotStep, PopulationStep, StepWithModes):
         return self.modes is not None
 
     def run(self):
-        import json
-
         import polars as pl
 
         assert self.modes is not None
@@ -375,7 +371,7 @@ class CompareToursModeSharesStep(PlotStep, PopulationStep, StepWithModes):
             "tour_count": {"survey": survey_count_shares, "simulation": sim_count_shares},
             "distance": {"survey": survey_dist_shares, "simulation": sim_dist_shares},
         }
-        self.output["comparison"].write(json.dumps(results, indent=2, sort_keys=True))
+        self.output["comparison"].write(results)
 
         fig = plot_mode_share_comparison(survey_count_shares, sim_count_shares, "Share of tours")
         self.output["tour_count_plot"].write(fig)

@@ -1,7 +1,7 @@
-from pymetropolis.metro_pipeline.file import MetroTxtFile
+from pymetropolis.metro_pipeline.file import MetroJsonFile
 
 
-class SurveyModeChoiceResultsFile(MetroTxtFile):
+class SurveyModeChoiceResultsFile(MetroJsonFile):
     path = "calibration/econometrics/mode_choice_results.json"
     description = (
         "Results of the survey mode choice econometric model. "

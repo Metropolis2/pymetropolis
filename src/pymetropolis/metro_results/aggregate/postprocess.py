@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from typing import TYPE_CHECKING
 
 from pymetropolis.metro_demand.population.files import JointToursFile, TripsDistancesFile
@@ -142,8 +141,7 @@ class AggregateResultsStep(StepWithSimulationRatio, PopulationStep):
                 }
 
         # Save as JSON.
-        results_str = json.dumps(results, indent=2, sort_keys=True)
-        self.output["output"].write(results_str)
+        self.output["output"].write(results)
 
 
 class IterationResultsStep(Step):

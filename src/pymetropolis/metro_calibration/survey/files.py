@@ -4,9 +4,9 @@ from pymetropolis.metro_pipeline.file import (
     MetroDataFrameFile,
     MetroDataType,
     MetroGeoDataFrameFile,
+    MetroJsonFile,
     MetroMLEstimatorFile,
     MetroPlotFile,
-    MetroTxtFile,
     PopulationFile,
 )
 
@@ -858,7 +858,7 @@ class ModeEstimatorFile(MetroMLEstimatorFile):
     description = "ML estimator for the classification of tours' mode."
 
 
-class JointTourEstimationResultsFile(MetroTxtFile):
+class JointTourEstimationResultsFile(MetroJsonFile):
     path = "calibration/survey/joint_tour_estimation_results.json"
     description = (
         "JSON file with the results of the estimation of the joint-tour classifier: selected model "
@@ -868,7 +868,7 @@ class JointTourEstimationResultsFile(MetroTxtFile):
     )
 
 
-class ModeEstimationResultsFile(MetroTxtFile):
+class ModeEstimationResultsFile(MetroJsonFile):
     path = "calibration/survey/mode_estimation_results.json"
     description = (
         "JSON file with the results of the estimation of the tour-mode classifier: selected "
@@ -930,7 +930,7 @@ class ModeFeatureImportancePlotFile(MetroPlotFile):
     description = "Bar plot of the permutation feature importance of the tour-mode classifier."
 
 
-class ToursModeShareComparisonFile(MetroTxtFile, PopulationFile):
+class ToursModeShareComparisonFile(MetroJsonFile, PopulationFile):
     path = "calibration/survey/{population}/mode_share_comparison.json"
     description = (
         "JSON file comparing, by tour count and by distance, the mode shares observed in the "
@@ -948,7 +948,7 @@ class ToursModeShareDistancePlotFile(MetroPlotFile, PopulationFile):
     description = "Comparison of survey vs. ex-ante mode shares, by tour distance."
 
 
-class JointToursShareComparisonFile(MetroTxtFile, PopulationFile):
+class JointToursShareComparisonFile(MetroJsonFile, PopulationFile):
     path = "calibration/survey/{population}/joint_tours_share_comparison.json"
     description = (
         "JSON file comparing, by tour count and by distance, the share of joint tours observed in "

@@ -118,8 +118,6 @@ class EstimateJointToursClassifierStep(RandomStep, ThreadedStep):
         return self.features is not None
 
     def run(self):
-        import json
-
         import polars as pl
 
         assert self.features is not None
@@ -144,7 +142,7 @@ class EstimateJointToursClassifierStep(RandomStep, ThreadedStep):
         results = estimation_results(
             y, groups, self.features, model, comparison, estimation, self.random_seed
         )
-        self.output["results"].write(json.dumps(results, indent=2, sort_keys=True))
+        self.output["results"].write(results)
 
 
 class JointToursFeatureImportanceStep(RandomStep, ThreadedStep):
@@ -335,8 +333,6 @@ class CompareJointToursShareStep(PlotStep, PopulationStep):
     }
 
     def run(self):
-        import json
-
         import polars as pl
 
         survey = self.input["survey_tours"].read()
@@ -398,7 +394,7 @@ class CompareJointToursShareStep(PlotStep, PopulationStep):
                 f"{totals['simulation_distance']:,.0f} m"
             )
 
-        self.output["comparison"].write(json.dumps(results, indent=2, sort_keys=True))
+        self.output["comparison"].write(results)
 
         fig = plot_joint_share_comparison(
             results["tour_count"]["survey"] or 0.0,

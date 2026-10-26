@@ -1,4 +1,3 @@
-import json
 from datetime import timedelta
 from math import inf, isfinite
 
@@ -153,8 +152,7 @@ class AbstractWriteMetroParametersStep(StepWithPeriod, ThreadedStep):
                 "types are not."
             )
         params = self.get_parameters()
-        params_str = json.dumps(params, indent=2, sort_keys=True)
-        self.output["parameters"].write(params_str)
+        self.output["parameters"].write(params)
 
     def get_parameters(self) -> dict:
         assert self.period is not None

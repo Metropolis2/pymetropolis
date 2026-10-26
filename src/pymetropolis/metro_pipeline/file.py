@@ -527,6 +527,35 @@ class MetroTxtFile(MetroFile):
         return doc
 
 
+class MetroJsonFile(MetroFile):
+    """A JSON file, written from and read as a JSON-serializable Python object."""
+
+    @override
+    @error_context(msg="Cannot save JSON file {}", fmt_args=[0])
+    def _write(self, value: Any):
+        import json
+
+        with open(self.complete_path, "w") as f:
+            json.dump(value, f, indent=2, sort_keys=True)
+
+    def read(self) -> Any:
+        import json
+
+        with open(self.complete_path) as f:
+            return json.load(f)
+
+    def read_if_exists(self) -> Any | None:
+        if self.exists():
+            return self.read()
+
+    @override
+    @classmethod
+    def _md_doc(cls) -> str:
+        doc = super()._md_doc()
+        doc += "- **Type:** JSON\n"
+        return doc
+
+
 class MetroPlotFile(MetroFile):
     """A plot, saved in the format given by the extension of its path.
 

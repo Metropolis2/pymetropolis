@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from typing import TYPE_CHECKING
 
 from loguru import logger
@@ -257,7 +256,7 @@ class SurveyEconometricModeChoiceStep(StepWithModes, StepWithModeAvailability):
         }
         results = {"specification": specification, "stats": stats, "parameters": params}
 
-        self.output["results"].write(json.dumps(results, indent=2, sort_keys=True))
+        self.output["results"].write(results)
 
 
 def estimate_mnl(

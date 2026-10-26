@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from typing import TYPE_CHECKING, Any
 
 from loguru import logger
@@ -242,7 +241,7 @@ class ModePreferencesFromEconometricsStep(StepWithModes, PopulationStep):
         if joint_tours is not None:
             tours = tours.join(joint_tours, on="tour_id", how="left")
 
-        results = json.loads(self.input["results"].read())
+        results = self.input["results"].read()
         spec = results["specification"]
         params = results["parameters"]
 
