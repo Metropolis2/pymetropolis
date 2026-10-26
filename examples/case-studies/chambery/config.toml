@@ -37,7 +37,7 @@ features = [
     "nb_driving_licenses",
     "minor_ratio",
     "car_ratio",
-    "driving_license_ratio",
+    "cars_per_license",
     "woman",
     "has_driving_license",
     "has_leisure_purpose",

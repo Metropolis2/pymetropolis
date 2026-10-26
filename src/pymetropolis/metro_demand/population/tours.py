@@ -199,7 +199,7 @@ class CreateToursStep(PopulationStep):
                         "nb_driving_licenses": "nb_driving_licenses",
                         "minor_ratio": pl.col("nb_minors") / pl.col("nb_persons"),
                         "car_ratio": pl.col("nb_cars") / pl.col("nb_persons"),
-                        "driving_license_ratio": pl.col("nb_cars")
+                        "cars_per_license": pl.col("nb_cars")
                         / pl.col("nb_driving_licenses").clip(lower_bound=1),
                     },
                     households.columns,

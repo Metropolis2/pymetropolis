@@ -521,7 +521,7 @@ class SurveyedToursFile(MetroDataFrameFile):
             optional=True,
         ),
         Column(
-            "driving_license_ratio",
+            "cars_per_license",
             MetroDataType.FLOAT,
             description="Number of cars per driving-license holder.",
             nullable=True,

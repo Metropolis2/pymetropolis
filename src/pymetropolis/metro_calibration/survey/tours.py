@@ -336,8 +336,7 @@ def read_tours(
         .with_columns(
             minor_ratio=pl.col("nb_minors") / pl.col("nb_persons"),
             car_ratio=pl.col("nb_cars") / pl.col("nb_persons"),
-            driving_license_ratio=pl.col("nb_cars")
-            / pl.col("nb_driving_licenses").clip(lower_bound=1),
+            cars_per_license=pl.col("nb_cars") / pl.col("nb_driving_licenses").clip(lower_bound=1),
             household_fully_surveyed=pl.col("nb_surveyed") == pl.col("nb_persons"),
             household_surveyed_on_same_day=pl.col("trip_weekday")
             .n_unique()

@@ -198,6 +198,7 @@ Other changes:
 - Subdirectories in `main_directory` are created on-the-fly as needed.
 - `TomTomRoutesMatchedFile` is renamed `TargetRoutesFile` (with path
   `calibration/road/target_routes.parquet` and columns changed).
+- Renamed variable `driving_license_ratio` to `cars_per_license`.
 
 Removed steps:
 

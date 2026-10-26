@@ -54,7 +54,7 @@ TOUR_VARIABLE_LABELS = {
     "household_type": "Household type",
     "minor_ratio": "Share of minors",
     "car_ratio": "Cars per person",
-    "driving_license_ratio": "Cars per license holder",
+    "cars_per_license": "Cars per license holder",
     # Person-level variables.
     "woman": "Woman",
     "age": "Age",
