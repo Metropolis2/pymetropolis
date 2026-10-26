@@ -9,6 +9,7 @@ from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_common.ml_models import (
     compute_feature_importance,
     estimate_model,
+    estimation_results,
     get_X,
     sample_classes,
     test_models,
@@ -35,6 +36,7 @@ from pymetropolis.modes import MetaMode, StepWithModes
 from pymetropolis.random import RandomStep
 
 from .files import (
+    ModeEstimationResultsFile,
     ModeEstimatorFile,
     ModeFeatureImportanceFile,
     ModeFeatureImportancePlotFile,
@@ -110,12 +112,13 @@ class EstimateModeClassifierStep(RandomStep, ThreadedStep, StepWithModes):
     )
 
     input_files = {"tours": SurveyedToursFile}
-    output_files = {"estimator": ModeEstimatorFile}
+    output_files = {"estimator": ModeEstimatorFile, "results": ModeEstimationResultsFile}
 
     def is_defined(self):
         return self.modes is not None and self.features is not None
 
     def run(self):
+        import json
 
         assert self.features is not None
         assert self.modes is not None
@@ -137,17 +140,21 @@ class EstimateModeClassifierStep(RandomStep, ThreadedStep, StepWithModes):
         # also weighted by their total distance to compute a second fidelity metric.
         weights = tours["total_distance"].to_pandas() if "total_distance" in tours.columns else None
         if self.model is None:
-            model = test_models(
+            model, comparison = test_models(
                 X, y, groups, self.random_seed, self.nb_threads or -1, fidelity_weights=weights
             )
         else:
-            model = self.model
+            model, comparison = self.model, None
 
-        estimator = estimate_model(
+        estimator, estimation = estimate_model(
             X, y, groups, model, self.random_seed, self.nb_threads or -1, fidelity_weights=weights
         )
 
         self.output["estimator"].write(estimator)
+        results = estimation_results(
+            y, groups, self.features, model, comparison, estimation, self.random_seed
+        )
+        self.output["results"].write(json.dumps(results, indent=2, sort_keys=True))
 
 
 class ModeFeatureImportanceStep(RandomStep, ThreadedStep, StepWithModes):

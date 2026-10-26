@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
@@ -280,7 +280,13 @@ def test_models(
     random_seed: int | None,
     nb_threads: int | None,
     fidelity_weights: pd.Series | None = None,
-):
+) -> tuple[str, dict[str, dict[str, float]]]:
+    """Compares all the classifiers of `get_classifiers` by cross-validation.
+
+    Returns the name of the best model (the one with the lowest Brier score) and, for each model,
+    its mean cross-validated scores (`brier`, `fidelity` and, when `fidelity_weights` is given,
+    `weighted_fidelity`; lower is better for all).
+    """
     from sklearn.model_selection import cross_validate
     from sklearn.pipeline import Pipeline
 
@@ -315,7 +321,13 @@ def test_models(
         f"Best model: {best_model[0]}; Brier score: {-best_model[1]:.2%}; "
         f"Class-priors dummy score: {-briers['dummy']:.2%}"
     )
-    return best_model[0]
+
+    scores = {}
+    for model in classifiers:
+        scores[model] = {"brier": -float(briers[model]), "fidelity": float(fidelities[model])}
+        if model in weighted_fidelities:
+            scores[model]["weighted_fidelity"] = float(weighted_fidelities[model])
+    return best_model[0], scores
 
 
 def _grid_size(param_grid: dict) -> int:
@@ -333,7 +345,15 @@ def estimate_model(
     random_seed: int | None,
     nb_threads: int | None,
     fidelity_weights: pd.Series | None = None,
-) -> BaseEstimator:
+) -> tuple[BaseEstimator, dict[str, Any]]:
+    """Estimates a classifier of type `model`, with hyperparameters selected by cross-validation.
+
+    Returns the best estimator (re-fitted on all the observations) and a dict describing the
+    estimation: the selected hyperparameters (`best_params`), the number of candidates tried
+    (`nb_candidates`), the number of cross-validation folds (`cv_folds`) and the mean
+    cross-validated scores of the best candidate (`scores`, with the same keys and sign convention
+    as the scores returned by `test_models`).
+    """
     from sklearn.model_selection import RandomizedSearchCV
     from sklearn.pipeline import Pipeline
 
@@ -367,19 +387,69 @@ def estimate_model(
     search.fit(X, y)
 
     logger.debug(f"Best parameters: {search.best_params_}")
-    msg = (
-        f"Best CV Brier score: {-search.cv_results_['mean_test_brier'][search.best_index_]:.2%}; "
-        f"fidelity: {-search.cv_results_['mean_test_fidelity'][search.best_index_]:.2%}"
-    )
+    # The scorers are maximized, so the scores are negated back to the "lower is better" metrics.
+    scores = {
+        "brier": -float(search.cv_results_["mean_test_brier"][search.best_index_]),
+        "fidelity": -float(search.cv_results_["mean_test_fidelity"][search.best_index_]),
+    }
+    msg = f"Best CV Brier score: {scores['brier']:.2%}; fidelity: {scores['fidelity']:.2%}"
     if "mean_test_weighted_fidelity" in search.cv_results_:
-        weighted = -search.cv_results_["mean_test_weighted_fidelity"][search.best_index_]
+        weighted = -float(search.cv_results_["mean_test_weighted_fidelity"][search.best_index_])
+        scores["weighted_fidelity"] = weighted
         msg += f"; weighted fidelity: {weighted:.2%}"
     logger.debug(msg)
+
+    estimation = {
+        # The `clf__` prefix of the pipeline step is dropped.
+        "best_params": {
+            k.removeprefix("clf__"): _to_json_value(v) for k, v in search.best_params_.items()
+        },
+        "nb_candidates": len(search.cv_results_["params"]),
+        "cv_folds": len(cv),
+        "scores": scores,
+    }
 
     # Note. The estimator is not re-calibrated (e.g., with a `CalibratedClassifierCV`): the
     # probabilities are meant to be sampled from and the one-vs-rest calibration of a multiclass
     # classifier does not preserve the predicted shares (it makes them less accurate in practice).
-    return search.best_estimator_
+    return search.best_estimator_, estimation
+
+
+def _to_json_value(value: Any) -> Any:
+    """Converts numpy scalars to their Python equivalent, so that `value` can be JSON-serialized."""
+    return value.item() if hasattr(value, "item") else value
+
+
+def estimation_results(
+    y: pd.Series,
+    groups: np.ndarray,
+    features: list[str],
+    model: str,
+    model_comparison: dict[str, dict[str, float]] | None,
+    estimation: dict[str, Any],
+    random_seed: int | None,
+) -> dict[str, Any]:
+    """Returns a JSON-serializable summary of the estimation of a classifier.
+
+    `model_comparison` is the per-model scores returned by `test_models` (`None` when the model was
+    set by the user) and `estimation` is the dict returned by `estimate_model`.
+    """
+    shares = y.value_counts(normalize=True)
+    results = {
+        "model": model,
+        "model_selection": "user" if model_comparison is None else "automatic",
+        "features": list(features),
+        "sample": {
+            "nb_observations": len(y),
+            "nb_groups": len(set(groups.tolist())),
+            "class_shares": {str(k): float(v) for k, v in shares.items()},
+        },
+        "random_seed": random_seed,
+        **estimation,
+    }
+    if model_comparison is not None:
+        results["model_comparison"] = model_comparison
+    return results
 
 
 def predict(X: pd.DataFrame, estimator: BaseEstimator, rng: np.random.Generator):

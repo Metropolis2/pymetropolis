@@ -858,6 +858,26 @@ class ModeEstimatorFile(MetroMLEstimatorFile):
     description = "ML estimator for the classification of tours' mode."
 
 
+class JointTourEstimationResultsFile(MetroTxtFile):
+    path = "calibration/survey/joint_tour_estimation_results.json"
+    description = (
+        "JSON file with the results of the estimation of the joint-tour classifier: selected model "
+        "and hyperparameters, cross-validated scores (Brier score and fidelity, lower is better), "
+        "description of the estimation sample and, when the model is selected automatically, the "
+        "scores of all the compared models."
+    )
+
+
+class ModeEstimationResultsFile(MetroTxtFile):
+    path = "calibration/survey/mode_estimation_results.json"
+    description = (
+        "JSON file with the results of the estimation of the tour-mode classifier: selected "
+        "model and hyperparameters, cross-validated scores (Brier score and fidelities, lower is "
+        "better), description of the estimation sample and, when the model is selected "
+        "automatically, the scores of all the compared models."
+    )
+
+
 def _feature_importance_schema(model_description: str) -> list[Column]:
     return [
         Column(

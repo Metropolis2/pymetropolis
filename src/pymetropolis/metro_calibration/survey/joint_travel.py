@@ -9,6 +9,7 @@ from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_common.ml_models import (
     compute_feature_importance,
     estimate_model,
+    estimation_results,
     get_X,
     predict,
     test_models,
@@ -39,6 +40,7 @@ from pymetropolis.metro_spatial.simulation_area.file import SimulationAreaFile
 from pymetropolis.random import RandomStep
 
 from .files import (
+    JointTourEstimationResultsFile,
     JointTourEstimatorFile,
     JointTourFeatureImportanceFile,
     JointTourFeatureImportancePlotFile,
@@ -110,12 +112,14 @@ class EstimateJointToursClassifierStep(RandomStep, ThreadedStep):
     )
 
     input_files = {"tours": SurveyedToursFile}
-    output_files = {"estimator": JointTourEstimatorFile}
+    output_files = {"estimator": JointTourEstimatorFile, "results": JointTourEstimationResultsFile}
 
     def is_defined(self):
         return self.features is not None
 
     def run(self):
+        import json
+
         import polars as pl
 
         assert self.features is not None
@@ -128,13 +132,19 @@ class EstimateJointToursClassifierStep(RandomStep, ThreadedStep):
         # household must all be assigned to the same cross-validation fold.
         groups = tours["household_id"].to_numpy()
         if self.model is None:
-            model = test_models(X, y, groups, self.random_seed, self.nb_threads or -1)
+            model, comparison = test_models(X, y, groups, self.random_seed, self.nb_threads or -1)
         else:
-            model = self.model
+            model, comparison = self.model, None
 
-        estimator = estimate_model(X, y, groups, model, self.random_seed, self.nb_threads or -1)
+        estimator, estimation = estimate_model(
+            X, y, groups, model, self.random_seed, self.nb_threads or -1
+        )
 
         self.output["estimator"].write(estimator)
+        results = estimation_results(
+            y, groups, self.features, model, comparison, estimation, self.random_seed
+        )
+        self.output["results"].write(json.dumps(results, indent=2, sort_keys=True))
 
 
 class JointToursFeatureImportanceStep(RandomStep, ThreadedStep):

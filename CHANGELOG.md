@@ -66,6 +66,8 @@ New steps:
 New files:
 
 - `ModeEstimatorFile`
+- `JointTourEstimationResultsFile`
+- `ModeEstimationResultsFile`
 - `JointTourFeatureImportanceFile`
 - `JointTourFeatureImportancePlotFile`
 - `ModeFeatureImportanceFile`
