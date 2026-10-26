@@ -35,16 +35,23 @@ Read those base classes before adding or modifying a Step.
 A `MetroFile` subclass declares one file that can be produced/consumed
 under `main_directory`. Concrete base classes handle serialization:
 `MetroDataFrameFile` (Parquet via polars), `MetroGeoDataFrameFile`
-(GeoParquet via geopandas), `MetroTxtFile`, `MetroPlotFile`,
+(GeoParquet via geopandas), `MetroTxtFile`, `MetroJsonFile`, `MetroPlotFile`,
 `MetroMLEstimatorFile`. `MetroDataFrameFile`/`MetroGeoDataFrameFile`
-validate columns against a `schema` on write.
+validate columns against a `schema` on write. Files holding
+per-population data also mix in `PopulationFile` (see "Populations"
+below), as in this example:
 
 ```python
-from pymetropolis.metro_pipeline.file import Column, MetroDataFrameFile, MetroDataType
+from pymetropolis.metro_pipeline.file import (
+    Column,
+    MetroDataFrameFile,
+    MetroDataType,
+    PopulationFile,
+)
 
 
-class TripsDistancesFile(MetroDataFrameFile):
-    path = "demand/population/trips/distances.parquet"
+class TripsDistancesFile(MetroDataFrameFile, PopulationFile):
+    path = "demand/{population}/trips/distances.parquet"
     description = "Euclidean distance of each trip."
     schema = [
         Column(
@@ -74,16 +81,9 @@ class TripsDistancesFile(MetroDataFrameFile):
 
 A `Parameter` binds a config TOML key (dotted path, e.g.
 `"synthetic_population.fraction"`) to a typed, validated attribute on
-a Step. Typed subclasses exist for common cases: `BoolParameter`,
-`IntParameter`/`FloatParameter` (with `lower_bound`/`upper_bound`),
-`FractionParameter` (float in `[0, 1]`), `StringParameter`,
-`DateParameter`, `TimeParameter`, `DurationParameter`, `EnumParameter`
-(`values=[...]`), `PathParameter` (`check_file_exists`,
-`check_dir_exists`, `extensions`), `ExecPathParameter`, `ListParameter`
-(`inner=`, `length`/`min_length`/`max_length`), and `CustomParameter`
-(arbitrary `validator` callable). `random.py` and `metro_spatial/crs.py`
-add distribution-valued and CRS-valued parameters (`FloatDistributionParameter`,
-`GeoStep.crs`, etc.) as further examples.
+a Step. Typed subclasses for common cases live in `parameters.py`;
+`random.py` and `metro_spatial/crs.py` add distribution-valued and
+CRS-valued ones.
 
 ```python
 from pymetropolis.metro_pipeline.parameters import FractionParameter, PathParameter
@@ -142,10 +142,10 @@ from pymetropolis.metro_demand.population.files import (
     TripsDistancesFile,
     TripsOriginsFile,
 )
-from pymetropolis.metro_pipeline import Step
+from pymetropolis.metro_pipeline import PopulationStep
 
 
-class TripDistancesStep(Step):
+class TripDistancesStep(PopulationStep):
     """Computes the Euclidean distances between origin and destination for each trip."""
 
     input_files = {"origins": TripsOriginsFile, "destinations": TripsDestinationsFile}
@@ -181,14 +181,6 @@ Each `metro_*` package's `__init__.py` aggregates these into
 packages into the global `STEPS` (passed to `MetroPipeline` by
 `cli.py`) and `FILES` (used by `bin/generate_doc.py` for the reference
 docs).
-
-Top-level packages: `metro_spatial` (CRS, simulation area, urban
-areas), `metro_network` (road/PT/bicycle/pedestrian networks, OSM
-import), `metro_demand` (zones, OD matrices, synthetic populations,
-modes, departure times, routing), `metro_simulation` (writing
-METROPOLIS2 inputs and running it), `metro_results` (post-processing
-and plots), `metro_calibration`, `metro_environment`; shared helpers
-are in `metro_common`.
 
 Users can also add or override Steps from their own Python files via
 the `custom_steps` config key (`MetroPipeline.load_custom_steps`: a
@@ -311,13 +303,10 @@ upstream input changed (`INVALIDATED`).
   rather than invoking tools from a manually-activated venv. Use
   `uv add <package>` / `uv remove <package>` to change dependencies —
   don't hand-edit `pyproject.toml` dependency lists.
-- **Linting/type-checking**: [ty](https://github.com/astral-sh/ty).
-  Run with `uv run ty check`.
-- **Formatting**: [ruff](https://docs.astral.sh/ruff/). Run with
-  `uv run ruff format` and `uv run ruff check --fix`.
-- **Testing**: [pytest](https://docs.pytest.org/), tests live under
-  `tests/` in files named `*_test.py` (not `test_*.py`). Run with
-  `uv run pytest`. `dot_test.py` needs Graphviz (`dot`) installed.
+- **Tooling**: type-checking with [ty](https://github.com/astral-sh/ty)
+  (not mypy), formatting/linting with ruff. Tests live under `tests/` in
+  files named `*_test.py` (not `test_*.py`); `dot_test.py` needs
+  Graphviz (`dot`) installed.
 - **Running the pipeline manually**: `uv run pymetropolis path/to/config.toml`.
   Running METROPOLIS2 needs the `metropolis_cli` and `routing_cli`
   executables, configured through the `METROPOLIS_EXEC_PATH` /
@@ -384,19 +373,5 @@ of 100 with `skip-magic-trailing-comma = true`.
   (e.g. `X | None` over `Optional[X]`, builtin generics over
   `typing.List`/`typing.Dict`).
 - Type-hint all new/modified function signatures.
-- New pipeline Steps should follow the existing Step interface (see
-  the base Step class) so they participate correctly in dependency
-  tracking and cache invalidation. When adding a Step, be explicit
-  about:
-  - what config keys it reads,
-  - what files/Steps it depends on,
-  - what it writes under `main_directory`.
 - Prefer `pathlib.Path` over raw strings for anything under
   `main_directory`.
-
-## Notes for Claude
-
-- Don't assume file layout beyond what's shown in context — inspect
-  the repo structure before editing rather than guessing module paths.
-- Run the format/lint/type-check commands above before calling a
-  change complete.
