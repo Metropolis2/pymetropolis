@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_pipeline import Step
-from pymetropolis.metro_pipeline.parameters import BoolParameter, PathParameter
+from pymetropolis.metro_pipeline.parameters import BoolParameter, EnumParameter, PathParameter
 
 from .files import (
     SurveyedCarsFile,
@@ -93,6 +93,22 @@ def concatenate_surveys(surveys: list[SurveyData]) -> SurveyData:
     return SurveyData.from_dict(data)
 
 
+def filter_survey_method(
+    households: pl.DataFrame, others: dict[str, pl.DataFrame], method: str
+) -> tuple[pl.DataFrame, dict[str, pl.DataFrame]]:
+    """Keeps only the households surveyed with the given method, and the rows of the other
+    DataFrames (persons, trips, etc.) belonging to these households.
+    """
+    import polars as pl
+
+    households = households.filter(pl.col("survey_method") == method)
+    if households.is_empty():
+        raise MetropyError(f"No household in the survey was surveyed with method `{method}`.")
+    household_ids = households["household_id"]
+    others = {k: df.filter(pl.col("household_id").is_in(household_ids)) for k, df in others.items()}
+    return households, others
+
+
 class MobiSurvStdImportStep(Step):
     """Reads and standardizes a travel survey compatible with MobiSurvStd.
 
@@ -110,6 +126,14 @@ class MobiSurvStdImportStep(Step):
             "If true, all surveys in the provided directory are read in bulk and concatenated."
         ),
         default=False,
+    )
+    survey_method = EnumParameter(
+        "survey.mobisurvstd.survey_method",
+        values=["face_to_face", "phone"],
+        description=(
+            "If set, only households surveyed with this method are kept (along with their "
+            "persons, trips, legs, cars and motorcycles). Sample weights are not rescaled."
+        ),
     )
     output_files = {
         "households": SurveyedHouseholdsFile,
@@ -149,13 +173,19 @@ class MobiSurvStdImportStep(Step):
             # In bulk, `survey_name` is already set for each survey by `prepare_survey` (the
             # metadata of the concatenated survey is `None`).
             households = with_survey_name(households, survey.metadata)
+        others = {
+            "persons": survey.persons,
+            "trips": survey.trips,
+            "legs": survey.legs,
+            "cars": survey.cars,
+            "motorcycles": survey.motorcycles,
+        }
+        if self.survey_method is not None:
+            households, others = filter_survey_method(households, others, self.survey_method)
 
         self.output["households"].write(households)
-        self.output["persons"].write(survey.persons)
-        self.output["trips"].write(survey.trips)
-        self.output["legs"].write(survey.legs)
-        self.output["cars"].write(survey.cars)
-        self.output["motorcycles"].write(survey.motorcycles)
+        for name, df in others.items():
+            self.output[name].write(df)
         if survey.special_locations is not None:
             self.output["special_locations"].write(survey.special_locations)
         if survey.detailed_zones is not None:

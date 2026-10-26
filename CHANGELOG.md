@@ -141,6 +141,7 @@ New parameters:
 - `vehicle_types.truck.max_speed`
 - `simulation.learning_model`
 - `simulation.nb_exponential_iterations`
+- `survey.mobisurvstd.survey_method`
 
 New columns:
 
