@@ -104,7 +104,7 @@ def filter_survey_method(
     households = households.filter(pl.col("survey_method") == method)
     if households.is_empty():
         raise MetropyError(f"No household in the survey was surveyed with method `{method}`.")
-    household_ids = households["household_id"]
+    household_ids = households["household_id"].to_list()
     others = {k: df.filter(pl.col("household_id").is_in(household_ids)) for k, df in others.items()}
     return households, others
 

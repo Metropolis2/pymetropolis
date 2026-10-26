@@ -1,13 +1,22 @@
 import polars as pl
 import pytest
 
+from pymetropolis.metro_calibration.econometrics.mode_choice import monetary_cost_exprs
 from pymetropolis.metro_calibration.econometrics.preferences import (
     compute_mode_preferences,
+    get_monetary_utility_scale,
     get_utility_scale,
     resolve_estimated_mode,
 )
 from pymetropolis.metro_common import MetropyError
-from pymetropolis.modes import Bicycle, CarDriver, CarRidesharing, PublicTransit, Walking
+from pymetropolis.modes import (
+    Bicycle,
+    CarDriver,
+    CarPassenger,
+    CarRidesharing,
+    PublicTransit,
+    Walking,
+)
 
 # A model estimated on 3 alternatives, with `walking` as the reference mode, one case variable
 # (`woman`), one alternative-varying variable (`travel_time`), one alternative-varying interaction
@@ -138,3 +147,38 @@ def test_utility_scale_requires_a_positive_average_value_of_time():
     df = compute_mode_preferences(get_tours(), SPEC, params, CarDriver)
     with pytest.raises(MetropyError):
         get_utility_scale(df["car_driver_vot"], 20.0, CarDriver)
+
+
+def test_monetary_cost_is_the_fuel_cost_paid_by_the_traveler():
+    """Car drivers pay the full fuel cost, car passengers pay nothing, ridesharing travelers split
+    the cost with the passengers and non-car modes have no monetary cost."""
+    tours = pl.DataFrame({"distance_car": [10_000.0, None]})
+    # 0.08 l/km * 2.0 €/l * 10 km = 1.6 €.
+    exprs = monetary_cost_exprs(
+        [CarDriver, CarPassenger, CarRidesharing, Walking],
+        fuel_factor=0.08,
+        fuel_price=2.0,
+        ridesharing_passenger_count=1.0,
+    )
+    df = tours.select(**exprs)
+    assert df["monetary_cost_car_driver"].to_list() == pytest.approx([1.6, None])
+    assert df["monetary_cost_car_passenger"].to_list() == pytest.approx([0.0, None])
+    assert df["monetary_cost_car_ridesharing"].to_list() == pytest.approx([0.8, None])
+    assert df["monetary_cost_walking"].to_list() == [0.0, 0.0]
+
+
+def test_monetary_cost_is_not_a_constant_term():
+    """The `monetary_cost` variable is alternative-varying: it does not enter the constant."""
+    spec = {**SPEC, "variables": [*SPEC["variables"], "monetary_cost"]}
+    params = {**PARAMS, "B_monetary_cost": {"value": -0.5}}
+    expected = compute_mode_preferences(get_tours(), SPEC, PARAMS, PublicTransit)
+    df = compute_mode_preferences(get_tours(), spec, params, PublicTransit)
+    assert df.equals(expected)
+
+
+def test_monetary_utility_scale():
+    """The marginal utility of money is minus the monetary-cost coefficient."""
+    assert get_monetary_utility_scale(PARAMS) is None
+    assert get_monetary_utility_scale({**PARAMS, "B_monetary_cost": {"value": -0.5}}) == 0.5
+    with pytest.raises(MetropyError):
+        get_monetary_utility_scale({**PARAMS, "B_monetary_cost": {"value": 0.1}})

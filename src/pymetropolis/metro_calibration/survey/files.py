@@ -631,7 +631,7 @@ class SurveyedToursFile(MetroDataFrameFile):
 
 class SurveyedToursTravelTimesFile(MetroDataFrameFile):
     path = "calibration/survey/tours_travel_times.parquet"
-    description = "Travel times of tours in the survey with all modes."
+    description = "Travel times of tours in the survey with all modes (and distance by car)."
     schema = [
         Column("tour_id", MetroDataType.ID, description="Identifier of the tour.", nullable=False),
         Column(
@@ -659,6 +659,13 @@ class SurveyedToursTravelTimesFile(MetroDataFrameFile):
             "travel_time_car",
             MetroDataType.DURATION,
             description="Travel time by car.",
+            nullable=True,
+            optional=True,
+        ),
+        Column(
+            "distance_car",
+            MetroDataType.FLOAT,
+            description="Distance traveled by car (length of the car routes), in meters.",
             nullable=True,
             optional=True,
         ),
@@ -847,6 +854,13 @@ class SurveyedTripsCarTravelTimesFile(MetroDataFrameFile):
             MetroDataType.DURATION,
             description="Travel time by car under congested conditions.",
             nullable=True,
+        ),
+        Column(
+            "distance",
+            MetroDataType.FLOAT,
+            description="Length of the car route under congested conditions, in meters.",
+            nullable=True,
+            optional=True,
         ),
     ]
 

@@ -13,7 +13,7 @@ from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.modes import CarDriver, MetaMode, StepWithModes, mode_from_str
 
 from .files import SurveyModeChoiceResultsFile
-from .mode_choice import ALTERNATIVE_VARYING_VARIABLES, TRAVEL_TIME_VARIABLE
+from .mode_choice import ALTERNATIVE_VARYING_VARIABLES, MONETARY_COST_VARIABLE, TRAVEL_TIME_VARIABLE
 
 if TYPE_CHECKING:
     import polars as pl
@@ -129,6 +129,22 @@ def get_utility_scale(vot: pl.Series, reference_value_of_time: float, mode: Meta
     return mean_vot / reference_value_of_time
 
 
+def get_monetary_utility_scale(params: dict[str, dict[str, float]]) -> float | None:
+    """Returns the marginal utility of money (utils per euro) implied by the estimated coefficient
+    of the monetary-cost variable, or `None` if this variable was not estimated.
+    """
+    name = f"B_{MONETARY_COST_VARIABLE}"
+    if name not in params:
+        return None
+    value = params[name]["value"]
+    if value >= 0.0:
+        raise MetropyError(
+            f"The estimated `{name}` coefficient is not negative ({value:.4g}), so it cannot be "
+            "used to convert the utilities to euros."
+        )
+    return -value
+
+
 def compute_mode_preferences(
     tours: pl.DataFrame, spec: dict[str, Any], params: dict[str, dict[str, float]], mode: MetaMode
 ) -> pl.DataFrame:
@@ -186,7 +202,9 @@ class ModePreferencesFromEconometricsStep(StepWithModes, PopulationStep):
 
     The coefficients are estimated in utils, whereas the preference parameters are expressed in
     euros.
-    They are converted using the
+    If the `monetary_cost` variable is part of the estimated model, the coefficients are divided by
+    minus its coefficient (the marginal utility of money).
+    Otherwise, they are converted using the
     [`reference_value_of_time`](parameters.md#mode_preferencesreference_value_of_time)
     parameter: all coefficients are divided by the marginal utility of money implied by the
     requested value of time for the
@@ -209,7 +227,10 @@ class ModePreferencesFromEconometricsStep(StepWithModes, PopulationStep):
             "Value of time of the `mode_preferences.reference_value_of_time_mode` mode (€/h), used "
             "to convert the utilities of the econometric mode-choice model to euros."
         ),
-        note="This is the *average* value of time in the population for this mode.",
+        note=(
+            "This is the *average* value of time in the population for this mode. "
+            "It is ignored if the `monetary_cost` variable is part of the estimated model."
+        ),
     )
     reference_vot_mode = StringParameter(
         "mode_preferences.reference_value_of_time_mode",
@@ -250,7 +271,17 @@ class ModePreferencesFromEconometricsStep(StepWithModes, PopulationStep):
         for mode in modes:
             mode_prefs[mode] = compute_mode_preferences(tours, spec, params, mode)
 
-        if self.reference_vot is not None and self.reference_vot_mode is not None:
+        monetary_scale = get_monetary_utility_scale(params)
+        if monetary_scale is not None:
+            scale = monetary_scale
+            if self.reference_vot is not None:
+                logger.warning(
+                    "The marginal utility of money is given by the estimated "
+                    f"`B_{MONETARY_COST_VARIABLE}` coefficient: "
+                    "`mode_preferences.reference_value_of_time` is ignored."
+                )
+            logger.debug(f"Marginal utility of money estimated by the model: {scale:.4g} /€.")
+        elif self.reference_vot is not None and self.reference_vot_mode is not None:
             ref_mode = mode_from_str(self.reference_vot_mode)
             if ref_mode not in mode_prefs:
                 raise MetropyError(

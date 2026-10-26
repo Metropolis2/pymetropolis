@@ -2,17 +2,15 @@ from pymetropolis.metro_demand.routing.files import (
     ParkAndRideTripsCarFreeFlowTravelTimesFile,
     TripsCarFreeFlowTravelTimesFile,
 )
-from pymetropolis.metro_pipeline import PopulationStep
+from pymetropolis.metro_pipeline import PopulationStep, Step
 from pymetropolis.metro_pipeline.parameters import FloatParameter
 from pymetropolis.modes import StepWithModes
 
 from .files import CarFuelFile, ParkAndRideFuelFile
 
 
-class GenericCarFuelStep(PopulationStep):
-    """Generic Step to compute fuel consumption and price from a constant emission factor applied to
-    the free-flow fastest-path length.
-    """
+class StepWithFuel(Step):
+    """Mixin for Steps that need the fuel consumption factor and fuel price."""
 
     fuel_factor = FloatParameter(
         "fuel.consumption_factor", description="Fuel consumption, in liters per km."
@@ -20,7 +18,7 @@ class GenericCarFuelStep(PopulationStep):
     fuel_price = FloatParameter("fuel.price", description="Price of fuel, in € per liter.")
 
 
-class CarFuelStep(GenericCarFuelStep):
+class CarFuelStep(StepWithFuel, PopulationStep):
     """Generates the fuel consumption and price of each car trip by applying a constant emission
     factor to the free-flow fastest-path length, combined with a fuel price.
     """
@@ -43,7 +41,7 @@ class CarFuelStep(GenericCarFuelStep):
         self.output["fuel_consumption"].write(df)
 
 
-class ParkAndRideFuelStep(StepWithModes, GenericCarFuelStep):
+class ParkAndRideFuelStep(StepWithModes, StepWithFuel, PopulationStep):
     """Generates the fuel consumption and price for the car part of each park-and-ride trip by
     applying a constant emission factor to the free-flow fastest-path length, combined with a fuel
     price.

@@ -12,9 +12,12 @@ from pymetropolis.metro_calibration.survey.files import (
 from pymetropolis.metro_calibration.survey.modes import filter_survey_tours
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_common.utils import pl_duration_to_seconds
+from pymetropolis.metro_environment.fuel import StepWithFuel
 from pymetropolis.metro_pipeline.parameters import ListParameter, StringParameter
 from pymetropolis.metro_pipeline.types import List, String
+from pymetropolis.metro_simulation.common import StepWithRidesharingCount
 from pymetropolis.modes import (
+    CarMode,
     MetaMode,
     StepWithModeAvailability,
     StepWithModes,
@@ -24,16 +27,25 @@ from pymetropolis.modes import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
     from pathlib import Path
 
     import pandas as pd
+    import polars as pl
 
 
 # Name of the variable holding the travel time of each alternative.
 TRAVEL_TIME_VARIABLE = "travel_time"
 
+# Name of the variable holding the monetary cost of each alternative (in €).
+MONETARY_COST_VARIABLE = "monetary_cost"
+
 # Variables treated as alternative-varying, read from `{variable}_{mode}` columns.
-ALTERNATIVE_VARYING_VARIABLES = {TRAVEL_TIME_VARIABLE}
+ALTERNATIVE_VARYING_VARIABLES = {TRAVEL_TIME_VARIABLE, MONETARY_COST_VARIABLE}
+
+# Alternative-varying variables with a single coefficient shared by all modes (instead of one
+# coefficient per mode).
+GENERIC_COEFFICIENT_VARIABLES = {MONETARY_COST_VARIABLE}
 
 
 def generic_variable_mode(mode: MetaMode) -> str:
@@ -41,7 +53,36 @@ def generic_variable_mode(mode: MetaMode) -> str:
     return "car" if mode.is_car_based() else repr(mode)
 
 
-class SurveyEconometricModeChoiceStep(StepWithModes, StepWithModeAvailability):
+def monetary_cost_exprs(
+    modes: Iterable[MetaMode],
+    fuel_factor: float,
+    fuel_price: float,
+    ridesharing_passenger_count: float,
+) -> dict[str, pl.Expr]:
+    """Returns, for each mode, an expression of the monetary cost of the tour (in €), as a
+    `monetary_cost_{mode}` column.
+
+    The monetary cost currently only includes the fuel cost of car modes, computed from the
+    `distance_car` column (in meters), the fuel consumption factor (liters per km) and the fuel
+    price (€ per liter), and weighted by the share of fuel paid by the traveler of each car mode.
+    It is zero for all the other modes.
+    """
+    import polars as pl
+
+    exprs = {}
+    for mode in modes:
+        name = f"{MONETARY_COST_VARIABLE}_{mode!r}"
+        if isinstance(mode, CarMode):
+            fuel_share = mode.get_fuel_share(ridesharing_passenger_count)
+            exprs[name] = pl.col("distance_car") / 1000 * fuel_factor * fuel_price * fuel_share
+        else:
+            exprs[name] = pl.lit(0.0, dtype=pl.Float64)
+    return exprs
+
+
+class SurveyEconometricModeChoiceStep(
+    StepWithModes, StepWithModeAvailability, StepWithFuel, StepWithRidesharingCount
+):
     """Estimates a Multinomial Logit model of tour-level mode choice from the surveyed tours,
     using [biogeme](https://biogeme.epfl.ch/).
 
@@ -59,7 +100,11 @@ class SurveyEconometricModeChoiceStep(StepWithModes, StepWithModeAvailability):
             "must exist as a column of `SurveyedToursFile`; one coefficient is estimated for "
             "each non-reference mode. "
             'Alternative-varying variables (e.g., "travel_time") must exist as one '
-            "`{variable}_{mode}` column per mode; one coefficient is estimated for each mode."
+            "`{variable}_{mode}` column per mode; one coefficient is estimated for each mode. "
+            'The "monetary_cost" variable is the monetary cost of each alternative, in €; it '
+            "currently only includes the fuel cost of car modes (computed from the car route "
+            "distance and the `fuel` parameters, which must be defined) and a single "
+            "coefficient is estimated for all modes."
         ),
     )
     interaction_variables = ListParameter(
@@ -97,6 +142,7 @@ class SurveyEconometricModeChoiceStep(StepWithModes, StepWithModeAvailability):
         assert self.modes is not None
         assert self.variables is not None
         assert self.interaction_variables is not None
+        assert self.ridesharing_passenger_count is not None
 
         tours = filter_survey_tours(self.modes, self.input["tours"].read())
         tours_tt = self.input["tours_tt"].read()
@@ -123,8 +169,35 @@ class SurveyEconometricModeChoiceStep(StepWithModes, StepWithModeAvailability):
         }
         all_generic_variables = sorted({*generic_variables, *interaction_generic_variables})
 
+        if any(v in GENERIC_COEFFICIENT_VARIABLES for pair in interactions for v in pair):
+            raise MetropyError(
+                f"The `{MONETARY_COST_VARIABLE}` variable cannot be used in "
+                "`mode_choice_estimation.interaction_variables`."
+            )
+        if MONETARY_COST_VARIABLE in generic_variables:
+            if self.fuel_factor is None or self.fuel_price is None:
+                raise MetropyError(
+                    f"The `{MONETARY_COST_VARIABLE}` variable requires the "
+                    "`fuel.consumption_factor` and `fuel.price` parameters."
+                )
+            if any(mode.is_car_based() for mode in modes) and "distance_car" not in tours.columns:
+                raise MetropyError(
+                    f"The `{MONETARY_COST_VARIABLE}` variable requires the `distance_car` column "
+                    "of `SurveyedToursTravelTimesFile`."
+                )
+            tours = tours.with_columns(
+                **monetary_cost_exprs(
+                    modes, self.fuel_factor, self.fuel_price, self.ridesharing_passenger_count
+                )
+            )
+
         generic_columns = {
-            variable: {repr(mode): f"{variable}_{generic_variable_mode(mode)}" for mode in modes}
+            variable: {
+                repr(mode): f"{variable}_{mode!r}"
+                if variable == MONETARY_COST_VARIABLE
+                else f"{variable}_{generic_variable_mode(mode)}"
+                for mode in modes
+            }
             for variable in all_generic_variables
         }
         missing_generic = sorted(
@@ -276,7 +349,9 @@ def estimate_mnl(
     `generic_columns` maps every alternative-varying variable (whether listed in
     `generic_variables` or only used inside `interactions`) to its `{mode: column_name}` mapping
     (see `generic_variable_mode`); `generic_variables` and `case_variables` are the variables for
-    which a standalone term is added; `interactions` are pairs of variables (either) whose
+    which a standalone term is added (one coefficient per mode, except for the variables in
+    `GENERIC_COEFFICIENT_VARIABLES` which have a single coefficient shared by all modes);
+    `interactions` are pairs of variables (either) whose
     product is added as an extra term, per-mode (if either variable is alternative-varying, i.e.,
     a key of `generic_columns`) or per-non-reference-mode (otherwise), mirroring the treatment of
     a plain generic/case variable.
@@ -297,7 +372,15 @@ def estimate_mnl(
     utilities: dict[int, Expression | float] = {}
     for mode, alt_id in mode_ids.items():
         terms = [
-            Beta(f"B_{variable}_{mode}", 0.0, None, None, 0)
+            Beta(
+                f"B_{variable}"
+                if variable in GENERIC_COEFFICIENT_VARIABLES
+                else f"B_{variable}_{mode}",
+                0.0,
+                None,
+                None,
+                0,
+            )
             * Variable(generic_columns[variable][mode])
             for variable in generic_variables
         ]

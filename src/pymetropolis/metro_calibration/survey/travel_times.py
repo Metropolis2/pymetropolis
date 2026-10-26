@@ -415,20 +415,36 @@ class SurveyedTripsCarTravelTimesStep(RoutingCLIStep):
         pairs_per_zone = int((len(nodes) / nodes["zone_id"].n_unique()) ** 2)
 
         results = trip_routing(
-            node_pairs, edges, self.exec_path, with_routes=False, network_conditions=edges_ttfs
+            node_pairs, edges, self.exec_path, with_routes=True, network_conditions=edges_ttfs
         )
         node_pairs = node_pairs.join(results, on="trip_id").with_columns(
-            travel_time=pl.col("value") - pl.col("departure_time").dt.total_seconds(fractional=True)
+            travel_time=pl.col("value")
+            - pl.col("departure_time").dt.total_seconds(fractional=True),
+            distance=pl.col("route")
+            .list.eval(pl.element().replace_strict(edges["edge_id"], edges["length"]))
+            .list.sum(),
         )
-        # Compute a single travel time for each OD pair / departure time from the weighted median.
-        travel_times = node_pairs["travel_time"].to_numpy().reshape(-1, pairs_per_zone)
+        # Compute a single travel time and distance for each OD pair / departure time from the
+        # weighted median.
         weights = node_pairs["weight"].to_numpy().reshape(-1, pairs_per_zone)
-        medians = np.quantile(travel_times, 0.5, axis=1, weights=weights, method="inverted_cdf")
+        medians = {
+            col: np.quantile(
+                node_pairs[col].to_numpy().reshape(-1, pairs_per_zone),
+                0.5,
+                axis=1,
+                weights=weights,
+                method="inverted_cdf",
+            )
+            for col in ("travel_time", "distance")
+        }
 
         od_pairs = (
             node_pairs.select("origin", "destination", "departure_time")
             .unique(maintain_order=True)
-            .with_columns(seconds=pl.Series(medians))
+            .with_columns(
+                seconds=pl.Series(medians["travel_time"]),
+                distance=pl.Series(medians["distance"], dtype=pl.Float64),
+            )
             .with_columns(travel_time=pl.duration(seconds="seconds"))
             .drop("seconds")
         )
@@ -540,6 +556,22 @@ class SurveyedToursTravelTimesStep(StepWithModes, StepWithWalkingSpeed, StepWith
                 )
                 .drop("tts")
             )
+            if "distance" in car_tt.columns:
+                tours = (
+                    tours.with_columns(
+                        dists=pl.col("trip_ids").list.eval(
+                            pl.element().replace_strict(
+                                car_tt["trip_id"], car_tt["distance"], default=None
+                            )
+                        )
+                    )
+                    .with_columns(
+                        distance_car=pl.when(pl.col("dists").list.contains(None).not_()).then(
+                            pl.col("dists").list.sum()
+                        )
+                    )
+                    .drop("dists")
+                )
         tours = tours.drop("trip_ids")
         self.output["tt"].write(tours)
 
