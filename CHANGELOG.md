@@ -62,6 +62,9 @@ New steps:
 - `TruckPreferencesFromPopulationStep`
 - `HomogeneousExAnteDepartureTimeStep`
 - `PlotStep`
+- `SurveyedTripsODPointsStep`
+- `SurveyedPedestrianODNodesFromPointsStep`
+- `SurveyedRoadODNodesFromPointsStep`
 
 New files:
 
@@ -123,6 +126,10 @@ New files:
 - `TruckPreferencesFile`
 - `ExAnteDepartureTimesFile`
 - `ExAnteArrivalTimesFile`
+- `SurveyedTripsOriginsFile`
+- `SurveyedTripsDestinationsFile`
+- `SurveyedTripsPedestrianNodesFile`
+- `SurveyedTripsRoadNodesFile`
 
 New parameters:
 

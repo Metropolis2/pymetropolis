@@ -838,6 +838,98 @@ class SurveyedZonesRoadNodesFile(MetroDataFrameFile):
     ]
 
 
+class SurveyedTripsOriginsFile(MetroGeoDataFrameFile):
+    path = "calibration/survey/trips/origins.geo.parquet"
+    description = (
+        "Origin point of each trip in the survey, drawn so that the Euclidean distance "
+        "between origin and destination matches the trip's reported Euclidean distance."
+    )
+    schema = [
+        Column(
+            "trip_id",
+            MetroDataType.INT,
+            description="Identifier of the trip.",
+            unique=True,
+            nullable=False,
+        )
+    ]
+
+
+class SurveyedTripsDestinationsFile(MetroGeoDataFrameFile):
+    path = "calibration/survey/trips/destinations.geo.parquet"
+    description = (
+        "Destination point of each trip in the survey, drawn so that the Euclidean distance "
+        "between origin and destination matches the trip's reported Euclidean distance."
+    )
+    schema = [
+        Column(
+            "trip_id",
+            MetroDataType.INT,
+            description="Identifier of the trip.",
+            unique=True,
+            nullable=False,
+        )
+    ]
+
+
+class SurveyedTripsPedestrianNodesFile(MetroDataFrameFile):
+    path = "calibration/survey/trips/pedestrian_nodes.parquet"
+    description = (
+        "Origin and destination nodes on the pedestrian network for each trip in the survey, "
+        "matching the trip's origin / destination points."
+    )
+    schema = [
+        Column(
+            "trip_id",
+            MetroDataType.INT,
+            description="Identifier of the trip.",
+            unique=True,
+            nullable=False,
+        ),
+        Column(
+            "origin_node",
+            MetroDataType.INT,
+            description="Identifier of the origin pedestrian node.",
+            nullable=False,
+        ),
+        Column(
+            "destination_node",
+            MetroDataType.INT,
+            description="Identifier of the destination pedestrian node.",
+            nullable=False,
+        ),
+    ]
+
+
+class SurveyedTripsRoadNodesFile(MetroDataFrameFile):
+    path = "calibration/survey/trips/road_nodes.parquet"
+    description = (
+        "Origin and destination nodes on the road network for each trip in the survey, "
+        "matching the trip's origin / destination points."
+    )
+    schema = [
+        Column(
+            "trip_id",
+            MetroDataType.INT,
+            description="Identifier of the trip.",
+            unique=True,
+            nullable=False,
+        ),
+        Column(
+            "origin_node",
+            MetroDataType.INT,
+            description="Identifier of the origin road node.",
+            nullable=False,
+        ),
+        Column(
+            "destination_node",
+            MetroDataType.INT,
+            description="Identifier of the destination road node.",
+            nullable=False,
+        ),
+    ]
+
+
 class SurveyedTripsCarTravelTimesFile(MetroDataFrameFile):
     path = "calibration/survey/trips/car_travel_times.parquet"
     description = "Travel time by car under congested conditions for each trip in the survey."
