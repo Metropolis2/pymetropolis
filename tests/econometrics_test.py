@@ -1,14 +1,17 @@
+import numpy as np
+import pandas as pd
 import polars as pl
 import pytest
 
 from pymetropolis.metro_calibration.econometrics.mode_choice import (
     add_derived_variables,
+    check_reference_vot,
+    estimate_mnl,
     monetary_cost_exprs,
 )
 from pymetropolis.metro_calibration.econometrics.preferences import (
     compute_mode_preferences,
     get_monetary_utility_scale,
-    get_utility_scale,
     resolve_estimated_mode,
 )
 from pymetropolis.metro_common import MetropyError
@@ -18,6 +21,7 @@ from pymetropolis.modes import (
     CarDriver,
     CarPassenger,
     CarRidesharing,
+    MetaMode,
     PublicTransit,
     Walking,
 )
@@ -122,37 +126,6 @@ def test_non_car_mode_without_coefficients_raises():
         resolve_estimated_mode(Bicycle, SPEC)
 
 
-def test_utility_scale_matches_the_average_value_of_time():
-    """Dividing by the scale turns the utils into euros, such that the *average* value of time of
-    the reference mode in the population is the requested one."""
-    reference_vot = 20.0
-    df = compute_mode_preferences(get_tours(), SPEC, PARAMS, CarDriver)
-    # Value of time of each tour, in utils per hour: 5.0 for the woman, 4.0 for the two others.
-    assert df["car_driver_vot"].to_list() == pytest.approx([5.0, 4.0, 4.0])
-
-    scale = get_utility_scale(df["car_driver_vot"], reference_vot, CarDriver)
-    assert scale == pytest.approx((5.0 + 4.0 + 4.0) / 3 / reference_vot)
-
-    euros = df.with_columns(pl.col("car_driver_cst", "car_driver_vot") / scale)
-    assert euros["car_driver_vot"].mean() == pytest.approx(reference_vot)
-    # The value of time of the woman is above the average, the one of the two others below.
-    assert euros["car_driver_vot"].to_list() == pytest.approx(
-        [5.0 / scale, 4.0 / scale, 4.0 / scale]
-    )
-    assert euros["car_driver_cst"].to_list() == pytest.approx(
-        [-2.25 / scale, -2.0 / scale, -2.0 / scale]
-    )
-
-
-def test_utility_scale_requires_a_positive_average_value_of_time():
-    """A travel-time coefficient that is not negative (i.e., a value of time that is not positive)
-    cannot be used to convert the utilities to euros."""
-    params = {**PARAMS, "B_travel_time_car_driver": {"value": 1.0}}
-    df = compute_mode_preferences(get_tours(), SPEC, params, CarDriver)
-    with pytest.raises(MetropyError):
-        get_utility_scale(df["car_driver_vot"], 20.0, CarDriver)
-
-
 def test_monetary_cost_is_the_fuel_cost_paid_by_the_traveler():
     """Car drivers pay the full fuel cost, car passengers pay nothing, ridesharing travelers split
     the cost with the passengers and non-car modes have no monetary cost."""
@@ -252,3 +225,88 @@ def test_dict_type():
         validator.validate({1: "x"})
     with pytest.raises(MetropyError):
         validator.validate({"a": 1})
+
+
+def simulate_choices(n: int = 2000) -> pd.DataFrame:
+    """Simulates choices between `car_driver` (alt 0) and `walking` (alt 1, reference), with a
+    utility of money of 0.5 /€ and a value of time of 15 €/h for car and 30 €/h for walking."""
+    rng = np.random.default_rng(0)
+    tt_car = rng.uniform(0.1, 1.0, n)
+    tt_walk = rng.uniform(0.1, 1.5, n)
+    cost_car = rng.uniform(0.0, 5.0, n)
+    v_car = 0.5 - 0.5 * (15.0 * tt_car + cost_car)
+    v_walk = -0.5 * 30.0 * tt_walk
+    eps = rng.gumbel(size=(n, 2))
+    choice = np.where(v_car + eps[:, 0] > v_walk + eps[:, 1], 0, 1)
+    return pd.DataFrame(
+        {
+            "alt_id": choice,
+            "weight": 1.0,
+            "avail_car_driver": 1.0,
+            "avail_walking": 1.0,
+            "travel_time_car": tt_car,
+            "travel_time_walking": tt_walk,
+            "monetary_cost_car_driver": cost_car,
+            "monetary_cost_walking": 0.0,
+        }
+    )
+
+
+@pytest.mark.parametrize("with_cost", [True, False])
+def test_estimation_with_reference_value_of_time(tmp_path, with_cost):
+    """The `travel_time` coefficient of the reference mode is tied to the `monetary_cost`
+    coefficient, so that the value of time of that mode is the requested one, whether or not the
+    `monetary_cost` variable is part of the model."""
+    generic_variables = ["travel_time", "monetary_cost"] if with_cost else ["travel_time"]
+    generic_columns = {
+        "travel_time": {"car_driver": "travel_time_car", "walking": "travel_time_walking"},
+        "monetary_cost": {
+            "car_driver": "monetary_cost_car_driver",
+            "walking": "monetary_cost_walking",
+        },
+    }
+    params, _ = estimate_mnl(
+        simulate_choices(),
+        {"car_driver": 0, "walking": 1},
+        "walking",
+        {v: generic_columns[v] for v in generic_variables},
+        generic_variables,
+        [],
+        [],
+        ("car_driver", 15.0),
+        out_dir=tmp_path,
+        model_name="test",
+    )
+    b_money = params["B_monetary_cost"]["value"]
+    tt_car = params["B_travel_time_car_driver"]
+    assert tt_car["derived"]
+    assert tt_car["value"] == pytest.approx(15.0 * b_money)
+    if with_cost:
+        # The true marginal utility of money is identified by the cost variation.
+        assert b_money == pytest.approx(-0.5, rel=0.2)
+
+    spec = {
+        "modes": ["car_driver", "walking"],
+        "reference_mode": "walking",
+        "variables": generic_variables,
+        "interaction_variables": [],
+    }
+    scale = get_monetary_utility_scale(params)
+    assert scale is not None
+    df = compute_mode_preferences(pl.DataFrame({"tour_id": [1]}), spec, params, CarDriver)
+    assert df["car_driver_vot"][0] / scale == pytest.approx(15.0)
+
+
+def test_check_reference_vot():
+    modes: list[MetaMode] = [CarDriver, Walking]
+    assert check_reference_vot(None, None, ["travel_time"], modes) is None
+    assert check_reference_vot(15.0, "car_driver", ["travel_time"], modes) == ("car_driver", 15.0)
+    with pytest.raises(MetropyError):
+        # Only one of the two parameters.
+        check_reference_vot(15.0, None, ["travel_time"], modes)
+    with pytest.raises(MetropyError):
+        # No `travel_time` variable.
+        check_reference_vot(15.0, "car_driver", ["monetary_cost"], modes)
+    with pytest.raises(MetropyError):
+        # Mode not estimated.
+        check_reference_vot(15.0, "public_transit", ["travel_time"], modes)

@@ -13,7 +13,12 @@ from pymetropolis.metro_calibration.survey.modes import filter_survey_tours
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_common.utils import pl_duration_to_seconds
 from pymetropolis.metro_environment.fuel import StepWithFuel
-from pymetropolis.metro_pipeline.parameters import DictParameter, ListParameter, StringParameter
+from pymetropolis.metro_pipeline.parameters import (
+    DictParameter,
+    FloatParameter,
+    ListParameter,
+    StringParameter,
+)
 from pymetropolis.metro_pipeline.types import List, String
 from pymetropolis.metro_simulation.common import StepWithRidesharingCount
 from pymetropolis.modes import (
@@ -172,6 +177,30 @@ class SurveyEconometricModeChoiceStep(
         ),
         note="Defaults to the first mode in `mode_classifier.modes`.",
     )
+    reference_vot = FloatParameter(
+        "mode_choice_estimation.reference_value_of_time",
+        lower_bound=0.0,
+        description=(
+            "Value of time of the `mode_choice_estimation.reference_value_of_time_mode` mode "
+            "(€/h), imposed in the estimation to identify the marginal utility of money."
+        ),
+        note=(
+            "The `travel_time` coefficient of the reference mode is constrained to be equal to "
+            "this value times the `monetary_cost` coefficient (the marginal utility of money), "
+            "which is then used to convert the utilities to euros. "
+            "This works whether or not `monetary_cost` is part of the "
+            "`mode_choice_estimation.variables` (if it is not, the constraint is only a "
+            "reparametrization of the model). "
+            "If `travel_time` is interacted with case variables, the value of time applies to the "
+            "base category (e.g., men for a `woman` x `travel_time` interaction)."
+        ),
+    )
+    reference_vot_mode = StringParameter(
+        "mode_choice_estimation.reference_value_of_time_mode",
+        description=(
+            "Mode whose value of time is set to `mode_choice_estimation.reference_value_of_time`."
+        ),
+    )
 
     input_files = {"tours": SurveyedToursFile, "tours_tt": SurveyedToursTravelTimesFile}
     output_files = {"results": SurveyModeChoiceResultsFile}
@@ -224,6 +253,10 @@ class SurveyEconometricModeChoiceStep(
             v for pair in interactions for v in pair if v in ALTERNATIVE_VARYING_VARIABLES
         }
         all_generic_variables = sorted({*generic_variables, *interaction_generic_variables})
+
+        reference_vot = check_reference_vot(
+            self.reference_vot, self.reference_vot_mode, generic_variables, modes
+        )
 
         if any(v in GENERIC_COEFFICIENT_VARIABLES for pair in interactions for v in pair):
             raise MetropyError(
@@ -368,6 +401,7 @@ class SurveyEconometricModeChoiceStep(
             generic_variables,
             case_variables,
             interactions,
+            reference_vot,
             out_dir=self.output["results"].complete_path.parent,
             model_name=type(self).__name__,
         )
@@ -381,10 +415,48 @@ class SurveyEconometricModeChoiceStep(
             "variables": case_variables + generic_variables,
             "interaction_variables": interactions,
             "derived_variables": derived_variables,
+            "reference_value_of_time": None
+            if reference_vot is None
+            else {"mode": reference_vot[0], "value": reference_vot[1]},
         }
         results = {"specification": specification, "stats": stats, "parameters": params}
 
         self.output["results"].write(results)
+
+
+def check_reference_vot(
+    reference_vot: float | None,
+    reference_vot_mode: str | None,
+    generic_variables: list[str],
+    modes: list[MetaMode],
+) -> tuple[str, float] | None:
+    """Validates the reference value-of-time parameters and returns them as a
+    `(mode, value of time)` tuple, or `None` if they are not defined.
+    """
+    if reference_vot is None and reference_vot_mode is None:
+        return None
+    if reference_vot is None or reference_vot_mode is None:
+        raise MetropyError(
+            "`mode_choice_estimation.reference_value_of_time` and "
+            "`mode_choice_estimation.reference_value_of_time_mode` must be defined together."
+        )
+    if TRAVEL_TIME_VARIABLE not in generic_variables:
+        raise MetropyError(
+            "`mode_choice_estimation.reference_value_of_time` requires the "
+            f"`{TRAVEL_TIME_VARIABLE}` variable in `mode_choice_estimation.variables`."
+        )
+    mode = mode_from_str(reference_vot_mode)
+    if mode not in modes:
+        hint = (
+            " (car modes might be grouped as `car_driver`)"
+            if mode.is_car_based() and any(m.is_car_based() for m in modes)
+            else ""
+        )
+        raise MetropyError(
+            f"`mode_choice_estimation.reference_value_of_time_mode` (`{mode!r}`) must be one of "
+            f"the estimated modes (`{', '.join(map(repr, modes))}`){hint}."
+        )
+    return repr(mode), reference_vot
 
 
 def estimate_mnl(
@@ -395,6 +467,7 @@ def estimate_mnl(
     generic_variables: list[str],
     case_variables: list[str],
     interactions: list[list[str]],
+    reference_vot: tuple[str, float] | None,
     out_dir: Path,
     model_name: str,
 ):
@@ -410,6 +483,11 @@ def estimate_mnl(
     product is added as an extra term, per-mode (if either variable is alternative-varying, i.e.,
     a key of `generic_columns`) or per-non-reference-mode (otherwise), mirroring the treatment of
     a plain generic/case variable.
+
+    If `reference_vot` is a `(mode, value of time)` tuple, the `travel_time` coefficient of that
+    mode is not estimated but constrained to be equal to the value of time (€/h) times the
+    `monetary_cost` coefficient (estimated even if `monetary_cost` is not in `generic_variables`).
+    This constrained coefficient is added to the returned parameters, with a `derived` flag.
     """
     from biogeme import models
     from biogeme.biogeme import BIOGEME
@@ -424,19 +502,24 @@ def estimate_mnl(
     def col_for(variable: str, mode: str) -> str:
         return generic_columns[variable][mode] if variable in generic_columns else variable
 
+    # Marginal utility of money, shared by all the terms in which it appears.
+    b_money = Beta(f"B_{MONETARY_COST_VARIABLE}", 0.0, None, None, 0)
+
+    def generic_coefficient(variable: str, mode: str) -> Expression:
+        if variable == MONETARY_COST_VARIABLE:
+            return b_money
+        if (
+            variable == TRAVEL_TIME_VARIABLE
+            and reference_vot is not None
+            and mode == reference_vot[0]
+        ):
+            return reference_vot[1] * b_money
+        return Beta(f"B_{variable}_{mode}", 0.0, None, None, 0)
+
     utilities: dict[int, Expression | float] = {}
     for mode, alt_id in mode_ids.items():
         terms = [
-            Beta(
-                f"B_{variable}"
-                if variable in GENERIC_COEFFICIENT_VARIABLES
-                else f"B_{variable}_{mode}",
-                0.0,
-                None,
-                None,
-                0,
-            )
-            * Variable(generic_columns[variable][mode])
+            generic_coefficient(variable, mode) * Variable(generic_columns[variable][mode])
             for variable in generic_variables
         ]
         terms.extend(
@@ -489,6 +572,17 @@ def estimate_mnl(
         }
         for row in parameters_df.to_dict(orient="records")
     }
+
+    if reference_vot is not None:
+        mode, vot = reference_vot
+        money = parameters[f"B_{MONETARY_COST_VARIABLE}"]
+        parameters[f"B_{TRAVEL_TIME_VARIABLE}_{mode}"] = {
+            "value": vot * money["value"],
+            "robust_std_err": vot * money["robust_std_err"],
+            "robust_t_stat": money["robust_t_stat"],
+            "robust_p_value": money["robust_p_value"],
+            "derived": True,
+        }
 
     stats = results.get_general_statistics()
 
