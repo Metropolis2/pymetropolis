@@ -266,8 +266,6 @@ class SurveyEconometricModeChoiceStep(
                 pl.all_horizontal(*conditions) if conditions else pl.lit(True)
             ).cast(pl.Int8)
         tours = tours.with_columns(**avail_exprs)
-        # TODO. Check if useful.
-        tours = tours.filter(pl.col("total_distance") > 1000)
         # Fill missing generic variables with 0: irrelevant since the alternative is then marked
         # unavailable, but required so that the utility expression always evaluates to a finite
         # number.
