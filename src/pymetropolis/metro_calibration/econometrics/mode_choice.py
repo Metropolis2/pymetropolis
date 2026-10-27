@@ -13,7 +13,7 @@ from pymetropolis.metro_calibration.survey.modes import filter_survey_tours
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_common.utils import pl_duration_to_seconds
 from pymetropolis.metro_environment.fuel import StepWithFuel
-from pymetropolis.metro_pipeline.parameters import ListParameter, StringParameter
+from pymetropolis.metro_pipeline.parameters import DictParameter, ListParameter, StringParameter
 from pymetropolis.metro_pipeline.types import List, String
 from pymetropolis.metro_simulation.common import StepWithRidesharingCount
 from pymetropolis.modes import (
@@ -80,6 +80,36 @@ def monetary_cost_exprs(
     return exprs
 
 
+def add_derived_variables(df: pl.DataFrame, derived: dict[str, str]) -> pl.DataFrame:
+    """Returns `df` with one extra column for each derived variable of `derived`, which maps the
+    variable names to (polars) SQL expressions of the existing columns of `df`.
+    """
+    import polars as pl
+
+    for name, expr in derived.items():
+        if name in ALTERNATIVE_VARYING_VARIABLES:
+            raise MetropyError(
+                f"Derived variable `{name}` cannot use the name of an alternative-varying variable."
+            )
+        if name in df.columns:
+            raise MetropyError(
+                f"Derived variable `{name}` cannot use the name of an existing column."
+            )
+    try:
+        return df.with_columns(**{name: pl.sql_expr(expr) for name, expr in derived.items()})
+    except Exception as e:
+        # The polars error does not say which expression failed, so each one is evaluated in turn
+        # to report the faulty one.
+        for name, expr in derived.items():
+            try:
+                df.select(pl.sql_expr(expr))
+            except Exception as e2:
+                raise MetropyError(
+                    f"Cannot evaluate derived variable `{name}` (`{expr}`): {e2}"
+                ) from e2
+        raise MetropyError(f"Cannot evaluate derived variables: {e}") from e
+
+
 class SurveyEconometricModeChoiceStep(
     StepWithModes, StepWithModeAvailability, StepWithFuel, StepWithRidesharingCount
 ):
@@ -120,6 +150,20 @@ class SurveyEconometricModeChoiceStep(
             "appear in `mode_choice_estimation.variables`."
         ),
     )
+    derived_variables = DictParameter(
+        "mode_choice_estimation.derived_variables",
+        inner=String(),
+        default={},
+        description=(
+            "Variables computed from the columns of the tours, which can then be used in "
+            "`mode_choice_estimation.variables` and `mode_choice_estimation.interaction_variables`."
+        ),
+        note=(
+            "Table mapping each variable name to a SQL expression (polars dialect) of the "
+            "tour-, person- or household-level columns of the tours. "
+        ),
+        example='`{ age_18_29 = "age BETWEEN 18 AND 29", age_65_plus = "age >= 65" }`',
+    )
     reference_mode = StringParameter(
         "mode_choice_estimation.reference_mode",
         description=(
@@ -142,11 +186,23 @@ class SurveyEconometricModeChoiceStep(
         assert self.modes is not None
         assert self.variables is not None
         assert self.interaction_variables is not None
+        assert self.derived_variables is not None
         assert self.ridesharing_passenger_count is not None
 
         tours = filter_survey_tours(self.modes, self.input["tours"].read())
         tours_tt = self.input["tours_tt"].read()
         tours = tours.join(tours_tt, on="tour_id", how="left")
+
+        # Only the derived variables actually used by the model are computed, so that an unused
+        # definition does not need to be valid.
+        used_variables = {
+            *self.variables,
+            *(v for pair in self.interaction_variables for v in pair),
+        }
+        derived_variables = {
+            name: expr for name, expr in self.derived_variables.items() if name in used_variables
+        }
+        tours = add_derived_variables(tours, derived_variables)
 
         modes = [mode_from_str(m) for m in tours["tour_mode"].unique()]
 
@@ -324,6 +380,7 @@ class SurveyEconometricModeChoiceStep(
             "reference_mode": repr(reference_mode),
             "variables": case_variables + generic_variables,
             "interaction_variables": interactions,
+            "derived_variables": derived_variables,
         }
         results = {"specification": specification, "stats": stats, "parameters": params}
 

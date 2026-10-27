@@ -1,7 +1,10 @@
 import polars as pl
 import pytest
 
-from pymetropolis.metro_calibration.econometrics.mode_choice import monetary_cost_exprs
+from pymetropolis.metro_calibration.econometrics.mode_choice import (
+    add_derived_variables,
+    monetary_cost_exprs,
+)
 from pymetropolis.metro_calibration.econometrics.preferences import (
     compute_mode_preferences,
     get_monetary_utility_scale,
@@ -9,6 +12,7 @@ from pymetropolis.metro_calibration.econometrics.preferences import (
     resolve_estimated_mode,
 )
 from pymetropolis.metro_common import MetropyError
+from pymetropolis.metro_pipeline.types import Dict, String
 from pymetropolis.modes import (
     Bicycle,
     CarDriver,
@@ -182,3 +186,69 @@ def test_monetary_utility_scale():
     assert get_monetary_utility_scale({**PARAMS, "B_monetary_cost": {"value": -0.5}}) == 0.5
     with pytest.raises(MetropyError):
         get_monetary_utility_scale({**PARAMS, "B_monetary_cost": {"value": 0.1}})
+
+
+DERIVED = {
+    "age_18_29": "age BETWEEN 18 AND 29",
+    "age_65_plus": "age >= 65",
+    "high_education": "education_level IN ('bachelor', 'master')",
+}
+
+
+def get_person_tours():
+    return pl.DataFrame(
+        {
+            "tour_id": [1, 2, 3, 4],
+            "age": [10, 25, 70, None],
+            "education_level": ["primary", "master", "bachelor", None],
+        }
+    )
+
+
+def test_derived_variables():
+    """Derived variables are computed from SQL expressions and null inputs give null values."""
+    df = add_derived_variables(get_person_tours(), DERIVED)
+    assert df["age_18_29"].to_list() == [False, True, False, None]
+    assert df["age_65_plus"].to_list() == [False, False, True, None]
+    assert df["high_education"].to_list() == [False, True, True, None]
+
+
+def test_derived_variables_cannot_shadow_columns():
+    with pytest.raises(MetropyError, match="existing column"):
+        add_derived_variables(get_person_tours(), {"age": "age + 1"})
+    with pytest.raises(MetropyError, match="alternative-varying"):
+        add_derived_variables(get_person_tours(), {"travel_time": "age"})
+
+
+def test_invalid_derived_variable_raises():
+    with pytest.raises(MetropyError, match="`bad`"):
+        add_derived_variables(get_person_tours(), {"ok": "age >= 65", "bad": "unknown_col > 1"})
+    with pytest.raises(MetropyError, match="`bad`"):
+        add_derived_variables(get_person_tours(), {"bad": "age >>= 65"})
+
+
+def test_derived_variables_in_preferences():
+    """A derived dummy enters the constant like any other case variable."""
+    spec = {
+        "modes": ["car_driver", "walking"],
+        "reference_mode": "walking",
+        "variables": ["age_65_plus"],
+        "interaction_variables": [],
+        "derived_variables": {"age_65_plus": DERIVED["age_65_plus"]},
+    }
+    params = {"ASC_car_driver": {"value": 1.0}, "B_age_65_plus_car_driver": {"value": -2.0}}
+    tours = add_derived_variables(get_person_tours(), spec["derived_variables"])
+    df = compute_mode_preferences(tours, spec, params, CarDriver)
+    # Age 65+: -(1.0 - 2.0). Otherwise (or null age): -1.0.
+    assert df["car_driver_cst"].to_list() == pytest.approx([-1.0, -1.0, 1.0, -1.0])
+
+
+def test_dict_type():
+    validator = Dict(String())
+    assert validator.validate({"a": "x"}) == {"a": "x"}
+    with pytest.raises(MetropyError):
+        validator.validate(["a"])
+    with pytest.raises(MetropyError):
+        validator.validate({1: "x"})
+    with pytest.raises(MetropyError):
+        validator.validate({"a": 1})

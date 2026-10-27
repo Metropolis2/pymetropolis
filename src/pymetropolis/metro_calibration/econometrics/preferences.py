@@ -13,7 +13,12 @@ from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.modes import CarDriver, MetaMode, StepWithModes, mode_from_str
 
 from .files import SurveyModeChoiceResultsFile
-from .mode_choice import ALTERNATIVE_VARYING_VARIABLES, MONETARY_COST_VARIABLE, TRAVEL_TIME_VARIABLE
+from .mode_choice import (
+    ALTERNATIVE_VARYING_VARIABLES,
+    MONETARY_COST_VARIABLE,
+    TRAVEL_TIME_VARIABLE,
+    add_derived_variables,
+)
 
 if TYPE_CHECKING:
     import polars as pl
@@ -265,6 +270,9 @@ class ModePreferencesFromEconometricsStep(StepWithModes, PopulationStep):
         results = self.input["results"].read()
         spec = results["specification"]
         params = results["parameters"]
+        # The derived variables are computed with the exact definitions used in the estimation (the
+        # key is missing from results files written before derived variables existed).
+        tours = add_derived_variables(tours, spec.get("derived_variables", {}))
 
         modes: list[MetaMode] = [mode for mode in self.modes if mode in MODE_PREFERENCES_FILES]
         mode_prefs: dict[MetaMode, pl.DataFrame] = dict()

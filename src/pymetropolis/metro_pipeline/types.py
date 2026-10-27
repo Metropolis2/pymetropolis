@@ -342,3 +342,30 @@ class List(Type):
                 s += f"at most {self.max_length} elements"
             s += "]"
         return s
+
+
+class Dict(Type):
+    inner: Type
+
+    def __init__(self, inner: Type):
+        self.inner = inner
+
+    @override
+    def resolve(self, value: Any, resolve_path: Callable[[Any], Any]) -> Any:
+        if not isinstance(value, dict):
+            return value
+        return {k: self.inner.resolve(v, resolve_path) for k, v in value.items()}
+
+    def validate(self, value: Any) -> dict[str, Any]:
+        if not isinstance(value, dict):
+            raise MetropyError(f"Invalid table: {value}")
+        res = dict()
+        for k, v in value.items():
+            if not isinstance(k, str):
+                raise MetropyError(f"Invalid table key (string expected): {k!r}")
+            res[k] = self.inner.validate(v)
+        return res
+
+    @override
+    def _describe(self) -> str:
+        return f"Table of {self.inner._describe()}"

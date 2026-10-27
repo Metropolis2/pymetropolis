@@ -13,6 +13,7 @@ from .types import (
     Bool,
     CustomValidator,
     Date,
+    Dict,
     Duration,
     Enum,
     ExecPathType,
@@ -210,4 +211,10 @@ class ListParameter(Parameter[list[Any] | None]):
         **kwargs,
     ):
         kwargs["validator"] = List(inner, length, min_length, max_length)
+        super().__init__(*args, **kwargs)
+
+
+class DictParameter(Parameter[dict[str, Any] | None]):
+    def __init__(self, *args, inner: Type, **kwargs):
+        kwargs["validator"] = Dict(inner)
         super().__init__(*args, **kwargs)
