@@ -14,6 +14,7 @@ from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_common.utils import pl_duration_to_seconds
 from pymetropolis.metro_environment.fuel import StepWithFuel
 from pymetropolis.metro_pipeline.parameters import (
+    BoolParameter,
     DictParameter,
     FloatParameter,
     ListParameter,
@@ -201,6 +202,14 @@ class SurveyEconometricModeChoiceStep(
             "Mode whose value of time is set to `mode_choice_estimation.reference_value_of_time`."
         ),
     )
+    shared_car_driver_vot = BoolParameter(
+        "mode_choice_estimation.shared_car_driver_value_of_time",
+        default=False,
+        description=(
+            "If `true`, car-driver modes share the same `travel_time` coefficients "
+            "(including the interactions of `travel_time` with case variables)."
+        ),
+    )
 
     input_files = {"tours": SurveyedToursFile, "tours_tt": SurveyedToursTravelTimesFile}
     output_files = {"results": SurveyModeChoiceResultsFile}
@@ -256,6 +265,9 @@ class SurveyEconometricModeChoiceStep(
 
         reference_vot = check_reference_vot(
             self.reference_vot, self.reference_vot_mode, generic_variables, modes
+        )
+        vot_aliases = check_shared_car_driver_vot(
+            bool(self.shared_car_driver_vot), modes, all_generic_variables, reference_vot
         )
 
         if any(v in GENERIC_COEFFICIENT_VARIABLES for pair in interactions for v in pair):
@@ -402,6 +414,7 @@ class SurveyEconometricModeChoiceStep(
             case_variables,
             interactions,
             reference_vot,
+            vot_aliases,
             out_dir=self.output["results"].complete_path.parent,
             model_name=type(self).__name__,
         )
@@ -418,6 +431,7 @@ class SurveyEconometricModeChoiceStep(
             "reference_value_of_time": None
             if reference_vot is None
             else {"mode": reference_vot[0], "value": reference_vot[1]},
+            "shared_car_driver_value_of_time": bool(vot_aliases),
         }
         results = {"specification": specification, "stats": stats, "parameters": params}
 
@@ -459,6 +473,44 @@ def check_reference_vot(
     return repr(mode), reference_vot
 
 
+def check_shared_car_driver_vot(
+    enabled: bool,
+    modes: list[MetaMode],
+    all_generic_variables: list[str],
+    reference_vot: tuple[str, float] | None,
+) -> dict[str, str]:
+    """Validates the `shared_car_driver_value_of_time` parameter and returns the
+    `{mode: source mode}` mapping of the modes whose `travel_time` coefficients are those of
+    another mode (empty if the parameter is disabled).
+
+    The car-driver modes (car-based modes where the traveler is the driver) all share the
+    coefficients of a single source mode: the reference value-of-time mode if it is a car-driver
+    mode (so that the constraint applies to all of them), or the first one in alphabetical order
+    otherwise.
+    """
+    if not enabled:
+        return {}
+    driver_modes = sorted(repr(m) for m in modes if isinstance(m, CarMode) and m.is_driver())
+    if len(driver_modes) < 2:
+        raise MetropyError(
+            "`mode_choice_estimation.shared_car_driver_value_of_time` requires at least two "
+            "car-driver modes (e.g., `car_driver` and `car_driver_with_passengers`) among the "
+            f"estimated modes (`{', '.join(map(repr, modes))}`); car modes might be grouped as "
+            "`car_driver`."
+        )
+    if TRAVEL_TIME_VARIABLE not in all_generic_variables:
+        raise MetropyError(
+            "`mode_choice_estimation.shared_car_driver_value_of_time` requires the "
+            f"`{TRAVEL_TIME_VARIABLE}` variable in `mode_choice_estimation.variables` or "
+            "`mode_choice_estimation.interaction_variables`."
+        )
+    if reference_vot is not None and reference_vot[0] in driver_modes:
+        source = reference_vot[0]
+    else:
+        source = driver_modes[0]
+    return {mode: source for mode in driver_modes if mode != source}
+
+
 def estimate_mnl(
     df: pd.DataFrame,
     mode_ids: dict[str, int],
@@ -468,6 +520,8 @@ def estimate_mnl(
     case_variables: list[str],
     interactions: list[list[str]],
     reference_vot: tuple[str, float] | None,
+    vot_aliases: dict[str, str] | None = None,
+    *,
     out_dir: Path,
     model_name: str,
 ):
@@ -488,6 +542,11 @@ def estimate_mnl(
     mode is not estimated but constrained to be equal to the value of time (€/h) times the
     `monetary_cost` coefficient (estimated even if `monetary_cost` is not in `generic_variables`).
     This constrained coefficient is added to the returned parameters, with a `derived` flag.
+
+    `vot_aliases` maps modes to another mode whose `travel_time` coefficients (standalone and
+    interacted) they share. The shared coefficients are estimated (or constrained by
+    `reference_vot`) under the name of the source mode and copied to the name of the aliased mode
+    in the returned parameters, with a `derived` flag and a `shared_with` key.
     """
     from biogeme import models
     from biogeme.biogeme import BIOGEME
@@ -505,9 +564,16 @@ def estimate_mnl(
     # Marginal utility of money, shared by all the terms in which it appears.
     b_money = Beta(f"B_{MONETARY_COST_VARIABLE}", 0.0, None, None, 0)
 
+    vot_aliases = vot_aliases or {}
+
+    def is_travel_time_term(v1: str, v2: str) -> bool:
+        return TRAVEL_TIME_VARIABLE in (v1, v2)
+
     def generic_coefficient(variable: str, mode: str) -> Expression:
         if variable == MONETARY_COST_VARIABLE:
             return b_money
+        if variable == TRAVEL_TIME_VARIABLE:
+            mode = vot_aliases.get(mode, mode)
         if (
             variable == TRAVEL_TIME_VARIABLE
             and reference_vot is not None
@@ -523,7 +589,14 @@ def estimate_mnl(
             for variable in generic_variables
         ]
         terms.extend(
-            Beta(f"B_{v1}_x_{v2}_{mode}", 0.0, None, None, 0)
+            Beta(
+                f"B_{v1}_x_{v2}_"
+                f"{vot_aliases.get(mode, mode) if is_travel_time_term(v1, v2) else mode}",
+                0.0,
+                None,
+                None,
+                0,
+            )
             * Variable(col_for(v1, mode))
             * Variable(col_for(v2, mode))
             for v1, v2 in interactions
@@ -583,6 +656,17 @@ def estimate_mnl(
             "robust_p_value": money["robust_p_value"],
             "derived": True,
         }
+
+    shared_names = [f"{v1}_x_{v2}" for v1, v2 in interactions if is_travel_time_term(v1, v2)]
+    if TRAVEL_TIME_VARIABLE in generic_variables:
+        shared_names.append(TRAVEL_TIME_VARIABLE)
+    for mode, source in vot_aliases.items():
+        for name in shared_names:
+            parameters[f"B_{name}_{mode}"] = {
+                **parameters[f"B_{name}_{source}"],
+                "derived": True,
+                "shared_with": source,
+            }
 
     stats = results.get_general_statistics()
 

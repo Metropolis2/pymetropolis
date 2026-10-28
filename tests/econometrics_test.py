@@ -6,6 +6,7 @@ import pytest
 from pymetropolis.metro_calibration.econometrics.mode_choice import (
     add_derived_variables,
     check_reference_vot,
+    check_shared_car_driver_vot,
     estimate_mnl,
     monetary_cost_exprs,
 )
@@ -19,6 +20,7 @@ from pymetropolis.metro_pipeline.types import Dict, String
 from pymetropolis.modes import (
     Bicycle,
     CarDriver,
+    CarDriverWithPassengers,
     CarPassenger,
     CarRidesharing,
     MetaMode,
@@ -310,3 +312,105 @@ def test_check_reference_vot():
     with pytest.raises(MetropyError):
         # Mode not estimated.
         check_reference_vot(15.0, "public_transit", ["travel_time"], modes)
+
+
+def simulate_shared_vot_choices(n: int = 3000) -> pd.DataFrame:
+    """Simulates choices between `car_driver` (alt 0), `car_driver_with_passengers` (alt 1) and
+    `walking` (alt 2, reference), with a utility of money of 0.5 /€, a value of time of 15 €/h for
+    both car modes and 30 €/h for walking, and distinct constants for the two car modes."""
+    rng = np.random.default_rng(1)
+    tt_car = rng.uniform(0.1, 1.0, n)
+    tt_cdwp = rng.uniform(0.1, 1.0, n)
+    tt_walk = rng.uniform(0.1, 1.5, n)
+    cost_car = rng.uniform(0.0, 5.0, n)
+    cost_cdwp = rng.uniform(0.0, 5.0, n)
+    v_car = 0.5 - 0.5 * (15.0 * tt_car + cost_car)
+    v_cdwp = -1.0 - 0.5 * (15.0 * tt_cdwp + cost_cdwp)
+    v_walk = -0.5 * 30.0 * tt_walk
+    eps = rng.gumbel(size=(n, 3))
+    choice = np.argmax(np.column_stack([v_car, v_cdwp, v_walk]) + eps, axis=1)
+    return pd.DataFrame(
+        {
+            "alt_id": choice,
+            "weight": 1.0,
+            "avail_car_driver": 1.0,
+            "avail_car_driver_with_passengers": 1.0,
+            "avail_walking": 1.0,
+            "travel_time_car_driver": tt_car,
+            "travel_time_car_driver_with_passengers": tt_cdwp,
+            "travel_time_walking": tt_walk,
+            "monetary_cost_car_driver": cost_car,
+            "monetary_cost_car_driver_with_passengers": cost_cdwp,
+            "monetary_cost_walking": 0.0,
+        }
+    )
+
+
+@pytest.mark.parametrize("with_reference_vot", [False, True])
+def test_estimation_with_shared_car_driver_vot(tmp_path, with_reference_vot):
+    """`car_driver` and `car_driver_with_passengers` share a single `travel_time` coefficient,
+    reported under both names, while keeping their own constants."""
+    modes = ["car_driver", "car_driver_with_passengers", "walking"]
+    generic_variables = ["travel_time", "monetary_cost"]
+    generic_columns = {v: {m: f"{v}_{m}" for m in modes} for v in generic_variables}
+    reference_vot = ("car_driver", 15.0) if with_reference_vot else None
+    params, _ = estimate_mnl(
+        simulate_shared_vot_choices(),
+        {m: i for i, m in enumerate(modes)},
+        "walking",
+        generic_columns,
+        generic_variables,
+        [],
+        [],
+        reference_vot,
+        {"car_driver_with_passengers": "car_driver"},
+        out_dir=tmp_path,
+        model_name="test",
+    )
+    tt_car = params["B_travel_time_car_driver"]
+    tt_cdwp = params["B_travel_time_car_driver_with_passengers"]
+    assert tt_cdwp["value"] == tt_car["value"]
+    assert tt_cdwp["derived"]
+    assert tt_cdwp["shared_with"] == "car_driver"
+    assert params["ASC_car_driver"]["value"] != params["ASC_car_driver_with_passengers"]["value"]
+    assert params["ASC_car_driver"]["value"] == pytest.approx(0.5, abs=0.3)
+    assert params["ASC_car_driver_with_passengers"]["value"] == pytest.approx(-1.0, abs=0.3)
+
+    scale = get_monetary_utility_scale(params)
+    assert scale is not None
+    if with_reference_vot:
+        assert tt_car["value"] == pytest.approx(15.0 * params["B_monetary_cost"]["value"])
+        spec = {
+            "modes": modes,
+            "reference_mode": "walking",
+            "variables": generic_variables,
+            "interaction_variables": [],
+        }
+        df = compute_mode_preferences(
+            pl.DataFrame({"tour_id": [1]}), spec, params, CarDriverWithPassengers
+        )
+        assert df["car_driver_with_passengers_vot"][0] / scale == pytest.approx(15.0)
+    else:
+        assert -tt_car["value"] / scale == pytest.approx(15.0, rel=0.2)
+
+
+def test_check_shared_car_driver_vot():
+    modes: list[MetaMode] = [CarDriver, CarDriverWithPassengers, CarPassenger, Walking]
+    assert check_shared_car_driver_vot(False, [Walking], [], None) == {}
+    # Only the car-driver modes are shared (not `car_passenger`).
+    assert check_shared_car_driver_vot(True, modes, ["travel_time"], None) == {
+        "car_driver_with_passengers": "car_driver"
+    }
+    # The reference value-of-time mode is the source of the shared coefficients.
+    assert check_shared_car_driver_vot(
+        True, modes, ["travel_time"], ("car_driver_with_passengers", 15.0)
+    ) == {"car_driver": "car_driver_with_passengers"}
+    assert check_shared_car_driver_vot(True, modes, ["travel_time"], ("walking", 15.0)) == {
+        "car_driver_with_passengers": "car_driver"
+    }
+    with pytest.raises(MetropyError):
+        check_shared_car_driver_vot(
+            True, [CarDriver, CarPassenger, CarRidesharing, Walking], ["travel_time"], None
+        )
+    with pytest.raises(MetropyError):
+        check_shared_car_driver_vot(True, modes, ["monetary_cost"], None)
