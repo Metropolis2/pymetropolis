@@ -90,7 +90,12 @@ class AbstractWriteMetroParametersStep(StepWithPeriod, ThreadedStep):
     )
     learning_model = EnumParameter(
         "simulation.learning_model",
-        values=["Exponential", "ExponentialUnadjusted", "ExponentialThenLinear"],
+        values=[
+            "Exponential",
+            "ExponentialUnadjusted",
+            "ExponentialThenLinear",
+            "ExponentialThenExponential",
+        ],
         default="Exponential",
         description="Learning model for the simulation iterative process.",
         note="See Metropolis-Core for the definition of the models.",
@@ -101,14 +106,29 @@ class AbstractWriteMetroParametersStep(StepWithPeriod, ThreadedStep):
         description="Value of the smoothing factor for the learning model.",
         note=(
             "Value must be between 0 and 1. Smaller values lead to slower but steadier "
-            "convergences."
+            "convergences. For the `ExponentialThenExponential` model, this is the smoothing "
+            "factor during the initial phase."
+        ),
+    )
+    final_learning_factor = FloatParameter(
+        "simulation.final_learning_factor",
+        default=0.0,
+        description=(
+            "Value of the smoothing factor in the final phase of the `ExponentialThenExponential` "
+            "learning model.",
+        ),
+        note=(
+            "Value must be between 0 and 1. Only applies to the `ExponentialThenExponential` model."
         ),
     )
     nb_exponential_iterations = IntParameter(
         "simulation.nb_exponential_iterations",
         default=10,
-        description="Number of iterations in the exponential phase.",
-        note="Only applies for the `ExponentialThenLinear` learning model.",
+        description="Number of iterations in the initial exponential phase.",
+        note=(
+            "Only applies for the `ExponentialThenLinear` and `ExponentialThenExponential` "
+            "learning models."
+        ),
     )
     routing_algorithm = EnumParameter(
         "simulation.routing_algorithm",
@@ -190,6 +210,12 @@ class AbstractWriteMetroParametersStep(StepWithPeriod, ThreadedStep):
             params["learning_model"]["value"] = {
                 "alpha": self.learning_factor,
                 "nb_exponential": self.nb_exponential_iterations,
+            }
+        if self.learning_model == "ExponentialThenExponential":
+            params["learning_model"]["value"] = {
+                "alpha": self.learning_factor,
+                "nb_exponential": self.nb_exponential_iterations,
+                "final_alpha": self.final_learning_factor,
             }
         for name in ("edges", "vehicle_types", "trips"):
             if self.input[name].exists():
