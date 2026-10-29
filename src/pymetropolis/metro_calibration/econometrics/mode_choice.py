@@ -393,6 +393,11 @@ class SurveyEconometricModeChoiceStep(
                 "unavailable."
             )
 
+        # Normalize the survey weights so that they sum to the number of observations: the
+        # log-likelihood (and thus the standard errors) then reflects the actual sample size
+        # rather than the size of the population represented by the survey.
+        tours = tours.with_columns(weight=pl.col("weight") / pl.col("weight").mean())
+
         columns = [
             "alt_id",
             "weight",
