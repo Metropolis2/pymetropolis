@@ -225,6 +225,7 @@ class AbstractWriteMetroParametersStep(StepWithPeriod, ThreadedStep):
             "spillback": self.spillback,
             "algorithm_type": self.routing_algorithm,
             "node_order_reuse_threshold": self.node_order_reuse_threshold.total_seconds(),
+            "gridlock_overflow": True,
         }
         if self.max_pending_duration is not None:
             params["road_network"]["max_pending_duration"] = (
