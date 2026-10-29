@@ -8,6 +8,8 @@ from pymetropolis.metro_calibration.econometrics.mode_choice import (
     check_reference_vot,
     check_shared_car_driver_vot,
     estimate_mnl,
+    mode_probabilities_df,
+    mode_shares,
     monetary_cost_exprs,
 )
 from pymetropolis.metro_calibration.econometrics.preferences import (
@@ -288,7 +290,7 @@ def test_estimation_with_reference_value_of_time(tmp_path, with_cost):
             "walking": "monetary_cost_walking",
         },
     }
-    params, _ = estimate_mnl(
+    params, _, _ = estimate_mnl(
         simulate_choices(),
         {"car_driver": 0, "walking": 1},
         "walking",
@@ -318,6 +320,65 @@ def test_estimation_with_reference_value_of_time(tmp_path, with_cost):
     assert scale is not None
     df = compute_mode_preferences(pl.DataFrame({"tour_id": [1]}), spec, params, CarDriver)
     assert df["car_driver_vot"][0] / scale == pytest.approx(15.0)
+
+
+def test_estimation_predicted_probabilities(tmp_path):
+    """The predicted probabilities sum to one, are zero for unavailable modes and, with
+    alternative-specific constants, reproduce the weighted observed shares."""
+    df = simulate_choices()
+    # The first tour (whatever its choice) cannot walk: it is forced to choose car.
+    df.loc[0, "avail_walking"] = 0.0
+    df.loc[0, "alt_id"] = 0
+    df["weight"] = np.where(np.arange(len(df)) % 2 == 0, 2.0, 0.5)
+    generic_columns = {
+        "travel_time": {"car_driver": "travel_time_car", "walking": "travel_time_walking"},
+        "monetary_cost": {
+            "car_driver": "monetary_cost_car_driver",
+            "walking": "monetary_cost_walking",
+        },
+    }
+    _, _, probabilities = estimate_mnl(
+        df,
+        {"car_driver": 0, "walking": 1},
+        "walking",
+        generic_columns,
+        ["travel_time", "monetary_cost"],
+        [],
+        [],
+        None,
+        out_dir=tmp_path,
+        model_name="test",
+    )
+    assert list(probabilities.columns) == ["car_driver", "walking"]
+    assert len(probabilities) == len(df)
+    np.testing.assert_allclose(probabilities.sum(axis=1), 1.0)
+    assert probabilities.loc[0, "walking"] == pytest.approx(0.0)
+    observed = np.average(df["alt_id"] == 0, weights=df["weight"])
+    predicted = np.average(probabilities["car_driver"], weights=df["weight"])
+    assert predicted == pytest.approx(observed, abs=1e-4)
+
+
+def test_mode_probabilities_df_and_mode_shares():
+    tours = pl.DataFrame(
+        {
+            "tour_id": [2, 1],
+            "alt_id": [1, 0],
+            "weight": [3.0, 1.0],
+            "avail_car_driver": [1, 1],
+            "avail_walking": [1, 0],
+        }
+    )
+    probabilities = pd.DataFrame({"car_driver": [0.25, 1.0], "walking": [0.75, 0.0]})
+    df = mode_probabilities_df(tours, probabilities, {"car_driver": 0, "walking": 1})
+    assert df.to_dicts() == [
+        {"tour_id": 1, "mode": "car_driver", "probability": 1.0, "chosen": True},
+        {"tour_id": 2, "mode": "car_driver", "probability": 0.25, "chosen": False},
+        {"tour_id": 2, "mode": "walking", "probability": 0.75, "chosen": True},
+    ]
+    assert mode_shares(df, tours) == {
+        "car_driver": {"observed": 0.25, "predicted": pytest.approx(1.75 / 4)},
+        "walking": {"observed": 0.75, "predicted": pytest.approx(2.25 / 4)},
+    }
 
 
 def test_check_reference_vot():
@@ -375,7 +436,7 @@ def test_estimation_with_shared_car_driver_vot(tmp_path, with_reference_vot):
     generic_variables = ["travel_time", "monetary_cost"]
     generic_columns = {v: {m: f"{v}_{m}" for m in modes} for v in generic_variables}
     reference_vot = ("car_driver", 15.0) if with_reference_vot else None
-    params, _ = estimate_mnl(
+    params, _, _ = estimate_mnl(
         simulate_shared_vot_choices(),
         {m: i for i, m in enumerate(modes)},
         "walking",

@@ -1,7 +1,7 @@
-from .files import SurveyModeChoiceResultsFile
+from .files import SurveyModeChoiceProbabilitiesFile, SurveyModeChoiceResultsFile
 from .mode_choice import SurveyEconometricModeChoiceStep
 from .preferences import ModePreferencesFromEconometricsStep
 
-ECONOMETRICS_FILES = [SurveyModeChoiceResultsFile]
+ECONOMETRICS_FILES = [SurveyModeChoiceResultsFile, SurveyModeChoiceProbabilitiesFile]
 
 ECONOMETRICS_STEPS = [SurveyEconometricModeChoiceStep, ModePreferencesFromEconometricsStep]

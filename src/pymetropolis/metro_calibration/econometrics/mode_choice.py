@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
-from pymetropolis.metro_calibration.econometrics.files import SurveyModeChoiceResultsFile
+from pymetropolis.metro_calibration.econometrics.files import (
+    SurveyModeChoiceProbabilitiesFile,
+    SurveyModeChoiceResultsFile,
+)
 from pymetropolis.metro_calibration.survey.files import (
     SurveyedToursFile,
     SurveyedToursTravelTimesFile,
@@ -117,6 +120,60 @@ def add_derived_variables(df: pl.DataFrame, derived: dict[str, str]) -> pl.DataF
         raise MetropyError(f"Cannot evaluate derived variables: {e}") from e
 
 
+def mode_probabilities_df(
+    tours: pl.DataFrame, probabilities: pd.DataFrame, mode_ids: dict[str, int]
+) -> pl.DataFrame:
+    """Returns the predicted probabilities in long format, with columns `tour_id`, `mode`,
+    `probability` and `chosen`, and one row per tour and available mode.
+
+    `tours` must have the `tour_id`, `alt_id` and `avail_{mode}` columns, and `probabilities` one
+    column per mode, with rows matching the rows of `tours`.
+    """
+    import polars as pl
+
+    assert len(tours) == len(probabilities)
+    return (
+        pl.concat(
+            tours.select(
+                "tour_id",
+                mode=pl.lit(mode),
+                probability=pl.Series(probabilities[mode].to_numpy(), dtype=pl.Float64),
+                chosen=pl.col("alt_id") == alt_id,
+                avail=pl.col(f"avail_{mode}") == 1,
+            )
+            for mode, alt_id in mode_ids.items()
+        )
+        .filter("avail")
+        .drop("avail")
+        .sort("tour_id", "mode")
+    )
+
+
+def mode_shares(probabilities: pl.DataFrame, tours: pl.DataFrame) -> dict[str, dict[str, float]]:
+    """Returns the observed and predicted shares of each mode, weighted by the `weight` column of
+    `tours`, from the long-format probabilities (see `mode_probabilities_df`).
+    """
+    import polars as pl
+
+    df = (
+        probabilities.join(tours.select("tour_id", "weight"), on="tour_id", how="left")
+        .group_by("mode")
+        .agg(
+            observed=(pl.col("weight") * pl.col("chosen")).sum(),
+            predicted=(pl.col("weight") * pl.col("probability")).sum(),
+        )
+        .sort("mode")
+    )
+    total_weight = tours["weight"].sum()
+    return {
+        row["mode"]: {
+            "observed": row["observed"] / total_weight,
+            "predicted": row["predicted"] / total_weight,
+        }
+        for row in df.iter_rows(named=True)
+    }
+
+
 class SurveyEconometricModeChoiceStep(
     StepWithModes, StepWithModeAvailability, StepWithFuel, StepWithFuelSharing
 ):
@@ -214,7 +271,10 @@ class SurveyEconometricModeChoiceStep(
     )
 
     input_files = {"tours": SurveyedToursFile, "tours_tt": SurveyedToursTravelTimesFile}
-    output_files = {"results": SurveyModeChoiceResultsFile}
+    output_files = {
+        "results": SurveyModeChoiceResultsFile,
+        "probabilities": SurveyModeChoiceProbabilitiesFile,
+    }
 
     def is_defined(self):
         return self.has_mode_choice()
@@ -409,7 +469,7 @@ class SurveyEconometricModeChoiceStep(
             *(pl.col(c).cast(pl.Float64) if c not in ("alt_id",) else pl.col(c) for c in columns)
         ).to_pandas()
 
-        params, stats = estimate_mnl(
+        params, stats, probabilities = estimate_mnl(
             df,
             mode_ids,
             repr(reference_mode),
@@ -437,9 +497,16 @@ class SurveyEconometricModeChoiceStep(
             else {"mode": reference_vot[0], "value": reference_vot[1]},
             "shared_car_driver_value_of_time": bool(vot_aliases),
         }
-        results = {"specification": specification, "stats": stats, "parameters": params}
+        probabilities_df = mode_probabilities_df(tours, probabilities, mode_ids)
+        results = {
+            "specification": specification,
+            "stats": stats,
+            "parameters": params,
+            "mode_shares": mode_shares(probabilities_df, tours),
+        }
 
         self.output["results"].write(results)
+        self.output["probabilities"].write(probabilities_df)
 
 
 def check_reference_vot(
@@ -528,9 +595,11 @@ def estimate_mnl(
     *,
     out_dir: Path,
     model_name: str,
-):
+) -> tuple[dict[str, dict[str, Any]], dict[str, Any], pd.DataFrame]:
     """Estimates a Multinomial Logit model of `alt_id` from `df` with biogeme, and returns
-    `(parameters, stats)`, two plain, JSON-serializable dicts.
+    `(parameters, stats, probabilities)`, where `parameters` and `stats` are two plain,
+    JSON-serializable dicts and `probabilities` is a DataFrame with the predicted probability of
+    each mode (one column per mode, zero for unavailable modes) for each row of `df`.
 
     `generic_columns` maps every alternative-varying variable (whether listed in
     `generic_variables` or only used inside `interactions`) to its `{mode: column_name}` mapping
@@ -626,18 +695,34 @@ def estimate_mnl(
     logprob = models.loglogit(utilities, availabilities, Variable("alt_id"))
     formulas = {"loglike": logprob, "weight": Variable("weight")}
 
-    biogeme = BIOGEME(
-        database,  # ty: ignore[too-many-positional-arguments]
-        formulas,
-        parameters=str(out_dir / f"{model_name}.toml"),  # ty: ignore[unknown-argument]
-        generate_html=False,  # ty: ignore[unknown-argument]
-        generate_yaml=False,  # ty: ignore[unknown-argument]
-        generate_netcdf=False,  # ty: ignore[unknown-argument]
-        save_iterations=False,  # ty: ignore[unknown-argument]
-    )
+    def make_biogeme(database: Database, formulas: dict[str, Expression]) -> BIOGEME:
+        return BIOGEME(
+            database,  # ty: ignore[too-many-positional-arguments]
+            formulas,
+            parameters=str(out_dir / f"{model_name}.toml"),  # ty: ignore[unknown-argument]
+            generate_html=False,  # ty: ignore[unknown-argument]
+            generate_yaml=False,  # ty: ignore[unknown-argument]
+            generate_netcdf=False,  # ty: ignore[unknown-argument]
+            save_iterations=False,  # ty: ignore[unknown-argument]
+        )
+
+    biogeme = make_biogeme(database, formulas)
     biogeme.model_name = model_name  # ty: ignore[unresolved-attribute]
 
     results = biogeme.estimate()  # ty: ignore[unresolved-attribute]
+
+    # The probabilities are simulated with the estimated values of the free coefficients, the
+    # constrained ones (reference value of time, shared car-driver coefficients) being directly
+    # part of the utility expressions.
+    simulation = make_biogeme(
+        Database(f"{model_name}_simulation", df),
+        {
+            mode: models.logit(utilities, availabilities, alt_id)
+            for mode, alt_id in mode_ids.items()
+        },
+    )
+    probabilities = simulation.simulate(results.get_beta_values())  # ty: ignore[unresolved-attribute]
+    assert len(probabilities) == len(df)
 
     parameters_df = next(iter(get_pandas_estimated_parameters(results).values()))
     parameters = {
@@ -674,4 +759,4 @@ def estimate_mnl(
 
     stats = results.get_general_statistics()
 
-    return parameters, stats
+    return parameters, stats, probabilities
