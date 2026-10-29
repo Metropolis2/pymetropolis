@@ -120,6 +120,31 @@ def add_derived_variables(df: pl.DataFrame, derived: dict[str, str]) -> pl.DataF
         raise MetropyError(f"Cannot evaluate derived variables: {e}") from e
 
 
+def filter_estimation_sample(df: pl.DataFrame, expr: str) -> pl.DataFrame:
+    """Returns the rows of `df` for which the (polars) SQL expression `expr` is true."""
+    import polars as pl
+
+    try:
+        mask = df.select(pl.sql_expr(expr)).to_series()
+    except Exception as e:
+        raise MetropyError(f"Cannot evaluate the estimation sample filter (`{expr}`): {e}") from e
+    if mask.dtype != pl.Boolean:
+        raise MetropyError(
+            f"The estimation sample filter (`{expr}`) must be a boolean expression, got "
+            f"`{mask.dtype}`."
+        )
+    n0 = len(df)
+    # A null value is considered as false (the row is dropped).
+    df = df.filter(mask.fill_null(False))
+    n1 = len(df)
+    if n1 < n0:
+        logger.warning(
+            f"Dropping {n0 - n1:,} observations ({(n0 - n1) / n0:.2%}) excluded by the sample "
+            "filter."
+        )
+    return df
+
+
 def mode_probabilities_df(
     tours: pl.DataFrame, probabilities: pd.DataFrame, mode_ids: dict[str, int]
 ) -> pl.DataFrame:
@@ -229,6 +254,19 @@ class SurveyEconometricModeChoiceStep(
         ),
         example='`{ age_18_29 = "age BETWEEN 18 AND 29", age_65_plus = "age >= 65" }`',
     )
+    sample_filter = StringParameter(
+        "mode_choice_estimation.sample_filter",
+        description=(
+            "SQL expression (polars dialect) selecting the tours used in the estimation: only the "
+            "tours for which it is true are kept."
+        ),
+        note=(
+            "The expression can use any column of the tours (`SurveyedToursFile` and "
+            "`SurveyedToursTravelTimesFile`), but not the derived variables. A null value is "
+            "considered as false."
+        ),
+        example='`"age >= 18"`',
+    )
     reference_mode = StringParameter(
         "mode_choice_estimation.reference_mode",
         description=(
@@ -291,6 +329,8 @@ class SurveyEconometricModeChoiceStep(
         tours = filter_survey_tours(self.modes, self.input["tours"].read())
         tours_tt = self.input["tours_tt"].read()
         tours = tours.join(tours_tt, on="tour_id", how="left")
+        if self.sample_filter is not None:
+            tours = filter_estimation_sample(tours, self.sample_filter)
 
         # Only the derived variables actually used by the model are computed, so that an unused
         # definition does not need to be valid.

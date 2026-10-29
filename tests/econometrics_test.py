@@ -8,6 +8,7 @@ from pymetropolis.metro_calibration.econometrics.mode_choice import (
     check_reference_vot,
     check_shared_car_driver_vot,
     estimate_mnl,
+    filter_estimation_sample,
     mode_probabilities_df,
     mode_shares,
     monetary_cost_exprs,
@@ -26,8 +27,10 @@ from pymetropolis.modes import (
     CarPassenger,
     CarRidesharing,
     MetaMode,
+    ModeAvailabilityRules,
     PublicTransit,
     Walking,
+    mode_availability_expr,
 )
 
 # A model estimated on 3 alternatives, with `walking` as the reference mode, one case variable
@@ -239,6 +242,60 @@ def test_derived_variables_in_preferences():
     df = compute_mode_preferences(tours, spec, params, CarDriver)
     # Age 65+: -(1.0 - 2.0). Otherwise (or null age): -1.0.
     assert df["car_driver_cst"].to_list() == pytest.approx([-1.0, -1.0, 1.0, -1.0])
+
+
+SOLO_JOINT_FILTER = "NOT (COALESCE(joint_tour, FALSE) AND tour_mode = 'car_driver')"
+
+
+def get_joint_tours():
+    return pl.DataFrame(
+        {
+            "tour_id": [1, 2, 3, 4, 5, 6],
+            "tour_mode": [
+                "car_driver",
+                "car_driver",
+                "car_driver",
+                "walking",
+                "walking",
+                "walking",
+            ],
+            "joint_tour": [True, False, None, True, False, None],
+        }
+    )
+
+
+def test_sample_filter():
+    """Only the rows for which the expression is true are kept (null counts as false)."""
+    df = filter_estimation_sample(get_joint_tours(), SOLO_JOINT_FILTER)
+    assert df["tour_id"].to_list() == [2, 3, 4, 5, 6]
+    df = filter_estimation_sample(get_joint_tours(), "joint_tour")
+    assert df["tour_id"].to_list() == [1, 4]
+
+
+def test_sample_filter_matches_no_solo_modes_for_joint_tours():
+    """Filtering out the solo car-driver joint tours keeps the same tours as the
+    `no_solo_modes_for_joint_tours` rule (which drops the tours whose chosen mode is unavailable).
+    """
+    tours = get_joint_tours()
+    rules = ModeAvailabilityRules(
+        car_driver_requires_car=False,
+        car_driver_requires_driving_license=False,
+        no_solo_modes_for_joint_tours=True,
+    )
+    chosen_avail = (
+        pl.when(tour_mode="car_driver")
+        .then(mode_availability_expr(CarDriver, rules, tours.columns))
+        .otherwise(mode_availability_expr(Walking, rules, tours.columns))
+    )
+    expected = tours.filter(chosen_avail)
+    assert filter_estimation_sample(tours, SOLO_JOINT_FILTER).equals(expected)
+
+
+def test_invalid_sample_filter_raises():
+    with pytest.raises(MetropyError, match="Cannot evaluate"):
+        filter_estimation_sample(get_joint_tours(), "unknown_col")
+    with pytest.raises(MetropyError, match="boolean"):
+        filter_estimation_sample(get_joint_tours(), "tour_id + 1")
 
 
 def test_dict_type():

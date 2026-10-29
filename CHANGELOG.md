@@ -130,6 +130,7 @@ New files:
 - `SurveyedTripsDestinationsFile`
 - `SurveyedTripsPedestrianNodesFile`
 - `SurveyedTripsRoadNodesFile`
+- `SurveyModeChoiceProbabilitiesFile`
 
 New parameters:
 
