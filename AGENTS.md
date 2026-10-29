@@ -346,8 +346,9 @@ uv run pymetropolis path/to/config.toml --dry-run
 # Explain why a Step is up to date, outdated, invalidated or not run
 uv run pymetropolis path/to/config.toml --explain TripDistancesStep
 
-# Run only one Step (and what it needs); save the Step graph (rendering needs Graphviz)
+# Force a Step to be run (if it is properly defined)
 uv run pymetropolis path/to/config.toml --step TripDistancesStep
+# Save the Step graph (rendering needs Graphviz)
 uv run pymetropolis path/to/config.toml --graph steps.svg
 
 # Regenerate the Step/MetroFile reference docs as Markdown
