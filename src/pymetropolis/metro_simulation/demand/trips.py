@@ -44,6 +44,7 @@ from pymetropolis.metro_pipeline import PopulationStep, Step
 from pymetropolis.metro_pipeline.parameters import DurationParameter, FloatParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 from pymetropolis.metro_simulation.common import (
+    StepWithFuelSharing,
     StepWithRidesharingCount,
     StepWithRidesharingSubsidy,
     merge_populations,
@@ -564,7 +565,7 @@ class StepWithParkAndRideTransfer(Step):
 class PrepareMetroTripsStep(
     StepWithModes,
     StepWithModeAvailability,
-    StepWithRidesharingCount,
+    StepWithFuelSharing,
     StepWithParkAndRideTransfer,
     StepWithRidesharingSubsidy,
     PopulationStep,
@@ -676,8 +677,6 @@ class PrepareMetroTripsStep(
     def run(self):
         import polars as pl
 
-        assert self.ridesharing_passenger_count is not None
-
         trips = self.input["trips"].read()
         if self.input["persons"].exists():
             persons = self.input["persons"].read()
@@ -724,7 +723,7 @@ class PrepareMetroTripsStep(
         metro_trips = pl.DataFrame()
         for car_mode in CAR_MODES:
             if self.has_mode_class(car_mode):
-                fuel_share = car_mode.get_fuel_share(self.ridesharing_passenger_count)
+                fuel_share = self.fuel_share(car_mode)
                 car_trips = generate_car_trips(
                     car_mode,
                     df=available_trips(car_mode),

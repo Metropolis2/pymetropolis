@@ -162,9 +162,18 @@ class CarMode(RoadMode):
         return True
 
     @classmethod
-    def get_fuel_share(cls, nb_passengers: float) -> float:
-        """Share of total fuel cost that should be attributed to the agent."""
+    def get_fuel_share(cls, nb_passengers: float, shared_with_passengers: bool = False) -> float:
+        """Share of total fuel cost that should be attributed to the agent.
+
+        If `shared_with_passengers` is true, the fuel cost of a car with a known driver and
+        passengers is split equally among all persons in the car.
+        """
         return 1.0
+
+
+def _equal_fuel_share(nb_passengers: float) -> float:
+    """Share of the fuel cost when it is split among all persons in the car (1 + nb_passengers)."""
+    return 1 / (1 + nb_passengers)
 
 
 class CarDriver(metaclass=CarMode):
@@ -181,6 +190,10 @@ class CarDriverWithPassengers(metaclass=CarMode):
     _repr = "car_driver_with_passengers"
 
     @classmethod
+    def get_fuel_share(cls, nb_passengers: float, shared_with_passengers: bool = False) -> float:
+        return _equal_fuel_share(nb_passengers) if shared_with_passengers else 1.0
+
+    @classmethod
     def vehicle(cls) -> MetaVehicle:
         return CarDriverMultiVehicle
 
@@ -194,10 +207,9 @@ class CarPassenger(metaclass=CarMode):
         return False
 
     @classmethod
-    def get_fuel_share(cls, nb_passengers: float) -> float:
-        # Car drivers are assumed to pay the fuel cost price.
-        # TODO. This could be configurable.
-        return 0.0
+    def get_fuel_share(cls, nb_passengers: float, shared_with_passengers: bool = False) -> float:
+        # Unless the fuel cost is shared, car drivers are assumed to pay the full fuel cost.
+        return _equal_fuel_share(nb_passengers) if shared_with_passengers else 0.0
 
     @classmethod
     def vehicle(cls) -> MetaVehicle:
@@ -214,10 +226,10 @@ class CarRidesharing(metaclass=CarMode):
         return False
 
     @classmethod
-    def get_fuel_share(cls, nb_passengers: float) -> float:
+    def get_fuel_share(cls, nb_passengers: float, shared_with_passengers: bool = False) -> float:
         # The driver is unknown. The fuel is assumed to be split among all persons in the car
         # (1 + nb_passengers).
-        return 1 / (1 + nb_passengers)
+        return _equal_fuel_share(nb_passengers)
 
     @classmethod
     def vehicle(cls) -> MetaVehicle:

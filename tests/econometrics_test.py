@@ -128,22 +128,43 @@ def test_non_car_mode_without_coefficients_raises():
         resolve_estimated_mode(Bicycle, SPEC)
 
 
-def test_monetary_cost_is_the_fuel_cost_paid_by_the_traveler():
-    """Car drivers pay the full fuel cost, car passengers pay nothing, ridesharing travelers split
-    the cost with the passengers and non-car modes have no monetary cost."""
+@pytest.mark.parametrize("shared", [False, True])
+def test_monetary_cost_is_the_fuel_cost_paid_by_the_traveler(shared):
+    """Car drivers pay the full fuel cost, car passengers pay nothing (unless the fuel cost is
+    shared with the passengers), ridesharing travelers split the cost with the passengers and
+    non-car modes have no monetary cost."""
     tours = pl.DataFrame({"distance_car": [10_000.0, None]})
     # 0.08 l/km * 2.0 €/l * 10 km = 1.6 €.
     exprs = monetary_cost_exprs(
-        [CarDriver, CarPassenger, CarRidesharing, Walking],
+        [CarDriver, CarDriverWithPassengers, CarPassenger, CarRidesharing, Walking],
         fuel_factor=0.08,
         fuel_price=2.0,
-        ridesharing_passenger_count=1.0,
+        fuel_share=lambda mode: mode.get_fuel_share(1.0, shared),
     )
     df = tours.select(**exprs)
     assert df["monetary_cost_car_driver"].to_list() == pytest.approx([1.6, None])
-    assert df["monetary_cost_car_passenger"].to_list() == pytest.approx([0.0, None])
+    assert df["monetary_cost_car_driver_with_passengers"].to_list() == pytest.approx(
+        [0.8 if shared else 1.6, None]
+    )
+    assert df["monetary_cost_car_passenger"].to_list() == pytest.approx(
+        [0.8 if shared else 0.0, None]
+    )
     assert df["monetary_cost_car_ridesharing"].to_list() == pytest.approx([0.8, None])
     assert df["monetary_cost_walking"].to_list() == [0.0, 0.0]
+
+
+@pytest.mark.parametrize(
+    ("mode", "not_shared", "shared"),
+    [
+        (CarDriver, 1.0, 1.0),
+        (CarDriverWithPassengers, 1.0, 1 / 3),
+        (CarPassenger, 0.0, 1 / 3),
+        (CarRidesharing, 1 / 3, 1 / 3),
+    ],
+)
+def test_fuel_share(mode, not_shared, shared):
+    assert mode.get_fuel_share(2.0) == pytest.approx(not_shared)
+    assert mode.get_fuel_share(2.0, shared_with_passengers=True) == pytest.approx(shared)
 
 
 def test_monetary_cost_is_not_a_constant_term():

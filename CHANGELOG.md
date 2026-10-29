@@ -140,6 +140,7 @@ New parameters:
 - `road_network.capacity_multipliers.traffic_signal`
 - `road_network.capacity_multipliers.roundabout`
 - `ridesharing.subsidy`
+- `fuel.shared_with_passengers`
 - `parent_config`
 - `tomtom_requests.min_distance`
 - `tomtom_requests.max_distance`

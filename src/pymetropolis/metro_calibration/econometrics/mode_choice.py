@@ -21,7 +21,7 @@ from pymetropolis.metro_pipeline.parameters import (
     StringParameter,
 )
 from pymetropolis.metro_pipeline.types import List, String
-from pymetropolis.metro_simulation.common import StepWithRidesharingCount
+from pymetropolis.metro_simulation.common import StepWithFuelSharing
 from pymetropolis.modes import (
     CarMode,
     MetaMode,
@@ -33,7 +33,7 @@ from pymetropolis.modes import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Callable, Iterable
     from pathlib import Path
 
     import pandas as pd
@@ -63,15 +63,15 @@ def monetary_cost_exprs(
     modes: Iterable[MetaMode],
     fuel_factor: float,
     fuel_price: float,
-    ridesharing_passenger_count: float,
+    fuel_share: Callable[[CarMode], float],
 ) -> dict[str, pl.Expr]:
     """Returns, for each mode, an expression of the monetary cost of the tour (in €), as a
     `monetary_cost_{mode}` column.
 
     The monetary cost currently only includes the fuel cost of car modes, computed from the
     `distance_car` column (in meters), the fuel consumption factor (liters per km) and the fuel
-    price (€ per liter), and weighted by the share of fuel paid by the traveler of each car mode.
-    It is zero for all the other modes.
+    price (€ per liter), and weighted by the share of fuel paid by the traveler of each car mode
+    (`fuel_share`, see `StepWithFuelSharing.fuel_share`). It is zero for all the other modes.
     """
     import polars as pl
 
@@ -79,8 +79,9 @@ def monetary_cost_exprs(
     for mode in modes:
         name = f"{MONETARY_COST_VARIABLE}_{mode!r}"
         if isinstance(mode, CarMode):
-            fuel_share = mode.get_fuel_share(ridesharing_passenger_count)
-            exprs[name] = pl.col("distance_car") / 1000 * fuel_factor * fuel_price * fuel_share
+            exprs[name] = (
+                pl.col("distance_car") / 1000 * fuel_factor * fuel_price * fuel_share(mode)
+            )
         else:
             exprs[name] = pl.lit(0.0, dtype=pl.Float64)
     return exprs
@@ -117,7 +118,7 @@ def add_derived_variables(df: pl.DataFrame, derived: dict[str, str]) -> pl.DataF
 
 
 class SurveyEconometricModeChoiceStep(
-    StepWithModes, StepWithModeAvailability, StepWithFuel, StepWithRidesharingCount
+    StepWithModes, StepWithModeAvailability, StepWithFuel, StepWithFuelSharing
 ):
     """Estimates a Multinomial Logit model of tour-level mode choice from the surveyed tours,
     using [biogeme](https://biogeme.epfl.ch/).
@@ -139,7 +140,8 @@ class SurveyEconometricModeChoiceStep(
             "`{variable}_{mode}` column per mode; one coefficient is estimated for each mode. "
             'The "monetary_cost" variable is the monetary cost of each alternative, in €; it '
             "currently only includes the fuel cost of car modes (computed from the car route "
-            "distance and the `fuel` parameters, which must be defined) and a single "
+            "distance and the `fuel` parameters, which must be defined, weighted by the share "
+            "of fuel paid by the traveler, see `fuel.shared_with_passengers`) and a single "
             "coefficient is estimated for all modes."
         ),
     )
@@ -225,7 +227,6 @@ class SurveyEconometricModeChoiceStep(
         assert self.variables is not None
         assert self.interaction_variables is not None
         assert self.derived_variables is not None
-        assert self.ridesharing_passenger_count is not None
 
         tours = filter_survey_tours(self.modes, self.input["tours"].read())
         tours_tt = self.input["tours_tt"].read()
@@ -287,9 +288,7 @@ class SurveyEconometricModeChoiceStep(
                     "of `SurveyedToursTravelTimesFile`."
                 )
             tours = tours.with_columns(
-                **monetary_cost_exprs(
-                    modes, self.fuel_factor, self.fuel_price, self.ridesharing_passenger_count
-                )
+                **monetary_cost_exprs(modes, self.fuel_factor, self.fuel_price, self.fuel_share)
             )
 
         generic_columns = {
