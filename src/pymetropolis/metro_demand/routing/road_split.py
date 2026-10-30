@@ -217,7 +217,11 @@ class RoadNetworkPrimaryEdgesStep(Step):
     input_files = {
         "edges": RoadEdgesCleanFile,
         "car_ff_routes": InputFile(
-            TripsCarFreeFlowTravelTimesFile, optional=True, all_populations=True
+            TripsCarFreeFlowTravelTimesFile,
+            optional=True,
+            all_populations=True,
+            when=lambda inst: bool(inst.secondary_types) and inst.ensure_primary_connected,
+            when_doc="if both `secondary_types` and `ensure_primary_connected` are connected",
         ),
         "pr_ff_routes": InputFile(
             ParkAndRideTripsCarFreeFlowTravelTimesFile, optional=True, all_populations=True
