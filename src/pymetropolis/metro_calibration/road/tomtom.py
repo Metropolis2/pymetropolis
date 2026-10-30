@@ -39,6 +39,12 @@ MAX_CONSECUTIVE_ERRORS = 8
 REJECTION_BATCH_SIZE = 64
 # Number of rejection-sampling rounds before listing the candidates exactly.
 MAX_REJECTION_ROUNDS = 8
+# Tolerance used to simplify the returned routes, in meters (TomTom routes have a vertex every
+# ~30 meters, which is much more precise than what map matching needs).
+SIMPLIFY_TOLERANCE = 1.0
+# Grid size to which the coordinates of the returned routes are rounded, in meters (rounded
+# coordinates compress much better).
+COORDINATE_PRECISION = 0.1
 
 
 def generate_random_nodes(
@@ -328,7 +334,7 @@ async def get_tomtom_data(
     logger.debug(
         f"Summed API time: {total_api:.1f}s | Summed processing time: {total_processing:.1f}s"
     )
-    gdf = gpd.GeoDataFrame(pd.concat(gdfs), crs="EPSG:4326")
+    gdf = gpd.GeoDataFrame(pd.concat(gdfs, ignore_index=True), crs="EPSG:4326")
     gdf["tomtom_id"] = np.arange(len(gdf))
     return gdf
 
@@ -480,5 +486,10 @@ class TomTomRequestsStep(RandomStep, GeoStep):
         )
 
         gdf = gdf.to_crs(self.crs)
+        # Reduce disk space: the error on the geometries is at most `SIMPLIFY_TOLERANCE` plus half
+        # the diagonal of the grid, which is negligible compared to the map-matching search radius.
+        gdf.geometry = gdf.geometry.simplify(SIMPLIFY_TOLERANCE).set_precision(
+            COORDINATE_PRECISION, mode="pointwise"
+        )
 
         self.output["results"].write(gdf)

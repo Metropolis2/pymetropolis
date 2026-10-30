@@ -173,7 +173,6 @@ New features:
 - Use the `--explain <step>` CLI option to explain why a Step is up to date, outdated, invalidated
   or not in the sequence.
 
-
 Other changes:
 
 - The mode preferences files (`CarDriverPreferencesFile`, `PublicTransitPreferencesFile`,
@@ -210,6 +209,7 @@ Other changes:
 - `TomTomRoutesMatchedFile` is renamed `TargetRoutesFile` (with path
   `calibration/road/target_routes.parquet` and columns changed).
 - Renamed variable `driving_license_ratio` to `cars_per_license`.
+- Simplify the TomTom routes geometries to reduce disk use.
 
 Removed steps:
 

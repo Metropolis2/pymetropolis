@@ -419,7 +419,9 @@ class MetroGeoDataFrameFile(MetroFile):
         for name in json.loads(table.schema.metadata[b"geo"])["columns"]:
             i = table.schema.get_field_index(name)
             table = table.set_column(i, table.schema.field(i).remove_metadata(), table.column(i))
-        pq.write_table(table, self.complete_path)
+        # WKB geometries compress much better with zstd than with snappy (the default), and level 9
+        # is about as fast to write and read as level 3 while being ~30% smaller.
+        pq.write_table(table, self.complete_path, compression="zstd", compression_level=9)
 
     def read(self) -> gpd.GeoDataFrame:
         import geopandas as gpd
