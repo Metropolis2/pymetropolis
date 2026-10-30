@@ -23,22 +23,26 @@ def vehicle_kilometers(trip_results: pl.DataFrame, simulation_ratio: float) -> d
     """
     import polars as pl
 
+    # Values are rounded to the meter.
     results = dict()
-    results["total"] = trip_results.select(
-        pl.col("route_length").sum() / simulation_ratio / 1e3
-    ).item()
+    results["total"] = round(
+        trip_results.select(pl.col("route_length").sum() / simulation_ratio / 1e3).item(), 3
+    )
     # Note. We don't divide by the simulation ratio when computing veh km weighted by PCE since
     # the PCE already account for the simulation ratio.
-    results["total_weighted_by_pce"] = trip_results.select(
-        (pl.col("route_length") * pl.col("pce")).sum() / 1e3
-    ).item()
+    results["total_weighted_by_pce"] = round(
+        trip_results.select((pl.col("route_length") * pl.col("pce")).sum() / 1e3).item(), 3
+    )
     veh_km_by_mode = (
         trip_results.group_by("mode")
         .agg(veh_km=pl.col("route_length").sum() / simulation_ratio / 1e3)
         .filter(pl.col("veh_km") > 0.0)
         .sort("mode")
     )
-    results["by_mode"] = dict(zip(veh_km_by_mode["mode"], veh_km_by_mode["veh_km"]))
+    results["by_mode"] = {
+        mode: round(veh_km, 3)
+        for mode, veh_km in zip(veh_km_by_mode["mode"], veh_km_by_mode["veh_km"])
+    }
     return results
 
 
