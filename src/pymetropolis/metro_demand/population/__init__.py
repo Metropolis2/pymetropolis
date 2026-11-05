@@ -13,6 +13,7 @@ from .files import (
     HouseholdsZonesFile,
     JointToursFile,
     PersonsFile,
+    PopulationCharacteristicsFile,
     ToursFile,
     ToursModeFile,
     TripsDestinationsFile,
@@ -52,6 +53,7 @@ POPULATION_FILES = [
     ToursModeFile,
     HouseholdsHomesUrbanTypeFile,
     TripsUrbanTypeFile,
+    PopulationCharacteristicsFile,
 ]
 POPULATION_STEPS = [
     ImportTripCoordinatesStep,

@@ -23,6 +23,54 @@ if TYPE_CHECKING:
     import polars as pl
 
 
+def urban_type_exprs(prefix: str) -> dict[str, pl.Expr]:
+    """Returns the cleaned urban-type variables of a location, from the MobiSurvStd columns starting
+    with `prefix` (e.g., `home`), as a dictionary mapping the clean column names to expressions.
+    """
+    import polars as pl
+
+    return {
+        f"{prefix}_density": pl.col(f"{prefix}_insee_density")
+        .cast(pl.String)
+        .cast(pl.Enum(DENSITY_CATS)),
+        f"{prefix}_urban_type": pl.col(f"{prefix}_insee_urban_type").cast(pl.Enum(URBAN_TYPE_CATS)),
+        f"{prefix}_functional_area_type": pl.col(f"{prefix}_insee_aav_type")
+        .cast(pl.String)
+        .cast(pl.Enum(FNC_AREA_TYPE_CATS)),
+        f"{prefix}_functional_area_category": pl.col(f"{prefix}_aav_category")
+        .cast(pl.String)
+        .cast(pl.Enum(FNC_AREA_CAT_CATS)),
+    }
+
+
+def professional_activity_expr() -> pl.Expr:
+    """Returns the professional activity of the persons, from MobiSurvStd columns."""
+    import polars as pl
+
+    return (
+        pl.when(pl.col("age") <= 14)
+        .then(pl.lit("under14"))
+        .when(professional_occupation="student")
+        .then(pl.lit("student"))
+        .when(detailed_professional_occupation="worker:part_time")
+        .then(pl.lit("part_time_worker"))
+        .when(professional_occupation="worker")
+        .then(pl.lit("full_time_worker"))
+        .when(detailed_professional_occupation="other:retired")
+        .then(pl.lit("retired"))
+        .otherwise(pl.lit("other"))
+    )
+
+
+def socioprofessional_class_expr() -> pl.Expr:
+    """Returns the socioprofessional class of the workers, from MobiSurvStd columns."""
+    import polars as pl
+
+    return pl.when(pl.col("pcs_group_code") <= 6, professional_occupation="worker").then(
+        pl.col("pcs_group_code")
+    )
+
+
 def read_tours(
     households: pl.DataFrame, persons: pl.DataFrame, trips: pl.DataFrame, legs: pl.DataFrame
 ):
@@ -38,14 +86,7 @@ def read_tours(
         "nb_persons",
         "nb_majors",
         "nb_minors",
-        home_density=pl.col("home_insee_density").cast(pl.String).cast(pl.Enum(DENSITY_CATS)),
-        home_urban_type=pl.col("home_insee_urban_type").cast(pl.Enum(URBAN_TYPE_CATS)),
-        home_functional_area_type=pl.col("home_insee_aav_type")
-        .cast(pl.String)
-        .cast(pl.Enum(FNC_AREA_TYPE_CATS)),
-        home_functional_area_category=pl.col("home_aav_category")
-        .cast(pl.String)
-        .cast(pl.Enum(FNC_AREA_CAT_CATS)),
+        **urban_type_exprs("home"),
         household_type=pl.when(household_type="couple:no_child")
         .then(pl.lit("couple"))
         .when(household_type="couple:children")
@@ -65,20 +106,8 @@ def read_tours(
         pl.col("education_level").cast(pl.String),
         "has_public_transit_subscription",
         oldest_age_diff=pl.col("age").max().over("household_id") - pl.col("age"),
-        professional_activity=pl.when(pl.col("age") <= 14)
-        .then(pl.lit("under14"))
-        .when(professional_occupation="student")
-        .then(pl.lit("student"))
-        .when(detailed_professional_occupation="worker:part_time")
-        .then(pl.lit("part_time_worker"))
-        .when(professional_occupation="worker")
-        .then(pl.lit("full_time_worker"))
-        .when(detailed_professional_occupation="other:retired")
-        .then(pl.lit("retired"))
-        .otherwise(pl.lit("other")),
-        socioprofessional_class=pl.when(
-            pl.col("pcs_group_code") <= 6, professional_occupation="worker"
-        ).then(pl.col("pcs_group_code")),
+        professional_activity=professional_activity_expr(),
+        socioprofessional_class=socioprofessional_class_expr(),
         has_driving_license=pl.col("has_driving_license").eq("yes"),
         nb_surveyed=pl.col("is_surveyed").sum().over("household_id"),
         nb_women=pl.col("woman").sum().over("household_id"),

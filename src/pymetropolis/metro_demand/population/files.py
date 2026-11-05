@@ -3,6 +3,7 @@ from pymetropolis.metro_pipeline.file import (
     MetroDataFrameFile,
     MetroDataType,
     MetroGeoDataFrameFile,
+    MetroJsonFile,
     PopulationFile,
 )
 
@@ -1167,3 +1168,12 @@ class ToursModeFile(MetroDataFrameFile, PopulationFile):
         Column("tour_id", MetroDataType.ID, description="Identifier of the tour.", nullable=False),
         Column("mode", MetroDataType.STRING, description="Predicted mode ex-ante.", nullable=False),
     ]
+
+
+class PopulationCharacteristicsFile(MetroJsonFile, PopulationFile):
+    path = "demand/{population}/characteristics.json"
+    description = (
+        "JSON file with the characteristics of the households, persons, trips and tours of the "
+        "simulated population. "
+        "Distances are in meters, times in seconds after midnight and durations in seconds."
+    )

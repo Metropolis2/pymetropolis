@@ -1,3 +1,4 @@
+from .characteristics import PopulationCharacteristicsStep, SurveyCharacteristicsStep
 from .files import (
     JointTourEstimationResultsFile,
     JointTourEstimatorFile,
@@ -10,6 +11,7 @@ from .files import (
     ModeEstimatorFile,
     ModeFeatureImportanceFile,
     ModeFeatureImportancePlotFile,
+    SurveyCharacteristicsFile,
     SurveyedCarsFile,
     SurveyedDetailedZonesFile,
     SurveyedDrawZonesFile,
@@ -93,6 +95,7 @@ SURVEY_FILES = [
     SurveyedTripsRoadNodesFile,
     SurveyedTripsCarTravelTimesFile,
     SurveyedToursTravelTimesFile,
+    SurveyCharacteristicsFile,
     JointTourEstimatorFile,
     JointTourEstimationResultsFile,
     JointTourFeatureImportanceFile,
@@ -116,6 +119,8 @@ SURVEY_FILES = [
 SURVEY_STEPS = [
     MobiSurvStdImportStep,
     CleanSurveyToursStep,
+    SurveyCharacteristicsStep,
+    PopulationCharacteristicsStep,
     ExternalJointToursClassifierStep,
     EstimateJointToursClassifierStep,
     JointToursFeatureImportanceStep,

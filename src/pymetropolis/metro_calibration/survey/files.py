@@ -987,6 +987,16 @@ class ModeEstimationResultsFile(MetroJsonFile):
     )
 
 
+class SurveyCharacteristicsFile(MetroJsonFile):
+    path = "calibration/survey/characteristics.json"
+    description = (
+        "JSON file with the characteristics of the households, persons, trips and tours in the "
+        "survey, using the survey weights (`sample_count` is the unweighted number of "
+        "observations). "
+        "Distances are in meters, times in seconds after midnight and durations in seconds."
+    )
+
+
 def _feature_importance_schema(model_description: str) -> list[Column]:
     return [
         Column(

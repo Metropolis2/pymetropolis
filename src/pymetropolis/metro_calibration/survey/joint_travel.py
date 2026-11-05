@@ -39,6 +39,7 @@ from pymetropolis.metro_pipeline.types import String
 from pymetropolis.metro_spatial.simulation_area.file import SimulationAreaFile
 from pymetropolis.random import RandomStep
 
+from .common import restrict_to_home_in_area
 from .files import (
     JointTourEstimationResultsFile,
     JointTourEstimatorFile,
@@ -252,18 +253,6 @@ class ClassifyJointToursStep(RandomStep, PopulationStep):
         logger.debug(f"Share of joint tours: {s:.2%}")
 
         self.output["joint_tours"].write(df)
-
-
-def restrict_to_home_in_area(df: pl.DataFrame, area) -> pl.DataFrame:
-    """Restricts `df` to the rows whose home (columns `home_lng` and `home_lat`) falls within
-    `area` (a shapely geometry in EPSG:4326). Rows without home coordinates are dropped."""
-    import numpy as np
-    import polars as pl
-    import shapely
-
-    lngs = df["home_lng"].cast(pl.Float64).fill_null(np.nan).to_numpy()
-    lats = df["home_lat"].cast(pl.Float64).fill_null(np.nan).to_numpy()
-    return df.filter(pl.Series(shapely.contains_xy(area, lngs, lats)))
 
 
 def compute_joint_tours_shares(survey: pl.DataFrame, sim: pl.DataFrame) -> dict:

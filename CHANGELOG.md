@@ -24,6 +24,8 @@ New steps:
 - `ModeClassifierConfigStep`
 - `CompareToursModeSharesStep`
 - `CompareJointToursShareStep`
+- `SurveyCharacteristicsStep`
+- `PopulationCharacteristicsStep`
 - `PrepareExAnteMetroAgentsStep`
 - `WriteExAnteMetroAgentsStep`
 - `PrepareExAnteMetroAlternativesStep`
