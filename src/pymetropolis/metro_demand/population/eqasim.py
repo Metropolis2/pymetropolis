@@ -128,7 +128,7 @@ def read_trips(
             following_purpose
         FROM {source}
     """
-    trips = con.execute(query).pl()
+    trips = con.sql(query).pl()
     if person_ids:
         trips = trips.filter(pl.col("person_id").is_in(person_ids))
     trips = trips.sort("person_id", "trip_index")
@@ -161,7 +161,7 @@ def read_trips(
             ST_AsWKB(ST_EndPoint({geom}))              AS destination_wkb
         FROM {source}
     """
-    df = con.execute(query).pl()
+    df = con.sql(query).pl()
     # Note. Eqasim uses EPSG 2154 CRS.
     origins = gpd.GeoDataFrame(
         {"trip_id": df["trip_id"]},
@@ -208,7 +208,7 @@ def read_homes(
     if filter_polygon is not None:
         wkb_hex = wkb.dumps(filter_polygon, hex=True)
         query += f"WHERE ST_Within({geom}, ST_GeomFromHEXWKB('{wkb_hex}'))"
-    df = con.execute(query).pl()
+    df = con.sql(query).pl()
     if df.is_empty():
         raise MetropyError("No household within the simulation area")
     if fraction != 1.0:

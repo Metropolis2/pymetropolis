@@ -171,8 +171,9 @@ def read_osm_areas(
         con.execute(
             """
             CREATE TEMP TABLE lines AS
-            SELECT way_id, ST_MakeLine(list_transform(list_sort(points), p -> ST_Point(p.x, p.y)))
-                AS line
+            SELECT
+                way_id,
+                ST_MakeLine(list_transform(list_sort(points), lambda p: ST_Point(p.x, p.y))) AS line
             FROM (
                 SELECT
                     w.way_id,
@@ -188,7 +189,7 @@ def read_osm_areas(
             WHERE complete
             """
         )
-        result = con.execute(
+        result = con.sql(
             """
             SELECT
                 a.id AS osm_id,

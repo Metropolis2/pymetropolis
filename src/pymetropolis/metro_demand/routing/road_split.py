@@ -47,7 +47,7 @@ def find_first_last_primary(routes: pl.DataFrame, primary_edges: set) -> pl.Data
 
     con = duckdb.connect()
     con.register("routes", routes)
-    return con.execute(
+    return con.sql(
         """
         SELECT
             trip_id,
@@ -63,7 +63,7 @@ def find_first_last_primary(routes: pl.DataFrame, primary_edges: set) -> pl.Data
         WHERE edge_id = ANY($1)
         GROUP BY trip_id
     """,
-        [list(primary_edges)],
+        params=[list(primary_edges)],
     ).pl()
 
 

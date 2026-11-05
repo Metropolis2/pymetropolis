@@ -367,7 +367,7 @@ class OpenStreetMapNetworkImport:
         con.execute(
             """
             CREATE TEMP TABLE way_points AS
-            SELECT osm_id, list_transform(list_sort(points), p -> ST_Point(p.x, p.y)) AS points
+            SELECT osm_id, list_transform(list_sort(points), lambda p: ST_Point(p.x, p.y)) AS points
             FROM (
                 SELECT wn.osm_id, list(struct_pack(idx := wn.idx, x := n.x, y := n.y)) AS points
                 FROM way_nodes AS wn
@@ -512,7 +512,7 @@ class OpenStreetMapNetworkImport:
             else ""
         )
         logger.debug("Duplicating two-way edges")
-        result = con.execute(
+        result = con.sql(
             f"""
             WITH edges AS (
                 SELECT
