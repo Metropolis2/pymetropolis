@@ -156,17 +156,16 @@ class MobiSurvStdImportStep(Step):
         assert self.survey_path is not None
         assert self.bulk is not None
 
+        survey_path = self.survey_path.resolve()
         if self.bulk:
-            surveys = mobisurvstd.bulk_standardize(self.survey_path)
+            surveys = mobisurvstd.bulk_standardize(survey_path)
             if surveys is None:
-                raise MetropyError(
-                    f"Failed to read surveys with MobiSurvStd: `{self.survey_path}`."
-                )
+                raise MetropyError(f"Failed to read surveys with MobiSurvStd: `{survey_path}`.")
             survey = concatenate_surveys(surveys)
         else:
-            survey = mobisurvstd.standardize(self.survey_path)
+            survey = mobisurvstd.standardize(survey_path)
             if survey is None:
-                raise MetropyError(f"Failed to read survey with MobiSurvStd: `{self.survey_path}`.")
+                raise MetropyError(f"Failed to read survey with MobiSurvStd: `{survey_path}`.")
 
         households = survey.households
         if not self.bulk:

@@ -241,6 +241,7 @@ Fixes:
   mode-choice parameters.
 - Fix a crash in Metropolis-core when some agents have no available alternative: the simulation now
   runs without them and a warning is logged.
+- Fix running MobiSurvStd from unresolved paths
 
 ## [0.12.0] – 2026-08-25
 
