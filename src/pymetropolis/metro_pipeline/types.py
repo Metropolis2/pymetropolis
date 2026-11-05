@@ -76,16 +76,19 @@ class Int(Type):
 class PathType(Type):
     check_file_exists: bool
     check_dir_exists: bool
+    check_file_or_dir_exists: bool
     extensions: list[str] | None
 
     def __init__(
         self,
         check_file_exists: bool = False,
         check_dir_exists: bool = False,
+        check_file_or_dir_exists: bool = False,
         extensions: list[str] | None = None,
     ):
         self.check_file_exists = check_file_exists
         self.check_dir_exists = check_dir_exists
+        self.check_file_or_dir_exists = check_file_or_dir_exists
         self.extensions = extensions
 
     @override
@@ -105,6 +108,8 @@ class PathType(Type):
             raise MetropyError(f"Invalid path (not a file): {value}")
         if self.check_dir_exists and not value.is_dir():
             raise MetropyError(f"Invalid path (not a directory): {value}")
+        if self.check_file_or_dir_exists and not value.exists():
+            raise MetropyError(f"Invalid path (not a file nor a directory): {value}")
         return value
 
     @override
@@ -114,6 +119,8 @@ class PathType(Type):
             s += " to an existing file"
         if self.check_dir_exists:
             s += " to an existing directory"
+        if self.check_file_or_dir_exists:
+            s += " to an existing file or directory"
         if self.extensions:
             ext_str = ", ".join(self.extensions)
             s += f" [possible extensions: {ext_str}]"

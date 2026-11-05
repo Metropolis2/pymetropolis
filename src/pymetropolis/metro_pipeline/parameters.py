@@ -183,12 +183,14 @@ class PathParameter(Parameter[Path | None]):
         *args,
         check_file_exists: bool = False,
         check_dir_exists: bool = False,
+        check_file_or_dir_exists: bool = False,
         extensions: list[str] | None = None,
         **kwargs,
     ):
         kwargs["validator"] = PathType(
             check_file_exists=check_file_exists,
             check_dir_exists=check_dir_exists,
+            check_file_or_dir_exists=check_file_or_dir_exists,
             extensions=extensions,
         )
         super().__init__(*args, **kwargs)
