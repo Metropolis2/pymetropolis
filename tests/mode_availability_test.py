@@ -37,8 +37,8 @@ def available(mode, rules: ModeAvailabilityRules, df: pl.DataFrame = PERSONS) ->
 
 def test_default_rules():
     rules = ModeAvailabilityRules()
-    # Car owners with a driving license, on non-joint tours (null values are unavailable).
-    assert available(CarDriver, rules) == [True, False, False, False, False, False]
+    # Car owners with a driving license (null values are unavailable).
+    assert available(CarDriver, rules) == [True, False, False, False, False, True]
     # Joint tours do not restrict modes with passengers.
     assert available(CarDriverWithPassengers, rules) == [True, False, False, False, False, True]
     # Car owners.
@@ -53,7 +53,7 @@ def test_car_driver_without_car_ownership_but_min_age():
     rules = ModeAvailabilityRules(car_driver_requires_car=False, car_driver_min_age=18)
     # Person 1 (aged 18, no car) is now available; person 3 (aged 17) and person 4 (null age) are
     # not.
-    assert available(CarDriver, rules) == [True, True, False, False, False, False]
+    assert available(CarDriver, rules) == [True, True, False, False, False, True]
     assert available(CarDriverWithPassengers, rules) == [True, True, False, False, False, True]
     # Car-passenger rules are independent.
     assert available(CarPassenger, rules) == [True, False, True, False, True, True]
@@ -98,10 +98,9 @@ def test_missing_column_warnings():
         )
     finally:
         logger.remove(handler)
-    # Only the age and joint-tour rules of `car_driver` are active and missing.
-    assert len(messages) == 2
+    # Only the age rule of `car_driver` are active and missing.
+    assert len(messages) == 1
     assert any("`age`" in m for m in messages)
-    assert any("`joint_tour`" in m for m in messages)
 
 
 class AvailabilityStep(StepWithModeAvailability):

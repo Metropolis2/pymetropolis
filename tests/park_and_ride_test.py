@@ -200,7 +200,7 @@ def test_availability_rules():
     )
     rules = ModeAvailabilityRules(car_driver_min_age=18)
     available = df.select(mode_availability_expr(ParkAndRide, rules, df.columns))
-    assert available.to_series().to_list() == [True, False, False, False, False, False]
+    assert available.to_series().to_list() == [True, False, False, True, False, False]
 
 
 def test_merge_legs():
