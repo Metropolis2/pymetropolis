@@ -423,7 +423,7 @@ class ModeAvailabilityRules:
     car_driver_min_age: int | None = None
     car_passenger_requires_car: bool = True
     car_ridesharing_requires_car: bool = True
-    no_solo_modes_for_joint_tours: bool = True
+    no_solo_modes_for_joint_tours: bool = False
     bicycle_requires_bicycle: bool = False
     walking_max_distance: float | None = None
     bicycle_max_distance: float | None = None
@@ -614,7 +614,7 @@ class StepWithModeAvailability(Step):
     )
     no_solo_modes_for_joint_tours = BoolParameter(
         "mode_availability.no_solo_modes_for_joint_tours",
-        default=True,
+        default=False,
         description=(
             'If `true`, car modes without passenger (i.e., "car_driver") are not available for '
             "tours done jointly with other household members."
