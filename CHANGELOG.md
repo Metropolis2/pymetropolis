@@ -243,7 +243,9 @@ Fixes:
   mode-choice parameters.
 - Fix a crash in Metropolis-core when some agents have no available alternative: the simulation now
   runs without them and a warning is logged.
-- Fix running MobiSurvStd from unresolved paths
+- Fix running MobiSurvStd from unresolved paths.
+- Fix public-transit alternatives dropped when some trips have origin equal to destination.
+- Set walking and bicycle travel times to zero for trips with origin equal to destination.
 
 ## [0.12.0] – 2026-08-25
 

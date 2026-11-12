@@ -80,12 +80,22 @@ if TYPE_CHECKING:
     from pymetropolis.metro_pipeline.file import MetroDataFrameFile
 
 
-def clean_trips(trips: pl.DataFrame) -> pl.DataFrame:
+def clean_trips(trips: pl.DataFrame, distances: pl.DataFrame | None = None) -> pl.DataFrame:
     """Returns the trips with the columns required to generate the trip alternatives, and the
     columns used to define mode availability (if they exist).
+
+    The boolean column `same_od` is `True` for the trips whose origin and destination are the same
+    (`od_distance == 0`). It is always `False` when `distances` is not given.
     """
     import polars as pl
 
+    if distances is not None:
+        same_od = distances.select("trip_id", pl.col("od_distance").eq(0).alias("same_od"))
+        trips = trips.join(same_od, on="trip_id", how="left")
+    if "same_od" not in trips.columns:
+        trips = trips.with_columns(pl.lit(False).alias("same_od"))
+    else:
+        trips = trips.with_columns(pl.col("same_od").fill_null(False))
     if "destination_activity_duration" not in trips.columns:
         trips = trips.with_columns(destination_activity_duration=pl.lit(None, dtype=pl.Duration))
     trips = trips.with_columns(
@@ -103,6 +113,7 @@ def clean_trips(trips: pl.DataFrame) -> pl.DataFrame:
         "trip_id",
         "agent_id",
         "activity_time",
+        "same_od",
         *(col for col in AVAILABILITY_COLUMNS if col in trips.columns),
     )
 
@@ -272,6 +283,11 @@ def generate_park_and_ride_trips(
             .then("pt_generalized_time_std")
             .otherwise("pt_generalized_time_pr"),
         )
+        # No travel time for the trips with the same origin and destination.
+        .with_columns(
+            pt_travel_time=pl.when("same_od").then(0.0).otherwise("pt_travel_time"),
+            pt_generalized_time=pl.when("same_od").then(0.0).otherwise("pt_generalized_time"),
+        )
         .drop(cs.ends_with("_std", "_pr"))
     )
 
@@ -418,7 +434,12 @@ def generate_public_transit_trips(
             "trip_id", pl_duration_to_seconds("travel_time").alias("class.travel_time")
         ),
         on="trip_id",
-        how="inner",
+        how="left",
+    )
+    # Trips with the same origin and destination are virtual trips with no travel time (there is
+    # usually no itinerary for them).
+    df = df.with_columns(
+        pl.when("same_od").then(0.0).otherwise("class.travel_time").alias("class.travel_time")
     )
     df = df.filter(pl.col("class.travel_time").is_not_null().all().over("agent_id"))
     if pref_file is not None and pref_file.exists():
@@ -438,7 +459,11 @@ def generate_public_transit_trips(
         df = (
             df.join(params, on="agent_id", how="left")
             .join(itineraries.select("trip_id", "generalized_time"), on="trip_id", how="left")
-            .with_columns(constant_utility=-pl.col("vot") * pl.col("generalized_time") / 3600)
+            .with_columns(
+                constant_utility=-pl.col("vot")
+                * pl.when("same_od").then(0.0).otherwise("generalized_time")
+                / 3600
+            )
             .drop("vot", "generalized_time")
         )
     df = add_schedule_preferences(df, schedule_pref_file, tstars_file)
@@ -461,7 +486,12 @@ def generate_walking_trips(
     tts: pl.DataFrame = tts_file.read()
     df = (
         df.join(tts, on="trip_id", how="left")
-        .with_columns(pl_duration_to_seconds("walking_travel_time").alias("class.travel_time"))
+        .with_columns(
+            pl.when("same_od")
+            .then(0.0)
+            .otherwise(pl_duration_to_seconds("walking_travel_time"))
+            .alias("class.travel_time")
+        )
         .drop("walking_travel_time")
     )
     if pref_file is not None and pref_file.exists():
@@ -491,7 +521,12 @@ def generate_bicycle_trips(
     tts: pl.DataFrame = tts_file.read()
     df = (
         df.join(tts, on="trip_id", how="left")
-        .with_columns(pl_duration_to_seconds("bicycle_travel_time").alias("class.travel_time"))
+        .with_columns(
+            pl.when("same_od")
+            .then(0.0)
+            .otherwise(pl_duration_to_seconds("bicycle_travel_time"))
+            .alias("class.travel_time")
+        )
         .drop("bicycle_travel_time")
     )
     if pref_file is not None and pref_file.exists():
@@ -651,11 +686,7 @@ class PrepareMetroTripsStep(
             when_doc='if the "park_and_ride" mode is defined',
         ),
         "joint_tours": InputFile(JointToursFile, optional=True),
-        "trips_distances": InputFile(
-            TripsDistancesFile,
-            when=lambda inst: inst.has_distance_caps(),
-            when_doc="if a maximum distance is defined for walking or bicycle",
-        ),
+        "trips_distances": InputFile(TripsDistancesFile, optional=True),
         **{
             f"{mode!r}_preferences": InputFile(
                 pref_file,
@@ -707,7 +738,7 @@ class PrepareMetroTripsStep(
             trips = trips.join(distances, on="trip_id", how="left").with_columns(
                 pl.col("od_distance").sum().over("tour_id").alias(TOUR_DISTANCE_COLUMN)
             )
-        df = clean_trips(trips)
+        df = clean_trips(trips, self.input["trips_distances"].read_if_exists())
         rules = self.availability_rules()
         # Missing columns are expected when there is no synthetic population (e.g., OD matrix).
         warn_missing_availability_columns(
@@ -793,7 +824,7 @@ class PrepareMetroTripsStep(
                 self.input["linear_schedule"],
             )
             metro_trips = pl.concat((metro_trips, bicycle_trips), how="diagonal")
-        metro_trips = metro_trips.drop(*AVAILABILITY_COLUMNS, strict=False).sort(
+        metro_trips = metro_trips.drop(*AVAILABILITY_COLUMNS, "same_od", strict=False).sort(
             "agent_id", "alt_id", "trip_id"
         )
         self.output["metro_trips"].write(metro_trips)
@@ -846,7 +877,7 @@ def select_ex_ante_trips(
             .with_columns(agent_id=pl.col("original_trip_id").fill_null(pl.col("trip_id")))
             .drop("original_trip_id")
         )
-    return metro_trips.drop(*AVAILABILITY_COLUMNS, strict=False).sort(
+    return metro_trips.drop(*AVAILABILITY_COLUMNS, "same_od", strict=False).sort(
         "agent_id", "alt_id", "trip_id"
     )
 
@@ -872,6 +903,7 @@ class PrepareExAnteMetroTripsStep(
     input_files = {
         "trips": TripsFile,
         "tour_modes": ToursModeFile,
+        "trips_distances": InputFile(TripsDistancesFile, optional=True),
         "primary_road_trips": InputFile(
             PrimaryCarTripsAccessEgressFile,
             when=lambda inst: inst.has_road_mode(),
@@ -929,7 +961,7 @@ class PrepareExAnteMetroTripsStep(
         import polars as pl
 
         trips: pl.DataFrame = self.input["trips"].read()
-        df = clean_trips(trips)
+        df = clean_trips(trips, self.input["trips_distances"].read_if_exists())
         metro_trips = pl.DataFrame()
         for car_mode in CAR_MODES:
             if self.has_mode_class(car_mode):
