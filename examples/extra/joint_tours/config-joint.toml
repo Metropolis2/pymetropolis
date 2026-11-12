@@ -16,7 +16,7 @@ features = [
     "nb_driving_licenses",
     "minor_ratio",
     "car_ratio",
-    "driving_license_ratio",
+    "cars_per_license",
     "woman",
     "has_driving_license",
     "has_leisure_purpose",
@@ -30,11 +30,23 @@ features = [
     "home_density",
     "home_urban_type",
     "home_functional_area_type",
-    "home_functional_area_category",
 ]
 feature_importance = true
+nb_plotted_features = 8
 
 [mode_choice_estimation]
-variables = ["woman", "has_leisure_purpose", "has_shopping_purpose", "travel_time", "joint_tour"]
-interaction_variables = [["woman", "travel_time"]]
-reference_mode = "walking"
+variables = [
+    "woman",
+    "has_work_purpose",
+    "has_education_purpose",
+    "has_leisure_purpose",
+    "has_shopping_purpose",
+    "age_65_plus",
+    "travel_time",
+    "monetary_cost",
+    "joint_tour",
+]
+interaction_variables = []
+
+[mode_availability]
+no_solo_modes_for_joint_tours = true

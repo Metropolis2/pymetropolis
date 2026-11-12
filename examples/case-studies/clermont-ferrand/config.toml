@@ -15,7 +15,9 @@ aav_name = "Clermont-Ferrand"
 france = true
 
 [survey]
-nb_medoids = 3
+od_method = "distance_matching"
+max_od_distance_error = 200
+nb_od_pair_draws = 100
 [survey.mobisurvstd]
 path = "data/emc2-2023.zip"
 
@@ -350,15 +352,11 @@ spillback = true
 max_pending_duration = 60
 
 [mode_classifier]
-# external_model = "data/mode_estimator-france.joblib"
 model = "logistic"
 features = [
     # Tour-level variables.
-    # "nb_trips",
     "first_activity_start",
     "last_activity_end",
-    # "outside_perimeter",
-    "total_activity_duration",
     "total_distance",
     "has_work_purpose",
     "has_education_purpose",
@@ -366,69 +364,70 @@ features = [
     "has_task_purpose",
     "has_leisure_purpose",
     "has_escort_purpose",
-    # "has_other_purpose",
-    # "lowest_density",
-    # "highest_density",
     "lowest_urban_type",
     "highest_urban_type",
-    # "lowest_functional_area_type",
-    # "highest_functional_area_type",
-    # "lowest_functional_area_category",
-    # "highest_functional_area_category",
     # Household-level variables.
-    # "home_density",
-    # "home_urban_type",
-    # "home_functional_area_type",
-    # "home_functional_area_category",
-    # "nb_cars",
     "nb_bicycles",
-    # "nb_persons",
-    # "nb_majors",
-    # "nb_minors",
-    # "nb_women",
-    # "nb_major_women",
-    # "nb_men",
-    # "nb_major_men",
     "nb_driving_licenses",
-    # "household_type",
-    # "minor_ratio",
     "car_ratio",
-    "driving_license_ratio",
+    "cars_per_license",
     # Person-level variables.
     "woman",
     "age",
-    # "oldest_age_diff",
-    # "education_level",
-    # "professional_activity",
-    # "socioprofessional_class",
     "has_driving_license",
     "has_public_transit_subscription",
-    # "nb_tours",
 ]
 
 
 [mode_choice_estimation]
-variables = ["woman", "has_leisure_purpose", "has_shopping_purpose", "travel_time"]
-interaction_variables = [["woman", "travel_time"]]
+variables = [
+    "woman",
+    "has_work_purpose",
+    "has_education_purpose",
+    "has_leisure_purpose",
+    "has_shopping_purpose",
+    "age_65_plus",
+    "travel_time",
+    "monetary_cost",
+]
+interaction_variables = []
 reference_mode = "walking"
+shared_car_driver_value_of_time = true
+reference_value_of_time_mode = "car_driver"
+reference_value_of_time = 12.0
+
+[mode_choice_estimation.derived_variables]
+age_65_plus = "age >= 65"
 
 [mode_preferences]
 from_econometrics = true
-reference_value_of_time_mode = "car_driver"
-reference_value_of_time = 15.0
 
 [mode_availability]
-no_solo_modes_for_joint_tours = true
-
 [mode_availability.car_driver]
-requires_car = true
-requires_driving_license = true
+requires_car = false
+requires_driving_license = false
+min_age = 18
 
 [mode_availability.car_passenger]
-requires_car = true
+requires_car = false
 
 [mode_availability.walking]
-max_distance = 5000
+max_distance = 4000
 
 [mode_availability.bicycle]
-max_distance = 15000
+max_distance = 20000
+
+[plots]
+width = "469.75pt"
+latex = true
+font = "serif"
+fontsize = 10
+format = "pdf"
+colors = "Set2"
+[plots.mode_colors]
+car_driver = "#0072B2"
+car_driver_with_passengers = "#CC79A7"
+car_passenger = "#D55E00"
+public_transit = "#E69F00"
+walking = "#009E73"
+bicycle = "#56B4E9"
