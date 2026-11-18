@@ -7,10 +7,10 @@ import polars as pl
 import pytest
 from shapely.geometry import LineString
 
-from pymetropolis.metro_calibration.road.files import RoadEdgesVariablesFile
-from pymetropolis.metro_calibration.road.variables import (
+from pymetropolis.metro_calibration.road.free_flow.files import FreeFlowRoadEdgesVariablesFile
+from pymetropolis.metro_calibration.road.free_flow.variables import (
     DEFAULT_DEFINITIONS,
-    RoadEdgesVariablesStep,
+    FreeFlowRoadEdgesVariablesStep,
     definition_to_expression,
     variable_definition_validator,
 )
@@ -139,8 +139,8 @@ def write_clean_edges(main_directory: Path):
 def test_edges_variables_without_custom_definitions(tmp_path: Path):
     # The `urban` default variable is not available: it must be skipped, not crash.
     write_clean_edges(tmp_path)
-    RoadEdgesVariablesStep(Config({"main_directory": str(tmp_path)})).run()
-    df = RoadEdgesVariablesFile.from_dir(tmp_path).read()
+    FreeFlowRoadEdgesVariablesStep(Config({"main_directory": str(tmp_path)})).run()
+    df = FreeFlowRoadEdgesVariablesFile.from_dir(tmp_path).read()
     assert "urban" not in df.columns
     assert df["base_free_flow_tt"].to_list() == pytest.approx([72.0, 60.0])
     assert df["traffic_signals"].to_list() == [1.0, 0.0]
@@ -155,5 +155,5 @@ def test_edges_variables_do_not_mutate_defaults(tmp_path: Path):
             "road_network": {"calibration_variables": {"lanes": {"type": "boolean"}}},
         }
     )
-    RoadEdgesVariablesStep(config).run()
+    FreeFlowRoadEdgesVariablesStep(config).run()
     assert DEFAULT_DEFINITIONS == defaults

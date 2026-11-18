@@ -18,7 +18,7 @@ from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import CustomParameter, FloatParameter, PathParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 
-from .files import RoadEdgesPenaltyCoefficientsFile, RoadEdgesVariablesFile
+from .files import FreeFlowRoadEdgesVariablesFile, RoadEdgesPenaltyCoefficientsFile
 
 if TYPE_CHECKING:
     import geopandas as gpd
@@ -223,7 +223,7 @@ class FreeFlowPenaltyCoefficientsFromFileStep(Step):
             "compute the constant time and speed multiplier."
         ),
     )
-    input_files = {"edges_variables": RoadEdgesVariablesFile}
+    input_files = {"edges_variables": FreeFlowRoadEdgesVariablesFile}
     output_files = {"coefs": RoadEdgesPenaltyCoefficientsFile}
 
     def is_defined(self) -> bool:
@@ -308,7 +308,7 @@ class EdgePenaltiesFromCoefficientsStep(Step):
         lower_bound=0.0,
     )
     input_files = {
-        "edges_variables": RoadEdgesVariablesFile,
+        "edges_variables": FreeFlowRoadEdgesVariablesFile,
         "coefs": RoadEdgesPenaltyCoefficientsFile,
     }
     output_files = {"edges_penalties": RoadEdgesPenaltiesFile}

@@ -8,7 +8,7 @@ from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import CustomParameter
 from pymetropolis.metro_pipeline.steps import InputFile
 
-from .files import RoadEdgesVariablesFile
+from .files import FreeFlowRoadEdgesVariablesFile
 
 if TYPE_CHECKING:
     import polars as pl
@@ -147,15 +147,16 @@ def definition_to_expression(col: str, definition: dict) -> pl.Expr:
             raise MetropyError(f"Variable type `{definition['type']}` is not supported.")
 
 
-class RoadEdgesVariablesStep(Step):
-    """This Step generates edge-level variables to be used in the calibration process."""
+class FreeFlowRoadEdgesVariablesStep(Step):
+    """This Step generates the edge-level variables to be used in the free-flow calibration
+    process.
+    """
 
     variable_definitions = CustomParameter(
-        "road_network.calibration_variables",
+        "road_network.free_flow_calibration.variables",
         validator=variable_definition_validator,
         description=(
-            "Definition of the variables (type and modalities) available for road network "
-            "calibration.",
+            "Definition of the variables (type and modalities) available for free-flow calibration."
         ),
         validator_description=(
             "Table variable->definition, where `variable` is the name of a valid edge column and "
@@ -165,21 +166,21 @@ class RoadEdgesVariablesStep(Step):
         ),
         example="""
 ```toml
-[road_network.calibration_variables]
-[road_network.calibration_variables.urban]
+[road_network.free_flow_calibration.variables]
+[road_network.free_flow_calibration.variables.urban]
 type = "boolean"
 
-[road_network.calibration_variables.lanes]
+[road_network.free_flow_calibration.variables.lanes]
 type = "continuous"
 min = 1  # Optional lower bound to constrain the values.
 max = 3  # Optional upper bound to constrain the values.
 
-[road_network.calibration_variables.speed_limit]
+[road_network.free_flow_calibration.variables.speed_limit]
 type = "intervals"
 cuts = [30, 50, 70, 90, 110, 130]  # Breakpoints of the intervals.
 left_closed = true  # Set the intervals to be left-closed instead of right-closed.
 
-[road_network.calibration_variables.edge_type]
+[road_network.free_flow_calibration.variables.edge_type]
 type = "categories"
 # Optionally, group categories together with `map` (all original modalities must be defined).
 map = {"motorway": "motorway", "motorway_link": "motorway", ...}
@@ -190,7 +191,7 @@ map = {"motorway": "motorway", "motorway_link": "motorway", ...}
         "edges": RoadEdgesCleanFile,
         "urban": InputFile(RoadEdgesUrbanFlagFile, optional=True),
     }
-    output_files = {"variables": RoadEdgesVariablesFile}
+    output_files = {"variables": FreeFlowRoadEdgesVariablesFile}
     priority = 0
 
     def run(self):

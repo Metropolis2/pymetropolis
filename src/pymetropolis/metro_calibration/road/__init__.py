@@ -1,48 +1,9 @@
-from .congestion import CongestionSimulationStep, CongestionTimeComparisonStep
-from .files import (
-    AllRoadFreeFlowTravelTimesFile,
-    CongestionTimeComparisonPlotFile,
-    FreeFlowTravelTimeComparisonPlotFile,
-    RoadEdgesPenaltyCoefficientsFile,
-    RoadEdgesVariablesFile,
-    TargetRoutesCongestionTimesFile,
-    TargetRoutesFile,
-    TomTomRoutesFile,
-)
-from .free_flow_lasso import FreeFlowLassoStep, FreeFlowTravelTimeComparisonStep
+from .capacities import CAPACITIES_FILES, CAPACITIES_STEPS
+from .files import TargetRoutesFile, TomTomRoutesFile
+from .free_flow import FREE_FLOW_FILES, FREE_FLOW_STEPS
 from .map_matching import MapMatchingStep
-from .penalties import (
-    EdgePenaltiesFromCoefficientsStep,
-    EdgesFreeFlowTravelTimesStep,
-    ExogenousEdgePenaltiesStep,
-    FreeFlowPenaltyCoefficientsFromFileStep,
-)
-from .routing import AllFreeFlowTravelTimesStep
 from .tomtom import TomTomRequestsStep
-from .variables import RoadEdgesVariablesStep
 
-ROAD_FILES = [
-    RoadEdgesVariablesFile,
-    RoadEdgesPenaltyCoefficientsFile,
-    AllRoadFreeFlowTravelTimesFile,
-    TomTomRoutesFile,
-    TargetRoutesFile,
-    FreeFlowTravelTimeComparisonPlotFile,
-    TargetRoutesCongestionTimesFile,
-    CongestionTimeComparisonPlotFile,
-]
+ROAD_FILES = [TomTomRoutesFile, TargetRoutesFile, *FREE_FLOW_FILES, *CAPACITIES_FILES]
 
-ROAD_STEPS = [
-    RoadEdgesVariablesStep,
-    ExogenousEdgePenaltiesStep,
-    EdgesFreeFlowTravelTimesStep,
-    EdgePenaltiesFromCoefficientsStep,
-    AllFreeFlowTravelTimesStep,
-    FreeFlowPenaltyCoefficientsFromFileStep,
-    TomTomRequestsStep,
-    MapMatchingStep,
-    FreeFlowLassoStep,
-    FreeFlowTravelTimeComparisonStep,
-    CongestionSimulationStep,
-    CongestionTimeComparisonStep,
-]
+ROAD_STEPS = [TomTomRequestsStep, MapMatchingStep, *FREE_FLOW_STEPS, *CAPACITIES_STEPS]

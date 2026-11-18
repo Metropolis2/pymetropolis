@@ -6,29 +6,18 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 
+from pymetropolis.metro_calibration.road.files import TargetRoutesFile
+from pymetropolis.metro_calibration.road.utils import check_free_flow_tt, sum_edge_values_along_path
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_common.ml_models import compute_lasso
-from pymetropolis.metro_common.plots import PlotStep, plot_travel_time_comparison
-from pymetropolis.metro_network.road_network.files import RoadEdgesFreeFlowTravelTimeFile
 from pymetropolis.metro_pipeline import Step
 from pymetropolis.metro_pipeline.parameters import ListParameter
 from pymetropolis.metro_pipeline.types import List, String
 
-from .files import (
-    FreeFlowTravelTimeComparisonPlotFile,
-    RoadEdgesPenaltyCoefficientsFile,
-    RoadEdgesVariablesFile,
-    TargetRoutesFile,
-)
+from .files import FreeFlowRoadEdgesVariablesFile, RoadEdgesPenaltyCoefficientsFile
 
 if TYPE_CHECKING:
     import polars as pl
-
-
-def sum_edge_values_along_path(path: pl.Expr, edge_ids: pl.Series, values: pl.Series) -> pl.Expr:
-    import polars as pl
-
-    return path.list.eval(pl.element().replace_strict(edge_ids, values)).list.sum()
 
 
 def compute_regression_variables(
@@ -123,13 +112,6 @@ def compute_regression_variables(
     return df
 
 
-def check_free_flow_tt(columns: list[str]):
-    if "target_free_flow_tt" not in columns:
-        raise MetropyError(
-            "Column `target_free_flow_tt` is required in `TargetRoutesFile` but is not defined."
-        )
-
-
 def coefs_to_df(coefs: dict[str, float]) -> pl.DataFrame:
     import polars as pl
 
@@ -166,7 +148,7 @@ class FreeFlowLassoStep(Step):
         description="Name of variables to be used as additive penalties in the Lasso regression.",
         note=(
             "A constant is automatically included. "
-            "The listed variables must be available in `RoadEdgesVariablesFile`."
+            "The listed variables must be available in `FreeFlowRoadEdgesVariablesFile`."
         ),
     )
     additive_interaction_variables = ListParameter(
@@ -177,7 +159,7 @@ class FreeFlowLassoStep(Step):
             "Name of variable pairs whose interaction is used as additive penalties in the Lasso "
             "regression."
         ),
-        note="The listed variables must be available in `RoadEdgesVariablesFile`.",
+        note="The listed variables must be available in `FreeFlowRoadEdgesVariablesFile`.",
     )
     multiplicative_variables = ListParameter(
         "calibration.free_flow_travel_time.multiplicative_variables",
@@ -188,7 +170,7 @@ class FreeFlowLassoStep(Step):
         ),
         note=(
             "A constant is automatically included. "
-            "The listed variables must be available in `RoadEdgesVariablesFile`."
+            "The listed variables must be available in `FreeFlowRoadEdgesVariablesFile`."
         ),
     )
     multiplicative_interaction_variables = ListParameter(
@@ -199,10 +181,10 @@ class FreeFlowLassoStep(Step):
             "Name of variable pairs whose interaction is used as multiplicative penalties in the "
             "Lasso regression."
         ),
-        note="The listed variables must be available in `RoadEdgesVariablesFile`.",
+        note="The listed variables must be available in `FreeFlowRoadEdgesVariablesFile`.",
     )
 
-    input_files = {"variables": RoadEdgesVariablesFile, "routes": TargetRoutesFile}
+    input_files = {"variables": FreeFlowRoadEdgesVariablesFile, "routes": TargetRoutesFile}
     output_files = {"coefs": RoadEdgesPenaltyCoefficientsFile}
 
     def run(self):
@@ -230,44 +212,3 @@ class FreeFlowLassoStep(Step):
 
         df = coefs_to_df(coefs)
         self.output["coefs"].write(df)
-
-
-class FreeFlowTravelTimeComparisonStep(PlotStep):
-    """Compares observed and Metropolis-simulated free-flow travel times of the target routes."""
-
-    input_files = {"edges_fftt": RoadEdgesFreeFlowTravelTimeFile, "routes": TargetRoutesFile}
-    output_files = {"comparison_plot": FreeFlowTravelTimeComparisonPlotFile}
-
-    def run(self):
-        import polars as pl
-
-        routes = self.input["routes"].scan()
-        if "target_free_flow_tt" not in routes.collect_schema().names():
-            logger.warning('No "target_free_flow_tt" in the target routes, skipping step.')
-            return
-
-        edges_fftt = self.input["edges_fftt"].read()
-
-        edges_fftt = edges_fftt.with_columns(
-            free_flow_travel_time=pl.col("free_flow_travel_time").dt.total_seconds(fractional=True)
-        )
-
-        df = routes.select(
-            metropolis_tt=sum_edge_values_along_path(
-                pl.col("path"), edges_fftt["edge_id"], edges_fftt["free_flow_travel_time"]
-            ),
-            target_tt=pl.col("target_free_flow_tt").dt.total_seconds(fractional=True),
-        ).collect()
-
-        observed = df["target_tt"].to_numpy()
-        predicted = df["metropolis_tt"].to_numpy()
-        rmse = float(((observed - predicted) ** 2).mean() ** 0.5)
-
-        fig = plot_travel_time_comparison(
-            observed,
-            predicted,
-            rmse,
-            xlabel="Observed free-flow travel time",
-            ylabel="Metropolis free-flow travel time",
-        )
-        self.output["comparison_plot"].write(fig)

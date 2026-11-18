@@ -9,20 +9,15 @@ from typing import TYPE_CHECKING
 from loguru import logger
 
 from pymetropolis.common import ThreadedStep
+from pymetropolis.metro_calibration.road.files import TargetRoutesFile
 from pymetropolis.metro_common import MetropyError
-from pymetropolis.metro_common.plots import PlotStep, plot_travel_time_comparison
 from pymetropolis.metro_network.road_network.files import RoadEdgesCleanFile, RoadEdgesPenaltiesFile
 from pymetropolis.metro_simulation.parameters.step import StepWithPeriod
 from pymetropolis.metro_simulation.run.exec import AbstractRunSimulationStep
 from pymetropolis.metro_simulation.run.files import MetroExAnteSimulatedTravelTimeFunctionsFile
 from pymetropolis.modes import CarDriverAloneVehicle
 
-from .files import (
-    CongestionTimeComparisonPlotFile,
-    TargetRoutesCongestionTimesFile,
-    TargetRoutesFile,
-)
-from .free_flow_lasso import check_free_flow_tt
+from .files import TargetRoutesCongestionTimesFile
 
 if TYPE_CHECKING:
     import polars as pl
@@ -227,53 +222,3 @@ class CongestionSimulationStep(ThreadedStep, AbstractRunSimulationStep, StepWith
         logger.debug("Computing congestion times")
         congestion_times = compute_congestion_times(route_results, edges)
         self.output["congestion_times"].write(congestion_times)
-
-
-class CongestionTimeComparisonStep(PlotStep):
-    """Compares observed and Metropolis-simulated congested times of the target routes."""
-
-    input_files = {"routes": TargetRoutesFile, "congestion_times": TargetRoutesCongestionTimesFile}
-    output_files = {"comparison_plot": CongestionTimeComparisonPlotFile}
-
-    def run(self):
-        import polars as pl
-
-        routes = self.input["routes"].read()
-        check_free_flow_tt(routes.columns)
-        congestion_times = self.input["congestion_times"].scan()
-
-        observed_tt = routes.select(
-            "route_id",
-            target_congested_time=(
-                pl.col("target_tt") - pl.col("target_free_flow_tt")
-            ).dt.total_seconds(fractional=True),
-        )
-
-        simulated_tt = congestion_times.select(
-            "route_id",
-            metropolis_congested_time=pl.col("congested_time").dt.total_seconds(fractional=True),
-        ).collect()
-
-        df = simulated_tt.join(observed_tt, on="route_id", how="inner")
-        observed = df["target_congested_time"].to_numpy()
-        predicted = df["metropolis_congested_time"].to_numpy()
-        rmse = float(((observed - predicted) ** 2).mean() ** 0.5)
-
-        logger.debug(f"Average congested time (observed): {observed.mean()}")
-        logger.debug(
-            f"Congested time (observed): {observed_tt['target_congested_time'].describe()}"
-        )
-        logger.debug(f"Average congested time (simulated): {predicted.mean()}")
-        logger.debug(
-            f"Congested time (simulated): {simulated_tt['metropolis_congested_time'].describe()}"
-        )
-        logger.debug(f"RMSE: {rmse:.2f}")
-
-        fig = plot_travel_time_comparison(
-            observed,
-            predicted,
-            rmse,
-            xlabel="Observed congested time",
-            ylabel="Metropolis congested time",
-        )
-        self.output["comparison_plot"].write(fig)

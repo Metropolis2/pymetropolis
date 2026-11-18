@@ -193,18 +193,18 @@ residential = 1200.0
 # traffic_signals_factor = 0.5
 # roundabout_factor = 0.75
 
-[road_network.calibration_variables]
-[road_network.calibration_variables.lanes]
+[road_network.free_flow_calibration.variables]
+[road_network.free_flow_calibration.variables.lanes]
 type = "intervals"
 cuts = [1, 2, 3]  # 1 lane, 2 lanes, 3 lanes, 3+ lanes
 
-[road_network.calibration_variables.speed_limit]
+[road_network.free_flow_calibration.variables.speed_limit]
 type = "intervals"
 cuts = [30, 50, 70, 80, 90, 110]
 
-[road_network.calibration_variables.edge_type]
+[road_network.free_flow_calibration.variables.edge_type]
 type = "categories"
-[road_network.calibration_variables.edge_type.map]
+[road_network.free_flow_calibration.variables.edge_type.map]
 motorway = "motorway"
 motorway_link = "motorway_link"
 trunk = "trunk"

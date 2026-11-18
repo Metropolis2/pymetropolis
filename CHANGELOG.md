@@ -67,6 +67,7 @@ New steps:
 - `SurveyedTripsODPointsStep`
 - `SurveyedPedestrianODNodesFromPointsStep`
 - `SurveyedRoadODNodesFromPointsStep`
+- `WriteEdgeCapacityFactorsStep`
 
 New files:
 
@@ -133,6 +134,7 @@ New files:
 - `SurveyedTripsPedestrianNodesFile`
 - `SurveyedTripsRoadNodesFile`
 - `SurveyModeChoiceProbabilitiesFile`
+- `EdgeCapacityFactorsFile`
 
 New parameters:
 
@@ -212,6 +214,10 @@ Other changes:
   `calibration/road/target_routes.parquet` and columns changed).
 - Renamed variable `driving_license_ratio` to `cars_per_license`.
 - Simplify the TomTom routes geometries to reduce disk use.
+- Renamed step `RoadEdgesVariablesFile` to `FreeFlowRoadEdgesVariablesFiles` and changed its path to
+  the `free_flow` subdir.
+- Renamed parameter `road_network.calibration_variables` to
+  `road_network.free_flow_calibration.variables`.
 
 Removed steps:
 
