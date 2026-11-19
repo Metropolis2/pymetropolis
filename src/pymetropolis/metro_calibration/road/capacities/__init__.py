@@ -1,6 +1,11 @@
 from .congestion import CongestionSimulationStep
-from .factors import WriteEdgeCapacityFactorsStep
+from .factors import (
+    CapacitiesFromFactorsStep,
+    CustomCapacityFactorsStep,
+    WriteEdgeCapacityFactorsStep,
+)
 from .files import (
+    CapacityFactorsFile,
     CongestionTimeComparisonPlotFile,
     EdgeCapacityFactorsFile,
     TargetRoutesCongestionTimesFile,
@@ -11,10 +16,13 @@ CAPACITIES_FILES = [
     TargetRoutesCongestionTimesFile,
     CongestionTimeComparisonPlotFile,
     EdgeCapacityFactorsFile,
+    CapacityFactorsFile,
 ]
 
 CAPACITIES_STEPS = [
     CongestionSimulationStep,
     CongestionTimeComparisonStep,
     WriteEdgeCapacityFactorsStep,
+    CustomCapacityFactorsStep,
+    CapacitiesFromFactorsStep,
 ]

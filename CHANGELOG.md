@@ -68,6 +68,8 @@ New steps:
 - `SurveyedPedestrianODNodesFromPointsStep`
 - `SurveyedRoadODNodesFromPointsStep`
 - `WriteEdgeCapacityFactorsStep`
+- `CustomCapacityFactorsStep`
+- `CapacitiesFromFactorsStep`
 
 New files:
 
@@ -135,6 +137,7 @@ New files:
 - `SurveyedTripsRoadNodesFile`
 - `SurveyModeChoiceProbabilitiesFile`
 - `EdgeCapacityFactorsFile`
+- `CapacityFactorsFile`
 
 New parameters:
 

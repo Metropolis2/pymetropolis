@@ -2,6 +2,7 @@ from pymetropolis.metro_pipeline.file import (
     Column,
     MetroDataFrameFile,
     MetroDataType,
+    MetroJsonFile,
     MetroPlotFile,
 )
 
@@ -64,3 +65,11 @@ class TargetRoutesCongestionTimesFile(MetroDataFrameFile):
             nullable=False,
         ),
     ]
+
+
+class CapacityFactorsFile(MetroJsonFile):
+    path = "calibration/road/capacities/factors.json"
+    description = (
+        'Capacity factors as a map from factor name (`"{variable}={modality}"`, '
+        'e.g., `"lanes=(1,inf]"`) to capacity multiplier.'
+    )
