@@ -259,7 +259,6 @@ class WriteExAnteMetroParametersStep(AbstractWriteMetroParametersStep):
     # Overwrite the nb_iterations parameter.
     nb_iterations = IntParameter(
         "simulation.ex_ante_nb_iterations",
-        default=1,
         description="Number of iterations for the ex-ante simulation.",
     )
     priority = 0
@@ -272,6 +271,9 @@ class WriteExAnteMetroParametersStep(AbstractWriteMetroParametersStep):
         "trips": InputFile(MetroExAnteTripsFile, optional=True),
     }
     output_files = {"parameters": MetroExAnteParametersFile}
+
+    def is_defined(self):
+        return self.nb_iterations is not None
 
     def output_directory(self) -> str:
         return "ex_ante_output"
