@@ -26,7 +26,7 @@ from pymetropolis.metro_demand.population.files import (
     ToursFile,
     TripsFile,
 )
-from pymetropolis.metro_pipeline import PopulationStep, Step
+from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.metro_pipeline.parameters import (
     BoolParameter,
     IntParameter,
@@ -57,8 +57,12 @@ if TYPE_CHECKING:
     import polars as pl
 
 
-class ExternalJointToursClassifierStep(Step):
-    """Import an estimator for joint-tours classification from another Pymetropolis run."""
+class ExternalJointToursClassifierStep(PopulationStep):
+    """Import an estimator for joint-tours classification from another Pymetropolis run.
+
+    The estimator is specific to each population: `joint_travel.external_model` must be set in the
+    config of each population that uses a classifier.
+    """
 
     path = PathParameter(
         "joint_travel.external_model",
@@ -97,8 +101,13 @@ def filter_joint_tour_observations(tours: pl.DataFrame) -> pl.DataFrame:
     return tours.filter(pl.col("nb_persons") > 1)
 
 
-class EstimateJointToursClassifierStep(RandomStep, ThreadedStep):
-    """Estimates a Machine Learning model to classify joint tours."""
+class EstimateJointToursClassifierStep(RandomStep, ThreadedStep, PopulationStep):
+    """Estimates a Machine Learning model to classify joint tours.
+
+    The estimator is specific to each population: the `joint_travel` parameters must be set in the
+    config of each population that uses a classifier. The survey data are shared by all the
+    populations (they are read from the main config).
+    """
 
     features = ListParameter(
         "joint_travel.features",
@@ -146,7 +155,7 @@ class EstimateJointToursClassifierStep(RandomStep, ThreadedStep):
         self.output["results"].write(results)
 
 
-class JointToursFeatureImportanceStep(RandomStep, ThreadedStep):
+class JointToursFeatureImportanceStep(RandomStep, ThreadedStep, PopulationStep):
     """Computes the permutation feature importance of the joint-tour classifier."""
 
     feature_importance = BoolParameter(
@@ -191,7 +200,7 @@ class JointToursFeatureImportanceStep(RandomStep, ThreadedStep):
         self.output["importance"].write(df)
 
 
-class JointToursFeatureImportancePlotStep(PlotStep):
+class JointToursFeatureImportancePlotStep(PlotStep, PopulationStep):
     """Plots the permutation feature importance of the joint-tour classifier."""
 
     nb_plotted_features = IntParameter(

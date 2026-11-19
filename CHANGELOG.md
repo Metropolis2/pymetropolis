@@ -70,6 +70,7 @@ New steps:
 - `WriteEdgeCapacityFactorsStep`
 - `CustomCapacityFactorsStep`
 - `CapacitiesFromFactorsStep`
+- `SingleModeToursStep`
 
 New files:
 
@@ -221,6 +222,7 @@ Other changes:
   the `free_flow` subdir.
 - Renamed parameter `road_network.calibration_variables` to
   `road_network.free_flow_calibration.variables`.
+- `EstimateJointToursClassifierStep` is now a PopulationStep.
 
 Removed steps:
 

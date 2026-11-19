@@ -57,6 +57,7 @@ from .modes import (
     ExternalModeClassifierStep,
     ModeFeatureImportancePlotStep,
     ModeFeatureImportanceStep,
+    SingleModeToursStep,
 )
 from .tours import CleanSurveyToursStep
 from .travel_times import (
@@ -132,6 +133,7 @@ SURVEY_STEPS = [
     ModeFeatureImportanceStep,
     ModeFeatureImportancePlotStep,
     ClassifyToursModeStep,
+    SingleModeToursStep,
     CompareToursModeSharesStep,
     SurveyedZoneMedoidsStep,
     SurveyedTripsODPointsStep,

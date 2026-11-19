@@ -21,7 +21,7 @@ from pymetropolis.metro_common.plots import (
 )
 from pymetropolis.metro_demand.population.common import TOUR_VARIABLE_LABELS
 from pymetropolis.metro_demand.population.files import ToursFile, ToursModeFile
-from pymetropolis.metro_pipeline import PopulationStep, Step
+from pymetropolis.metro_pipeline import PopulationStep
 from pymetropolis.metro_pipeline.parameters import (
     BoolParameter,
     IntParameter,
@@ -51,8 +51,16 @@ if TYPE_CHECKING:
     import polars as pl
 
 
-class ExternalModeClassifierStep(Step):
-    """Import an estimator for modes classification from another Pymetropolis run."""
+class ExternalModeClassifierStep(PopulationStep):
+    """Import an estimator for modes classification from another Pymetropolis run.
+
+    The estimator defines the modes that can be attributed to tours by ClassifyToursModeStep.
+    If these modes are different from those in `mode_choice.modes`, some tours might be dropped in
+    the simulation.
+
+    The estimator is specific to each population: `mode_classifier.external_model` must be set in
+    the config of each population that uses a classifier.
+    """
 
     path = PathParameter(
         "mode_classifier.external_model",
@@ -96,8 +104,13 @@ def filter_survey_tours(modes: list[MetaMode], tours: pl.DataFrame) -> pl.DataFr
     return tours.drop_nulls("tour_mode")
 
 
-class EstimateModeClassifierStep(RandomStep, ThreadedStep, StepWithModes):
-    """Estimates a Machine Learning model to predict tour-level modes."""
+class EstimateModeClassifierStep(RandomStep, ThreadedStep, StepWithModes, PopulationStep):
+    """Estimates a Machine Learning model to predict tour-level modes.
+
+    The estimator is specific to each population: the `mode_classifier` parameters must be set in
+    the config of each population that uses a classifier. The survey data are shared by all the
+    populations (they are read from the main config).
+    """
 
     features = ListParameter(
         "mode_classifier.features",
@@ -155,7 +168,7 @@ class EstimateModeClassifierStep(RandomStep, ThreadedStep, StepWithModes):
         self.output["results"].write(results)
 
 
-class ModeFeatureImportanceStep(RandomStep, ThreadedStep, StepWithModes):
+class ModeFeatureImportanceStep(RandomStep, ThreadedStep, StepWithModes, PopulationStep):
     """Computes the permutation feature importance of the tour-mode classifier."""
 
     feature_importance = BoolParameter(
@@ -200,7 +213,7 @@ class ModeFeatureImportanceStep(RandomStep, ThreadedStep, StepWithModes):
         self.output["importance"].write(df)
 
 
-class ModeFeatureImportancePlotStep(PlotStep):
+class ModeFeatureImportancePlotStep(PlotStep, PopulationStep):
     """Plots the permutation feature importance of the tour-mode classifier."""
 
     nb_plotted_features = IntParameter(
@@ -229,44 +242,55 @@ class ModeFeatureImportancePlotStep(PlotStep):
         self.output["plot"].write(fig)
 
 
-class ClassifyToursModeStep(RandomStep, StepWithModes, PopulationStep):
+class ClassifyToursModeStep(RandomStep, PopulationStep):
     """Predict an ex-ante mode for each tour, based on the mode classifier.
 
-    For a population with a single mode (e.g., trucks), all the tours get this mode and the
-    classifier is not used.
+    The modes are drawn among the classes of the estimator.
     """
 
-    input_files = {
-        "tours": ToursFile,
-        "estimator": InputFile(
-            ModeEstimatorFile,
-            when=lambda inst: inst.has_mode_choice() or not inst.has_any_mode(),
-            when_doc="unless the population has a single mode",
-        ),
-    }
+    input_files = {"tours": ToursFile, "estimator": ModeEstimatorFile}
     output_files = {"modes": ToursModeFile}
 
     def run(self):
         import polars as pl
 
         tours = self.input["tours"].read()
+        estimator = self.input["estimator"].read()
 
-        if self.modes is not None and len(self.modes) == 1:
-            df = tours.select("tour_id", mode=pl.lit(repr(self.modes[0])))
-        else:
-            estimator = self.input["estimator"].read()
+        features = estimator.feature_names_in_
 
-            features = estimator.feature_names_in_
+        X = get_X(tours, features)
 
-            X = get_X(tours, features)
+        modes = sample_classes(X, estimator, self.get_rng(str(self)))
 
-            modes = sample_classes(X, estimator, self.get_rng(str(self)))
-
-            df = tours.select("tour_id", mode=pl.Series("mode", modes, dtype=pl.String))
+        df = tours.select("tour_id", mode=pl.Series("mode", modes, dtype=pl.String))
 
         for mode, count in df["mode"].value_counts(sort=True).iter_rows():
             logger.info(f"Share of tours with mode `{mode}`: {count / len(df):.2%}")
 
+        self.output["modes"].write(df)
+
+
+class SingleModeToursStep(StepWithModes, PopulationStep):
+    """Sets the single mode of the population as the ex-ante mode of all tours.
+
+    This Step is only used for a population with a single mode and no mode classifier: when a
+    classifier is defined for the population, `ClassifyToursModeStep` is used instead.
+    """
+
+    input_files = {"tours": ToursFile}
+    output_files = {"modes": ToursModeFile}
+    priority = 0
+
+    def is_defined(self) -> bool:
+        return self.modes is not None and len(self.modes) == 1
+
+    def run(self):
+        import polars as pl
+
+        assert self.modes is not None
+        tours = self.input["tours"].read()
+        df = tours.select("tour_id", mode=pl.lit(repr(self.modes[0])))
         self.output["modes"].write(df)
 
 

@@ -9,4 +9,5 @@ class ThreadedStep(Step):
         "nb_threads",
         description="Maximum number of threads to be used when running tasks in parallel.",
         note="Default is to use all the available threads.",
+        shared=True,
     )

@@ -957,18 +957,18 @@ class SurveyedTripsCarTravelTimesFile(MetroDataFrameFile):
     ]
 
 
-class JointTourEstimatorFile(MetroMLEstimatorFile):
-    path = "calibration/survey/joint_tour_estimator.joblib"
+class JointTourEstimatorFile(MetroMLEstimatorFile, PopulationFile):
+    path = "calibration/survey/{population}/joint_tour_estimator.joblib"
     description = "ML estimator for the classification of joint tours."
 
 
-class ModeEstimatorFile(MetroMLEstimatorFile):
-    path = "calibration/survey/mode_estimator.joblib"
+class ModeEstimatorFile(MetroMLEstimatorFile, PopulationFile):
+    path = "calibration/survey/{population}/mode_estimator.joblib"
     description = "ML estimator for the classification of tours' mode."
 
 
-class JointTourEstimationResultsFile(MetroJsonFile):
-    path = "calibration/survey/joint_tour_estimation_results.json"
+class JointTourEstimationResultsFile(MetroJsonFile, PopulationFile):
+    path = "calibration/survey/{population}/joint_tour_estimation_results.json"
     description = (
         "JSON file with the results of the estimation of the joint-tour classifier: selected model "
         "and hyperparameters, cross-validated scores (Brier score and fidelity, lower is better), "
@@ -977,8 +977,8 @@ class JointTourEstimationResultsFile(MetroJsonFile):
     )
 
 
-class ModeEstimationResultsFile(MetroJsonFile):
-    path = "calibration/survey/mode_estimation_results.json"
+class ModeEstimationResultsFile(MetroJsonFile, PopulationFile):
+    path = "calibration/survey/{population}/mode_estimation_results.json"
     description = (
         "JSON file with the results of the estimation of the tour-mode classifier: selected "
         "model and hyperparameters, cross-validated scores (Brier score and fidelities, lower is "
@@ -1027,25 +1027,25 @@ def _feature_importance_schema(model_description: str) -> list[Column]:
     ]
 
 
-class JointTourFeatureImportanceFile(MetroDataFrameFile):
-    path = "calibration/survey/joint_tour_feature_importance.parquet"
+class JointTourFeatureImportanceFile(MetroDataFrameFile, PopulationFile):
+    path = "calibration/survey/{population}/joint_tour_feature_importance.parquet"
     description = "Permutation feature importance of the joint-tour classifier."
     schema = _feature_importance_schema("the joint-tour classifier")
 
 
-class JointTourFeatureImportancePlotFile(MetroPlotFile):
-    path = "calibration/survey/graphs/joint_tour_feature_importance.{format}"
+class JointTourFeatureImportancePlotFile(MetroPlotFile, PopulationFile):
+    path = "calibration/survey/{population}/joint_tour_feature_importance.{format}"
     description = "Bar plot of the permutation feature importance of the joint-tour classifier."
 
 
-class ModeFeatureImportanceFile(MetroDataFrameFile):
-    path = "calibration/survey/mode_feature_importance.parquet"
+class ModeFeatureImportanceFile(MetroDataFrameFile, PopulationFile):
+    path = "calibration/survey/{population}/mode_feature_importance.parquet"
     description = "Permutation feature importance of the tour-mode classifier."
     schema = _feature_importance_schema("the tour-mode classifier")
 
 
-class ModeFeatureImportancePlotFile(MetroPlotFile):
-    path = "calibration/survey/graphs/mode_feature_importance.{format}"
+class ModeFeatureImportancePlotFile(MetroPlotFile, PopulationFile):
+    path = "calibration/survey/{population}/mode_feature_importance.{format}"
     description = "Bar plot of the permutation feature importance of the tour-mode classifier."
 
 
