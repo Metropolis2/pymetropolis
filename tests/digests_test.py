@@ -352,7 +352,7 @@ def test_step_is_rerun_after_a_content_change_but_not_after_a_touch():
 def test_update_required_does_not_raise_for_a_missing_data_file():
     """Regression: the removed mtime check called `stat()` unguarded on a set-but-absent path.
 
-    Reachable through `survey.mobisurvstd.path`, the only path parameter declaring neither
+    Reachable through `survey.nemobi.path`, the only path parameter declaring neither
     `check_file_exists` nor `check_dir_exists`: `save_update_dict` skipped the missing file, so
     the next run found no recorded mtime, fell through the guard and raised `FileNotFoundError`.
     """

@@ -13,7 +13,7 @@ from pymetropolis.metro_calibration.econometrics.preferences import (
     compute_mode_preferences,
     get_monetary_utility_scale,
 )
-from pymetropolis.metro_calibration.survey.mobisurvstd import MobiSurvStdImportStep
+from pymetropolis.metro_calibration.survey.nemobi import NemobiImportStep
 from pymetropolis.metro_common import MetropyError
 from pymetropolis.metro_common.plots import PlotStep
 from pymetropolis.metro_demand.modes.files import BicycleTravelTimesFile, WalkingTravelTimesFile
@@ -65,14 +65,12 @@ RS_SUBSIDY_LEVELS = np.arange(0, 4, 0.05)
 KM_COST = 0.5
 
 
-class MobiSurvStdImportStep(MobiSurvStdImportStep):
-    """Overrides the built-in `MobiSurvStdImportStep` to optionally discard the surveyed
+class NemobiImportStep(NemobiImportStep):
+    """Overrides the built-in `NemobiImportStep` to optionally discard the surveyed
     households with at least one member younger than 5 years old (they are not surveyed).
     """
 
-    exclude_young_children = BoolParameter(
-        "survey.mobisurvstd.exclude_young_children", default=True
-    )
+    exclude_young_children = BoolParameter("survey.nemobi.exclude_young_children", default=True)
 
     def run(self):
         # Read and standardize the survey with the original Step.

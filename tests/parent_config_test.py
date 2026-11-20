@@ -8,6 +8,7 @@ from pymetropolis.metro_pipeline import Config, MetroPipeline, PopulationStep, S
 from pymetropolis.metro_pipeline.file import MetroTxtFile, PopulationFile
 from pymetropolis.metro_pipeline.parameters import (
     IntParameter,
+    Key,
     ListParameter,
     PathParameter,
     StringParameter,
@@ -57,6 +58,17 @@ class SharedValueStep(PopulationStep):
 
 class NonSharedValueStep(PopulationStep):
     value = StringParameter("dep.value")
+
+    def run(self):
+        pass
+
+
+class DeprecatedKeyStep(Step):
+    value = StringParameter("dep.value", deprecated_keys="old.value")
+
+
+class SharedDeprecatedKeyStep(PopulationStep):
+    value = StringParameter("dep.value", deprecated_keys="old.value", shared=True)
 
     def run(self):
         pass
@@ -338,7 +350,7 @@ def test_extra_population_is_merged_by_name():
         assert config.population_names == ["trucks"]
         step = NonSharedValueStep.for_population(config, "trucks")
         assert step.value == "from-derived"
-        assert config.resolve_parameter(["dep", "other"], "trucks") == "other-from-parent"
+        assert config.resolve_parameter(Key("dep.other"), "trucks") == "other-from-parent"
 
 
 def test_population_names_list_parent_populations_first():
@@ -431,11 +443,54 @@ def test_non_shared_parameter_does_not_fall_back_to_any_main_config():
         assert NonSharedValueStep.for_population(config, "trucks").value is None
 
 
+# ---------------------------------------------------------------------------
+# Deprecated keys
+# ---------------------------------------------------------------------------
+
+
+def test_deprecated_key_in_derived_config_overrides_current_key_in_parent_config():
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        config = _parent_and_derived(
+            Path(tmp_dir), '[dep]\nvalue = "from-parent"\n', '[old]\nvalue = "from-derived"\n'
+        )
+        assert DeprecatedKeyStep(config).value == "from-derived"
+
+
+def test_current_key_in_derived_config_overrides_deprecated_key_in_parent_config():
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        config = _parent_and_derived(
+            Path(tmp_dir), '[old]\nvalue = "from-parent"\n', '[dep]\nvalue = "from-derived"\n'
+        )
+        assert DeprecatedKeyStep(config).value == "from-derived"
+
+
+def test_current_key_beats_deprecated_key_in_the_same_config():
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        config = _parent_and_derived(
+            Path(tmp_dir), "", '[dep]\nvalue = "current"\n[old]\nvalue = "deprecated"\n'
+        )
+        assert DeprecatedKeyStep(config).value == "current"
+
+
+def test_deprecated_key_in_population_config_overrides_current_key_in_main_config():
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp = Path(tmp_dir)
+        _write_toml(
+            tmp / "derived" / "trucks.toml",
+            'population_name = "trucks"\n[old]\nvalue = "from-trucks"\n',
+        )
+        config = _parent_and_derived(
+            tmp, "", 'extra_populations = ["trucks.toml"]\n[dep]\nvalue = "from-main"\n'
+        )
+        assert SharedDeprecatedKeyStep.for_population(config, "trucks").value == "from-trucks"
+        assert SharedDeprecatedKeyStep(config).value == "from-main"
+
+
 def test_unknown_population_name_rejected():
     with tempfile.TemporaryDirectory() as tmp_dir:
         config = _parent_and_derived(Path(tmp_dir), "", "")
         with pytest.raises(MetropyError):
-            config.resolve_parameter(["dep", "value"], "nope")
+            config.resolve_parameter(Key("dep.value"), "nope")
 
 
 def test_main_population_is_inherited():

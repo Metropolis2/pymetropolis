@@ -16,6 +16,8 @@ from .steps import MAIN_POPULATION_NAME, PopulationStep, Step
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
+    from pymetropolis.metro_pipeline.parameters import Key
+
 # Top-level configuration key used to specify the main directory location.
 MAIN_DIR_KEY = "main_directory"
 # Top-level configuration key used to specify the secrets file location.
@@ -307,9 +309,15 @@ class Config:
         return steps
 
     def _lookup_parameter(
-        self, key: list[str], population_name: str | None = None, shared: bool = False
-    ) -> tuple[Any, Config] | None:
-        """Finds the config of the chain defining `key`; returns the raw value and that config.
+        self, keys: Key | list[Key], population_name: str | None = None, shared: bool = False
+    ) -> tuple[Any, Config, Key] | None:
+        """Finds the config of the chain defining one of `keys`; returns the raw value, that config
+        and the key that was found.
+
+        `keys` are aliases of a single parameter, in decreasing order of priority. They are all
+        tried in each config file before moving on to the next one, so that the nearest config
+        defining the parameter wins, whichever alias it uses (e.g., a deprecated key set in a
+        derived config still overrides the current key set in its parent config).
 
         Values are inherited along the chain of parent configs, so the lookup is done in two passes,
         the population config files first and the main config files second. This way, a
@@ -321,8 +329,18 @@ class Config:
            chain. A non-`shared` parameter stops there and is never read from a main config.
         2. The main config file of each config of the chain.
 
-        Returns `None` if the key is not defined by any config of the chain.
+        Returns `None` if none of the keys is defined by any config of the chain.
         """
+        if not isinstance(keys, list):
+            keys = [keys]
+
+        def find(d: dict) -> tuple[Any, Key] | None:
+            for key in keys:
+                value = self._resolve_from_dict(d, key)
+                if value is not None:
+                    return value, key
+            return None
+
         if population_name is not None:
             if population_name not in self.population_names:
                 raise MetropyError(f"Unknown population: `{population_name}`")
@@ -331,36 +349,38 @@ class Config:
                 if pop_dict is None:
                     # That config of the chain does not declare this population.
                     continue
-                value = self._resolve_from_dict(pop_dict, key)
-                if value is not None:
-                    return value, config
+                found = find(pop_dict)
+                if found is not None:
+                    return found[0], config, found[1]
             if not shared:
                 # A parameter which is not shared across populations is never read from a main
                 # config when it is resolved for an extra population.
                 return None
         for config in self.chain():
-            value = self._resolve_from_dict(config.dict, key)
-            if value is not None:
-                return value, config
+            found = find(config.dict)
+            if found is not None:
+                return found[0], config, found[1]
         return None
 
     def resolve_parameter(
-        self, key: list[str], population_name: str | None = None, shared: bool = False
+        self, keys: Key | list[Key], population_name: str | None = None, shared: bool = False
     ):
-        """Returns the value associated to the given key in the config (see `_lookup_parameter`).
+        """Returns the value associated to the given key (or to the first alias found, see
+        `_lookup_parameter`) in the config.
 
         The value is passed through `resolve_indirection` (so `"secret:"` / `"env:"` values are
         handled).
 
         Returns None if the value is not defined.
         """
-        value, _ = self.resolve_parameter_with_origin(key, population_name, shared=shared)
+        value, _, _ = self.resolve_parameter_with_origin(keys, population_name, shared=shared)
         return value
 
     def resolve_parameter_with_origin(
-        self, key: list[str], population_name: str | None = None, shared: bool = False
-    ) -> tuple[Any, Config]:
-        """Same as `resolve_parameter`, also returning the config the value was written in.
+        self, keys: Key | list[Key], population_name: str | None = None, shared: bool = False
+    ) -> tuple[Any, Config, Key | None]:
+        """Same as `resolve_parameter`, also returning the config the value was written in and the
+        key it was found under.
 
         `Parameter.from_config` needs that config to resolve the value's relative paths against
         *its* directory: a path written in a parent config must point to the file next to *that*
@@ -369,17 +389,17 @@ class Config:
         The origin config is also the one resolving the `"secret:"` indirections, so that a secret
         used by a parent config is read from the secrets file of *that* config.
 
-        Returns `(None, self)` if the value is not defined, so that callers can use the returned
-        config unconditionally.
+        Returns `(None, self, None)` if the value is not defined, so that callers can use the
+        returned config unconditionally.
         """
-        found = self._lookup_parameter(key, population_name, shared=shared)
+        found = self._lookup_parameter(keys, population_name, shared=shared)
         if found is None:
-            return None, self
-        value, origin = found
+            return None, self, None
+        value, origin, key = found
         # Note. The lookup above tests the *raw* value, so a key which is defined but whose
         # `"secret:"` indirection cannot be resolved yields None here instead of falling back to
         # the parent config: a value which is declared but invalid must be reported, not inherited.
-        return origin.resolve_indirection(value), origin
+        return origin.resolve_indirection(value), origin, key
 
     def resolve_indirection(self, value: Any) -> Any:
         """Resolves a `"secret:skey"` / `"env:var"` string indirection to its actual value.
@@ -414,7 +434,7 @@ class Config:
         return path
 
     @staticmethod
-    def _resolve_from_dict(d: dict[str, Any], key: list[str]) -> Any:
+    def _resolve_from_dict(d: dict[str, Any], key: Key) -> Any:
         """Walks `d` following the dotted `key`, returning None if any segment is not found."""
         value: Any = d
         for k in key:

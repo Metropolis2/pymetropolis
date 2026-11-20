@@ -268,10 +268,10 @@ class EqasimImportStep(GeoStep, RandomStep, PopulationStep):
         - "parquet"
         - "geoparquet"
       ```
-    - Use MobiSurvStd for the Household Travel Survey (optional):
+    - Use Nemobi for the Household Travel Survey (optional):
       ```yaml
-      hts: mobisurvstd
-      mobisurvstd:
+      hts: nemobi
+      nemobi:
         path: path/to/compatible/hts/
       ```
     - Use `urban_type` and `professional_activity` as extra matching attributes (optional):

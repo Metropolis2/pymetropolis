@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
+from itertools import chain
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Generic, overload
 
+from loguru import logger
 from typing_extensions import TypeVar
 
 from pymetropolis.metro_common.errors import error_context
@@ -27,13 +29,47 @@ from .types import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from .config import Config
 
 T = TypeVar("T", default=Any)
 
 
+class Key:
+    """Class for lookup keys in the TOML configuration.
+
+    A key "outer.inner" means the "inner" entry within the "outer" TOML section.
+
+    The `_deprecated` attribute can be used for keys that should no longer be used.
+    """
+
+    _value: str
+    _key_list: list[str]
+    _deprecated: bool
+
+    def __init__(self, key: str, deprecated: bool = False):
+        self._value = key
+        self._key_list = key.split(".")
+        self._deprecated = deprecated
+
+    def __str__(self) -> str:
+        return self._value
+
+    def __iter__(self) -> Iterator[str]:
+        yield from self._key_list
+
+    @property
+    def deprecated(self) -> bool:
+        return self._deprecated
+
+
 class Parameter(Generic[T]):
-    key: list[str]
+    # Lookup keys for the parameter in the config.
+    # The first key found is used for the parameter value.
+    keys: list[Key]
+    # Deprecated lookup keys (they still work but log a deprecation warning).
+    deprecated_keys: list[Key]
     validator: Type
     description: str
     example: str
@@ -44,15 +80,21 @@ class Parameter(Generic[T]):
 
     def __init__(
         self,
-        key: str,
+        keys: str | list[str],
         validator: Type,
+        deprecated_keys: str | list[str] | None = None,
         default: Any = None,
         description: str = "",
         note: str = "",
         example: str = "",
         shared: bool = False,
     ):
-        self.key = key.split(".")
+        if not isinstance(keys, list):
+            keys = [keys]
+        self.keys = [Key(k) for k in keys]
+        if not isinstance(deprecated_keys, list):
+            deprecated_keys = [deprecated_keys] if deprecated_keys is not None else []
+        self.deprecated_keys = [Key(k, deprecated=True) for k in deprecated_keys]
         self.validator = validator
         self.description = description
         self.note = note
@@ -63,14 +105,17 @@ class Parameter(Generic[T]):
         self.default = default
 
     def __str__(self) -> str:
-        return ".".join(self.key)
+        return str(self.keys[0])
 
     def _md_doc(self) -> str:
-        key_str = ".".join(self.key)
+        key_str = str(self)
         doc = f"### `{key_str}`\n\n"
         if self.description:
             doc += f"- **Description:** {self.description}\n"
         doc += f"- **Allowed values:** {self.validator._describe()}\n"
+        if len(self.keys) > 1:
+            aliases = ", ".join([f"`{k}`" for k in self.keys[1:]])
+            doc += f"- **Aliases:** {aliases}\n"
         if self.example:
             doc += f"- **Example:** {self.example}\n"
         if self.note:
@@ -86,6 +131,24 @@ class Parameter(Generic[T]):
     def __get__(self, instance: Any, owner: Any) -> Any:
         return self
 
+    def iter_keys(self, exclude_deprecated: bool = False) -> Iterator[Key]:
+        """Iter all key aliases (in lookup order) for the parameter.
+
+        Deprecated keys are included if `exclude_deprecated` is False.
+        """
+        if exclude_deprecated:
+            return iter(self.keys)
+        else:
+            return chain(self.keys, self.deprecated_keys)
+
+    def _anchor(self) -> str:
+        """Returns the markdown URL anchor for the parameter (the first key, with dots removed)."""
+        return str(self.keys[0]).replace(".", "")
+
+    def nested(self) -> bool:
+        """Returns True if the main key lookup is nested, i.e., it looks within a TOML section."""
+        return len(list(self.keys[0])) > 1
+
     @error_context("Cannot validate parameter `{}`", fmt_args=[0])
     def from_config(self, config: Config, population_name: str | None = None) -> T | None:
         # Read parameter value from the config, or fall back to the default if no value is
@@ -93,16 +156,20 @@ class Parameter(Generic[T]):
         # descriptor object shared (by inheritance) across every Step subclass and instance that
         # declares it, so any state stored on `self` would leak between unrelated steps and
         # populations.
-        value, origin = config.resolve_parameter_with_origin(
-            self.key, population_name, shared=self.shared
+        value, origin, key = config.resolve_parameter_with_origin(
+            list(self.iter_keys()), population_name, shared=self.shared
         )
         if value is None:
+            # No key was found.
             # Set the value to its default, resolving indirection in case the default is of the form
             # secrets:* or env:*.
             value = config.resolve_indirection(self.default)
             # A default comes from the code, not from a config file, so it is resolved against the
             # config being run rather than against whichever parent config was last consulted.
             origin = config
+        elif key is not None and key.deprecated:
+            # Log a warning for deprecated keys.
+            logger.warning(f"Parameter key {key} is deprecated. Please use {self.keys[0]} instead.")
         if value is None:
             return None
         # Relative paths are resolved against the directory of the config the value was read from,

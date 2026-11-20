@@ -49,7 +49,6 @@ from .joint_travel import (
     JointToursFeatureImportancePlotStep,
     JointToursFeatureImportanceStep,
 )
-from .mobisurvstd import MobiSurvStdImportStep
 from .modes import (
     ClassifyToursModeStep,
     CompareToursModeSharesStep,
@@ -59,6 +58,7 @@ from .modes import (
     ModeFeatureImportanceStep,
     SingleModeToursStep,
 )
+from .nemobi import NemobiImportStep
 from .tours import CleanSurveyToursStep
 from .travel_times import (
     SurveyedPedestrianODNodesFromMedoidsStep,
@@ -118,7 +118,7 @@ SURVEY_FILES = [
 ]
 
 SURVEY_STEPS = [
-    MobiSurvStdImportStep,
+    NemobiImportStep,
     CleanSurveyToursStep,
     SurveyCharacteristicsStep,
     PopulationCharacteristicsStep,

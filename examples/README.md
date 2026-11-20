@@ -51,4 +51,4 @@ features.
   every Step whose config and inputs are unchanged.
 - [`france/config-joint-tours.toml`](extra/france/config-joint-tours.toml): trains a joint-tours
   classifier from an aggregation of French mobility surveys, imported with
-  [MobiSurvStd](https://github.com/Metropolis2/mobisurvstd).
+  [Nemobi](https://github.com/LucasJavaudin/Nemobi).

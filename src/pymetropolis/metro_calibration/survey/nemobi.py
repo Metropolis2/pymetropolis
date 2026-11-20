@@ -20,7 +20,7 @@ from .files import (
 
 if TYPE_CHECKING:
     import polars as pl
-    from mobisurvstd.classes import SurveyData
+    from nemobi.classes import SurveyData
 
 OFFSET = 1_000_000
 
@@ -74,7 +74,7 @@ def prepare_survey(survey: SurveyData, idx: int) -> dict[str, Any]:
 
 def concatenate_surveys(surveys: list[SurveyData]) -> SurveyData:
     import polars as pl
-    from mobisurvstd.classes import SurveyData
+    from nemobi.classes import SurveyData
 
     data = dict()
     survey_data = list()
@@ -109,26 +109,29 @@ def filter_survey_method(
     return households, others
 
 
-class MobiSurvStdImportStep(Step):
-    """Reads and standardizes a travel survey compatible with MobiSurvStd.
+class NemobiImportStep(Step):
+    """Reads and standardizes a travel survey compatible with Nemobi.
 
-    Check the [survey page](https://mobisurvstd.github.io/MobiSurvStd/surveys.html) for a list of
-    surveys supported by MobiSurvStd.
+    Check the [survey page](https://nemobi.lucasjavaudin.com/surveys.html) for a list of surveys
+    supported by Nemobi.
     """
 
     survey_path = PathParameter(
-        "survey.mobisurvstd.path",
-        description="Path to a directory or zipfile containing a survey supported by MobiSurvStd.",
+        "survey.nemobi.path",
+        deprecated_keys="survey.mobisurvstd.path",
+        description="Path to a directory or zipfile containing a survey supported by Nemobi.",
     )
     bulk = BoolParameter(
-        "survey.mobisurvstd.bulk",
+        "survey.nemobi.bulk",
+        deprecated_keys="survey.mobisurvstd.bulk",
         description=(
             "If true, all surveys in the provided directory are read in bulk and concatenated."
         ),
         default=False,
     )
     survey_method = EnumParameter(
-        "survey.mobisurvstd.survey_method",
+        "survey.nemobi.survey_method",
+        deprecated_keys="survey.mobisurvstd.survey_method",
         values=["face_to_face", "phone"],
         description=(
             "If set, only households surveyed with this method are kept (along with their "
@@ -151,21 +154,21 @@ class MobiSurvStdImportStep(Step):
         return self.survey_path is not None
 
     def run(self):
-        import mobisurvstd
+        import nemobi
 
         assert self.survey_path is not None
         assert self.bulk is not None
 
         survey_path = self.survey_path.resolve()
         if self.bulk:
-            surveys = mobisurvstd.bulk_standardize(survey_path)
+            surveys = nemobi.bulk_standardize(survey_path)
             if surveys is None:
-                raise MetropyError(f"Failed to read surveys with MobiSurvStd: `{survey_path}`.")
+                raise MetropyError(f"Failed to read surveys with Nemobi: `{survey_path}`.")
             survey = concatenate_surveys(surveys)
         else:
-            survey = mobisurvstd.standardize(survey_path)
+            survey = nemobi.standardize(survey_path)
             if survey is None:
-                raise MetropyError(f"Failed to read survey with MobiSurvStd: `{survey_path}`.")
+                raise MetropyError(f"Failed to read survey with Nemobi: `{survey_path}`.")
 
         households = survey.households
         if not self.bulk:

@@ -18,7 +18,7 @@ france = true
 od_method = "distance_matching"
 max_od_distance_error = 200
 nb_od_pair_draws = 100
-[survey.mobisurvstd]
+[survey.nemobi]
 path = "data/emc2-2023.zip"
 
 [osm_urban_areas]

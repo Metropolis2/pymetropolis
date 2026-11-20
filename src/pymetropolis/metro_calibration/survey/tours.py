@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 
 def urban_type_exprs(prefix: str) -> dict[str, pl.Expr]:
-    """Returns the cleaned urban-type variables of a location, from the MobiSurvStd columns starting
+    """Returns the cleaned urban-type variables of a location, from the Nemobi columns starting
     with `prefix` (e.g., `home`), as a dictionary mapping the clean column names to expressions.
     """
     import polars as pl
@@ -44,7 +44,7 @@ def urban_type_exprs(prefix: str) -> dict[str, pl.Expr]:
 
 
 def professional_activity_expr() -> pl.Expr:
-    """Returns the professional activity of the persons, from MobiSurvStd columns."""
+    """Returns the professional activity of the persons, from Nemobi columns."""
     import polars as pl
 
     return (
@@ -63,7 +63,7 @@ def professional_activity_expr() -> pl.Expr:
 
 
 def socioprofessional_class_expr() -> pl.Expr:
-    """Returns the socioprofessional class of the workers, from MobiSurvStd columns."""
+    """Returns the socioprofessional class of the workers, from Nemobi columns."""
     import polars as pl
 
     return pl.when(pl.col("pcs_group_code") <= 6, professional_occupation="worker").then(

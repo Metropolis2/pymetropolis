@@ -21,7 +21,7 @@ france = true
 od_method = "distance_matching"
 max_od_distance_error = 200
 nb_od_pair_draws = 100
-[survey.mobisurvstd]
+[survey.nemobi]
 path = "data/emc2-2023.zip"
 # Only keep `face_to_face`-surveyed households (all persons are interviewed).
 survey_method = "face_to_face"

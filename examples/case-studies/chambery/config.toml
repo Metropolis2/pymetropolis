@@ -20,7 +20,7 @@ aav_name = "Chambéry"
 france = true
 
 [survey]
-[survey.mobisurvstd]
+[survey.nemobi]
 path = "data/emc2-2022.zip"
 
 [joint_travel]

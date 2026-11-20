@@ -3,7 +3,7 @@ main_directory = "output-joint-tours/"
 random_seed = 13081996
 
 [survey]
-[survey.mobisurvstd]
+[survey.nemobi]
 path = "data/surveys/"
 bulk = true
 

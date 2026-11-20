@@ -70,7 +70,7 @@ class MetroPipeline:
             assert issubclass(step_class, Step), f"Not a valid Step: {step_class}"
             # Keep track of all keys used.
             for _, p in step_class._iter_params():
-                used_keys.add(str(p))
+                used_keys |= {str(k) for k in p.iter_keys()}
         # Instantiate every step against the config. Multiple steps are returned for
         # PopulationStep when multiple populations are defined in the config.
         self.steps, all_output_files = instantiate_step_graph(self.config, self.step_classes)

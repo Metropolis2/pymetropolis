@@ -1,7 +1,7 @@
 import polars as pl
 import pytest
 
-from pymetropolis.metro_calibration.survey.mobisurvstd import filter_survey_method
+from pymetropolis.metro_calibration.survey.nemobi import filter_survey_method
 from pymetropolis.metro_common import MetropyError
 
 METHOD = pl.Enum(["face_to_face", "phone"])

@@ -8,7 +8,7 @@ random_seed = 13081996
 
 # [survey]
 # nb_medoids = 3
-# [survey.mobisurvstd]
+# [survey.nemobi]
 # path = "data/surveys/"
 # bulk = true
 

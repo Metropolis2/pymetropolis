@@ -379,10 +379,9 @@ class Step:
     def _md_doc_params(cls) -> str:
         params = list()
         for param_name, param_obj in cls._iter_params():
-            key_str = ".".join(param_obj.key)
             # Hash is the string that must be used to properly link to the parameters page.
-            hash = "".join(param_obj.key)
-            params.append(f"[`{key_str}`](parameters.html#{hash})")
+            anchor = param_obj._anchor()
+            params.append(f"[`{param_obj}`](parameters.html#{anchor})")
         if params:
             doc = "\n- **Parameters:** " + ", ".join(sorted(params)) + "\n"
             return doc

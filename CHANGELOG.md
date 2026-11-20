@@ -223,6 +223,7 @@ Other changes:
 - Renamed parameter `road_network.calibration_variables` to
   `road_network.free_flow_calibration.variables`.
 - `EstimateJointToursClassifierStep` is now a PopulationStep.
+- Update MobiSurvStd to Nemobi.
 
 Removed steps:
 

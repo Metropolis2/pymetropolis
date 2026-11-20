@@ -105,13 +105,13 @@ def build_params_doc() -> str:
     # Iterate over the steps to collect the parameters.
     for step in sorted(STEPS, key=lambda s: s.__name__):
         for _, param_obj in step._iter_params():
-            key_str = ".".join(param_obj.key)
+            key_str = str(param_obj)
             all_params[key_str] = param_obj
             params_steps[key_str].append(step.__name__)
     # Iterate over the parameters, considering first the single-key parameters, then the table,
     #  parameters, sorted by alphabetical order.
     for param_name, param_obj in sorted(
-        all_params.items(), key=lambda i: (len(i[1].key) != 1, i[1].key)
+        all_params.items(), key=lambda i: (i[1].nested(), str(i[1]))
     ):
         doc += param_obj._md_doc()
         doc += "- **Steps:** " + ", ".join(

@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 def get_insee_data() -> pl.DataFrame:
     import polars as pl
-    from mobisurvstd.resources.insee_data import load_insee_data
+    from nemobi.resources.insee_data import load_insee_data
 
     insee_data: pl.DataFrame = load_insee_data()
     max_year = max(

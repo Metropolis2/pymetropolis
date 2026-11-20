@@ -276,7 +276,7 @@ def compute_characteristics(
 def standardize_survey(
     households: pl.DataFrame, persons: pl.DataFrame, trips: pl.DataFrame
 ) -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
-    """Converts survey households, persons and trips (in the MobiSurvStd format) to the variables
+    """Converts survey households, persons and trips (in the Nemobi format) to the variables
     of the simulated population, with their statistical weights.
     """
     import polars as pl

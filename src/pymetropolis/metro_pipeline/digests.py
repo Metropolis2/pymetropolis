@@ -141,8 +141,8 @@ class DigestCache:
         """Returns the digest of a file or of a directory, or `MISSING_DIGEST` if it is neither.
 
         Whether the path is a file or a directory is decided here rather than from the Parameter
-        which produced it, because `survey.mobisurvstd.path` can be either one, depending on
-        `survey.mobisurvstd.bulk`.
+        which produced it, because `survey.nemobi.path` can be either one, depending on
+        `survey.nemobi.bulk`.
         """
         try:
             stat = os.stat(path)
